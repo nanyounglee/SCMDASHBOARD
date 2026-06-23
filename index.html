@@ -412,7 +412,7 @@ a{color:var(--blue);text-decoration:none}
                 <option value="monthly">월별</option><option value="weekly">주별</option>
               </select>
               <select id="purchase-trend-type" onchange="renderPurchaseTrend()" style="font-size:11px;padding:4px 8px;border:1px solid var(--border2);border-radius:var(--r-sm);color:var(--text2);background:var(--surface)">
-                <option value="monthly">합산</option><option value="supplier">협력사별</option>
+                <option value="monthly">합산</option><option value="supplier">협력사별</option><option value="biz">업태별</option><option value="goods">굿즈코드별</option>
               </select>
             </div>
           </div>
@@ -1299,10 +1299,27 @@ function refreshAll() {
   renderSparklines();
 }
 
+// ===== YoY HELPER =====
+function getPrevYearMonth(mo) {
+  if(!mo) return null;
+  const p=mo.split('.'); const y=parseInt(p[0])-1; return y+'.'+p[1];
+}
+function yoyBadge(cur,prev) {
+  if(prev===null||prev===undefined||prev===0) return '';
+  const diff=cur-prev; const pct=prev?(diff/prev*100).toFixed(0):'';
+  const sign=diff>=0?'+':''; const color=diff>=0?'var(--red)':'var(--green)';
+  return ` <span style="font-size:10px;color:${color};font-weight:600">${sign}${pct}% YoY</span>`;
+}
+function yoyText(cur,prev,label) {
+  if(prev===null||prev===undefined) return '';
+  return `전년 ${label||''} ${typeof prev==='number'?prev.toLocaleString():prev}`;
+}
+
 // ===== KPIs =====
 function updateKPIs() {
   if (!SEL_MONTH) return;
   const mo=SEL_MONTH;
+  const pyMo=getPrevYearMonth(mo);
   const q=getSearchQuery();
   if (D.order) {
     const allMo=getFilteredAllOrders().filter(r=>pOrderMonth(r['과업지시일자'])===mo);
@@ -1310,32 +1327,40 @@ function updateKPIs() {
     const stockOrders=allMo.filter(r=>isStock(r));
     const f=projOrders;
     const urg=f.filter(r=>r['긴급여부']==='긴급'&&r['수주처']!==URGENT_EXCLUDE_SUP).length;
+    // YoY: previous year same month
+    const pyAll=getFilteredAllOrders().filter(r=>pOrderMonth(r['과업지시일자'])===pyMo);
+    const pyProj=pyAll.filter(r=>!isStock(r));
+    const pyUrg=pyProj.filter(r=>r['긴급여부']==='긴급'&&r['수주처']!==URGENT_EXCLUDE_SUP).length;
     setValue('k-order',allMo.length.toLocaleString());
-    setValue('k-order-sub',`프로젝트 ${f.length} + 재고생산 ${stockOrders.length} · 긴급 ${urg}`);
+    document.getElementById('k-order-sub').innerHTML=`프로젝트 ${f.length} + 재고생산 ${stockOrders.length} · 긴급 ${urg}${yoyBadge(allMo.length,pyAll.length)}<br><span style="font-size:10px;color:var(--text3)">${yoyText(allMo.length,pyAll.length,'동월')}건</span>`;
     setValue('k-urgent',urg);
-    setValue('k-urgent-sub',`긴급률 ${f.length?(urg/f.length*100).toFixed(1):0}%${q?' (필터 적용)':''}`);
+    document.getElementById('k-urgent-sub').innerHTML=`긴급률 ${f.length?(urg/f.length*100).toFixed(1):0}%${yoyBadge(urg,pyUrg)}${q?' <span style="color:var(--text3)">(필터)</span>':''}`;
     document.getElementById('mgr-month').textContent=mo+(q?' (필터)':'');
     document.getElementById('mfg-month').textContent=mo;
     document.getElementById('sup-pur-month').textContent=mo+' (세금계산서 기준)';
     let totPur=0,purCnt=0;
     getFilteredOrders().forEach(r=>{ const byM=purchaseByMonth(r); if(byM[mo]){totPur+=byM[mo];purCnt++;} });
+    let pyPur=0;
+    getFilteredOrders().forEach(r=>{ const byM=purchaseByMonth(r); if(byM[pyMo]){pyPur+=byM[pyMo];} });
     setValue('k-purchase',fa(totPur));
-    setValue('k-purchase-sub',`${purCnt}건${q?' (필터 적용)':''}`);
+    document.getElementById('k-purchase-sub').innerHTML=`${purCnt}건${yoyBadge(totPur,pyPur)}${q?' <span style="color:var(--text3)">(필터)</span>':''}<br><span style="font-size:10px;color:var(--text3)">${pyPur>0?'전년 동월 '+fa(pyPur):''}</span>`;
   }
   if (D.issue) {
     let fi=D.issue.filter(r=>pIssueMonth(r)===mo);
-    if(q) fi=fi.filter(r=>matchesSearch(r,q));
+    let pyFi=D.issue.filter(r=>pIssueMonth(r)===pyMo);
+    if(q) { fi=fi.filter(r=>matchesSearch(r,q)); pyFi=pyFi.filter(r=>matchesSearch(r,q)); }
     let qi=0,ni=0,oi=0;
     fi.forEach(r=>{ const c=r['이슈카테고리']||''; if(c.includes('품질'))qi++; if(c.includes('수량'))ni++; if(c.includes('운영'))oi++; });
     setValue('k-issue',fi.length);
-    setValue('k-issue-sub',`품질 ${qi} / 수량 ${ni} / 운영 ${oi}${q?' (필터)':''}`);
+    document.getElementById('k-issue-sub').innerHTML=`품질 ${qi} / 수량 ${ni} / 운영 ${oi}${yoyBadge(fi.length,pyFi.length)}${q?' <span style="color:var(--text3)">(필터)</span>':''}`;
     document.getElementById('issue-chart-period').textContent=mo+' 기준';
   }
   if (D.ci) {
     let fc=D.ci.filter(r=>{ const d=r['등록일자']; const m=d.match(/(\d+)\.(\d+)\./); return m&&`${m[1]}.${parseInt(m[2])}`===mo; });
-    if(q) fc=fc.filter(r=>matchesSearch(r,q));
+    let pyFc=D.ci.filter(r=>{ const d=r['등록일자']; const m=d.match(/(\d+)\.(\d+)\./); return m&&`${m[1]}.${parseInt(m[2])}`===pyMo; });
+    if(q) { fc=fc.filter(r=>matchesSearch(r,q)); pyFc=pyFc.filter(r=>matchesSearch(r,q)); }
     setValue('k-ci',fc.length);
-    setValue('k-ci-sub',mo+' 등록'+(q?' (필터)':''));
+    document.getElementById('k-ci-sub').innerHTML=`${mo} 등록${yoyBadge(fc.length,pyFc.length)}${q?' <span style="color:var(--text3)">(필터)</span>':''}`;
   }
 }
 function setValue(id,v) { const el=document.getElementById(id); if(el) el.textContent=v; }
@@ -1607,26 +1632,48 @@ function renderPurchaseTrend() {
   const ctx=getCtx('ch-purchase-trend'); if(!ctx) return;
   const unit=document.getElementById('purchase-trend-unit')?.value||'monthly';
   const viewType=document.getElementById('purchase-trend-type')?.value||'monthly';
-
   const fOrders=getFilteredOrders();
+  const bizMap2=getBizTypeMap();
+  const mfgMap2={}; if(D.sup) D.sup.forEach(r=>{mfgMap2[r['협력사 이름']]=r['1. 제조유형']||'기타';});
+  const palette=['#1d4ed8','#dc2626','#059669','#d97706','#7c3aed','#0891b2','#be123c','#65a30d','#ea580c','#94a3b8'];
+
   if(unit==='weekly') {
     const byW={};
-    fOrders.forEach(r=>{
-      const d=r['과업지시일자']||''; const wk=getISOWeek(d);
-      if(!wk) return; const amt=pa(r['공급가액']);
-      byW[wk]=(byW[wk]||0)+amt;
-    });
+    fOrders.forEach(r=>{const d=r['과업지시일자']||'';const wk=getISOWeek(d);if(!wk)return;byW[wk]=(byW[wk]||0)+pa(r['공급가액']);});
     const weeks=Object.keys(byW).sort().slice(-20);
     document.getElementById('purchase-trend-sub').textContent='주별 공급가액 합산 (최근 20주)';
     CHARTS['ch-purchase-trend']=new Chart(ctx,{type:'bar',data:{labels:weeks.map(w=>w.slice(5)),datasets:[{label:'매입금액',data:weeks.map(w=>byW[w]),backgroundColor:'#1d4ed8',borderRadius:3}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},scales:{x:{ticks:{font:{size:9}}},y:{ticks:{font:{size:10},callback:v=>fa(v)}}}}});
+  } else if(viewType==='biz'||viewType==='goods'||viewType==='supplier') {
+    // Multi-line by group
+    const byGroupMonth={};
+    fOrders.forEach(r=>{
+      const bm=purchaseByMonth(r);
+      let grp;
+      if(viewType==='biz') grp=bizMap2[r['수주처']]||'기타';
+      else if(viewType==='goods') grp=goodsCode(r)||'기타';
+      else grp=r['수주처']||'미상';
+      Object.entries(bm).forEach(([m,a])=>{
+        if(!byGroupMonth[grp]) byGroupMonth[grp]={};
+        byGroupMonth[grp][m]=(byGroupMonth[grp][m]||0)+a;
+      });
+    });
+    // Get top 8 groups by total amount
+    const totals=Object.entries(byGroupMonth).map(([g,mData])=>([g,Object.values(mData).reduce((s,v)=>s+v,0)])).sort((a,b)=>b[1]-a[1]);
+    const topGroups=totals.slice(0,8).map(x=>x[0]);
+    const allMonths=[...new Set(Object.values(byGroupMonth).flatMap(m=>Object.keys(m)))].sort();
+    const datasets=topGroups.map((g,i)=>({label:g,data:allMonths.map(m=>byGroupMonth[g]?.[m]||0),borderColor:palette[i%palette.length],borderWidth:2,tension:.3,pointRadius:2,fill:false}));
+    const subText={biz:'업태별 매입추이 (Top 8)',goods:'굿즈코드별 매입추이 (Top 8)',supplier:'협력사별 매입추이 (Top 8)'};
+    document.getElementById('purchase-trend-sub').textContent=subText[viewType]||'';
+    CHARTS['ch-purchase-trend']=new Chart(ctx,{type:'line',data:{labels:allMonths.map(fmtMonthShort),datasets},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{position:'bottom',labels:{font:{size:9},boxWidth:8}},tooltip:{callbacks:{label:c=>c.dataset.label+': '+fa(c.raw)}}},scales:{x:{ticks:{font:{size:9}}},y:{ticks:{font:{size:10},callback:v=>fa(v)}}}}});
   } else {
+    // Default: monthly total
     const byM={};
-    fOrders.forEach(r=>{ const bm=purchaseByMonth(r); Object.entries(bm).forEach(([m,a])=>{ byM[m]=(byM[m]||0)+a; }); });
+    fOrders.forEach(r=>{const bm=purchaseByMonth(r);Object.entries(bm).forEach(([m,a])=>{byM[m]=(byM[m]||0)+a;});});
     const months=Object.keys(byM).sort();
     document.getElementById('purchase-trend-sub').textContent='세금계산서 기준 공급가액 · 월 클릭 시 상세';
     CHARTS['ch-purchase-trend']=new Chart(ctx,{type:'line',data:{labels:months.map(fmtMonthShort),datasets:[{label:'매입금액',data:months.map(m=>byM[m]),borderColor:'#1d4ed8',backgroundColor:'rgba(29,78,216,.08)',fill:true,tension:.4,pointRadius:5,pointBackgroundColor:'#1d4ed8',pointHoverRadius:7,borderWidth:2}]},options:{responsive:true,maintainAspectRatio:false,onClick:(evt,elems)=>{
       if(elems.length){const idx=elems[0].index;openModal('purchaseMonth',months[idx]);}
-    },plugins:{legend:{display:false},tooltip:{callbacks:{label:ctx2=>fa(ctx2.raw)}}},scales:{x:{ticks:{font:{size:10}}},y:{ticks:{font:{size:10},callback:v=>fa(v)}}}}});
+    },plugins:{legend:{display:false},tooltip:{callbacks:{label:c=>fa(c.raw)}}},scales:{x:{ticks:{font:{size:10}}},y:{ticks:{font:{size:10},callback:v=>fa(v)}}}}});
   }
 }
 function renderManagerChart() {
