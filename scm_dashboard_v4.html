@@ -766,7 +766,7 @@ let SUP_ROWS = [];
 
 // ===== CSV PARSE =====
 function parseCSV(txt) {
-  const lines = txt.split('\n');
+  const lines = txt.replace(/^﻿/,'').split('\n');
   const hdr = parseCSVLine(lines[0]);
   const out = [];
   for (let i=1;i<lines.length;i++) {
@@ -937,45 +937,36 @@ function updateUploadSummary() {
   if(el) el.innerHTML=loaded.length?`<span style="color:var(--green);font-weight:500">✓ ${loaded.length}/${keys.length} 로드</span> · ${Object.values(UD).sort().pop()||''}`:'미업로드';
 }
 // ===== UNIFIED DROP / AUTO-DETECT =====
+// Signatures: [mustHave, mustNotHave] — mustHave ALL present + mustNotHave NONE present = match
 const FILE_SIGNATURES={
-  order:['과업지시일자','발주번호'],
-  issue:['이슈카테고리'],
-  sup:['협력사 이름','1. 제조유형'],
-  ci:['등록일자','이슈내용','프로젝트명'],
-  task:['협력사','과업지시일자','입하여부','입하경과일'],
-  stock:['파츠명','판매상태','총재고수량'],
-  sales:['제품명','주문수량','판매단가','소계'],
-  cost_rate:['제품명','원가율_300'],
-  subcontract:['입하경과일','협력사'],
-  sup_master:['협력사이름'],
-  order_full:['협력사','연월'],
-  inv_weekly:['파츠번호','기준일','재고수량','재고금액'],
-  sales_monthly:['파츠번호','기준월','판매량'],
-  purchase_review:['REVIEW_ID','파츠번호','결정상태'],
-  season_plan:['굿즈명','옵션','계획구분'],
-  qms_raw:['발생일','이슈유형'],
-  cost_reduction:['절감액'],
+  purchase_review:{must:['REVIEW_ID','파츠번호','결정상태']},
+  season_plan:    {must:['굿즈명','옵션','계획구분']},
+  inv_weekly:     {must:['파츠번호','기준일','재고수량','재고금액']},
+  sales_monthly:  {must:['파츠번호','기준월','판매량']},
+  qms_raw:        {must:['발생일','이슈유형'],not:['이슈카테고리']},
+  cost_reduction: {must:['절감액','항목']},
+  cost_rate:      {must:['제품명','원가율_300']},
+  stock:          {must:['파츠명','판매상태','총재고수량']},
+  sales:          {must:['제품명','주문수량','판매단가','소계'],not:['원가율_300']},
+  ci:             {must:['등록일자','이슈내용','프로젝트명'],not:['이슈카테고리']},
+  sup:            {must:['협력사 이름','1. 제조유형']},
+  issue:          {must:['이슈카테고리'],not:['판매상태','총재고수량']},
+  task:           {must:['과업지시일자','입하여부','입하경과일'],not:['발주번호','산출물']},
+  subcontract:    {must:['입하경과일','과업지시상태','협력사'],not:['과업지시일자']},
+  sup_master:     {must:['협력사이름']},
+  order_full:     {must:['협력사','연월'],not:['이슈카테고리','과업지시일자']},
+  order:          {must:['과업지시일자','발주번호']},
 };
 function detectCSVType(headers) {
-  const hSet=new Set(headers.map(h=>h.trim()));
-  let best=null,bestScore=0;
-  // Prioritize by specificity (more required fields matched = better)
-  const priority=['purchase_review','season_plan','inv_weekly','sales_monthly','qms_raw','cost_reduction','cost_rate','stock','sales','ci','sup','issue','task','subcontract','sup_master','order_full','order'];
+  const hSet=new Set(headers.map(h=>h.trim().replace(/^﻿/,'')));
+  const priority=Object.keys(FILE_SIGNATURES);
   for(const key of priority) {
-    const sigs=FILE_SIGNATURES[key]||[];
-    const matched=sigs.filter(s=>hSet.has(s)).length;
-    if(matched>0 && matched>=sigs.length && matched>bestScore) { best=key; bestScore=matched; }
+    const sig=FILE_SIGNATURES[key];
+    const mustAll=(sig.must||[]).every(f=>hSet.has(f));
+    const notNone=!(sig.not||[]).some(f=>hSet.has(f));
+    if(mustAll && notNone) return key;
   }
-  // Fallback: partial match with highest ratio
-  if(!best) {
-    for(const key of priority) {
-      const sigs=FILE_SIGNATURES[key]||[];
-      const matched=sigs.filter(s=>hSet.has(s)).length;
-      const ratio=sigs.length>0?matched/sigs.length:0;
-      if(ratio>0.5 && matched>bestScore) { best=key; bestScore=matched; }
-    }
-  }
-  return best;
+  return null;
 }
 function handleUnifiedDrop(e) {
   e.preventDefault(); e.currentTarget.style.borderColor=''; e.currentTarget.style.background='';
@@ -987,7 +978,7 @@ function handleUnifiedFiles(files) {
   Array.from(files).forEach(file=>{
     const reader=new FileReader();
     reader.onload=(ev)=>{
-      const text=ev.target.result;
+      const text=ev.target.result.replace(/^﻿/,'');
       const firstLine=text.split('\n')[0]||'';
       const headers=parseCSVLine(firstLine);
       const key=detectCSVType(headers);
