@@ -598,18 +598,18 @@ a{color:var(--blue);text-decoration:none}
     <!-- STOCK -->
     <div id="sec-stock" style="display:none">
       <div class="kpi-row-4">
-        <div class="kpi-card c-blue"><div class="kpi-label">총 파츠</div><div class="kpi-val" id="sk-total">—</div><div class="kpi-sub">재고현황 대상</div></div>
-        <div class="kpi-card c-red"><div class="kpi-label">품절위험</div><div class="kpi-val" id="sk-danger">—</div><div class="kpi-sub">품절위험여부 Y</div></div>
-        <div class="kpi-card c-amber"><div class="kpi-label">PLT 필요</div><div class="kpi-val" id="sk-plt">—</div><div class="kpi-sub">PLT_일 입력된 건</div></div>
-        <div class="kpi-card c-purple"><div class="kpi-label">이슈 건수</div><div class="kpi-val" id="sk-issue">—</div><div class="kpi-sub">이슈여부 Y</div></div>
+        <div class="kpi-card c-blue"><div class="kpi-label">전체 품절</div><div class="kpi-val" id="sk-total">—</div><div class="kpi-sub">품절리스트 전체</div></div>
+        <div class="kpi-card c-red"><div class="kpi-label">비의도적 품절</div><div class="kpi-val" id="sk-danger">—</div><div class="kpi-sub">납기지연·공급부족 등</div></div>
+        <div class="kpi-card c-amber"><div class="kpi-label">의도적 품절</div><div class="kpi-val" id="sk-plt">—</div><div class="kpi-sub">졸업·시즌·효율화 등</div></div>
+        <div class="kpi-card c-purple"><div class="kpi-label">굿즈 품절</div><div class="kpi-val" id="sk-issue">—</div><div class="kpi-sub">굿즈 단위 품절</div></div>
       </div>
       <div class="filter-row" style="margin-top:12px">
         <span class="filter-label">판매상태</span>
         <div id="stock-status-chips" style="display:flex;gap:6px;flex-wrap:wrap"></div>
       </div>
       <div class="card" style="margin-top:12px">
-        <div class="card-header"><div class="card-title">재고·품절 현황</div><div class="card-sub">재고_품절현황 데이터 기준</div></div>
-        <div class="tbl-wrap"><table class="tbl"><thead><tr><th>파츠명</th><th>판매상태</th><th class="num">총재고수량</th><th class="num">협력사재고수량</th><th>품절위험</th><th>PLT(일)</th><th>이슈</th></tr></thead><tbody id="tb-stock"></tbody></table></div>
+        <div class="card-header"><div class="card-title">품절 현황</div><div class="card-sub">sales_status_history 품절리스트 기준</div></div>
+        <div class="tbl-wrap"><table class="tbl"><thead><tr><th class="rank">#</th><th>파츠명 / 굿즈</th><th>판매상태</th><th>재고소유</th><th>품절 성격 / 사유</th><th>변경일</th><th class="num">경과일</th><th>굿즈품절</th></tr></thead><tbody id="tb-stock"></tbody></table></div>
       </div>
     </div>
 
@@ -749,13 +749,14 @@ a{color:var(--blue);text-decoration:none}
 </div>
 <script>
 // ===== DATA =====
-const D = {order:null,issue:null,sup:null,ci:null,stock:null,sales:null,inv_weekly:null,sales_monthly:null,purchase_review:null,season_plan:null,qms_raw:null,cost_reduction:null};
+const D = {order:null,issue:null,sup:null,ci:null,stockout_list:null,sales:null,inv_weekly:null,sales_monthly:null,purchase_review:null,season_plan:null,qms_raw:null,cost_reduction:null};
 // Legacy keys kept as computed views (not uploaded)
 Object.defineProperty(D,'task',{get(){return null;},set(){}});
 Object.defineProperty(D,'subcontract',{get(){return null;},set(){}});
 Object.defineProperty(D,'sup_master',{get(){return D.sup;},set(){}});
 Object.defineProperty(D,'order_full',{get(){return D.order;},set(){}});
 Object.defineProperty(D,'cost_rate',{get(){return null;},set(){}});
+Object.defineProperty(D,'stock',{get(){return D.stockout_list;},set(v){D.stockout_list=v;}});
 const UD = {};
 // Parts Master — embedded JSON (loaded from parts_master.json, cached in localStorage)
 let PARTS_MASTER=[];
@@ -1013,7 +1014,7 @@ const FIELD_HINTS = {
   issue: { required:['이슈카테고리','실제입하일'] },
   sup:   { required:['협력사 이름','1. 제조유형'] },
   ci:    { required:['등록일자','이슈내용'] },
-  stock: { required:['파츠명','판매상태','총재고수량'], knownEmpty:['품절Status'] },
+  stockout_list: { required:['파츠명','판매상태','품절 성격'] },
   sales: { required:['제품명','주문수량','판매단가','소계'] },
   inv_weekly:{required:['파츠번호','기준일','재고수량','재고금액']},
   sales_monthly:{required:['파츠번호','기준월','판매량']},
@@ -1024,7 +1025,7 @@ const FIELD_HINTS = {
 };
 const KEY_LABELS = {
   order:'발주_RAW',issue:'이슈_RAW',sup:'공급망_RAW',ci:'고객인지이슈_RAW',
-  stock:'재고_품절현황',sales:'판매주문',
+  stockout_list:'품절리스트',sales:'판매주문',
   inv_weekly:'S&OP_재고주간',sales_monthly:'S&OP_매출월간',purchase_review:'매입검토현황',season_plan:'시즌재고계획',qms_raw:'QMS_품질데이터',cost_reduction:'원가절감실적'
 };
 function validateCSV(key,rows) {
@@ -1065,7 +1066,7 @@ const UPLOAD_SLOTS=[
   {key:'sales_monthly',icon:'📈',label:'S&OP 매출월간',src:'GSheets S&OP → sales_monthly 시트',fields:'파츠번호, 기준월, 판매량',row:'sop'},
   {key:'purchase_review',icon:'🔍',label:'매입검토현황',src:'GSheets S&OP → purchase_review 시트',fields:'REVIEW_ID, 파츠번호, 결정상태',row:'sop'},
   {key:'season_plan',icon:'🗓️',label:'시즌재고계획',src:'GSheets S&OP → 시즌매입_파츠연결 시트',fields:'굿즈명, 옵션, 계획구분',row:'sop'},
-  {key:'stock',icon:'📊',label:'재고_품절현황',src:'GSheets SUPER BASE (선택)',fields:'파츠명, 판매상태, 총재고수량',row:'etc'},
+  {key:'stockout_list',icon:'🚫',label:'품절리스트',src:'Airtable → sales_status_history 뷰',fields:'파츠명, 판매상태, 품절 성격, 변경일, 재고소유구분',row:'etc'},
   {key:'sales',icon:'💰',label:'판매주문',src:'GSheets SUPER BASE (선택)',fields:'제품명, 주문수량, 판매단가, 소계',row:'etc'},
   {key:'qms_raw',icon:'🔬',label:'QMS 품질',src:'Airtable SCM KPI → 품질이슈 뷰 (선택)',fields:'발생일, 이슈유형, 파츠번호',row:'etc'},
   {key:'cost_reduction',icon:'💹',label:'원가절감',src:'Airtable SCM KPI → 원가절감 뷰 (선택)',fields:'일자, 항목, 절감액',row:'etc'},
@@ -1122,7 +1123,7 @@ const FILE_SIGNATURES={
   sales_monthly:  {must:['파츠번호','기준월','판매량']},
   qms_raw:        {must:['발생일','이슈유형'],not:['이슈카테고리']},
   cost_reduction: {must:['절감액','항목']},
-  stock:          {must:['파츠명','판매상태','총재고수량']},
+  stockout_list:  {must:['파츠명','판매상태','품절 성격']},
   sales:          {must:['제품명','주문수량','판매단가','소계']},
   ci:             {must:['등록일자','이슈내용','프로젝트명'],not:['이슈카테고리']},
   sup:            {must:['협력사 이름','1. 제조유형']},
@@ -1481,14 +1482,18 @@ function renderSupTable(rows) {
 
 // ===== STOCK SECTION =====
 function updateStockSection() {
-  if (!D.stock) return;
-  setValue('sk-total',D.stock.length.toLocaleString());
-  setValue('sk-danger',D.stock.filter(r=>(r['품절위험여부']||'').toUpperCase()==='Y'||r['품절위험여부']==='예').length);
-  setValue('sk-plt',D.stock.filter(r=>r['PLT_일']&&r['PLT_일']!=='0').length);
-  setValue('sk-issue',D.stock.filter(r=>(r['이슈여부']||'').toUpperCase()==='Y'||r['이슈여부']==='예').length);
+  if (!D.stockout_list) return;
+  const sl=D.stockout_list;
+  const nonIntent=sl.filter(r=>(r['품절 성격']||'').includes('비의도적'));
+  const intent=sl.filter(r=>(r['품절 성격']||'').includes('의도적'));
+  const goodsSO=sl.filter(r=>(r['굿즈품절여부']||'').toLowerCase()==='checked');
+  setValue('sk-total',sl.length.toLocaleString());
+  setValue('sk-danger',nonIntent.length);
+  setValue('sk-plt',intent.length);
+  setValue('sk-issue',goodsSO.length);
   // Build status chips
   const statuses=new Set(['all']);
-  D.stock.forEach(r=>{ const s=r['판매상태']||''; if(s) statuses.add(s); });
+  sl.forEach(r=>{ const s=r['판매상태']||''; if(s) statuses.add(s); });
   const el=document.getElementById('stock-status-chips');
   if (el) el.innerHTML=[...statuses].map(s=>`<span class="stag${s===SEL_STOCK_STATUS?' active':''}" onclick="selStockStatus('${s}',this)">${s==='all'?'전체':s}</span>`).join('');
   renderStockTable();
@@ -1500,14 +1505,24 @@ function selStockStatus(s,el) {
   renderStockTable();
 }
 function renderStockTable() {
-  if (!D.stock) return;
-  const rows=SEL_STOCK_STATUS==='all'?D.stock:D.stock.filter(r=>r['판매상태']===SEL_STOCK_STATUS);
-  const html=rows.map(r=>{
-    const danger=(r['품절위험여부']||'').toUpperCase()==='Y'||r['품절위험여부']==='예';
-    const issue=(r['이슈여부']||'').toUpperCase()==='Y'||r['이슈여부']==='예';
-    return `<tr><td>${esc(crop(r['파츠명']||'',40))}</td><td>${r['판매상태']||'—'}</td><td class="num">${pa(r['총재고수량']||'0').toLocaleString()}</td><td class="num">${pa(r['협력사재고수량']||'0').toLocaleString()}</td><td>${danger?'<span class="tag tag-q">위험</span>':'<span class="tag tag-ok">정상</span>'}</td><td class="num">${r['PLT_일']||'—'}</td><td>${issue?'<span class="tag tag-n">이슈</span>':'—'}</td></tr>`;
+  if (!D.stockout_list) return;
+  const rows=SEL_STOCK_STATUS==='all'?D.stockout_list:D.stockout_list.filter(r=>r['판매상태']===SEL_STOCK_STATUS);
+  const html=rows.map((r,i)=>{
+    const nature=r['품절 성격']||'';
+    const isNonIntent=nature.includes('비의도적');
+    const nc=isNonIntent?'tag-q':'tag-n';
+    const goodsSO=(r['굿즈품절여부']||'').toLowerCase()==='checked';
+    const reason=r['품절 사유']||'';
+    const days=calcStockoutDays(r);
+    const dc=days>=30?'color:var(--red);font-weight:600':days>=14?'color:var(--amber)':'';
+    return `<tr><td class="rank">${i+1}</td><td>${esc(crop(r['파츠명']||'',35))}<div style="font-size:10px;color:var(--text3)">${esc(r['적용 굿즈명']||'')}</div></td><td><span class="tag ${nc}">${esc(r['판매상태']||'')}</span></td><td>${esc(r['재고소유구분']||'')}</td><td style="font-size:11px"><span class="tag tag-gray">${esc(nature)}</span><div style="font-size:10px;color:var(--text3);margin-top:2px">${esc(reason)}</div></td><td>${r['변경일(인터페이스용)']||'—'}</td><td class="num" style="${dc}">${days>0?days+'일':'—'}</td><td>${goodsSO?'<span class="tag tag-q">굿즈품절</span>':'—'}</td></tr>`;
   }).join('');
-  setTbody('tb-stock',html||emptyRow(7));
+  setTbody('tb-stock',html||emptyRow(8,'품절 데이터 없음'));
+}
+function calcStockoutDays(r) {
+  const d=parseAnyDate(r['변경일(인터페이스용)']);
+  if(!d) return 0;
+  return Math.round((new Date()-d)/86400000);
 }
 
 // ===== SALES SECTION =====
@@ -2323,36 +2338,76 @@ function renderInventoryOps() {
 // ===== 3-3. 품절 상세 =====
 function renderStockoutDetail() {
   const el=document.getElementById('sec-stockout-detail');
-  if(!D.inv_weekly&&!D.stock) { el.innerHTML='<div class="card empty">재고 CSV를 업로드해주세요.</div>'; return; }
-  let rows=[];
-  if(D.inv_weekly) {
-    const dates=getInvDates(); const latest=dates[dates.length-1]||'';
-    const latestRows=D.inv_weekly.filter(r=>invDateKey(r['기준일'])===latest);
-    const managed=latestRows.filter(r=>String(r['관리대상여부']||'').toUpperCase()==='Y');
-    const stockout=managed.filter(r=>{const s=String(r['판매상태']||''); return s==='일시품절'||s==='비의도적품절';});
-    const mk=getMonthFromDate(latest);
-    rows=stockout.map(r=>{
-      const pn=String(r['파츠번호']||'').trim();
-      const qty=toNum(r['재고수량']); const up=toNum(r['단가']);
-      const m3=getThreeMonths(mk); let s3=0; m3.forEach(m=>{s3+=getSalesQty(pn,m);});
-      const dailyAvg=s3/90;
-      const daysToStockout=dailyAvg>0&&qty>0?Math.round(qty/dailyAvg):null;
-      return {name:r['파츠명']||pn,partNo:pn,status:r['판매상태']||'',qty,amt:toNum(r['재고금액']),cat:r['굿즈카테고리']||'',daysTo:daysToStockout,dailyAvg};
-    }).sort((a,b)=>(a.daysTo||9999)-(b.daysTo||9999));
-  } else if(D.stock) {
-    rows=D.stock.filter(r=>(r['품절위험여부']||'').toUpperCase()==='Y'||r['품절위험여부']==='예').map(r=>({name:r['파츠명']||'',partNo:'',status:r['판매상태']||'',qty:toNum(r['총재고수량']),amt:0,cat:'',daysTo:null,dailyAvg:0}));
+  if(!D.stockout_list&&!D.inv_weekly) { el.innerHTML='<div class="card empty">품절리스트 또는 S&OP 재고주간 CSV를 업로드해주세요.</div>'; return; }
+
+  // stockout_list가 있으면 우선 사용
+  if(D.stockout_list) {
+    const sl=D.stockout_list;
+    const nonIntent=sl.filter(r=>(r['품절 성격']||'').includes('비의도적'));
+    const intent=sl.filter(r=>(r['품절 성격']||'').includes('의도적'));
+    const goodsSO=sl.filter(r=>(r['굿즈품절여부']||'').toLowerCase()==='checked');
+    // Group by 품절 성격 세부사유
+    const byReason={};
+    sl.forEach(r=>{const k=r['품절 사유']||'기타';byReason[k]=(byReason[k]||0)+1;});
+    const reasonSorted=Object.entries(byReason).sort((a,b)=>b[1]-a[1]);
+    // Group by 재고소유구분
+    const byOwner={};
+    sl.forEach(r=>{const k=r['재고소유구분']||'미분류';byOwner[k]=(byOwner[k]||0)+1;});
+
+    el.innerHTML=`
+      <div class="kpi-row-4">
+        <div class="kpi-card c-blue"><div class="kpi-label">전체 품절</div><div class="kpi-val">${sl.length}</div></div>
+        <div class="kpi-card c-red"><div class="kpi-label">비의도적 품절</div><div class="kpi-val">${nonIntent.length}</div><div class="kpi-sub">즉각 대응 필요</div></div>
+        <div class="kpi-card c-amber"><div class="kpi-label">의도적 품절</div><div class="kpi-val">${intent.length}</div></div>
+        <div class="kpi-card c-purple"><div class="kpi-label">굿즈 품절</div><div class="kpi-val">${goodsSO.length}</div><div class="kpi-sub">굿즈 단위 전체 품절</div></div>
+      </div>
+      <div class="grid-2" style="margin-top:16px">
+        <div class="card"><div class="card-header"><div class="card-title">품절 사유별 분포</div></div>
+          <div class="tbl-wrap"><table class="tbl"><thead><tr><th>품절 사유</th><th class="num">건수</th></tr></thead><tbody>
+          ${reasonSorted.map(([k,v])=>`<tr><td>${esc(k)}</td><td class="num">${v}</td></tr>`).join('')}
+          </tbody></table></div>
+        </div>
+        <div class="card"><div class="card-header"><div class="card-title">재고소유구분별</div></div>
+          <div class="tbl-wrap"><table class="tbl"><thead><tr><th>구분</th><th class="num">건수</th></tr></thead><tbody>
+          ${Object.entries(byOwner).sort((a,b)=>b[1]-a[1]).map(([k,v])=>`<tr><td>${esc(k)}</td><td class="num">${v}</td></tr>`).join('')}
+          </tbody></table></div>
+        </div>
+      </div>
+      <div class="card" style="margin-top:12px"><div class="card-header"><div class="card-title">비의도적 품절 상세</div><div class="card-sub">경과일 내림차순 · 즉각 대응 대상</div></div>
+      <div class="tbl-wrap"><table class="tbl"><thead><tr><th class="rank">#</th><th>파츠명</th><th>굿즈명</th><th>판매상태</th><th>재고소유</th><th>품절사유</th><th>변경일</th><th class="num">경과일</th><th>굿즈품절</th><th>변경사유</th></tr></thead><tbody>
+      ${nonIntent.sort((a,b)=>calcStockoutDays(b)-calcStockoutDays(a)).map((r,i)=>{
+        const days=calcStockoutDays(r);const dc=days>=30?'color:var(--red);font-weight:600':days>=14?'color:var(--amber)':'';
+        return `<tr><td class="rank">${i+1}</td><td>${esc(crop(r['파츠명']||'',30))}</td><td style="font-size:11px">${esc(r['적용 굿즈명']||'')}</td><td><span class="tag tag-q">${esc(r['판매상태']||'')}</span></td><td>${esc(r['재고소유구분']||'')}</td><td><span class="tag tag-gray">${esc(r['품절 사유']||'')}</span></td><td>${r['변경일(인터페이스용)']||'—'}</td><td class="num" style="${dc}">${days}일</td><td>${(r['굿즈품절여부']||'').toLowerCase()==='checked'?'<span class="tag tag-q">Y</span>':'—'}</td><td style="font-size:10px;max-width:200px;color:var(--text3)">${esc(crop(r['판매상태 변경사유']||'',60))}</td></tr>`;
+      }).join('')||emptyRow(10,'비의도적 품절 없음')}
+      </tbody></table></div></div>
+      <div class="card" style="margin-top:12px"><div class="card-header"><div class="card-title">의도적 품절</div><div class="card-sub">졸업·시즌·효율화 등</div></div>
+      <div class="tbl-wrap"><table class="tbl"><thead><tr><th class="rank">#</th><th>파츠명</th><th>굿즈명</th><th>판매상태</th><th>품절사유</th><th>변경일</th><th>변경사유</th></tr></thead><tbody>
+      ${intent.map((r,i)=>`<tr><td class="rank">${i+1}</td><td>${esc(crop(r['파츠명']||'',30))}</td><td style="font-size:11px">${esc(r['적용 굿즈명']||'')}</td><td><span class="tag tag-n">${esc(r['판매상태']||'')}</span></td><td><span class="tag tag-gray">${esc(r['품절 사유']||'')}</span></td><td>${r['변경일(인터페이스용)']||'—'}</td><td style="font-size:10px;max-width:240px;color:var(--text3)">${esc(crop(r['판매상태 변경사유']||'',80))}</td></tr>`).join('')||emptyRow(7,'의도적 품절 없음')}
+      </tbody></table></div></div>`;
+    return;
   }
-  const danger=rows.filter(r=>r.daysTo!==null&&r.daysTo<=7).length;
-  const warn=rows.filter(r=>r.daysTo!==null&&r.daysTo>7&&r.daysTo<=14).length;
+
+  // Fallback: inv_weekly 기반 (기존 로직)
+  const dates=getInvDates(); const latest=dates[dates.length-1]||'';
+  const latestRows=D.inv_weekly.filter(r=>invDateKey(r['기준일'])===latest);
+  const managed=latestRows.filter(r=>String(r['관리대상여부']||'').toUpperCase()==='Y');
+  const stockout=managed.filter(r=>{const s=String(r['판매상태']||''); return s==='일시품절'||s==='비의도적품절';});
+  const mk=getMonthFromDate(latest);
+  const rows=stockout.map(r=>{
+    const pn=String(r['파츠번호']||'').trim();const qty=toNum(r['재고수량']);const up=toNum(r['단가']);
+    const m3=getThreeMonths(mk);let s3=0;m3.forEach(m=>{s3+=getSalesQty(pn,m);});
+    const dailyAvg=s3/90;const daysTo=dailyAvg>0&&qty>0?Math.round(qty/dailyAvg):null;
+    return {name:r['파츠명']||pn,partNo:pn,status:r['판매상태']||'',qty,cat:r['굿즈카테고리']||'',daysTo,dailyAvg};
+  }).sort((a,b)=>(a.daysTo||9999)-(b.daysTo||9999));
   el.innerHTML=`
     <div class="kpi-row-3">
-      <div class="kpi-card c-red"><div class="kpi-label">긴급 (7일 이내)</div><div class="kpi-val">${danger}</div></div>
-      <div class="kpi-card c-amber"><div class="kpi-label">주의 (7~14일)</div><div class="kpi-val">${warn}</div></div>
-      <div class="kpi-card c-blue"><div class="kpi-label">전체 품절위험</div><div class="kpi-val">${rows.length}</div></div>
+      <div class="kpi-card c-red"><div class="kpi-label">긴급 (7일 이내)</div><div class="kpi-val">${rows.filter(r=>r.daysTo!==null&&r.daysTo<=7).length}</div></div>
+      <div class="kpi-card c-amber"><div class="kpi-label">주의 (7~14일)</div><div class="kpi-val">${rows.filter(r=>r.daysTo!==null&&r.daysTo>7&&r.daysTo<=14).length}</div></div>
+      <div class="kpi-card c-blue"><div class="kpi-label">전체 품절</div><div class="kpi-val">${rows.length}</div></div>
     </div>
-    <div class="card" style="margin-top:12px"><div class="card-header"><div class="card-title">품절 위험 목록</div><div class="card-sub">예상품절일 = 현재고 ÷ 일평균소비량</div></div>
-    <div class="tbl-wrap"><table class="tbl"><thead><tr><th>파츠명</th><th>카테고리</th><th>판매상태</th><th class="num">현재고</th><th class="num">일평균소비</th><th class="num">예상품절일</th></tr></thead><tbody>
-    ${rows.map(r=>{const dc=r.daysTo!==null&&r.daysTo<=7?'color:var(--red);font-weight:600':r.daysTo!==null&&r.daysTo<=14?'color:var(--amber)':'';return `<tr><td>${esc(r.name)}<div style="font-size:10px;color:var(--text3)">${esc(r.partNo)}</div></td><td>${esc(r.cat)}</td><td>${r.status}</td><td class="num">${fmtN(r.qty)}</td><td class="num">${r.dailyAvg>0?r.dailyAvg.toFixed(1):'—'}</td><td class="num" style="${dc}">${r.daysTo!==null?r.daysTo+'일':'—'}</td></tr>`;}).join('')||emptyRow(6,'품절위험 대상 없음')}
+    <div class="card" style="margin-top:12px"><div class="card-header"><div class="card-title">품절 위험 목록</div></div>
+    <div class="tbl-wrap"><table class="tbl"><thead><tr><th>파츠명</th><th>카테고리</th><th>상태</th><th class="num">현재고</th><th class="num">일평균소비</th><th class="num">예상품절일</th></tr></thead><tbody>
+    ${rows.map(r=>{const dc=r.daysTo!==null&&r.daysTo<=7?'color:var(--red);font-weight:600':'';return `<tr><td>${esc(r.name)}</td><td>${esc(r.cat)}</td><td>${r.status}</td><td class="num">${fmtN(r.qty)}</td><td class="num">${r.dailyAvg>0?r.dailyAvg.toFixed(1):'—'}</td><td class="num" style="${dc}">${r.daysTo!==null?r.daysTo+'일':'—'}</td></tr>`;}).join('')||emptyRow(6,'품절 없음')}
     </tbody></table></div></div>`;
 }
 
