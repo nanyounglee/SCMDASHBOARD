@@ -1642,6 +1642,32 @@ function openModal(type,extra) {
     const f=SEL_MONTH?D.ci.filter(r=>{ const d=r['등록일자']; const m=d.match(/(\d+)\.(\d+)\./); return m&&`${m[1]}.${parseInt(m[2])}`===SEL_MONTH; }):D.ci;
     body.innerHTML=`<table class="tbl"><thead><tr><th class="rank">#</th><th>등록일</th><th>프로젝트</th><th>관련제품</th><th>작성자</th><th>이슈내용</th></tr></thead><tbody>`+f.map((r,i)=>`<tr><td class="rank">${i+1}</td><td>${r['등록일자']||'—'}</td><td>${esc(r['프로젝트명']||'')}</td><td style="font-size:11px">${esc(crop(r['관련제품']||'',30))}</td><td>${esc(r['작성자명']||'')}</td><td style="font-size:11px">${esc(crop(r['이슈내용']||'',50))}</td></tr>`).join('')+`</tbody></table>`;
 
+  } else if (type==='inventoryAsset') {
+    title.textContent='재고자산 SKU 상세';
+    if (!D.inv_weekly) { body.innerHTML=emptyRow(1,'S&OP 재고주간 CSV 업로드 필요'); return; }
+    const dates=getInvDates(); const latest=dates[dates.length-1]||'';
+    const rows=D.inv_weekly.filter(r=>invDateKey(r['기준일'])===latest);
+    const mk=getMonthFromDate(latest); const m3=getThreeMonths(mk);
+    const skuData=rows.map(r=>{
+      const pn=String(r['파츠번호']||'').trim();
+      const invAmt=toNum(r['재고금액']); const up=toNum(r['단가'])||0;
+      let s3=0; m3.forEach(m=>{s3+=getSalesQty(pn,m);});
+      const salesAmt=s3*up;
+      const turnover=invAmt>0?salesAmt/invAmt:0;
+      return {pn,name:r['파츠명']||pn,cat:r['굿즈카테고리']||'',procure:r['조달유형']||r['소싱구분']||r['생산구분']||'',qty:toNum(r['재고수량']),up,invAmt,turnover,s3,launchDate:r['출시일']||''};
+    });
+    INV_MODAL_DATA=skuData;
+    INV_MODAL_SORT='invDesc';
+    tabsEl.innerHTML=`<div style="display:flex;gap:6px;padding:8px 8px 0;align-items:center;font-size:11px;color:var(--text3)">
+      정렬: <select id="inv-modal-sort" onchange="reorderInvModal(this.value)" style="font-size:11px;padding:3px 8px;border:1px solid var(--border2);border-radius:var(--r-sm)">
+        <option value="invDesc">재고금액 큰 순</option>
+        <option value="turnDesc">회전율 높은 순</option>
+        <option value="turnAsc">회전율 낮은 순</option>
+      </select>
+      <span style="margin-left:auto">기준일 ${latest} · ${skuData.length}개 SKU</span>
+    </div>`;
+    renderInvModalTable(skuData,'invDesc');
+
   } else if (type==='purchaseMonth') {
     // Clicked a specific month on the chart
     const mo=extra;
@@ -1721,7 +1747,110 @@ function openSupplierDetailModal(supName) {
     </tbody></table>
     <div style="margin-top:12px;text-align:right"><button style="font-size:11px;padding:5px 14px;border:1px solid var(--border2);border-radius:var(--r-sm);background:var(--surface);cursor:pointer" onclick="openModal('purchase')">← 협력사 목록으로</button></div>`;
 }
-function closeModal() { document.getElementById('modal-overlay').classList.remove('open'); }
+// ===== INVENTORY ASSET MODAL — SKU detail + turnover accordion =====
+let INV_MODAL_DATA=[];
+let INV_MODAL_SORT='invDesc';
+let INV_EXPANDED=new Set();
+
+function reorderInvModal(sortKey) {
+  INV_MODAL_SORT=sortKey;
+  INV_EXPANDED.clear();
+  renderInvModalTable(INV_MODAL_DATA,sortKey);
+}
+
+function renderInvModalTable(data,sortKey) {
+  let sorted=data.slice();
+  if(sortKey==='invDesc') sorted.sort((a,b)=>b.invAmt-a.invAmt);
+  else if(sortKey==='turnDesc') sorted.sort((a,b)=>b.turnover-a.turnover||b.invAmt-a.invAmt);
+  else if(sortKey==='turnAsc') sorted.sort((a,b)=>a.turnover-b.turnover||b.invAmt-a.invAmt);
+  const body=document.getElementById('modal-body');
+  body.innerHTML=`<table class="tbl" id="inv-modal-tbl"><thead><tr>
+    <th class="rank">#</th><th>파츠명</th><th>카테고리</th><th>조달유형</th>
+    <th class="num">재고수량</th><th class="num">재고단가</th><th class="num">재고금액</th>
+    <th class="num">3M회전율</th>
+  </tr></thead><tbody>
+  ${sorted.map((r,i)=>{
+    const isExp=INV_EXPANDED.has(r.pn);
+    const turnColor=r.turnover<0.1?'color:var(--red)':r.turnover<0.5?'color:var(--amber)':'color:var(--green)';
+    let html=`<tr id="inv-row-${i}"><td class="rank">${i+1}</td>
+      <td><div style="font-weight:500">${esc(r.name)}</div><div style="font-size:10px;color:var(--text3)">${esc(r.pn)}</div></td>
+      <td>${esc(r.cat)}</td><td style="font-size:11px">${esc(r.procure)}</td>
+      <td class="num">${fmtN(r.qty)}</td><td class="num">${r.up>0?fmtN(r.up)+'원':'—'}</td>
+      <td class="num">${fmtW(r.invAmt)}</td>
+      <td class="num"><span style="cursor:pointer;${turnColor};font-weight:600;text-decoration:underline;text-decoration-style:dotted" onclick="toggleInvTurnover(${i},'${esc(r.pn).replace(/'/g,"\\'")}')">${fmtTurn(r.turnover)} ▾</span></td>
+    </tr>`;
+    if(isExp) html+=buildInvAccordion(r,i);
+    return html;
+  }).join('')}
+  </tbody></table>`;
+}
+
+function toggleInvTurnover(idx,pn) {
+  if(INV_EXPANDED.has(pn)) {
+    INV_EXPANDED.delete(pn);
+    const acc=document.getElementById('inv-acc-'+idx);
+    if(acc) acc.remove();
+  } else {
+    INV_EXPANDED.add(pn);
+    const row=document.getElementById('inv-row-'+idx);
+    if(row) row.insertAdjacentHTML('afterend',buildInvAccordion(INV_MODAL_DATA.find(r=>r.pn===pn)||INV_MODAL_DATA[idx],idx));
+  }
+}
+
+function buildInvAccordion(r,idx) {
+  const allMonths=getInvMonths().slice(-12);
+  const monthlyQty=allMonths.map(m=>({month:m,qty:getSalesQty(r.pn,m)}));
+  const totalQty=monthlyQty.reduce((s,m)=>s+m.qty,0);
+  const avgQty=allMonths.length>0?(totalQty/allMonths.length).toFixed(1):'0';
+  const maxQty=Math.max(...monthlyQty.map(m=>m.qty),1);
+
+  // Decision log from D.purchase_review if available
+  let decisionHtml='';
+  if(D.purchase_review) {
+    const logs=D.purchase_review.filter(pr=>String(pr['파츠번호']||'').trim()===r.pn);
+    if(logs.length) {
+      decisionHtml=`<div style="margin-top:12px;padding-top:10px;border-top:1px solid var(--border)">
+        <div style="font-size:12px;font-weight:600;margin-bottom:6px">회의 이력</div>
+        ${logs.map((l,li)=>`<div style="background:var(--surface2);border:1px solid var(--border);border-radius:var(--r-sm);padding:8px 10px;margin-bottom:4px;font-size:11px">
+          <div style="display:flex;gap:8px;align-items:center;margin-bottom:3px">
+            <span style="font-weight:600">#${li+1}</span>
+            <span class="tag ${l['결정상태']==='확정'?'tag-ok':'tag-n'}">${esc(l['결정상태']||'미확정')}</span>
+            ${l['결정사항']?`<span class="tag tag-gray">${esc(l['결정사항'])}</span>`:''}
+            <span style="color:var(--text3);margin-left:auto">${esc(l['회의명']||'')}</span>
+          </div>
+          ${l['사유']?`<div style="color:var(--text2)">사유: ${esc(l['사유'])}</div>`:''}
+          ${l['검토메모']?`<div style="color:var(--text3)">메모: ${esc(l['검토메모'])}</div>`:''}
+        </div>`).join('')}
+      </div>`;
+    }
+  }
+
+  return `<tr id="inv-acc-${idx}"><td colspan="8" style="padding:0;border-bottom:2px solid var(--border2)">
+    <div style="background:var(--surface2);padding:14px 16px">
+      <div style="display:flex;gap:12px;align-items:center;margin-bottom:10px;flex-wrap:wrap">
+        <span style="font-size:12px;font-weight:600">${esc(r.name)}</span>
+        ${r.launchDate?`<span style="font-size:11px;color:var(--purple);background:var(--purple-light);padding:2px 8px;border-radius:10px">출시일 ${esc(r.launchDate)}</span>`:''}
+        <span style="font-size:11px;color:var(--text3)">월평균 판매 <strong style="color:var(--text)">${avgQty}개</strong></span>
+        <span style="font-size:11px;color:var(--text3)">3M판매 <strong style="color:var(--text)">${fmtN(r.s3)}개</strong></span>
+      </div>
+      <div style="font-size:11px;font-weight:600;margin-bottom:6px">월별 판매추이 (최근 12개월)</div>
+      <div style="display:flex;gap:6px;align-items:flex-end;flex-wrap:wrap">
+        ${monthlyQty.map(m=>{
+          const h=m.qty>0?Math.max(4,Math.round(m.qty/maxQty*48)):2;
+          const bg=m.qty>0?'var(--blue)':'var(--border)';
+          return `<div style="display:flex;flex-direction:column;align-items:center;gap:3px;min-width:32px">
+            <div style="font-size:10px;font-weight:600;color:${m.qty>0?'var(--text)':'var(--text3)'}">${m.qty||0}</div>
+            <div style="width:22px;height:${h}px;background:${bg};border-radius:3px 3px 0 0"></div>
+            <div style="font-size:9px;color:var(--text3)">${m.month}</div>
+          </div>`;
+        }).join('')}
+      </div>
+      ${decisionHtml}
+    </div>
+  </td></tr>`;
+}
+
+function closeModal() { document.getElementById('modal-overlay').classList.remove('open'); INV_EXPANDED.clear(); }
 function closeModalBg(e) { if(e.target===document.getElementById('modal-overlay')) closeModal(); }
 
 // ===== AI =====
@@ -1959,8 +2088,8 @@ function renderInventoryOps() {
 
   el.innerHTML=`
     <div class="kpi-row-4">
-      <div class="kpi-card c-blue"><div class="kpi-label">재고자산 평가액</div><div class="kpi-val">${fmtW(totalInv)}</div><div class="kpi-sub">기준일 ${latestDate}</div></div>
-      <div class="kpi-card c-green"><div class="kpi-label">재고회전율 (3M)</div><div class="kpi-val">${fmtTurn(turnover3m)}</div><div class="kpi-sub">3개월 매출 ${fmtW(sales3m)} / 재고 ${fmtW(avgInv3m)}</div></div>
+      <div class="kpi-card c-blue" onclick="openModal('inventoryAsset')" style="cursor:pointer"><div class="kpi-label">재고자산 평가액</div><div class="kpi-val">${fmtW(totalInv)}</div><div class="kpi-sub">기준일 ${latestDate} · 클릭 시 SKU 상세</div></div>
+      <div class="kpi-card c-green" onclick="openModal('inventoryAsset')" style="cursor:pointer"><div class="kpi-label">재고회전율 (3M)</div><div class="kpi-val">${fmtTurn(turnover3m)}</div><div class="kpi-sub">3개월 매출 ${fmtW(sales3m)} / 재고 ${fmtW(avgInv3m)}</div></div>
       <div class="kpi-card c-red"><div class="kpi-label">품절률</div><div class="kpi-val">${fmtPct(stockoutRate)}</div><div class="kpi-sub">비의도적 ${stockoutRows.length}개 / 관리대상 ${managedRows.length}개</div></div>
       <div class="kpi-card c-amber"><div class="kpi-label">운영밴드</div><div class="kpi-val" style="color:${bsc};font-size:22px">${bandStatus}</div><div class="kpi-sub">${band.q} ${fmtW(band.min)}~${fmtW(band.max)}</div></div>
     </div>
