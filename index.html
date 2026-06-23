@@ -311,7 +311,7 @@ a{color:var(--blue);text-decoration:none}
     <div class="topbar-title" id="page-title">종합 현황<span class="topbar-badge" id="page-month-badge"></span></div>
     <div class="topbar-right">
       <span class="upload-status" id="global-upload-status"></span>
-      <button class="topbar-btn" onclick="nav(document.querySelector('.sb-item'),'overview');document.getElementById('sec-upload').scrollIntoView({behavior:'smooth'})">
+      <button class="topbar-btn" onclick="nav(document.querySelector('.sb-item'),'overview');if(!uploadBarOpen)toggleUploadBar();document.getElementById('sec-upload').scrollIntoView({behavior:'smooth'})">
         <svg width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M8 2v8M5 4l3-3 3 3M2 12v2h12v-2"/></svg>
         CSV 업로드
       </button>
@@ -325,147 +325,52 @@ a{color:var(--blue);text-decoration:none}
   <div class="content">
     <!-- Upload -->
     <div class="upload-bar" id="sec-upload">
-      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:4px">
-        <span style="font-size:13px;font-weight:600">데이터 업로드</span>
-        <span style="font-size:11px;color:var(--text3)">CSV 드래그 또는 클릭 · 업로드 후 자동 검증</span>
-      </div>
-      <div class="upload-row-label">기본 운영 데이터</div>
-      <div class="upload-row">
-        <div class="upload-zone" id="zone-order" ondragover="dov(event)" ondragleave="dlv(event)" ondrop="drop(event,'order')">
-          <input type="file" accept=".csv" onchange="loadFile(event,'order')">
-          <div class="upload-zone-icon" id="icon-order">📦</div>
-          <div class="uz-label">발주_RAW</div>
-          <div class="uz-status" id="st-order">클릭 또는 드래그</div>
-          <div class="uz-date" id="dt-order"></div>
+      <!-- Header: collapsible toggle + unified drop zone -->
+      <div style="display:flex;align-items:center;justify-content:space-between">
+        <div style="display:flex;align-items:center;gap:10px">
+          <button onclick="toggleUploadBar()" id="upload-toggle-btn" style="background:none;border:1px solid var(--border2);border-radius:var(--r-sm);padding:4px 10px;cursor:pointer;font-size:12px;color:var(--text2);display:flex;align-items:center;gap:5px">
+            <span id="upload-chevron" style="transition:transform .2s;display:inline-block">▼</span> 데이터 업로드
+          </button>
+          <span id="upload-summary" style="font-size:11px;color:var(--text3)"></span>
         </div>
-        <div class="upload-zone" id="zone-issue" ondragover="dov(event)" ondragleave="dlv(event)" ondrop="drop(event,'issue')">
-          <input type="file" accept=".csv" onchange="loadFile(event,'issue')">
-          <div class="upload-zone-icon" id="icon-issue">⚠️</div>
-          <div class="uz-label">이슈_RAW</div>
-          <div class="uz-status" id="st-issue">클릭 또는 드래그</div>
-          <div class="uz-date" id="dt-issue"></div>
-        </div>
-        <div class="upload-zone" id="zone-sup" ondragover="dov(event)" ondragleave="dlv(event)" ondrop="drop(event,'sup')">
-          <input type="file" accept=".csv" onchange="loadFile(event,'sup')">
-          <div class="upload-zone-icon" id="icon-sup">🏭</div>
-          <div class="uz-label">공급망_RAW</div>
-          <div class="uz-status" id="st-sup">클릭 또는 드래그</div>
-          <div class="uz-date" id="dt-sup"></div>
-        </div>
-        <div class="upload-zone" id="zone-ci" ondragover="dov(event)" ondragleave="dlv(event)" ondrop="drop(event,'ci')">
-          <input type="file" accept=".csv" onchange="loadFile(event,'ci')">
-          <div class="upload-zone-icon" id="icon-ci">💬</div>
-          <div class="uz-label">고객인지이슈_RAW</div>
-          <div class="uz-status" id="st-ci">클릭 또는 드래그</div>
-          <div class="uz-date" id="dt-ci"></div>
+        <div style="display:flex;align-items:center;gap:8px">
+          <div id="unified-drop" style="border:1.5px dashed var(--border2);border-radius:var(--r-sm);padding:6px 16px;font-size:11px;color:var(--text3);cursor:pointer;position:relative;transition:all .14s" ondragover="event.preventDefault();this.style.borderColor='var(--blue)';this.style.background='var(--blue-light)'" ondragleave="this.style.borderColor='';this.style.background=''" ondrop="handleUnifiedDrop(event)">
+            <input type="file" accept=".csv" multiple style="position:absolute;inset:0;opacity:0;cursor:pointer" onchange="handleUnifiedFiles(event.target.files)">
+            📁 CSV 파일 드래그 또는 클릭 (자동 인식)
+          </div>
+          <button onclick="clearAllUploads()" style="font-size:10px;padding:4px 8px;border:1px solid var(--border2);border-radius:var(--r-sm);background:none;color:var(--text3);cursor:pointer">초기화</button>
         </div>
       </div>
-      <div class="upload-row-label">SCM SUPER BASE 분석 데이터</div>
-      <div class="upload-row">
-        <div class="upload-zone" id="zone-task" ondragover="dov(event)" ondragleave="dlv(event)" ondrop="drop(event,'task')">
-          <input type="file" accept=".csv" onchange="loadFile(event,'task')">
-          <div class="upload-zone-icon" id="icon-task">📋</div>
-          <div class="uz-label">발주분석_task</div>
-          <div class="uz-status" id="st-task">클릭 또는 드래그</div>
-          <div class="uz-date" id="dt-task"></div>
+      <!-- Collapsible detail area -->
+      <div id="upload-detail" style="display:none;margin-top:10px">
+        <div class="upload-row-label">기본 운영 데이터</div>
+        <div class="upload-row">
+          <div class="upload-zone" id="zone-order" ondragover="dov(event)" ondragleave="dlv(event)" ondrop="drop(event,'order')"><input type="file" accept=".csv" onchange="loadFile(event,'order')"><div class="upload-zone-icon" id="icon-order">📦</div><div class="uz-label">발주_RAW</div><div class="uz-status" id="st-order">미업로드</div><div class="uz-date" id="dt-order"></div></div>
+          <div class="upload-zone" id="zone-issue" ondragover="dov(event)" ondragleave="dlv(event)" ondrop="drop(event,'issue')"><input type="file" accept=".csv" onchange="loadFile(event,'issue')"><div class="upload-zone-icon" id="icon-issue">⚠️</div><div class="uz-label">이슈_RAW</div><div class="uz-status" id="st-issue">미업로드</div><div class="uz-date" id="dt-issue"></div></div>
+          <div class="upload-zone" id="zone-sup" ondragover="dov(event)" ondragleave="dlv(event)" ondrop="drop(event,'sup')"><input type="file" accept=".csv" onchange="loadFile(event,'sup')"><div class="upload-zone-icon" id="icon-sup">🏭</div><div class="uz-label">공급망_RAW</div><div class="uz-status" id="st-sup">미업로드</div><div class="uz-date" id="dt-sup"></div></div>
+          <div class="upload-zone" id="zone-ci" ondragover="dov(event)" ondragleave="dlv(event)" ondrop="drop(event,'ci')"><input type="file" accept=".csv" onchange="loadFile(event,'ci')"><div class="upload-zone-icon" id="icon-ci">💬</div><div class="uz-label">고객인지이슈_RAW</div><div class="uz-status" id="st-ci">미업로드</div><div class="uz-date" id="dt-ci"></div></div>
         </div>
-        <div class="upload-zone" id="zone-stock" ondragover="dov(event)" ondragleave="dlv(event)" ondrop="drop(event,'stock')">
-          <input type="file" accept=".csv" onchange="loadFile(event,'stock')">
-          <div class="upload-zone-icon" id="icon-stock">📊</div>
-          <div class="uz-label">재고_품절현황</div>
-          <div class="uz-status" id="st-stock">클릭 또는 드래그</div>
-          <div class="uz-date" id="dt-stock"></div>
+        <div class="upload-row-label">SCM SUPER BASE 분석 데이터</div>
+        <div class="upload-row">
+          <div class="upload-zone" id="zone-task" ondragover="dov(event)" ondragleave="dlv(event)" ondrop="drop(event,'task')"><input type="file" accept=".csv" onchange="loadFile(event,'task')"><div class="upload-zone-icon" id="icon-task">📋</div><div class="uz-label">발주분석_task</div><div class="uz-status" id="st-task">미업로드</div><div class="uz-date" id="dt-task"></div></div>
+          <div class="upload-zone" id="zone-stock" ondragover="dov(event)" ondragleave="dlv(event)" ondrop="drop(event,'stock')"><input type="file" accept=".csv" onchange="loadFile(event,'stock')"><div class="upload-zone-icon" id="icon-stock">📊</div><div class="uz-label">재고_품절현황</div><div class="uz-status" id="st-stock">미업로드</div><div class="uz-date" id="dt-stock"></div></div>
+          <div class="upload-zone" id="zone-sales" ondragover="dov(event)" ondragleave="dlv(event)" ondrop="drop(event,'sales')"><input type="file" accept=".csv" onchange="loadFile(event,'sales')"><div class="upload-zone-icon" id="icon-sales">💰</div><div class="uz-label">판매주문</div><div class="uz-status" id="st-sales">미업로드</div><div class="uz-date" id="dt-sales"></div></div>
+          <div class="upload-zone" id="zone-cost_rate" ondragover="dov(event)" ondragleave="dlv(event)" ondrop="drop(event,'cost_rate')"><input type="file" accept=".csv" onchange="loadFile(event,'cost_rate')"><div class="upload-zone-icon" id="icon-cost_rate">📐</div><div class="uz-label">표준원가율</div><div class="uz-status" id="st-cost_rate">미업로드</div><div class="uz-date" id="dt-cost_rate"></div></div>
         </div>
-        <div class="upload-zone" id="zone-sales" ondragover="dov(event)" ondragleave="dlv(event)" ondrop="drop(event,'sales')">
-          <input type="file" accept=".csv" onchange="loadFile(event,'sales')">
-          <div class="upload-zone-icon" id="icon-sales">💰</div>
-          <div class="uz-label">판매주문</div>
-          <div class="uz-status" id="st-sales">클릭 또는 드래그</div>
-          <div class="uz-date" id="dt-sales"></div>
+        <div class="upload-row-label">S&OP 재고운영</div>
+        <div class="upload-row">
+          <div class="upload-zone" id="zone-inv_weekly" ondragover="dov(event)" ondragleave="dlv(event)" ondrop="drop(event,'inv_weekly')"><input type="file" accept=".csv" onchange="loadFile(event,'inv_weekly')"><div class="upload-zone-icon" id="icon-inv_weekly">📅</div><div class="uz-label">S&OP 재고주간</div><div class="uz-status" id="st-inv_weekly">미업로드</div><div class="uz-date" id="dt-inv_weekly"></div></div>
+          <div class="upload-zone" id="zone-sales_monthly" ondragover="dov(event)" ondragleave="dlv(event)" ondrop="drop(event,'sales_monthly')"><input type="file" accept=".csv" onchange="loadFile(event,'sales_monthly')"><div class="upload-zone-icon" id="icon-sales_monthly">📈</div><div class="uz-label">S&OP 매출월간</div><div class="uz-status" id="st-sales_monthly">미업로드</div><div class="uz-date" id="dt-sales_monthly"></div></div>
+          <div class="upload-zone" id="zone-purchase_review" ondragover="dov(event)" ondragleave="dlv(event)" ondrop="drop(event,'purchase_review')"><input type="file" accept=".csv" onchange="loadFile(event,'purchase_review')"><div class="upload-zone-icon" id="icon-purchase_review">🔍</div><div class="uz-label">매입검토현황</div><div class="uz-status" id="st-purchase_review">미업로드</div><div class="uz-date" id="dt-purchase_review"></div></div>
+          <div class="upload-zone" id="zone-season_plan" ondragover="dov(event)" ondragleave="dlv(event)" ondrop="drop(event,'season_plan')"><input type="file" accept=".csv" onchange="loadFile(event,'season_plan')"><div class="upload-zone-icon" id="icon-season_plan">🗓️</div><div class="uz-label">시즌재고계획</div><div class="uz-status" id="st-season_plan">미업로드</div><div class="uz-date" id="dt-season_plan"></div></div>
         </div>
-        <div class="upload-zone" id="zone-cost_rate" ondragover="dov(event)" ondragleave="dlv(event)" ondrop="drop(event,'cost_rate')">
-          <input type="file" accept=".csv" onchange="loadFile(event,'cost_rate')">
-          <div class="upload-zone-icon" id="icon-cost_rate">📐</div>
-          <div class="uz-label">표준원가율</div>
-          <div class="uz-status" id="st-cost_rate">클릭 또는 드래그</div>
-          <div class="uz-date" id="dt-cost_rate"></div>
-        </div>
-      </div>
-      <div class="upload-row-label">컴플라이언스 · 마스터</div>
-      <div class="upload-row">
-        <div class="upload-zone" id="zone-subcontract" ondragover="dov(event)" ondragleave="dlv(event)" ondrop="drop(event,'subcontract')">
-          <input type="file" accept=".csv" onchange="loadFile(event,'subcontract')">
-          <div class="upload-zone-icon" id="icon-subcontract">⚖️</div>
-          <div class="uz-label">하도급법_위험목록</div>
-          <div class="uz-status" id="st-subcontract">클릭 또는 드래그</div>
-          <div class="uz-date" id="dt-subcontract"></div>
-        </div>
-        <div class="upload-zone" id="zone-sup_master" ondragover="dov(event)" ondragleave="dlv(event)" ondrop="drop(event,'sup_master')">
-          <input type="file" accept=".csv" onchange="loadFile(event,'sup_master')">
-          <div class="upload-zone-icon" id="icon-sup_master">🗂️</div>
-          <div class="uz-label">협력사_마스터</div>
-          <div class="uz-status" id="st-sup_master">클릭 또는 드래그</div>
-          <div class="uz-date" id="dt-sup_master"></div>
-        </div>
-        <div class="upload-zone" id="zone-order_full" ondragover="dov(event)" ondragleave="dlv(event)" ondrop="drop(event,'order_full')">
-          <input type="file" accept=".csv" onchange="loadFile(event,'order_full')">
-          <div class="upload-zone-icon" id="icon-order_full">📁</div>
-          <div class="uz-label">발주_전체</div>
-          <div class="uz-status" id="st-order_full">클릭 또는 드래그</div>
-          <div class="uz-date" id="dt-order_full"></div>
-        </div>
-        <div class="upload-zone" style="border-style:dashed;opacity:.4;pointer-events:none">
-          <div class="upload-zone-icon">➕</div>
-          <div class="uz-label">추후 추가</div>
-          <div class="uz-status">—</div>
-        </div>
-      </div>
-      <div class="upload-row-label">S&OP 재고운영</div>
-      <div class="upload-row">
-        <div class="upload-zone" id="zone-inv_weekly" ondragover="dov(event)" ondragleave="dlv(event)" ondrop="drop(event,'inv_weekly')">
-          <input type="file" accept=".csv" onchange="loadFile(event,'inv_weekly')">
-          <div class="upload-zone-icon" id="icon-inv_weekly">📅</div>
-          <div class="uz-label">S&OP 재고주간</div>
-          <div class="uz-status" id="st-inv_weekly">클릭 또는 드래그</div>
-          <div class="uz-date" id="dt-inv_weekly"></div>
-        </div>
-        <div class="upload-zone" id="zone-sales_monthly" ondragover="dov(event)" ondragleave="dlv(event)" ondrop="drop(event,'sales_monthly')">
-          <input type="file" accept=".csv" onchange="loadFile(event,'sales_monthly')">
-          <div class="upload-zone-icon" id="icon-sales_monthly">📈</div>
-          <div class="uz-label">S&OP 매출월간</div>
-          <div class="uz-status" id="st-sales_monthly">클릭 또는 드래그</div>
-          <div class="uz-date" id="dt-sales_monthly"></div>
-        </div>
-        <div class="upload-zone" id="zone-purchase_review" ondragover="dov(event)" ondragleave="dlv(event)" ondrop="drop(event,'purchase_review')">
-          <input type="file" accept=".csv" onchange="loadFile(event,'purchase_review')">
-          <div class="upload-zone-icon" id="icon-purchase_review">🔍</div>
-          <div class="uz-label">매입검토현황</div>
-          <div class="uz-status" id="st-purchase_review">클릭 또는 드래그</div>
-          <div class="uz-date" id="dt-purchase_review"></div>
-        </div>
-        <div class="upload-zone" id="zone-season_plan" ondragover="dov(event)" ondragleave="dlv(event)" ondrop="drop(event,'season_plan')">
-          <input type="file" accept=".csv" onchange="loadFile(event,'season_plan')">
-          <div class="upload-zone-icon" id="icon-season_plan">🗓️</div>
-          <div class="uz-label">시즌재고계획</div>
-          <div class="uz-status" id="st-season_plan">클릭 또는 드래그</div>
-          <div class="uz-date" id="dt-season_plan"></div>
-        </div>
-      </div>
-      <div class="upload-row-label">품질 · 원가</div>
-      <div class="upload-row">
-        <div class="upload-zone" id="zone-qms_raw" ondragover="dov(event)" ondragleave="dlv(event)" ondrop="drop(event,'qms_raw')">
-          <input type="file" accept=".csv" onchange="loadFile(event,'qms_raw')">
-          <div class="upload-zone-icon" id="icon-qms_raw">🔬</div>
-          <div class="uz-label">QMS 품질데이터</div>
-          <div class="uz-status" id="st-qms_raw">클릭 또는 드래그</div>
-          <div class="uz-date" id="dt-qms_raw"></div>
-        </div>
-        <div class="upload-zone" id="zone-cost_reduction" ondragover="dov(event)" ondragleave="dlv(event)" ondrop="drop(event,'cost_reduction')">
-          <input type="file" accept=".csv" onchange="loadFile(event,'cost_reduction')">
-          <div class="upload-zone-icon" id="icon-cost_reduction">💹</div>
-          <div class="uz-label">원가절감실적</div>
-          <div class="uz-status" id="st-cost_reduction">클릭 또는 드래그</div>
-          <div class="uz-date" id="dt-cost_reduction"></div>
+        <div class="upload-row-label">컴플라이언스 · 마스터 · 품질</div>
+        <div class="upload-row" style="grid-template-columns:repeat(5,1fr)">
+          <div class="upload-zone" id="zone-subcontract" ondragover="dov(event)" ondragleave="dlv(event)" ondrop="drop(event,'subcontract')"><input type="file" accept=".csv" onchange="loadFile(event,'subcontract')"><div class="upload-zone-icon" id="icon-subcontract">⚖️</div><div class="uz-label">하도급법_위험</div><div class="uz-status" id="st-subcontract">미업로드</div><div class="uz-date" id="dt-subcontract"></div></div>
+          <div class="upload-zone" id="zone-sup_master" ondragover="dov(event)" ondragleave="dlv(event)" ondrop="drop(event,'sup_master')"><input type="file" accept=".csv" onchange="loadFile(event,'sup_master')"><div class="upload-zone-icon" id="icon-sup_master">🗂️</div><div class="uz-label">협력사_마스터</div><div class="uz-status" id="st-sup_master">미업로드</div><div class="uz-date" id="dt-sup_master"></div></div>
+          <div class="upload-zone" id="zone-order_full" ondragover="dov(event)" ondragleave="dlv(event)" ondrop="drop(event,'order_full')"><input type="file" accept=".csv" onchange="loadFile(event,'order_full')"><div class="upload-zone-icon" id="icon-order_full">📁</div><div class="uz-label">발주_전체</div><div class="uz-status" id="st-order_full">미업로드</div><div class="uz-date" id="dt-order_full"></div></div>
+          <div class="upload-zone" id="zone-qms_raw" ondragover="dov(event)" ondragleave="dlv(event)" ondrop="drop(event,'qms_raw')"><input type="file" accept=".csv" onchange="loadFile(event,'qms_raw')"><div class="upload-zone-icon" id="icon-qms_raw">🔬</div><div class="uz-label">QMS 품질</div><div class="uz-status" id="st-qms_raw">미업로드</div><div class="uz-date" id="dt-qms_raw"></div></div>
+          <div class="upload-zone" id="zone-cost_reduction" ondragover="dov(event)" ondragleave="dlv(event)" ondrop="drop(event,'cost_reduction')"><input type="file" accept=".csv" onchange="loadFile(event,'cost_reduction')"><div class="upload-zone-icon" id="icon-cost_reduction">💹</div><div class="uz-label">원가절감</div><div class="uz-status" id="st-cost_reduction">미업로드</div><div class="uz-date" id="dt-cost_reduction"></div></div>
         </div>
       </div>
     </div>
@@ -1018,6 +923,111 @@ function showValidationBanner(key,rows,warns) {
   card.innerHTML=`<div class="vcard-icon">${hasWarn?'⚠️':'✅'}</div><div><strong>${KEY_LABELS[key]||key}</strong> · ${rows.length.toLocaleString()}행${warns.map(w=>`<div class="vcard-detail">⚠ ${w}</div>`).join('')}</div>`;
 }
 
+// ===== UPLOAD BAR TOGGLE =====
+let uploadBarOpen=false;
+function toggleUploadBar() {
+  uploadBarOpen=!uploadBarOpen;
+  document.getElementById('upload-detail').style.display=uploadBarOpen?'':'none';
+  document.getElementById('upload-chevron').style.transform=uploadBarOpen?'rotate(180deg)':'';
+}
+function updateUploadSummary() {
+  const keys=Object.keys(D);
+  const loaded=keys.filter(k=>D[k]);
+  const el=document.getElementById('upload-summary');
+  if(el) el.innerHTML=loaded.length?`<span style="color:var(--green);font-weight:500">✓ ${loaded.length}/${keys.length} 로드</span> · ${Object.values(UD).sort().pop()||''}`:'미업로드';
+}
+// ===== UNIFIED DROP / AUTO-DETECT =====
+const FILE_SIGNATURES={
+  order:['과업지시일자','발주번호'],
+  issue:['이슈카테고리'],
+  sup:['협력사 이름','1. 제조유형'],
+  ci:['등록일자','이슈내용','프로젝트명'],
+  task:['협력사','과업지시일자','입하여부','입하경과일'],
+  stock:['파츠명','판매상태','총재고수량'],
+  sales:['제품명','주문수량','판매단가','소계'],
+  cost_rate:['제품명','원가율_300'],
+  subcontract:['입하경과일','협력사'],
+  sup_master:['협력사이름'],
+  order_full:['협력사','연월'],
+  inv_weekly:['파츠번호','기준일','재고수량','재고금액'],
+  sales_monthly:['파츠번호','기준월','판매량'],
+  purchase_review:['REVIEW_ID','파츠번호','결정상태'],
+  season_plan:['굿즈명','옵션','계획구분'],
+  qms_raw:['발생일','이슈유형'],
+  cost_reduction:['절감액'],
+};
+function detectCSVType(headers) {
+  const hSet=new Set(headers.map(h=>h.trim()));
+  let best=null,bestScore=0;
+  // Prioritize by specificity (more required fields matched = better)
+  const priority=['purchase_review','season_plan','inv_weekly','sales_monthly','qms_raw','cost_reduction','cost_rate','stock','sales','ci','sup','issue','task','subcontract','sup_master','order_full','order'];
+  for(const key of priority) {
+    const sigs=FILE_SIGNATURES[key]||[];
+    const matched=sigs.filter(s=>hSet.has(s)).length;
+    if(matched>0 && matched>=sigs.length && matched>bestScore) { best=key; bestScore=matched; }
+  }
+  // Fallback: partial match with highest ratio
+  if(!best) {
+    for(const key of priority) {
+      const sigs=FILE_SIGNATURES[key]||[];
+      const matched=sigs.filter(s=>hSet.has(s)).length;
+      const ratio=sigs.length>0?matched/sigs.length:0;
+      if(ratio>0.5 && matched>bestScore) { best=key; bestScore=matched; }
+    }
+  }
+  return best;
+}
+function handleUnifiedDrop(e) {
+  e.preventDefault(); e.currentTarget.style.borderColor=''; e.currentTarget.style.background='';
+  handleUnifiedFiles(e.dataTransfer.files);
+}
+function handleUnifiedFiles(files) {
+  if(!files||!files.length) return;
+  let processed=0, failed=[];
+  Array.from(files).forEach(file=>{
+    const reader=new FileReader();
+    reader.onload=(ev)=>{
+      const text=ev.target.result;
+      const firstLine=text.split('\n')[0]||'';
+      const headers=parseCSVLine(firstLine);
+      const key=detectCSVType(headers);
+      if(key) {
+        D[key]=parseCSV(text);
+        const now=new Date();
+        const ds=`${now.getFullYear()}.${now.getMonth()+1}.${now.getDate()} ${now.getHours().toString().padStart(2,'0')}:${now.getMinutes().toString().padStart(2,'0')}`;
+        UD[key]=ds;
+        document.getElementById('zone-'+key)?.classList.add('ok');
+        const stEl=document.getElementById('st-'+key); if(stEl) stEl.textContent=D[key].length.toLocaleString()+'행 로드';
+        const dtEl=document.getElementById('dt-'+key); if(dtEl) dtEl.textContent='업로드: '+ds;
+        const icEl=document.getElementById('icon-'+key); if(icEl) icEl.textContent='✅';
+        const warns=validateCSV(key,D[key]); showValidationBanner(key,D[key],warns);
+        processed++;
+      } else {
+        failed.push(file.name);
+      }
+      // After all files processed
+      if(processed+failed.length>=files.length) {
+        updateGlobalUploadStatus(); updateUploadSummary();
+        buildMonthChips(); buildSalesMonthChips(); refreshAll();
+        if(failed.length) alert('자동 인식 실패 파일:\n'+failed.join('\n')+'\n\n개별 슬롯에 직접 업로드해주세요.');
+      }
+    };
+    reader.readAsText(file,'UTF-8');
+  });
+}
+function clearAllUploads() {
+  if(!confirm('모든 업로드 데이터를 초기화하시겠습니까?')) return;
+  Object.keys(D).forEach(k=>{D[k]=null; delete UD[k];
+    const z=document.getElementById('zone-'+k); if(z) z.classList.remove('ok');
+    const s=document.getElementById('st-'+k); if(s) s.textContent='미업로드';
+    const d=document.getElementById('dt-'+k); if(d) d.textContent='';
+    const i=document.getElementById('icon-'+k); if(i) i.textContent=['📦','⚠️','🏭','💬','📋','📊','💰','📐','⚖️','🗂️','📁','📅','📈','🔍','🗓️','🔬','💹'][Object.keys(D).indexOf(k)]||'📁';
+  });
+  document.getElementById('validation-area').style.display='none';
+  document.getElementById('validation-area').innerHTML='';
+  updateGlobalUploadStatus(); updateUploadSummary(); buildMonthChips(); refreshAll();
+}
+
 // ===== FILE LOADING =====
 function dov(e) { e.preventDefault(); e.currentTarget.classList.add('drag'); }
 function dlv(e) { e.currentTarget.classList.remove('drag'); }
@@ -1040,7 +1050,7 @@ function processFile(file,k) {
     if (icEl) icEl.textContent='✅';
     const warns=validateCSV(k,D[k]);
     showValidationBanner(k,D[k],warns);
-    updateGlobalUploadStatus();
+    updateGlobalUploadStatus(); updateUploadSummary();
     buildMonthChips();
     if (k==='sales') buildSalesMonthChips();
     refreshAll();
