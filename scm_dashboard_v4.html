@@ -348,14 +348,12 @@ a{color:var(--blue);text-decoration:none}
       </div>
       <!-- Collapsible detail area -->
       <div id="upload-detail" style="display:none;margin-top:10px">
-        <div class="upload-row-label">기본 운영 데이터 — Airtable SCM KPI 뷰에서 CSV Export</div>
+        <div class="upload-row-label">필수 운영 데이터 — Airtable SCM KPI 뷰에서 CSV Export (주 1회)</div>
         <div class="upload-row" id="upload-row-gen"></div>
-        <div class="upload-row-label">SCM SUPER BASE 분석 — Google Sheets SCM SUPER BASE에서 CSV Export</div>
-        <div class="upload-row" id="upload-row-base"></div>
-        <div class="upload-row-label">S&OP 재고운영 — Google Sheets S&OP 대시보드에서 CSV Export</div>
+        <div class="upload-row-label">S&OP 재고운영 — Google Sheets S&OP 대시보드에서 CSV Export (필요시)</div>
         <div class="upload-row" id="upload-row-sop"></div>
-        <div class="upload-row-label">컴플라이언스 · 마스터 · 품질</div>
-        <div class="upload-row" style="grid-template-columns:repeat(5,1fr)" id="upload-row-etc"></div>
+        <div class="upload-row-label">선택 — 추가 분석 데이터 (해당 기능 사용 시만)</div>
+        <div class="upload-row" id="upload-row-etc"></div>
       </div>
     </div>
 
@@ -751,7 +749,13 @@ a{color:var(--blue);text-decoration:none}
 </div>
 <script>
 // ===== DATA =====
-const D = {order:null,issue:null,sup:null,ci:null,task:null,stock:null,sales:null,cost_rate:null,subcontract:null,sup_master:null,order_full:null,inv_weekly:null,sales_monthly:null,purchase_review:null,season_plan:null,qms_raw:null,cost_reduction:null};
+const D = {order:null,issue:null,sup:null,ci:null,stock:null,sales:null,inv_weekly:null,sales_monthly:null,purchase_review:null,season_plan:null,qms_raw:null,cost_reduction:null};
+// Legacy keys kept as computed views (not uploaded)
+Object.defineProperty(D,'task',{get(){return null;},set(){}});
+Object.defineProperty(D,'subcontract',{get(){return null;},set(){}});
+Object.defineProperty(D,'sup_master',{get(){return D.sup;},set(){}});
+Object.defineProperty(D,'order_full',{get(){return D.order;},set(){}});
+Object.defineProperty(D,'cost_rate',{get(){return null;},set(){}});
 const UD = {};
 // Parts Master — embedded JSON (loaded from parts_master.json, cached in localStorage)
 let PARTS_MASTER=[];
@@ -898,6 +902,88 @@ function purchaseByMonth(r) {
   return result;
 }
 
+// ===== DERIVED: 입하경과일 / 하도급법 / 원가 =====
+function parseAnyDate(s) {
+  if(!s) return null;
+  const t=String(s).trim();
+  const m1=t.match(/(\d{4})\.(\d{1,2})\.(\d{1,2})/);
+  if(m1) return new Date(+m1[1],m1[2]-1,+m1[3]);
+  const m2=t.match(/(\d{4})-(\d{1,2})-(\d{1,2})/);
+  if(m2) return new Date(+m2[1],m2[2]-1,+m2[3]);
+  const d=new Date(t); return isNaN(d)?null:d;
+}
+function calcElapsedDays(r) {
+  const target=parseAnyDate(r['입하확정일 (from movement_산출물)'])||parseAnyDate(r['입하예정일 (from movement_산출물)']);
+  if(!target) return null;
+  const actual=parseAnyDate(r['실제입하일 (from movement)']);
+  const end=actual||new Date();
+  return Math.round((end-target)/86400000);
+}
+function isArrived(r) {
+  return !!(r['실제입하일 (from movement)']||'').trim();
+}
+function getSubcontractMap() {
+  const m={}; if(!D.sup) return m;
+  D.sup.forEach(r=>{ const name=(r['협력사 이름']||'').trim(); if(name) m[name]=(r['하도급계약 대상여부']||'').trim(); });
+  return m;
+}
+function getSubcontractRiskRows() {
+  if(!D.order) return [];
+  const scMap=getSubcontractMap();
+  return D.order.filter(r=>{
+    const sup=(r['수주처']||'').trim();
+    if(scMap[sup]!=='대상') return false;
+    if(isArrived(r)) return false;
+    const days=calcElapsedDays(r);
+    return days!==null&&days>=90;
+  }).map(r=>{
+    const days=calcElapsedDays(r);
+    return {...r,_elapsedDays:days};
+  }).sort((a,b)=>b._elapsedDays-a._elapsedDays);
+}
+
+// 원가 산출: sync_itemdb에서 파츠코드 추출 → 파츠마스터 수량별 단가 조회
+function extractPartsCodes(r) {
+  const s=r['sync_itemdb']||'';
+  const matches=s.match(/[A-Z]{4}_PT\d+/g)||[];
+  return [...new Set(matches.map(m=>{const p=m.match(/PT\d+/);return p?p[0]:null;}).filter(Boolean))];
+}
+function getPartCostForQty(partCode,qty) {
+  const p=PARTS_MAP[partCode]; if(!p) return null;
+  const tiers=[
+    {max:1,key:'cost1'},{max:50,key:'cost50'},{max:100,key:'cost100'},
+    {max:300,key:'cost300'},{max:500,key:'cost500'},{max:1000,key:'cost1000'},
+    {max:3000,key:'cost3000'},{max:5000,key:'cost5000'},{max:10000,key:'cost10000'},
+    {max:30000,key:'cost30000'}
+  ];
+  // Find applicable tier (use the tier just above qty, fallback to cost500)
+  let unitCost=pa(p.cost500||'0');
+  for(const t of tiers) {
+    if(qty<=t.max&&p[t.key]) { unitCost=pa(p[t.key]); break; }
+    if(p[t.key]) unitCost=pa(p[t.key]);
+  }
+  return unitCost;
+}
+function calcOrderCost(r) {
+  const qty=pa(r['발주지시수량']);
+  if(!qty) return {cost:0,parts:[],method:'no_qty'};
+  const codes=extractPartsCodes(r);
+  if(!codes.length) return {cost:pa(r['취득원가']||'0'),parts:[],method:'취득원가'};
+  let total=0; const details=[];
+  codes.forEach(code=>{
+    const uc=getPartCostForQty(code,qty);
+    if(uc!==null) { total+=uc*qty; details.push({code,uc,qty,sub:uc*qty}); }
+  });
+  if(total>0) return {cost:total,parts:details,method:'파츠단가'};
+  return {cost:pa(r['취득원가']||'0'),parts:[],method:'취득원가'};
+}
+function calcMarginRate(r) {
+  const revenue=pa(r['R) 판매가(최종)']||'0');
+  const costData=calcOrderCost(r);
+  if(!revenue||!costData.cost) return null;
+  return (revenue-costData.cost)/revenue;
+}
+
 // ===== 업태/인쇄 MAP =====
 function getBizTypeMap() {
   const m={};
@@ -923,17 +1009,12 @@ function getPrintMap() {
 
 // ===== VALIDATION =====
 const FIELD_HINTS = {
-  order: { required:['과업지시일자','발주번호','산출물','공급가액'] },
+  order: { required:['과업지시일자','발주번호','산출물','공급가액'], knownEmpty:['입하확정일 (from movement_산출물)'] },
   issue: { required:['이슈카테고리','실제입하일'] },
   sup:   { required:['협력사 이름','1. 제조유형'] },
   ci:    { required:['등록일자','이슈내용'] },
-  task:  { required:['협력사','과업지시일자','공급가액'], knownEmpty:['파츠유형','재제작구분'] },
   stock: { required:['파츠명','판매상태','총재고수량'], knownEmpty:['품절Status'] },
   sales: { required:['제품명','주문수량','판매단가','소계'] },
-  cost_rate: { required:['제품명','원가율_300'] },
-  subcontract: { required:['협력사','입하경과일','공급가액'] },
-  sup_master:  { required:['협력사이름'], knownEmpty:['주요품목'] },
-  order_full:  { required:['협력사','연월'] },
   inv_weekly:{required:['파츠번호','기준일','재고수량','재고금액']},
   sales_monthly:{required:['파츠번호','기준월','판매량']},
   purchase_review:{required:['REVIEW_ID','파츠번호','결정상태']},
@@ -943,8 +1024,7 @@ const FIELD_HINTS = {
 };
 const KEY_LABELS = {
   order:'발주_RAW',issue:'이슈_RAW',sup:'공급망_RAW',ci:'고객인지이슈_RAW',
-  task:'발주분석_task',stock:'재고_품절현황',sales:'판매주문',cost_rate:'표준원가율',
-  subcontract:'하도급법_위험목록',sup_master:'협력사_마스터',order_full:'발주_전체',
+  stock:'재고_품절현황',sales:'판매주문',
   inv_weekly:'S&OP_재고주간',sales_monthly:'S&OP_매출월간',purchase_review:'매입검토현황',season_plan:'시즌재고계획',qms_raw:'QMS_품질데이터',cost_reduction:'원가절감실적'
 };
 function validateCSV(key,rows) {
@@ -977,23 +1057,18 @@ function showValidationBanner(key,rows,warns) {
 
 // ===== UPLOAD ZONE CONFIG =====
 const UPLOAD_SLOTS=[
-  {key:'order',icon:'📦',label:'발주_RAW',src:'Airtable SCM KPI → task-SCMKPI_Raw 뷰',fields:'과업지시일자, 발주번호, 산출물, 공급가액, 수주처',row:'gen'},
+  {key:'order',icon:'📦',label:'발주_RAW',src:'Airtable SCM KPI → task-SCMKPI_Raw 뷰 (연간)',fields:'과업지시일자, 발주번호, 산출물, 공급가액, 수주처, 입하예정일, 입하확정일, 실제입하일, 취득원가, R) 판매가(최종)',row:'gen'},
   {key:'issue',icon:'⚠️',label:'이슈_RAW',src:'Airtable SCM KPI → KPI_이슈_RAW 뷰',fields:'이슈카테고리, 실제입하일, project_name',row:'gen'},
-  {key:'sup',icon:'🏭',label:'공급망_RAW',src:'Airtable 공급망 관리 → 공급망_RAW 뷰',fields:'협력사 이름, 1. 제조유형, 업태',row:'gen'},
+  {key:'sup',icon:'🏭',label:'공급망_RAW',src:'Airtable 공급망 관리 → 공급망_RAW 뷰',fields:'협력사 이름, 1. 제조유형, 업태, 하도급계약 대상여부',row:'gen'},
   {key:'ci',icon:'💬',label:'고객인지이슈',src:'Airtable SCM KPI → 고객인지이슈_RAW 뷰',fields:'등록일자, 이슈내용, 프로젝트명',row:'gen'},
-  {key:'task',icon:'📋',label:'발주분석_task',src:'GSheets SCM SUPER BASE → 발주분석 시트',fields:'협력사, 과업지시일자, 입하여부, 입하경과일',row:'base'},
-  {key:'stock',icon:'📊',label:'재고_품절현황',src:'GSheets SCM SUPER BASE → 재고품절 시트',fields:'파츠명, 판매상태, 총재고수량',row:'base'},
-  {key:'sales',icon:'💰',label:'판매주문',src:'GSheets SCM SUPER BASE → 판매주문 시트',fields:'제품명, 주문수량, 판매단가, 소계',row:'base'},
-  {key:'cost_rate',icon:'📐',label:'표준원가율',src:'GSheets SCM SUPER BASE → 표준원가율 시트',fields:'제품명, 원가율_300',row:'base'},
   {key:'inv_weekly',icon:'📅',label:'S&OP 재고주간',src:'GSheets S&OP → inventory_weekly 시트',fields:'파츠번호, 기준일, 재고수량, 재고금액',row:'sop'},
   {key:'sales_monthly',icon:'📈',label:'S&OP 매출월간',src:'GSheets S&OP → sales_monthly 시트',fields:'파츠번호, 기준월, 판매량',row:'sop'},
   {key:'purchase_review',icon:'🔍',label:'매입검토현황',src:'GSheets S&OP → purchase_review 시트',fields:'REVIEW_ID, 파츠번호, 결정상태',row:'sop'},
   {key:'season_plan',icon:'🗓️',label:'시즌재고계획',src:'GSheets S&OP → 시즌매입_파츠연결 시트',fields:'굿즈명, 옵션, 계획구분',row:'sop'},
-  {key:'subcontract',icon:'⚖️',label:'하도급법_위험',src:'GSheets SCM SUPER BASE → 하도급법 시트',fields:'협력사, 입하경과일, 과업지시상태',row:'etc'},
-  {key:'sup_master',icon:'🗂️',label:'협력사_마스터',src:'Airtable 공급망 관리 → 마스터 뷰',fields:'협력사이름',row:'etc'},
-  {key:'order_full',icon:'📁',label:'발주_전체',src:'Airtable SCM KPI → 전체 뷰 (연간)',fields:'협력사, 연월',row:'etc'},
-  {key:'qms_raw',icon:'🔬',label:'QMS 품질',src:'Airtable SCM KPI → 품질이슈 뷰',fields:'발생일, 이슈유형, 파츠번호',row:'etc'},
-  {key:'cost_reduction',icon:'💹',label:'원가절감',src:'Airtable SCM KPI → 원가절감 뷰',fields:'일자, 항목, 절감액',row:'etc'},
+  {key:'stock',icon:'📊',label:'재고_품절현황',src:'GSheets SUPER BASE (선택)',fields:'파츠명, 판매상태, 총재고수량',row:'etc'},
+  {key:'sales',icon:'💰',label:'판매주문',src:'GSheets SUPER BASE (선택)',fields:'제품명, 주문수량, 판매단가, 소계',row:'etc'},
+  {key:'qms_raw',icon:'🔬',label:'QMS 품질',src:'Airtable SCM KPI → 품질이슈 뷰 (선택)',fields:'발생일, 이슈유형, 파츠번호',row:'etc'},
+  {key:'cost_reduction',icon:'💹',label:'원가절감',src:'Airtable SCM KPI → 원가절감 뷰 (선택)',fields:'일자, 항목, 절감액',row:'etc'},
 ];
 function buildUploadZones() {
   const rows={gen:[],base:[],sop:[],etc:[]};
@@ -1039,7 +1114,7 @@ function clearOneUpload(k) {
   updateGlobalUploadStatus(); updateUploadSummary(); buildMonthChips(); refreshAll();
 }
 // ===== UNIFIED DROP / AUTO-DETECT =====
-// Signatures: [mustHave, mustNotHave] — mustHave ALL present + mustNotHave NONE present = match
+// Signatures: must ALL present + not NONE present = match
 const FILE_SIGNATURES={
   purchase_review:{must:['REVIEW_ID','파츠번호','결정상태']},
   season_plan:    {must:['굿즈명','옵션','계획구분']},
@@ -1047,16 +1122,11 @@ const FILE_SIGNATURES={
   sales_monthly:  {must:['파츠번호','기준월','판매량']},
   qms_raw:        {must:['발생일','이슈유형'],not:['이슈카테고리']},
   cost_reduction: {must:['절감액','항목']},
-  cost_rate:      {must:['제품명','원가율_300']},
   stock:          {must:['파츠명','판매상태','총재고수량']},
-  sales:          {must:['제품명','주문수량','판매단가','소계'],not:['원가율_300']},
+  sales:          {must:['제품명','주문수량','판매단가','소계']},
   ci:             {must:['등록일자','이슈내용','프로젝트명'],not:['이슈카테고리']},
   sup:            {must:['협력사 이름','1. 제조유형']},
   issue:          {must:['이슈카테고리'],not:['판매상태','총재고수량']},
-  task:           {must:['과업지시일자','입하여부','입하경과일'],not:['발주번호','산출물']},
-  subcontract:    {must:['입하경과일','과업지시상태','협력사'],not:['과업지시일자']},
-  sup_master:     {must:['협력사이름']},
-  order_full:     {must:['협력사','연월'],not:['이슈카테고리','과업지시일자']},
   order:          {must:['과업지시일자','발주번호']},
 };
 function detectCSVType(headers) {
@@ -1312,27 +1382,30 @@ function updateOrderTabs() {
 
 // ===== TASK TABS =====
 function updateTaskTabs() {
-  if (!D.task||!SEL_MONTH) return;
-  const f=D.task.filter(r=>pOrderMonth(r['과업지시일자'])===SEL_MONTH);
+  if (!D.order||!SEL_MONTH) return;
+  const f=D.order.filter(r=>pOrderMonth(r['과업지시일자'])===SEL_MONTH);
   document.getElementById('task-month-label').textContent=SEL_MONTH;
-  const notArrived=f.filter(r=>!(r['입하여부']||'').includes('입하완료')).length;
-  const delayed=f.filter(r=>parseInt(r['입하경과일']||'0')>14).length;
-  setValue('task-kpi-bar',`<span>전체 ${f.length}건</span><span style="color:var(--amber)">미입하 ${notArrived}건</span><span style="color:var(--red)">지연 ${delayed}건</span>`);
-  document.getElementById('task-kpi-bar').innerHTML=`<span>전체 ${f.length}건</span><span style="color:var(--amber);margin-left:8px">미입하 ${notArrived}건</span><span style="color:var(--red);margin-left:8px">지연 ${delayed}건</span>`;
+  const notArrivedRows=f.filter(r=>!isArrived(r));
+  const delayedRows=f.filter(r=>{const d=calcElapsedDays(r);return d!==null&&d>14&&!isArrived(r);});
+  document.getElementById('task-kpi-bar').innerHTML=`<span>전체 ${f.length}건</span><span style="color:var(--amber);margin-left:8px">미입하 ${notArrivedRows.length}건</span><span style="color:var(--red);margin-left:8px">지연>14일 ${delayedRows.length}건</span>`;
   const mkRow8=(r)=>{
-    const elapsed=parseInt(r['입하경과일']||'0');
+    const elapsed=calcElapsedDays(r);
+    const eText=elapsed!==null?elapsed+'일':'—';
     const ec=elapsed>30?'color:var(--red)':elapsed>14?'color:var(--amber)':'';
-    const arrived=(r['입하여부']||'').includes('입하완료');
-    return `<tr><td>${r['과업지시일자']||'—'}</td><td>${r['연월']||'—'}</td><td>${esc(r['협력사']||'')}</td><td style="font-size:11px">${esc(crop(r['발주목적']||'',30))}</td><td><span class="tag ${arrived?'tag-ok':'tag-n'}">${arrived?'입하완료':'미입하'}</span></td><td>${esc(r['과업지시상태']||'')}</td><td class="num" style="${ec}">${elapsed||'—'}</td><td class="num">${faFull(pa(r['공급가액']||r['공급대가']||''))}</td></tr>`;
+    const arrived=isArrived(r);
+    const mo=pOrderMonth(r['과업지시일자'])||'—';
+    return `<tr><td>${r['과업지시일자']||'—'}</td><td>${mo}</td><td>${esc(r['수주처']||'')}</td><td style="font-size:11px">${esc(crop(r['산출물']||r['발주번호']||'',30))}</td><td><span class="tag ${arrived?'tag-ok':'tag-n'}">${arrived?'입하완료':'미입하'}</span></td><td style="font-size:11px">${r['입하예정일 (from movement_산출물)']||'—'}</td><td class="num" style="${ec}">${eText}</td><td class="num">${faFull(pa(r['공급가액']))}</td></tr>`;
   };
   const mkRow6=(r)=>{
-    const elapsed=parseInt(r['입하경과일']||'0');
+    const elapsed=calcElapsedDays(r);
+    const eText=elapsed!==null?elapsed+'일':'—';
     const ec=elapsed>14?'color:var(--amber)':'';
-    return `<tr><td>${r['과업지시일자']||'—'}</td><td>${r['연월']||'—'}</td><td>${esc(r['협력사']||'')}</td><td style="font-size:11px">${esc(crop(r['발주목적']||'',35))}</td><td class="num" style="${ec}">${elapsed||'—'}</td><td class="num">${faFull(pa(r['공급가액']||r['공급대가']||''))}</td></tr>`;
+    const mo=pOrderMonth(r['과업지시일자'])||'—';
+    return `<tr><td>${r['과업지시일자']||'—'}</td><td>${mo}</td><td>${esc(r['수주처']||'')}</td><td style="font-size:11px">${esc(crop(r['산출물']||r['발주번호']||'',35))}</td><td class="num" style="${ec}">${eText}</td><td class="num">${faFull(pa(r['공급가액']))}</td></tr>`;
   };
   setTbody('tb-task-all',f.map(mkRow8).join(''));
-  setTbody('tb-task-notarrived',f.filter(r=>!(r['입하여부']||'').includes('입하완료')).map(mkRow6).join('')||emptyRow(6,'미입하 없음'));
-  setTbody('tb-task-delay',f.filter(r=>parseInt(r['입하경과일']||'0')>14).sort((a,b)=>parseInt(b['입하경과일'])-parseInt(a['입하경과일'])).map(mkRow6).join('')||emptyRow(6,'지연 없음'));
+  setTbody('tb-task-notarrived',notArrivedRows.map(mkRow6).join('')||emptyRow(6,'미입하 없음'));
+  setTbody('tb-task-delay',delayedRows.sort((a,b)=>(calcElapsedDays(b)||0)-(calcElapsedDays(a)||0)).map(mkRow6).join('')||emptyRow(6,'지연 없음'));
 }
 
 // ===== PURCHASE TABS =====
@@ -1470,11 +1543,12 @@ function updateSalesSection() {
 
 // ===== SUBCONTRACT SECTION =====
 function updateSubcontractSection() {
-  if (!D.subcontract) return;
-  setValue('sb-total',D.subcontract.length.toLocaleString());
-  const maxDay=Math.max(...D.subcontract.map(r=>parseInt(r['입하경과일']||'0')));
+  if (!D.order||!D.sup) { setValue('sb-total','—'); setValue('sb-maxday','—'); setValue('sb-sups','—'); return; }
+  const risks=getSubcontractRiskRows();
+  setValue('sb-total',risks.length.toLocaleString());
+  const maxDay=risks.length?Math.max(...risks.map(r=>r._elapsedDays)):0;
   setValue('sb-maxday',maxDay>0?maxDay+'일':'—');
-  const supSet=new Set(D.subcontract.map(r=>r['협력사']).filter(Boolean));
+  const supSet=new Set(risks.map(r=>r['수주처']).filter(Boolean));
   setValue('sb-sups',supSet.size);
   renderSubcontractTable();
 }
@@ -1485,16 +1559,17 @@ function sbFilter(val,el) {
   renderSubcontractTable();
 }
 function renderSubcontractTable() {
-  if (!D.subcontract) return;
+  if (!D.order||!D.sup) return;
+  const risks=getSubcontractRiskRows();
   const minDay=SB_FILTER==='all'?0:parseInt(SB_FILTER);
-  const rows=D.subcontract.filter(r=>parseInt(r['입하경과일']||'0')>=minDay).sort((a,b)=>parseInt(b['입하경과일'])-parseInt(a['입하경과일']));
+  const rows=risks.filter(r=>r._elapsedDays>=minDay);
   const html=rows.map(r=>{
-    const elapsed=parseInt(r['입하경과일']||'0');
-    const ec=elapsed>180?'color:var(--red);font-weight:600':elapsed>60?'color:var(--amber)':'';
-    const arrived=(r['입하여부']||'').includes('입하완료');
-    return `<tr><td>${r['발주일자']||r['과업지시일자']||'—'}</td><td>${r['연월']||'—'}</td><td>${esc(r['협력사']||'')}</td><td style="font-size:11px">${esc(crop(r['발주목적']||'',25))}</td><td>${esc(r['과업지시상태']||'')}</td><td><span class="tag ${arrived?'tag-ok':'tag-danger'}">${arrived?'입하완료':'미입하'}</span></td><td class="num" style="${ec}">${elapsed}</td><td class="num">${faFull(pa(r['공급가액']||r['공급대가']||''))}</td></tr>`;
+    const elapsed=r._elapsedDays;
+    const ec=elapsed>180?'color:var(--red);font-weight:600':elapsed>90?'color:var(--amber)':'';
+    const mo=pOrderMonth(r['과업지시일자'])||'—';
+    return `<tr><td>${r['과업지시일자']||'—'}</td><td>${mo}</td><td>${esc(r['수주처']||'')}</td><td style="font-size:11px">${esc(crop(r['산출물']||r['발주번호']||'',25))}</td><td>${r['입하예정일 (from movement_산출물)']||'—'}</td><td><span class="tag tag-danger">미입하</span></td><td class="num" style="${ec}">${elapsed}일</td><td class="num">${faFull(pa(r['공급가액']))}</td></tr>`;
   }).join('');
-  setTbody('tb-subcontract',html||emptyRow(8,'해당 조건의 데이터 없음'));
+  setTbody('tb-subcontract',html||emptyRow(8,'하도급법 위험 대상 없음 (90일 미만 또는 입하 완료)'));
 }
 
 // ===== CHARTS =====
