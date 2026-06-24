@@ -2335,6 +2335,7 @@ function swTab(el,group,targetId) {
   const t=document.getElementById(targetId); if(t) t.style.display='';
   // Re-render task tabs when task tab is selected
   if (targetId==='tab-ord-task') updateTaskTabs();
+  if (targetId==='tab-ord-bot'||targetId==='tab-ord-proj'||targetId==='tab-ord-freq'||targetId==='tab-ord-top') updateOrderTabs();
 }
 function swSubTab(el,group,targetId) {
   const parent=el.closest('.tabs');
@@ -2599,9 +2600,24 @@ function renderSeasonPlan() {
   const el=document.getElementById('sec-season-plan');
   if(!D.season_plan) { el.innerHTML='<div class="card empty">시즌재고계획 CSV를 업로드해주세요.</div>'; return; }
   const rows=D.season_plan;
+  const cols=rows.length?Object.keys(rows[0]):[];
+
+  // Dynamic column detection
+  const fCat=cols.find(c=>c.includes('계획구분'))||cols.find(c=>c.includes('구분'))||'계획구분';
+  const fGoods=cols.find(c=>c.includes('굿즈명'))||'굿즈명';
+  const fOption=cols.find(c=>c.includes('옵션'))||'옵션';
+  const fCost=cols.find(c=>c.includes('표준원가'))||'표준원가';
+  const fPlanQty=cols.find(c=>c.includes('매입희망수량'))||'구매 매입희망수량';
+  const fCxQty=cols.find(c=>c.includes('CX')&&c.includes('수량'))||'CX 매입희망수량';
+  const f24=cols.find(c=>c.includes('2024')&&c.includes('4Q'))||cols.find(c=>c.includes('23')&&c.includes('4Q'))||'2024 4Q판매';
+  const f25=cols.find(c=>c.includes('2025')&&c.includes('4Q'))||'2025 4Q판매';
+  const f26=cols.find(c=>c.includes('2026')&&c.includes('예상'))||cols.find(c=>c.includes('26')&&c.includes('예상'))||'2026 4Q 예상판매량';
+  const fPartNo=cols.find(c=>c.includes('파츠번호'))||'대표 파츠번호';
+  const fSOP=cols.find(c=>c.includes('S&OP')||c.includes('확정수량'))||'S&OP확정수량';
+
   const categories={};
   rows.forEach(r=>{
-    const cat=r['계획구분']||'기타';
+    const cat=r[fCat]||'기타';
     if(!categories[cat]) categories[cat]=[];
     categories[cat].push(r);
   });
@@ -2610,9 +2626,10 @@ function renderSeasonPlan() {
 
   let totalPlan=0,totalConfirmed=0,totalOpts=0,filledOpts=0;
   rows.forEach((r,i)=>{
-    const uc=toNum(r['표준원가']); const pq=toNum(r['구매 매입희망수량']);
+    const uc=toNum(r[fCost]); const pq=toNum(r[fPlanQty]);
     totalPlan+=pq*uc; totalOpts++;
-    const sv=saved['sp_'+i]; if(sv!==undefined&&sv!==null){ filledOpts++; totalConfirmed+=sv*uc; }
+    const sv=saved['sp_'+i]!==undefined?saved['sp_'+i]:(r[fSOP]?toNum(r[fSOP]):null);
+    if(sv!==undefined&&sv!==null&&sv>0){ filledOpts++; totalConfirmed+=sv*uc; }
   });
   const progress=totalOpts>0?Math.round(filledOpts/totalOpts*100):0;
 
@@ -2623,24 +2640,27 @@ function renderSeasonPlan() {
 
   if(SP_TAB==='summary') {
     el.innerHTML=tabsHtml+`
+      <div style="font-size:10px;color:var(--text3);margin-bottom:8px">인식 컬럼: ${cols.length}개 · 구분필드: ${fCat} · 제품 ${rows.length}행</div>
       <div class="kpi-row-3">
         <div class="kpi-card c-blue"><div class="kpi-label">구매팀 희망금액</div><div class="kpi-val">${fmtW(totalPlan)}</div></div>
         <div class="kpi-card c-green"><div class="kpi-label">S&OP 확정금액</div><div class="kpi-val">${filledOpts>0?fmtW(totalConfirmed):'—'}</div></div>
         <div class="kpi-card c-purple"><div class="kpi-label">확정 입력률</div><div class="kpi-val">${progress}%</div><div class="kpi-sub">${filledOpts}/${totalOpts}</div></div>
       </div>
       <div class="card" style="margin-top:12px"><div class="card-header"><div class="card-title">구분별 현황</div></div>
-      <div class="tbl-wrap"><table class="tbl"><thead><tr><th>구분</th><th class="num">제품 수</th><th class="num">희망금액</th><th class="num">확정금액</th></tr></thead><tbody>
-      ${catKeys.map(c=>{const cr=categories[c]; const pa=cr.reduce((s,r)=>s+toNum(r['구매 매입희망수량'])*toNum(r['표준원가']),0); return `<tr class="clickable-row" onclick="SP_TAB='${esc(c)}';renderSeasonPlan()"><td>${esc(c)}</td><td class="num">${cr.length}</td><td class="num">${fmtW(pa)}</td><td class="num">—</td></tr>`;}).join('')}
+      <div class="tbl-wrap"><table class="tbl"><thead><tr><th>구분</th><th class="num">제품 수</th><th class="num">희망금액</th></tr></thead><tbody>
+      ${catKeys.map(c=>{const cr=categories[c]; const amt=cr.reduce((s,r)=>s+toNum(r[fPlanQty])*toNum(r[fCost]),0); return `<tr style="cursor:pointer" onclick="SP_TAB='${esc(c)}';renderSeasonPlan()"><td>${esc(c)}</td><td class="num">${cr.length}</td><td class="num">${fmtW(amt)}</td></tr>`;}).join('')}
       </tbody></table></div></div>`;
   } else {
     const catRows=categories[SP_TAB]||[];
+    // Show ALL columns for the first row as debug reference
     el.innerHTML=tabsHtml+`
       <div class="card"><div class="card-header"><div class="card-title">${esc(SP_TAB)} 시즌계획</div><div class="card-sub">${catRows.length}개 제품</div></div>
-      <div class="tbl-wrap"><table class="tbl"><thead><tr><th>굿즈명</th><th>옵션</th><th class="num">24Q4판매</th><th class="num">25Q4판매</th><th class="num">26Q4예상</th><th class="num">매입희망</th><th class="num">S&OP확정</th><th class="num">단가</th></tr></thead><tbody>
+      <div class="tbl-wrap"><table class="tbl"><thead><tr><th class="rank">#</th><th>굿즈명</th><th>옵션</th><th>파츠번호</th><th class="num">24Q4</th><th class="num">25Q4</th><th class="num">26Q4예상</th><th class="num">매입희망</th><th class="num">S&OP확정</th><th class="num">단가</th></tr></thead><tbody>
       ${catRows.map((r,i)=>{
         const gi=rows.indexOf(r); const sv=saved['sp_'+gi];
-        return `<tr><td>${esc(r['굿즈명']||'')}</td><td style="font-size:11px">${esc(r['옵션']||'')}</td><td class="num">${fmtN(toNum(r['2024 4Q판매']))}</td><td class="num">${fmtN(toNum(r['2025 4Q판매']))}</td><td class="num">${fmtN(toNum(r['2026 4Q 예상판매량']))}</td><td class="num">${fmtN(toNum(r['구매 매입희망수량']))}</td><td class="num"><input type="number" min="0" style="width:70px;padding:3px 5px;border:1px solid var(--border2);border-radius:4px;font-size:12px;text-align:right" value="${sv!==undefined&&sv!==null?sv:''}" placeholder="—" onchange="saveSPQty(${gi},this.value)"></td><td class="num">${fmtN(toNum(r['표준원가']))}원</td></tr>`;
-      }).join('')}
+        const sopVal=sv!==undefined&&sv!==null?sv:(r[fSOP]?toNum(r[fSOP]):null);
+        return `<tr><td class="rank">${i+1}</td><td>${esc(r[fGoods]||'')}</td><td style="font-size:11px">${esc(r[fOption]||'')}</td><td class="mono" style="font-size:10px">${esc(r[fPartNo]||'')}</td><td class="num">${fmtN(toNum(r[f24]))}</td><td class="num">${fmtN(toNum(r[f25]))}</td><td class="num">${fmtN(toNum(r[f26]))}</td><td class="num">${fmtN(toNum(r[fPlanQty]))}</td><td class="num"><input type="number" min="0" style="width:70px;padding:3px 5px;border:1px solid var(--border2);border-radius:4px;font-size:12px;text-align:right" value="${sopVal!==null&&sopVal!==undefined?sopVal:''}" placeholder="—" onchange="saveSPQty(${gi},this.value)"></td><td class="num">${fmtN(toNum(r[fCost]))}원</td></tr>`;
+      }).join('')||emptyRow(10,'데이터 없음')}
       </tbody></table></div></div>`;
   }
 }
