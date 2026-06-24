@@ -758,6 +758,23 @@ Object.defineProperty(D,'order_full',{get(){return D.order;},set(){}});
 Object.defineProperty(D,'cost_rate',{get(){return null;},set(){}});
 Object.defineProperty(D,'stock',{get(){return D.stockout_list;},set(v){D.stockout_list=v;}});
 const UD = {};
+// ===== 2025 YEAR DATA (pre-aggregated, loaded from data_2025.json) =====
+let DATA_2025={order:{},issue:{}};
+function load2025Data(){
+  const cached=localStorage.getItem('data_2025');
+  if(cached){try{DATA_2025=JSON.parse(cached);}catch(e){}}
+  fetch('data_2025.json').then(r=>{if(r.ok)return r.json();throw new Error();}).then(d=>{
+    DATA_2025=d;
+    localStorage.setItem('data_2025',JSON.stringify(d));
+  }).catch(()=>{});
+}
+function get2025Month(mo) {
+  return DATA_2025.order[mo]||null;
+}
+function get2025Issue(mo) {
+  return DATA_2025.issue[mo]||null;
+}
+
 // Parts Master — embedded JSON (loaded from parts_master.json, cached in localStorage)
 let PARTS_MASTER=[];
 let PARTS_MAP={};
@@ -1327,12 +1344,13 @@ function updateKPIs() {
     const stockOrders=allMo.filter(r=>isStock(r));
     const f=projOrders;
     const urg=f.filter(r=>r['긴급여부']==='긴급'&&r['수주처']!==URGENT_EXCLUDE_SUP).length;
-    // YoY: previous year same month
-    const pyAll=getFilteredAllOrders().filter(r=>pOrderMonth(r['과업지시일자'])===pyMo);
-    const pyProj=pyAll.filter(r=>!isStock(r));
-    const pyUrg=pyProj.filter(r=>r['긴급여부']==='긴급'&&r['수주처']!==URGENT_EXCLUDE_SUP).length;
+    // YoY: from pre-aggregated 2025 data (no CSV upload needed)
+    const py25=get2025Month(pyMo);
+    const pyTasks=py25?py25.tasks:null;
+    const pyUrg=py25?py25.urgent:null;
+    const pyPur=py25?py25.purchase:null;
     setValue('k-order',allMo.length.toLocaleString());
-    document.getElementById('k-order-sub').innerHTML=`프로젝트 ${f.length} + 재고생산 ${stockOrders.length} · 긴급 ${urg}${yoyBadge(allMo.length,pyAll.length)}<br><span style="font-size:10px;color:var(--text3)">${yoyText(allMo.length,pyAll.length,'동월')}건</span>`;
+    document.getElementById('k-order-sub').innerHTML=`프로젝트 ${f.length} + 재고생산 ${stockOrders.length} · 긴급 ${urg}${yoyBadge(allMo.length,pyTasks)}<br><span style="font-size:10px;color:var(--text3)">${pyTasks!==null?'전년 동월 '+pyTasks+'건':''}</span>`;
     setValue('k-urgent',urg);
     document.getElementById('k-urgent-sub').innerHTML=`긴급률 ${f.length?(urg/f.length*100).toFixed(1):0}%${yoyBadge(urg,pyUrg)}${q?' <span style="color:var(--text3)">(필터)</span>':''}`;
     document.getElementById('mgr-month').textContent=mo+(q?' (필터)':'');
@@ -1340,19 +1358,18 @@ function updateKPIs() {
     document.getElementById('sup-pur-month').textContent=mo+' (세금계산서 기준)';
     let totPur=0,purCnt=0;
     getFilteredOrders().forEach(r=>{ const byM=purchaseByMonth(r); if(byM[mo]){totPur+=byM[mo];purCnt++;} });
-    let pyPur=0;
-    getFilteredOrders().forEach(r=>{ const byM=purchaseByMonth(r); if(byM[pyMo]){pyPur+=byM[pyMo];} });
     setValue('k-purchase',fa(totPur));
-    document.getElementById('k-purchase-sub').innerHTML=`${purCnt}건${yoyBadge(totPur,pyPur)}${q?' <span style="color:var(--text3)">(필터)</span>':''}<br><span style="font-size:10px;color:var(--text3)">${pyPur>0?'전년 동월 '+fa(pyPur):''}</span>`;
+    document.getElementById('k-purchase-sub').innerHTML=`${purCnt}건${yoyBadge(totPur,pyPur)}${q?' <span style="color:var(--text3)">(필터)</span>':''}<br><span style="font-size:10px;color:var(--text3)">${pyPur!==null?'전년 동월 '+fa(pyPur):''}</span>`;
   }
   if (D.issue) {
     let fi=D.issue.filter(r=>pIssueMonth(r)===mo);
-    let pyFi=D.issue.filter(r=>pIssueMonth(r)===pyMo);
-    if(q) { fi=fi.filter(r=>matchesSearch(r,q)); pyFi=pyFi.filter(r=>matchesSearch(r,q)); }
+    if(q) fi=fi.filter(r=>matchesSearch(r,q));
     let qi=0,ni=0,oi=0;
     fi.forEach(r=>{ const c=r['이슈카테고리']||''; if(c.includes('품질'))qi++; if(c.includes('수량'))ni++; if(c.includes('운영'))oi++; });
+    const pyIss=get2025Issue(pyMo);
+    const pyIssTotal=pyIss?pyIss.total:null;
     setValue('k-issue',fi.length);
-    document.getElementById('k-issue-sub').innerHTML=`품질 ${qi} / 수량 ${ni} / 운영 ${oi}${yoyBadge(fi.length,pyFi.length)}${q?' <span style="color:var(--text3)">(필터)</span>':''}`;
+    document.getElementById('k-issue-sub').innerHTML=`품질 ${qi} / 수량 ${ni} / 운영 ${oi}${yoyBadge(fi.length,pyIssTotal)}${q?' <span style="color:var(--text3)">(필터)</span>':''}`;
     document.getElementById('issue-chart-period').textContent=mo+' 기준';
   }
   if (D.ci) {
@@ -2828,6 +2845,7 @@ function renderQMS() {
 // ===== INIT =====
 window.addEventListener('load',()=>{
   buildUploadZones();
+  load2025Data();
   loadPartsMaster();
   buildMonthChips();
   buildSalesMonthChips();
