@@ -1929,41 +1929,19 @@ function openModal(type,extra) {
     title.textContent='고객인지이슈 — '+(SEL_MONTH?fmtMonth(SEL_MONTH):'전체');
     if (!D.ci) { body.innerHTML=emptyRow(1,'고객인지이슈 RAW 업로드 필요'); return; }
     const f=SEL_MONTH?D.ci.filter(r=>{ const d=r['등록일자']; const m=d.match(/(\d+)\.(\d+)\./); return m&&`${m[1]}.${parseInt(m[2])}`===SEL_MONTH; }):D.ci;
-    // Build issue reason map: project → 품질등급의견판단사유_SCM
-    const issueReasonMap={};
-    if(D.issue) D.issue.forEach(r=>{
-      const proj=(r['project_name']||'').trim();
-      const reason=(r['품질등급의견판단사유_SCM']||'').trim();
-      if(proj&&reason) issueReasonMap[proj]=reason;
-    });
-    // Build rework cost map: project → sum of 취득원가 where task_id contains '재제작'
-    const reworkCostMap={};
-    if(D.order) D.order.forEach(r=>{
-      const tid=(r['task_id']||'');
-      const proj=(r['project']||'').trim();
-      if(proj&&tid.includes('재제작')){
-        reworkCostMap[proj]=(reworkCostMap[proj]||0)+pa(r['취득원가']);
-      }
-    });
-    const totalRework=f.reduce((s,r)=>{const p=(r['프로젝트명']||'').trim();return s+(reworkCostMap[p]||0);},0);
+    const totalRework=f.reduce((s,r)=>s+getReworkCostForProject(r['프로젝트명']),0);
     body.innerHTML=`
       <div style="display:flex;gap:12px;margin-bottom:12px;font-size:12px;flex-wrap:wrap">
         <span style="background:var(--purple-light);color:var(--purple);padding:4px 10px;border-radius:20px;font-weight:600">전체 ${f.length}건</span>
         <span style="background:var(--red-light);color:var(--red);padding:4px 10px;border-radius:20px">실패비용 합계 ${totalRework>0?faFull(totalRework):'0원'}</span>
       </div>
-      <table class="tbl"><thead><tr><th class="rank">#</th><th>등록일</th><th>프로젝트</th><th>관련제품</th><th>작성자</th><th>이슈내용</th><th>이슈원인/대응</th><th class="num">실패비용</th></tr></thead><tbody>`
+      <table class="tbl"><thead><tr><th class="rank">#</th><th>등록일</th><th>프로젝트</th><th>관련제품</th><th>작성자</th><th>이슈내용</th><th class="num">실패비용</th></tr></thead><tbody>`
       +f.map((r,i)=>{
         const proj=(r['프로젝트명']||'').trim();
-        const projKey=proj.split('-')[0]||proj;
-        // Match issue reason by partial project name match
-        let reason='';
-        Object.keys(issueReasonMap).forEach(k=>{if(k.includes(projKey)||projKey.includes(k.split('-')[0])) reason=issueReasonMap[k];});
-        // Match rework cost by project
-        let rework=0;
-        Object.keys(reworkCostMap).forEach(k=>{if(k.includes(projKey)||projKey.includes(k.split('-')[0])) rework+=reworkCostMap[k];});
-        return `<tr><td class="rank">${i+1}</td><td>${r['등록일자']||'—'}</td><td style="font-size:11px">${esc(proj)}</td><td style="font-size:11px">${esc(crop(r['관련제품']||'',25))}</td><td>${esc(r['작성자명']||'')}</td><td style="font-size:11px;max-width:180px">${esc(crop(r['이슈내용']||'',50))}</td><td style="font-size:11px;max-width:200px;color:var(--text2)">${reason?esc(crop(reason,60)):'—'}</td><td class="num" style="${rework>0?'color:var(--red);font-weight:600':''}">${rework>0?faFull(rework):'0'}</td></tr>`;
+        const rework=getReworkCostForProject(proj);
+        return `<tr><td class="rank">${i+1}</td><td>${r['등록일자']||'—'}</td><td style="font-size:11px">${esc(proj)}</td><td style="font-size:11px">${esc(crop(r['관련제품']||'',25))}</td><td>${esc(r['작성자명']||'')}</td><td style="font-size:11px;max-width:220px">${esc(crop(r['이슈내용']||'',70))}</td><td class="num" style="${rework>0?'color:var(--red);font-weight:600':''}">${rework>0?faFull(rework):'0'}</td></tr>`;
       }).join('')+`</tbody></table>
-      <div style="font-size:10px;color:var(--text3);margin-top:8px">실패비용 = 동일 프로젝트 내 task_id에 '재제작' 포함 행의 취득원가 합계 · 이슈원인/대응 = 이슈_RAW의 품질등급의견판단사유_SCM</div>`;
+      <div style="font-size:10px;color:var(--text3);margin-top:8px">실패비용 = 동일 프로젝트 내 task_id에 '재제작' 포함 행의 취득원가 합계</div>`;
 
   } else if (type==='inventoryAsset') {
     title.textContent='재고자산 SKU 상세';
@@ -2027,13 +2005,33 @@ function filterIssueModal(cat,el) {
   const f=SEL_MONTH?D.issue.filter(r=>pIssueMonth(r)===SEL_MONTH):D.issue;
   renderIssueModalBody(f,cat);
 }
+function getReworkCostForProject(projName) {
+  if(!D.order||!projName) return 0;
+  const projKey=(projName||'').split('-')[0];
+  if(!projKey) return 0;
+  let cost=0;
+  D.order.forEach(r=>{
+    const tid=r['task_id']||'';
+    const proj=(r['project']||'');
+    if(tid.includes('재제작')&&proj.includes(projKey)) cost+=pa(r['취득원가']);
+  });
+  return cost;
+}
 function renderIssueModalBody(allRows,cat) {
   const rows=cat==='all'?allRows:allRows.filter(r=>(r['이슈카테고리']||'').includes(cat));
   const contentCol=cat==='품질'?'품질이슈내용':cat==='수량'?'수량이슈내용':cat==='운영'?'운영이슈내용(by물류)':null;
+  const totalRework=rows.reduce((s,r)=>s+getReworkCostForProject(r['project_name']),0);
   document.getElementById('modal-body').innerHTML=`
-    <table class="tbl" style="width:100%"><thead><tr><th class="rank">#</th><th>입하일</th><th>프로젝트</th><th>제품</th><th>카테고리</th><th>담당자</th><th>내용</th></tr></thead><tbody>
-    ${rows.map((r,i)=>`<tr><td class="rank">${i+1}</td><td>${r['실제입하일']||r['입하예정일']||'—'}</td><td style="font-size:11px">${esc(r['project_name']||'')}</td><td style="font-size:11px">${esc(crop(r['item (통합) (from order)']||'',30))}</td><td>${catTags(r['이슈카테고리']||'')}</td><td>${r['프로젝트_발주자']||'—'}</td><td style="font-size:11px">${esc(crop(contentCol?r[contentCol]||'':(r['품질이슈내용']||r['수량이슈내용']||r['운영이슈내용(by물류)']||'')))}</td></tr>`).join('')||emptyRow(7,'해당 유형 이슈 없음')}
-    </tbody></table>`;
+    ${totalRework>0?`<div style="margin-bottom:10px;font-size:12px"><span style="background:var(--red-light);color:var(--red);padding:4px 10px;border-radius:20px;font-weight:600">실패비용 합계 ${faFull(totalRework)}</span></div>`:''}
+    <table class="tbl" style="width:100%"><thead><tr><th class="rank">#</th><th>입하일</th><th>프로젝트</th><th>제품</th><th>카테고리</th><th>담당자</th><th>내용</th><th>대응</th><th class="num">실패비용</th></tr></thead><tbody>
+    ${rows.map((r,i)=>{
+      const content=contentCol?r[contentCol]||'':(r['품질이슈내용']||r['수량이슈내용']||r['운영이슈내용(by물류)']||'');
+      const response=r['품질등급의견판단사유_SCM']||'';
+      const rework=getReworkCostForProject(r['project_name']);
+      return `<tr><td class="rank">${i+1}</td><td>${r['실제입하일']||r['입하예정일']||'—'}</td><td style="font-size:11px">${esc(r['project_name']||'')}</td><td style="font-size:11px">${esc(crop(r['item (통합) (from order)']||'',25))}</td><td>${catTags(r['이슈카테고리']||'')}</td><td>${r['프로젝트_발주자']||'—'}</td><td style="font-size:11px;max-width:160px">${esc(crop(content,50))}</td><td style="font-size:11px;max-width:180px;color:var(--text2)">${response?esc(crop(response,50)):'—'}</td><td class="num" style="${rework>0?'color:var(--red);font-weight:600':''}">${rework>0?faFull(rework):'0'}</td></tr>`;
+    }).join('')||emptyRow(9,'해당 유형 이슈 없음')}
+    </tbody></table>
+    <div style="font-size:10px;color:var(--text3);margin-top:6px">대응 = 품질등급의견판단사유_SCM · 실패비용 = 동일 프로젝트 내 '재제작' task의 취득원가 합계</div>`;
 }
 // Supplier detail modal (from purchase modal click)
 function openSupplierDetailModal(supName) {
