@@ -2551,15 +2551,26 @@ function renderPurchaseReview() {
   const el=document.getElementById('sec-purchase-review');
   if(!D.purchase_review) { el.innerHTML='<div class="card empty">매입검토현황 CSV를 업로드해주세요.</div>'; return; }
   const rows=D.purchase_review;
-  const pending=rows.filter(r=>r['결정상태']!=='확정');
-  const confirmed=rows.filter(r=>r['결정상태']==='확정');
+
+  // Debug: show actual column names if table is empty
+  const cols=rows.length?Object.keys(rows[0]):[];
+
+  const pending=rows.filter(r=>(r['결정상태']||'').trim()!=='확정');
+  const confirmed=rows.filter(r=>(r['결정상태']||'').trim()==='확정');
   const planTotal=pending.reduce((s,r)=>s+toNum(r['계획금액']),0);
   const confTotal=confirmed.reduce((s,r)=>s+toNum(r['확정금액']),0);
-  const filtered=PR_FILTER==='ALL'?rows:rows.filter(r=>r['결정상태']===PR_FILTER);
+  const filtered=PR_FILTER==='ALL'?rows:PR_FILTER==='확정'?confirmed:pending;
 
-  // Save edits to localStorage
-  const saved=JSON.parse(localStorage.getItem('pr_edits')||'{}');
-  filtered.forEach(r=>{const e=saved[r['REVIEW_ID']]; if(e){if(e.status) r['결정상태']=e.status; if(e.decision) r['결정사항']=e.decision;}});
+  // Detect column names dynamically — handle slight variations
+  const fName=cols.find(c=>c.includes('파츠명'))||'파츠명';
+  const fNo=cols.find(c=>c.includes('파츠번호'))||'파츠번호';
+  const fQty=cols.find(c=>c.includes('재고수량'))||'재고수량';
+  const fPlan=cols.find(c=>c.includes('계획수량'))||'매입계획수량';
+  const fConf=cols.find(c=>c.includes('확정수량'))||'매입확정수량';
+  const fStatus=cols.find(c=>c.includes('결정상태'))||'결정상태';
+  const fDecision=cols.find(c=>c.includes('결정사항'))||'결정사항';
+  const fMeeting=cols.find(c=>c.includes('회의명'))||'회의명';
+  const fMemo=cols.find(c=>c.includes('검토메모')||c.includes('사유'))||'사유';
 
   el.innerHTML=`
     <div class="kpi-row-3">
@@ -2573,13 +2584,13 @@ function renderPurchaseReview() {
       <span class="m-chip${PR_FILTER==='미확정'?' active':''}" onclick="PR_FILTER='미확정';renderPurchaseReview()">미확정 ${pending.length}</span>
       <span class="m-chip${PR_FILTER==='확정'?' active':''}" onclick="PR_FILTER='확정';renderPurchaseReview()">확정 ${confirmed.length}</span>
     </div>
-    <div class="card" style="margin-top:12px"><div class="card-header"><div class="card-title">매입검토 테이블</div></div>
-    <div class="tbl-wrap"><table class="tbl"><thead><tr><th>파츠명</th><th>파츠번호</th><th class="num">재고수량</th><th class="num">계획수량</th><th class="num">확정수량</th><th>결정상태</th><th>결정사항</th><th>회의명</th></tr></thead><tbody>
-    ${filtered.map(r=>{
-      const rid=esc(r['REVIEW_ID']||'');
-      const stColor=r['결정상태']==='확정'?'tag-ok':'tag-n';
-      return `<tr><td>${esc(r['파츠명']||'')}</td><td class="mono" style="font-size:11px">${esc(r['파츠번호']||'')}</td><td class="num">${fmtN(toNum(r['재고수량']))}</td><td class="num">${fmtN(toNum(r['매입계획수량']))}</td><td class="num">${fmtN(toNum(r['매입확정수량']))}</td><td><span class="tag ${stColor}">${esc(r['결정상태']||'미확정')}</span></td><td>${esc(r['결정사항']||'—')}</td><td style="font-size:11px">${esc(r['회의명']||'')}</td></tr>`;
-    }).join('')||emptyRow(8)}
+    <div class="card" style="margin-top:12px"><div class="card-header"><div class="card-title">매입검토 테이블</div><div class="card-sub" style="font-size:10px;color:var(--text3)">${cols.length}개 컬럼 인식</div></div>
+    <div class="tbl-wrap"><table class="tbl"><thead><tr><th class="rank">#</th><th>파츠명</th><th>파츠번호</th><th class="num">재고수량</th><th class="num">계획수량</th><th class="num">확정수량</th><th>결정상태</th><th>결정사항</th><th>회의명/메모</th></tr></thead><tbody>
+    ${filtered.map((r,i)=>{
+      const st=(r[fStatus]||'').trim();
+      const stColor=st==='확정'?'tag-ok':'tag-n';
+      return `<tr><td class="rank">${i+1}</td><td>${esc(r[fName]||'')}</td><td class="mono" style="font-size:11px">${esc(r[fNo]||'')}</td><td class="num">${fmtN(toNum(r[fQty]))}</td><td class="num">${fmtN(toNum(r[fPlan]))}</td><td class="num">${fmtN(toNum(r[fConf]))}</td><td><span class="tag ${stColor}">${esc(st||'미확정')}</span></td><td>${esc(r[fDecision]||'—')}</td><td style="font-size:11px;max-width:180px">${esc(crop(r[fMeeting]||r[fMemo]||'',40))}</td></tr>`;
+    }).join('')||emptyRow(9,'데이터 없음')}
     </tbody></table></div></div>`;
 }
 
