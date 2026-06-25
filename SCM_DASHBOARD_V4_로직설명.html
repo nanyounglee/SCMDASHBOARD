@@ -37,7 +37,7 @@
 <h1>SCM 통합운영 대시보드 v4</h1>
 <p style="font-size:15px;font-weight:600;color:#555">데이터 로직 설명서</p>
 <div class="meta">
-  버전: v4.0 | 작성일: 2026-06-25 | 작성: SCM실 · Claude AI<br>
+  버전: v4.1 | 작성일: 2026-06-25 | 작성: SCM실 · Claude AI<br>
   대상: 구매전략파트 · 외주생산파트 팀원 공유, 유지보수, 데이터 매핑 참조
 </div>
 
@@ -69,18 +69,18 @@
 <h3>2-1. CSV 업로드 (12개 슬롯)</h3>
 <table>
   <tr><th>구분</th><th>Key</th><th>파일명</th><th>출처</th><th>주기</th><th>필수 컬럼</th></tr>
-  <tr><td rowspan="4"><span class="badge b-red">필수</span></td><td>order</td><td>발주_RAW</td><td>Airtable SCM KPI → task-SCMKPI_Raw 뷰</td><td>주 1회</td><td>과업지시일자, 발주번호, 산출물, 공급가액, 수주처, 입하예정일, 입하확정일, 실제입하일, 취득원가, R) 판매가(최종)</td></tr>
+  <tr><td rowspan="4"><span class="badge b-purple">외주생산</span></td><td>order</td><td>발주_RAW</td><td>Airtable SCM KPI → task-SCMKPI_Raw 뷰</td><td>주 1회</td><td>과업지시일자, 발주번호, 산출물, 공급가액, 수주처, 입하예정일, 입하확정일, 실제입하일, 취득원가, R) 판매가(최종), task_id, sync_itemdb</td></tr>
   <tr><td>issue</td><td>이슈_RAW</td><td>Airtable SCM KPI → KPI_이슈_RAW 뷰</td><td>주 1회</td><td>이슈카테고리, 실제입하일, project_name, 품질등급의견판단사유_SCM</td></tr>
   <tr><td>sup</td><td>공급망_RAW</td><td>Airtable 공급망 관리 → 공급망_RAW 뷰</td><td>월 1회</td><td>협력사 이름, 1. 제조유형, 업태, 하도급계약 대상여부</td></tr>
   <tr><td>ci</td><td>고객인지이슈_RAW</td><td>Airtable SCM KPI → 고객인지이슈_RAW 뷰</td><td>주 1회</td><td>등록일자, 이슈내용, 프로젝트명</td></tr>
-  <tr><td rowspan="4"><span class="badge b-blue">S&OP</span></td><td>inv_weekly</td><td>S&OP 재고주간</td><td>GSheets S&OP → inventory_weekly</td><td>필요시</td><td>파츠번호, 기준일, 재고수량, 재고금액</td></tr>
+  <tr><td rowspan="4"><span class="badge b-blue">구매전략</span></td><td>inv_weekly</td><td>S&OP 재고주간</td><td>GSheets S&OP → inventory_weekly</td><td>필요시</td><td>파츠번호, 기준일, 재고수량, 재고금액, 판매상태, 관리대상여부</td></tr>
   <tr><td>sales_monthly</td><td>S&OP 매출월간</td><td>GSheets S&OP → sales_monthly</td><td>필요시</td><td>파츠번호, 기준월, 판매량</td></tr>
   <tr><td>purchase_review</td><td>매입검토현황</td><td>GSheets S&OP → purchase_review</td><td>필요시</td><td>REVIEW_ID, 파츠번호, 결정상태</td></tr>
   <tr><td>season_plan</td><td>시즌재고계획</td><td>GSheets S&OP → 시즌매입_파츠연결</td><td>필요시</td><td>굿즈명, 옵션, 계획구분</td></tr>
-  <tr><td rowspan="4"><span class="badge b-gray">선택</span></td><td>stockout_list</td><td>품절리스트</td><td>Airtable → sales_status_history</td><td>필요시</td><td>파츠명, 판매상태, 품절 성격</td></tr>
+  <tr><td rowspan="4"><span class="badge b-gray">공통·선택</span></td><td>stockout_list</td><td>품절리스트</td><td>Airtable → sales_status_history</td><td>필요시</td><td>파츠명, 판매상태, 품절 성격, 변경일(인터페이스용), 재고소유구분</td></tr>
   <tr><td>sales</td><td>판매주문</td><td>GSheets SUPER BASE</td><td>필요시</td><td>제품명, 주문수량, 판매단가, 소계</td></tr>
   <tr><td>qms_raw</td><td>QMS 품질데이터</td><td>Airtable SCM KPI</td><td>필요시</td><td>발생일, 이슈유형, 파츠번호</td></tr>
-  <tr><td>cost_reduction</td><td>원가/Movement</td><td>Airtable Movement 데이터</td><td>필요시</td><td>project, 출고자재, 수량, 실제단가</td></tr>
+  <tr><td>cost_reduction</td><td>원가/Movement</td><td>Airtable → Movement 재고투입</td><td>필요시</td><td>project, 출고자재, 수량, 실제단가</td></tr>
 </table>
 
 <h3>2-2. 영구 임베딩 JSON (업로드 불필요)</h3>
@@ -290,7 +290,7 @@ function getPrevMonth('2026.1') → '2025.12'  // 연도 넘김
 </table>
 
 <div class="meta" style="margin-top:30px;padding-top:10px;border-top:1px solid #e0e0dc">
-  문서 기준: scm_dashboard_v4.html (2026-06-25) · 3,121줄<br>
+  문서 기준: scm_dashboard_v4.html v4.1 (2026-06-25) · 슬롯 파트별 분리 반영<br>
   변경 시 이 문서도 함께 업데이트 바랍니다.
 </div>
 
