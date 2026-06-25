@@ -463,8 +463,8 @@ a{color:var(--blue);text-decoration:none}
         <div class="tab" onclick="swTab(this,'ord','tab-ord-task')">발주 Task</div>
       </div>
       <div id="tab-ord-top" class="tab-panel active card">
-        <div class="card-header"><div class="card-title">Product Parts 발주량 상위 20 <span style="font-weight:400;font-size:11px;color:var(--text3)">(재고생산 제외)</span></div></div>
-        <div class="tbl-wrap"><table class="tbl"><thead><tr><th class="rank">#</th><th>산출물</th><th>굿즈코드</th><th>파츠유형</th><th class="num">발주수량</th><th class="num">공급가액</th><th>담당자</th></tr></thead><tbody id="tb-ord-top"></tbody></table></div>
+        <div class="card-header"><div class="card-title">전체 제품 발주량 <span style="font-weight:400;font-size:11px;color:var(--text3)">(재고생산 제외 · 발주량 내림차순)</span></div></div>
+        <div class="tbl-wrap"><table class="tbl"><thead><tr><th class="rank">#</th><th>산출물</th><th>굿즈코드</th><th>파츠유형</th><th class="num">발주수량</th><th class="num">MoM</th><th class="num">YoY</th><th class="num">공급가액</th><th>담당자</th></tr></thead><tbody id="tb-ord-top"></tbody></table></div>
       </div>
       <div id="tab-ord-bot" class="tab-panel card" style="display:none">
         <div class="card-header"><div class="card-title">발주수량 하위 20 (미발주 포함)</div></div>
@@ -539,16 +539,16 @@ a{color:var(--blue);text-decoration:none}
         <div class="tab" onclick="swTab(this,'iss','tab-iss-o')">운영이슈</div>
       </div>
       <div id="tab-iss-all" class="tab-panel active card">
-        <div class="tbl-wrap"><table class="tbl"><thead><tr><th>입하일</th><th>프로젝트</th><th>제품</th><th>담당자</th><th>유형</th><th>내용</th></tr></thead><tbody id="tb-iss-all"></tbody></table></div>
+        <div class="tbl-wrap"><table class="tbl"><thead><tr><th class="rank">#</th><th>입하일</th><th>프로젝트</th><th>제품</th><th>담당자</th><th>유형</th><th>내용</th><th>대응</th><th class="num">실패비용</th></tr></thead><tbody id="tb-iss-all"></tbody></table></div>
       </div>
       <div id="tab-iss-q" class="tab-panel card" style="display:none">
-        <div class="tbl-wrap"><table class="tbl"><thead><tr><th>입하일</th><th>프로젝트</th><th>제품</th><th>담당자</th><th>품질등급</th><th>이슈내용</th></tr></thead><tbody id="tb-iss-q"></tbody></table></div>
+        <div class="tbl-wrap"><table class="tbl"><thead><tr><th class="rank">#</th><th>입하일</th><th>프로젝트</th><th>제품</th><th>담당자</th><th>품질등급</th><th>이슈내용</th><th>대응</th><th class="num">실패비용</th></tr></thead><tbody id="tb-iss-q"></tbody></table></div>
       </div>
       <div id="tab-iss-n" class="tab-panel card" style="display:none">
-        <div class="tbl-wrap"><table class="tbl"><thead><tr><th>입하일</th><th>프로젝트</th><th>제품</th><th>담당자</th><th>수량이슈 내용</th><th>대응방안</th></tr></thead><tbody id="tb-iss-n"></tbody></table></div>
+        <div class="tbl-wrap"><table class="tbl"><thead><tr><th class="rank">#</th><th>입하일</th><th>프로젝트</th><th>제품</th><th>담당자</th><th>수량이슈 내용</th><th>대응방안</th><th class="num">실패비용</th></tr></thead><tbody id="tb-iss-n"></tbody></table></div>
       </div>
       <div id="tab-iss-o" class="tab-panel card" style="display:none">
-        <div class="tbl-wrap"><table class="tbl"><thead><tr><th>입하일</th><th>프로젝트</th><th>제품</th><th>담당자</th><th>운영이슈 내용</th><th>개선방안</th></tr></thead><tbody id="tb-iss-o"></tbody></table></div>
+        <div class="tbl-wrap"><table class="tbl"><thead><tr><th class="rank">#</th><th>입하일</th><th>프로젝트</th><th>제품</th><th>담당자</th><th>운영이슈 내용</th><th>개선방안</th><th class="num">실패비용</th></tr></thead><tbody id="tb-iss-o"></tbody></table></div>
       </div>
     </div>
 
@@ -1360,6 +1360,12 @@ function getPrevYearMonth(mo) {
   if(!mo) return null;
   const p=mo.split('.'); const y=parseInt(p[0])-1; return y+'.'+p[1];
 }
+function getPrevMonth(mo) {
+  if(!mo) return null;
+  const p=mo.split('.'); let y=parseInt(p[0]),m=parseInt(p[1])-1;
+  if(m<=0){m=12;y--;}
+  return y+'.'+m;
+}
 function yoyBadge(cur,prev) {
   if(prev===null||prev===undefined||prev===0) return '';
   const diff=cur-prev; const pct=prev?(diff/prev*100).toFixed(0):'';
@@ -1437,10 +1443,22 @@ function updateOrderTabs() {
     byProd[key].amt+=pa(r['공급가액']);
   });
   const sorted=Object.entries(byProd).sort((a,b)=>b[1].qty-a[1].qty);
-  let top20=sorted;
-  if (hasPT) top20=sorted.filter(([,v])=>v.pt==='Product Parts');
-  const topHTML=top20.slice(0,20).map(([k,v],i)=>`<tr><td class="rank">${i+1}</td><td>${v.isBespoke?`<span class="tag tag-gray">비스포크</span> <span class="mono">${esc(v.pn)}</span>`:esc(crop(k))}</td><td><span class="tag tag-gray">${v.gc||'—'}</span></td><td>${v.pt?`<span class="tag tag-ok">${v.pt}</span>`:'—'}</td><td class="num">${v.qty.toLocaleString()}</td><td class="num">${faFull(v.amt)}</td><td>${v.mgr||'—'}</td></tr>`).join('');
-  setTbody('tb-ord-top',topHTML);
+  // MoM: previous month qty by product
+  const prevMo=getPrevMonth(SEL_MONTH);
+  const prevF=D.order.filter(r=>pOrderMonth(r['과업지시일자'])===prevMo&&!isStock(r));
+  const prevByProd={};
+  prevF.forEach(r=>{const key=r['산출물']||'[비스포크] '+r['발주번호'];prevByProd[key]=(prevByProd[key]||0)+pa(r['발주지시수량']);});
+  // YoY: previous year same month
+  const yoyMo=getPrevYearMonth(SEL_MONTH);
+  const yoyF=D.order.filter(r=>pOrderMonth(r['과업지시일자'])===yoyMo&&!isStock(r));
+  const yoyByProd={};
+  yoyF.forEach(r=>{const key=r['산출물']||'[비스포크] '+r['발주번호'];yoyByProd[key]=(yoyByProd[key]||0)+pa(r['발주지시수량']);});
+  function momYoyBadge(cur,prev,label){if(!prev)return'<span style="color:var(--text3)">—</span>';const diff=cur-prev;const pct=prev?(diff/prev*100).toFixed(0):'0';const sign=diff>=0?'+':'';const c=diff>0?'var(--red)':diff<0?'var(--green)':'var(--text3)';return`<span style="color:${c};font-weight:600;font-size:11px">${sign}${pct}%</span>`;}
+  const topHTML=sorted.map(([k,v],i)=>{
+    const prevQty=prevByProd[k]||0;const yoyQty=yoyByProd[k]||0;
+    return `<tr><td class="rank">${i+1}</td><td>${v.isBespoke?`<span class="tag tag-gray">비스포크</span> <span class="mono">${esc(v.pn)}</span>`:esc(crop(k,30))}</td><td><span class="tag tag-gray">${v.gc||'—'}</span></td><td>${v.pt?`<span class="tag tag-ok">${v.pt}</span>`:'—'}</td><td class="num">${v.qty.toLocaleString()}</td><td class="num">${momYoyBadge(v.qty,prevQty)}</td><td class="num">${momYoyBadge(v.qty,yoyQty)}</td><td class="num">${faFull(v.amt)}</td><td>${v.mgr||'—'}</td></tr>`;
+  }).join('');
+  setTbody('tb-ord-top',topHTML||emptyRow(9,'발주 데이터 없음'));
   const bot20=[...sorted].sort((a,b)=>a[1].qty-b[1].qty).slice(0,20);
   const botHTML=bot20.map(([k,v],i)=>`<tr><td class="rank">${i+1}</td><td>${v.isBespoke?`<span class="tag tag-gray">비스포크</span> <span class="mono">${esc(v.pn)}</span>`:esc(crop(k))}</td><td><span class="tag tag-gray">${v.gc||'—'}</span></td><td class="num" style="color:${v.qty===0?'var(--red)':'inherit'}">${v.qty.toLocaleString()}</td><td class="num">${faFull(v.amt)}</td><td>${v.qty===0?'<span class="tag tag-q">미발주</span>':'—'}</td></tr>`).join('');
   setTbody('tb-ord-bot',botHTML);
@@ -1518,17 +1536,19 @@ function updatePurchaseTabs() {
 }
 
 // ===== ISSUE TABS =====
+function issueRowCost(r){return getReworkCostForProject(r['project_name']);}
+function issueResponse(r){return r['품질등급의견판단사유_SCM']||'';}
 function updateIssueTabs() {
   if (!D.issue||!SEL_MONTH) return;
   const f=D.issue.filter(r=>pIssueMonth(r)===SEL_MONTH);
-  const allHTML=f.map(r=>`<tr><td>${r['실제입하일']||r['입하예정일']||'—'}</td><td style="font-size:11px">${esc(r['project_name']||'')}</td><td style="font-size:11px">${esc(crop(r['item (통합) (from order)']||'',35))}</td><td>${r['프로젝트_발주자']||'—'}</td><td>${catTags(r['이슈카테고리']||'')}</td><td style="font-size:11px">${esc(crop(r['품질이슈내용']||r['수량이슈내용']||r['운영이슈내용(by물류)']||''))}</td></tr>`).join('');
-  setTbody('tb-iss-all',allHTML||emptyRow(6));
-  const qHTML=f.filter(r=>r['이슈카테고리'].includes('품질')).map(r=>`<tr><td>${r['실제입하일']||'—'}</td><td style="font-size:11px">${esc(r['project_name']||'')}</td><td style="font-size:11px">${esc(crop(r['item (통합) (from order)']||'',35))}</td><td>${r['프로젝트_발주자']||'—'}</td><td>${r['품질등급최초판정']||r['품질등급의견_SCM']||'—'}</td><td style="font-size:11px">${esc(crop(r['품질이슈내용']||''))}</td></tr>`).join('');
-  setTbody('tb-iss-q',qHTML||emptyRow(6));
-  const nHTML=f.filter(r=>r['이슈카테고리'].includes('수량')).map(r=>`<tr><td>${r['실제입하일']||'—'}</td><td style="font-size:11px">${esc(r['project_name']||'')}</td><td style="font-size:11px">${esc(crop(r['item (통합) (from order)']||'',35))}</td><td>${r['프로젝트_발주자']||'—'}</td><td style="font-size:11px">${esc(crop(r['수량이슈내용']||''))}</td><td style="font-size:11px">${esc(crop(r['수량이슈대응방안']||''))}</td></tr>`).join('');
-  setTbody('tb-iss-n',nHTML||emptyRow(6));
-  const oHTML=f.filter(r=>r['이슈카테고리'].includes('운영')).map(r=>`<tr><td>${r['실제입하일']||'—'}</td><td style="font-size:11px">${esc(r['project_name']||'')}</td><td style="font-size:11px">${esc(crop(r['item (통합) (from order)']||'',35))}</td><td>${r['프로젝트_발주자']||'—'}</td><td style="font-size:11px">${esc(crop(r['운영이슈내용(by물류)']||''))}</td><td style="font-size:11px">${esc(crop(r['운영이슈개선방안_SCM']||''))}</td></tr>`).join('');
-  setTbody('tb-iss-o',oHTML||emptyRow(6));
+  const allHTML=f.map((r,i)=>{const rw=issueRowCost(r);const resp=issueResponse(r);return `<tr><td class="rank">${i+1}</td><td>${r['실제입하일']||r['입하예정일']||'—'}</td><td style="font-size:11px">${esc(r['project_name']||'')}</td><td style="font-size:11px">${esc(crop(r['item (통합) (from order)']||'',30))}</td><td>${r['프로젝트_발주자']||'—'}</td><td>${catTags(r['이슈카테고리']||'')}</td><td style="font-size:11px">${esc(crop(r['품질이슈내용']||r['수량이슈내용']||r['운영이슈내용(by물류)']||'',40))}</td><td style="font-size:11px;color:var(--text2);max-width:150px">${resp?esc(crop(resp,40)):'—'}</td><td class="num" style="${rw>0?'color:var(--red);font-weight:600':''}">${rw>0?faFull(rw):'0'}</td></tr>`;}).join('');
+  setTbody('tb-iss-all',allHTML||emptyRow(9));
+  const qHTML=f.filter(r=>(r['이슈카테고리']||'').includes('품질')).map((r,i)=>{const rw=issueRowCost(r);const resp=issueResponse(r);return `<tr><td class="rank">${i+1}</td><td>${r['실제입하일']||'—'}</td><td style="font-size:11px">${esc(r['project_name']||'')}</td><td style="font-size:11px">${esc(crop(r['item (통합) (from order)']||'',30))}</td><td>${r['프로젝트_발주자']||'—'}</td><td>${r['품질등급최초판정']||r['품질등급의견_SCM']||'—'}</td><td style="font-size:11px">${esc(crop(r['품질이슈내용']||'',40))}</td><td style="font-size:11px;color:var(--text2);max-width:150px">${resp?esc(crop(resp,40)):'—'}</td><td class="num" style="${rw>0?'color:var(--red);font-weight:600':''}">${rw>0?faFull(rw):'0'}</td></tr>`;}).join('');
+  setTbody('tb-iss-q',qHTML||emptyRow(9));
+  const nHTML=f.filter(r=>(r['이슈카테고리']||'').includes('수량')).map((r,i)=>{const rw=issueRowCost(r);return `<tr><td class="rank">${i+1}</td><td>${r['실제입하일']||'—'}</td><td style="font-size:11px">${esc(r['project_name']||'')}</td><td style="font-size:11px">${esc(crop(r['item (통합) (from order)']||'',30))}</td><td>${r['프로젝트_발주자']||'—'}</td><td style="font-size:11px">${esc(crop(r['수량이슈내용']||'',40))}</td><td style="font-size:11px">${esc(crop(r['수량이슈대응방안']||'',40))}</td><td class="num" style="${rw>0?'color:var(--red);font-weight:600':''}">${rw>0?faFull(rw):'0'}</td></tr>`;}).join('');
+  setTbody('tb-iss-n',nHTML||emptyRow(8));
+  const oHTML=f.filter(r=>(r['이슈카테고리']||'').includes('운영')).map((r,i)=>{const rw=issueRowCost(r);return `<tr><td class="rank">${i+1}</td><td>${r['실제입하일']||'—'}</td><td style="font-size:11px">${esc(r['project_name']||'')}</td><td style="font-size:11px">${esc(crop(r['item (통합) (from order)']||'',30))}</td><td>${r['프로젝트_발주자']||'—'}</td><td style="font-size:11px">${esc(crop(r['운영이슈내용(by물류)']||'',40))}</td><td style="font-size:11px">${esc(crop(r['운영이슈개선방안_SCM']||'',40))}</td><td class="num" style="${rw>0?'color:var(--red);font-weight:600':''}">${rw>0?faFull(rw):'0'}</td></tr>`;}).join('');
+  setTbody('tb-iss-o',oHTML||emptyRow(8));
 }
 
 // ===== CI TABS =====
@@ -2761,40 +2781,82 @@ function renderGraduation() {
 
 // ===== 3-9. 원가 분석 =====
 let COST_SEL_PROJECT='';
+let COST_VIEW='monthly';
 function renderCostAnalysis() {
   const el=document.getElementById('sec-cost-analysis');
-  if(!D.order&&!COST_DB.process.length) { el.innerHTML='<div class="card empty">발주_RAW 또는 공정DB를 로드해주세요.</div>'; return; }
+  if(!D.order) { el.innerHTML='<div class="card empty">발주_RAW CSV를 업로드해주세요.</div>'; return; }
 
-  // Build project list from D.order
+  // Tabs
+  const tabHtml=`<div class="tabs" style="margin-bottom:16px">
+    <div class="tab${COST_VIEW==='monthly'?' active':''}" onclick="COST_VIEW='monthly';renderCostAnalysis()">월별 원가 요약</div>
+    <div class="tab${COST_VIEW==='project'?' active':''}" onclick="COST_VIEW='project';renderCostAnalysis()">프로젝트별 상세</div>
+  </div>`;
+
+  if(COST_VIEW==='monthly') {
+    renderCostMonthly(el, tabHtml);
+  } else {
+    renderCostByProject(el, tabHtml);
+  }
+}
+function renderCostMonthly(el, tabHtml) {
+  // Monthly aggregation
+  const byMonth={};
+  D.order.filter(r=>!isStock(r)).forEach(r=>{
+    const mo=pOrderMonth(r['과업지시일자']); if(!mo) return;
+    if(!byMonth[mo]) byMonth[mo]={revenue:0,cost:0,cnt:0};
+    byMonth[mo].revenue+=pa(r['R) 판매가(최종)']);
+    byMonth[mo].cost+=pa(r['공급가액']);
+    byMonth[mo].cnt++;
+  });
+  const months=Object.keys(byMonth).sort();
+  const totalRev=months.reduce((s,m)=>s+byMonth[m].revenue,0);
+  const totalCost=months.reduce((s,m)=>s+byMonth[m].cost,0);
+  const avgRate=totalRev>0?(totalCost/totalRev*100):0;
+
+  el.innerHTML=tabHtml+`
+    <div class="kpi-row-3">
+      <div class="kpi-card c-blue"><div class="kpi-label">전체 매출 합계</div><div class="kpi-val">${fmtW(totalRev)}</div></div>
+      <div class="kpi-card c-amber"><div class="kpi-label">전체 투입원가</div><div class="kpi-val">${fmtW(totalCost)}</div></div>
+      <div class="kpi-card c-red"><div class="kpi-label">평균 원가율</div><div class="kpi-val">${avgRate>0?avgRate.toFixed(1)+'%':'—'}</div></div>
+    </div>
+    <div class="grid-2" style="margin-top:14px">
+      <div class="card"><div class="card-header"><div class="card-title">월별 매출·원가 추이</div></div>
+        <div class="ch" style="height:240px"><canvas id="ch-cost-monthly"></canvas></div>
+      </div>
+      <div class="card"><div class="card-header"><div class="card-title">월별 원가율 추이</div></div>
+        <div class="ch" style="height:240px"><canvas id="ch-cost-rate-monthly"></canvas></div>
+      </div>
+    </div>
+    <div class="card" style="margin-top:14px"><div class="card-header"><div class="card-title">월별 상세</div></div>
+    <div class="tbl-wrap"><table class="tbl"><thead><tr><th class="rank">#</th><th>월</th><th class="num">매출액</th><th class="num">투입원가</th><th class="num">원가율</th><th class="num">마진</th><th class="num">건수</th></tr></thead><tbody>
+    ${months.map((m,i)=>{const d=byMonth[m];const cr=d.revenue>0?(d.cost/d.revenue*100):0;const cc=cr>70?'color:var(--red);font-weight:600':cr>50?'color:var(--amber)':'color:var(--green)';
+      return `<tr><td class="rank">${i+1}</td><td>${fmtMonth(m)}</td><td class="num">${faFull(d.revenue)}</td><td class="num">${faFull(d.cost)}</td><td class="num" style="${cc}">${cr.toFixed(1)}%</td><td class="num">${faFull(d.revenue-d.cost)}</td><td class="num">${d.cnt}</td></tr>`;
+    }).join('')}
+    </tbody></table></div></div>`;
+
+  // Charts
+  dc('ch-cost-monthly');const ctx1=getCtx('ch-cost-monthly');
+  if(ctx1) CHARTS['ch-cost-monthly']=new Chart(ctx1,{type:'bar',data:{labels:months.map(fmtMonthShort),datasets:[{label:'매출',data:months.map(m=>byMonth[m].revenue),backgroundColor:'#1d4ed8',borderRadius:3},{label:'원가',data:months.map(m=>byMonth[m].cost),backgroundColor:'#d97706',borderRadius:3}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{position:'bottom',labels:{font:{size:10}}}},scales:{y:{ticks:{callback:v=>fa(v),font:{size:10}}}}}});
+  dc('ch-cost-rate-monthly');const ctx2=getCtx('ch-cost-rate-monthly');
+  if(ctx2){const rates=months.map(m=>byMonth[m].revenue>0?(byMonth[m].cost/byMonth[m].revenue*100):0);
+    CHARTS['ch-cost-rate-monthly']=new Chart(ctx2,{type:'line',data:{labels:months.map(fmtMonthShort),datasets:[{label:'원가율',data:rates,borderColor:'#dc2626',backgroundColor:'rgba(220,38,38,.08)',fill:true,tension:.4,pointRadius:4,borderWidth:2}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},scales:{y:{ticks:{callback:v=>v+'%',font:{size:10}}}}}});}
+}
+function renderCostByProject(el, tabHtml) {
   const projects={};
-  if(D.order) D.order.filter(r=>!isStock(r)).forEach(r=>{
+  D.order.filter(r=>!isStock(r)).forEach(r=>{
     const proj=(r['project']||'').trim(); if(!proj) return;
     if(!projects[proj]) projects[proj]={name:proj,revenue:0,taskCost:0,tasks:[],goods:''};
-    const rev=pa(r['R) 판매가(최종)']); const cost=pa(r['취득원가']); const sup=pa(r['공급가액']);
-    projects[proj].revenue+=rev; projects[proj].taskCost+=sup;
-    const gc=goodsCode(r); if(gc&&!projects[proj].goods) projects[proj].goods=gc;
+    projects[proj].revenue+=pa(r['R) 판매가(최종)']);projects[proj].taskCost+=pa(r['공급가액']);
+    const gc=goodsCode(r);if(gc&&!projects[proj].goods)projects[proj].goods=gc;
     projects[proj].tasks.push(r);
   });
   const projList=Object.values(projects).filter(p=>p.revenue>0||p.taskCost>0).sort((a,b)=>b.revenue-a.revenue);
-
-  // Summary KPIs
-  const totalRevenue=projList.reduce((s,p)=>s+p.revenue,0);
-  const totalCost=projList.reduce((s,p)=>s+p.taskCost,0);
-  const avgCostRate=totalRevenue>0?(totalCost/totalRevenue*100):0;
-
-  // Project selector
   if(!COST_SEL_PROJECT&&projList.length) COST_SEL_PROJECT=projList[0].name;
-  const selProj=projects[COST_SEL_PROJECT];
 
-  el.innerHTML=`
-    <div class="kpi-row-3">
-      <div class="kpi-card c-blue"><div class="kpi-label">전체 매출 합계</div><div class="kpi-val">${fmtW(totalRevenue)}</div><div class="kpi-sub">${projList.length}개 프로젝트</div></div>
-      <div class="kpi-card c-amber"><div class="kpi-label">전체 투입원가 합계</div><div class="kpi-val">${fmtW(totalCost)}</div><div class="kpi-sub">발주 공급가액 기준</div></div>
-      <div class="kpi-card c-red"><div class="kpi-label">평균 원가율</div><div class="kpi-val">${avgCostRate>0?avgCostRate.toFixed(1)+'%':'—'}</div><div class="kpi-sub">매출 대비 공급가액</div></div>
-    </div>
-    <div class="card" style="margin-top:14px">
+  el.innerHTML=tabHtml+`
+    <div class="card">
       <div class="card-header">
-        <div class="card-title">프로젝트별 원가 분석</div>
+        <div class="card-title">프로젝트 원가 상세 분석</div>
         <select id="cost-proj-sel" onchange="COST_SEL_PROJECT=this.value;renderCostProjectDetail()" style="font-size:12px;padding:4px 8px;border:1px solid var(--border2);border-radius:var(--r-sm);max-width:300px">
           ${projList.map(p=>`<option value="${esc(p.name)}" ${p.name===COST_SEL_PROJECT?'selected':''}>${esc(crop(p.name,40))} — ${fmtW(p.revenue)}</option>`).join('')}
         </select>
@@ -2802,13 +2864,11 @@ function renderCostAnalysis() {
       <div id="cost-project-detail"></div>
     </div>
     <div class="card" style="margin-top:14px">
-      <div class="card-header"><div class="card-title">프로젝트 원가율 순위 (Top 20)</div></div>
+      <div class="card-header"><div class="card-title">프로젝트 원가율 순위 (Top 30)</div></div>
       <div class="tbl-wrap"><table class="tbl"><thead><tr><th class="rank">#</th><th>프로젝트</th><th>굿즈코드</th><th class="num">매출액</th><th class="num">투입원가</th><th class="num">원가율</th><th class="num">마진</th></tr></thead><tbody>
-      ${projList.slice(0,20).map((p,i)=>{
-        const cr=p.revenue>0?(p.taskCost/p.revenue*100):0;
-        const margin=p.revenue-p.taskCost;
-        const cc=cr>70?'color:var(--red);font-weight:600':cr>50?'color:var(--amber)':'color:var(--green)';
-        return `<tr style="cursor:pointer" onclick="COST_SEL_PROJECT='${esc(p.name).replace(/'/g,"\\'")}';document.getElementById('cost-proj-sel').value=COST_SEL_PROJECT;renderCostProjectDetail()"><td class="rank">${i+1}</td><td style="font-size:11px">${esc(crop(p.name,35))}</td><td><span class="tag tag-gray">${p.goods||'—'}</span></td><td class="num">${faFull(p.revenue)}</td><td class="num">${faFull(p.taskCost)}</td><td class="num" style="${cc}">${cr.toFixed(1)}%</td><td class="num">${faFull(margin)}</td></tr>`;
+      ${projList.slice(0,30).map((p,i)=>{
+        const cr=p.revenue>0?(p.taskCost/p.revenue*100):0;const cc=cr>70?'color:var(--red);font-weight:600':cr>50?'color:var(--amber)':'color:var(--green)';
+        return `<tr style="cursor:pointer" onclick="COST_SEL_PROJECT='${esc(p.name).replace(/'/g,"\\'")}';document.getElementById('cost-proj-sel').value=COST_SEL_PROJECT;renderCostProjectDetail()"><td class="rank">${i+1}</td><td style="font-size:11px">${esc(crop(p.name,35))}</td><td><span class="tag tag-gray">${p.goods||'—'}</span></td><td class="num">${faFull(p.revenue)}</td><td class="num">${faFull(p.taskCost)}</td><td class="num" style="${cc}">${cr.toFixed(1)}%</td><td class="num">${faFull(p.revenue-p.taskCost)}</td></tr>`;
       }).join('')}
       </tbody></table></div>
     </div>`;
