@@ -325,6 +325,7 @@ a{color:var(--blue);text-decoration:none}
     </div>
   </header>
 
+  <div id="page-guide" style="background:var(--surface);border-bottom:1px solid var(--border);padding:6px 24px;font-size:11px;color:var(--text3);line-height:1.5;display:none"></div>
   <div class="content">
     <!-- Upload -->
     <div class="upload-bar" id="sec-upload">
@@ -2333,7 +2334,32 @@ function nav(el,id) {
   document.querySelectorAll('.sb-item').forEach(i=>i.classList.remove('active'));
   if (el) el.classList.add('active');
   const titles={overview:'종합 현황','inventory-ops':'재고운영 현황','stockout-detail':'품절 상세','purchase-review':'매입 검토','season-plan':'시즌재고 계획',eoq:'EOQ · 발주알람',graduation:'졸업 검토',order:'발주 현황',purchase:'매입 현황','cost-analysis':'원가 분석',issue:'이슈 현황',customer:'고객인지 이슈',sales:'매출/마진 분석','product-trend':'제품별 판매량 추이',supplier:'협력사 현황','supplier-product':'협력사유형별 제품군',qms:'품질 현황',subcontract:'하도급법 위험',ai:'AI 어시스턴트',report:'리포트 생성',stock:'재고 현황'};
+  const guides={
+    overview:'<b>확인 가능 지표:</b> 발주TASK(프로젝트/재고생산/긴급) · 월매입금액 · 이슈건수(품질/수량/운영) · 긴급발주 · 고객인지이슈 — 모든 KPI에 전년 동기(YoY) 비교 표시 | <b>차트:</b> 매입추이(월별/주별·합산/협력사/업태/굿즈코드) · 이슈유형 도넛 · 담당자별 발주 · 월별이슈추이 · 제조유형 매입비중(업태/카테고리 전환) | <b>클릭:</b> KPI 카드 클릭 시 상세 모달 · 차트 월 클릭 시 Top5 모달 | <b>CSV:</b> 발주_RAW + 이슈_RAW + 공급망_RAW + 고객인지이슈_RAW',
+    'inventory-ops':'<b>확인 가능 지표:</b> 재고자산평가액 · 재고회전율(1M/3M/YTD) · 품절률 · 운영밴드 상태(분기별) | <b>차트:</b> 재고금액 추이(최근12주, 밴드 상/하한 표시) · 카테고리별 재고비중/SKU수/회전율 | <b>클릭:</b> 재고자산/회전율 KPI → SKU별 상세 모달(정렬 가능, 회전율 클릭 시 12개월 판매추이 바차트+회의이력) | <b>CSV:</b> S&OP 재고주간 + 매출월간',
+    'stockout-detail':'<b>확인 가능 지표:</b> 비의도적/의도적 품절 건수 · 굿즈 품절 건수 · 품절 사유별 분포 · 재고소유구분별 분포 | <b>테이블:</b> 비의도적 품절 상세(경과일 내림차순, 30일+ 빨강) · 의도적 품절(졸업/시즌/효율화) · 변경사유 전문 표시 | <b>CSV:</b> 품절리스트 (sales_status_history)',
+    'purchase-review':'<b>확인 가능 지표:</b> 전체 검토건수 · 미확정 계획금액 · 확정 매입금액 | <b>필터:</b> 전체/미확정/확정 상태 전환 | <b>테이블:</b> 파츠명·번호 · 재고수량 · 계획/확정 수량 · 결정상태/사항 · 회의명 | <b>CSV:</b> 매입검토현황 (S&OP purchase_review)',
+    'season-plan':'<b>확인 가능 지표:</b> 구매팀 희망금액 · S&OP 확정금액 · 확정 입력률 | <b>탭:</b> 전체요약 + 계획구분별 탭(국내생산/직소싱/중개소싱 등) | <b>테이블:</b> 굿즈명 · 옵션 · 24Q4/25Q4/26Q4예상 판매 · 매입희망수량 · S&OP 확정(입력 가능, localStorage 저장) · 단가 | <b>CSV:</b> 시즌재고계획 (시즌매입_파츠연결)',
+    eoq:'<b>확인 가능 지표:</b> 발주필요 SKU수 · 긴급발주 대상수 · 평균EOQ | <b>테이블:</b> 파츠별 현재고 · 일평균수요 · EOQ(경제적발주량) · ROP(재발주점) · 안전재고 · ROP도달까지 일수 | <b>파라미터:</b> 1회발주비용(기본5만) · 보관비율(20%) · 리드타임(14일) · 안전재고(7일) | <b>CSV:</b> S&OP 재고주간 + 매출월간',
+    graduation:'<b>확인 가능 지표:</b> 졸업후보 품목수 · 해당 재고금액 | <b>조건:</b> 3M회전율 < 0.1 + 관리대상Y | <b>테이블:</b> 파츠명 · 카테고리 · 잔여재고 · 재고금액 · 3M판매량 · 회전율 · 권장조치(운영종료/졸업/모니터링) | <b>CSV:</b> S&OP 재고주간',
+    order:'<b>확인 가능 지표:</b> 전체 제품 발주량(내림차순, 제한없음) + MoM(전월대비) + YoY(전년대비) 증감률 | <b>탭:</b> 발주량전체 · Bottom20 · 프로젝트별매입 · 발주빈도Top20 · 발주Task(입하경과일 자동산출) | <b>CSV:</b> 발주_RAW',
+    purchase:'<b>확인 가능 지표:</b> 협력사별 매입금액 Top10 · 제조유형 분포 · 업태별/인쇄유형별 매입금액 | <b>테이블:</b> 협력사별 매입상세 Top20(비중 프로그레스바) | <b>CSV:</b> 발주_RAW + 공급망_RAW',
+    'cost-analysis':'<b>월별 요약:</b> 매출/원가 추이 바차트 · 원가율 추이 라인차트 · 월별 매출/원가/원가율/마진 테이블 | <b>프로젝트별 상세:</b> 프로젝트 선택 → 매출/투입원가/원가율 KPI · TASK별 실제단가 vs 공정DB 표준단가 비교(표준대비%) · Movement 재고투입 · 공정DB 참조 테이블 | <b>CSV:</b> 발주_RAW + (선택)원가/Movement | <b>임베딩:</b> cost_db.json 공정DB',
+    issue:'<b>확인 가능 지표:</b> 이슈 건수(품질/수량/운영) | <b>탭:</b> 전체 · 품질이슈(등급+내용) · 수량이슈(내용+대응) · 운영이슈(내용+개선) | <b>컬럼:</b> 입하일 · 프로젝트 · 제품 · 담당자 · 유형 · 내용 · <b>대응</b>(품질등급의견판단사유_SCM) · <b>실패비용</b>(재제작 취득원가) | <b>CSV:</b> 이슈_RAW + 발주_RAW(실패비용)',
+    customer:'<b>확인 가능 지표:</b> 연도별 고객인지이슈 추이 · 작성자별 건수 | <b>모달:</b> 이슈내용 + 실패비용(재제작 취득원가) | <b>차트:</b> 연도별 바차트 · 작성자별 바차트 | <b>CSV:</b> 고객인지이슈_RAW + 발주_RAW(실패비용)',
+    sales:'<b>확인 가능 지표:</b> 월매출 · 평균마진율 · 총주문수량 | <b>차트:</b> 월별매출추이(바) · 제품별매출비중(도넛) | <b>테이블:</b> 제품명 · 주문수량 · 판매단가 · 소계 · 원가율(공정DB 기반) · 추정마진율 | <b>CSV:</b> 판매주문 | <b>임베딩:</b> cost_db.json',
+    'product-trend':'<b>확인 가능 지표:</b> 제품별(SKU) 월간 판매량 추이 Top10 멀티라인차트 | <b>테이블:</b> 제품명 · 누적판매량 · 월평균 · 최근6개월 월별 수치 | <b>CSV:</b> S&OP 매출월간 또는 판매주문',
+    supplier:'<b>확인 가능 지표:</b> 총 협력사수 · 턴키제작/단순구매 수 | <b>테이블:</b> 협력사명 · 업태 · 제조유형 · 인쇄 · 담당MD · 결제조건 · 상태 | <b>검색:</b> 협력사명 실시간 검색 | <b>CSV:</b> 공급망_RAW',
+    'supplier-product':'<b>확인 가능 지표:</b> 제조유형 × 굿즈코드 발주 매트릭스(히트맵) | <b>셀:</b> 발주건수(색상강도=건수비례), hover시 매입금액 표시 | <b>CSV:</b> 발주_RAW + 공급망_RAW',
+    qms:'<b>확인 가능 지표:</b> 총 품질이슈 · COPQ총액 · QI(초기품질)/QC(양산통제)/QA(고객보증) 분과별 건수 | <b>차트:</b> 이슈유형 파레토(바) · QI/QC/QA 비중(도넛) · 월별COPQ추이(바+라인) | <b>CSV:</b> QMS 품질데이터 또는 이슈_RAW',
+    subcontract:'<b>확인 가능 지표:</b> 총 위험건수 · 최대지연일 · 위험협력사수 | <b>자동산출:</b> 발주_RAW 입하경과일(입하확정일/예정일 기준) + 공급망_RAW 하도급대상여부=대상 + 미입하 + 90일초과 | <b>필터:</b> 전체/90일+/120일+/180일+ | <b>CSV:</b> 발주_RAW + 공급망_RAW (별도 CSV 불필요)',
+    stock:'<b>확인 가능 지표:</b> 전체 품절수 · 비의도적 품절(납기지연/공급부족) · 의도적 품절(졸업/시즌/효율화) · 굿즈품절 | <b>필터:</b> 판매상태별(일시품절/품절예정/의도적 품절) | <b>테이블:</b> 파츠명/굿즈 · 판매상태 · 재고소유 · 품절성격/사유 · 변경일 · 경과일 · 굿즈품절여부 | <b>CSV:</b> 품절리스트',
+    ai:'<b>사용법:</b> 협력사명 입력 → 발주현황/매입금액/3개월추이/품질이슈 분석 | 긴급 → 긴급발주 목록 | 미입하/task → 미입하현황 | 전월/매입 → 전월대비 비교 | 담당자명 → 개인 실적 | <b>CSV:</b> 발주_RAW + 이슈_RAW + 공급망_RAW',
+    report:'<b>기능:</b> 주간리포트 .md 생성(발주/이슈 자동 요약) · KPI 요약 CSV 내보내기 · 월간 대시보드 링크 · GitHub 저장소 링크',
+  };
   document.getElementById('page-title').innerHTML=`${titles[id]||id}<span class="topbar-badge" id="page-month-badge">${SEL_MONTH?fmtMonth(SEL_MONTH):''}</span>`;
+  const guideEl=document.getElementById('page-guide');
+  if(guideEl){const g=guides[id];if(g){guideEl.innerHTML=g;guideEl.style.display='';}else{guideEl.style.display='none';}}
   if (id==='overview') renderIssueLegend();
   if (id==='purchase') updatePurchaseTabs();
   if (id==='customer') renderCICharts();
