@@ -348,11 +348,11 @@ a{color:var(--blue);text-decoration:none}
       </div>
       <!-- Collapsible detail area -->
       <div id="upload-detail" style="display:none;margin-top:10px">
-        <div class="upload-row-label">필수 운영 데이터 — Airtable SCM KPI 뷰에서 CSV Export (주 1회)</div>
-        <div class="upload-row" id="upload-row-gen"></div>
-        <div class="upload-row-label">S&OP 재고운영 — Google Sheets S&OP 대시보드에서 CSV Export (필요시)</div>
-        <div class="upload-row" id="upload-row-sop"></div>
-        <div class="upload-row-label">선택 — 추가 분석 데이터 (해당 기능 사용 시만)</div>
+        <div class="upload-row-label" style="color:var(--purple)">외주생산파트 — Airtable SCM KPI 뷰에서 CSV Export (주 1회)</div>
+        <div class="upload-row" id="upload-row-prod"></div>
+        <div class="upload-row-label" style="color:var(--blue)">구매전략파트 — Google Sheets S&OP 대시보드에서 CSV Export (필요시)</div>
+        <div class="upload-row" id="upload-row-buy"></div>
+        <div class="upload-row-label">공통 · 선택 — 추가 분석 데이터</div>
         <div class="upload-row" id="upload-row-etc"></div>
       </div>
     </div>
@@ -751,7 +751,7 @@ a{color:var(--blue);text-decoration:none}
 // ===== DATA =====
 const D = {order:null,issue:null,sup:null,ci:null,stockout_list:null,sales:null,inv_weekly:null,sales_monthly:null,purchase_review:null,season_plan:null,qms_raw:null,cost_reduction:null};
 // Legacy keys kept as computed views (not uploaded)
-Object.defineProperty(D,'task',{get(){return null;},set(){}});
+Object.defineProperty(D,'task',{get(){return D.order;},set(){}});
 Object.defineProperty(D,'subcontract',{get(){return null;},set(){}});
 Object.defineProperty(D,'sup_master',{get(){return D.sup;},set(){}});
 Object.defineProperty(D,'order_full',{get(){return D.order;},set(){}});
@@ -1114,21 +1114,24 @@ function showValidationBanner(key,rows,warns) {
 
 // ===== UPLOAD ZONE CONFIG =====
 const UPLOAD_SLOTS=[
-  {key:'order',icon:'📦',label:'발주_RAW',src:'Airtable SCM KPI → task-SCMKPI_Raw 뷰 (연간)',fields:'과업지시일자, 발주번호, 산출물, 공급가액, 수주처, 입하예정일, 입하확정일, 실제입하일, 취득원가, R) 판매가(최종)',row:'gen'},
-  {key:'issue',icon:'⚠️',label:'이슈_RAW',src:'Airtable SCM KPI → KPI_이슈_RAW 뷰',fields:'이슈카테고리, 실제입하일, project_name',row:'gen'},
-  {key:'sup',icon:'🏭',label:'공급망_RAW',src:'Airtable 공급망 관리 → 공급망_RAW 뷰',fields:'협력사 이름, 1. 제조유형, 업태, 하도급계약 대상여부',row:'gen'},
-  {key:'ci',icon:'💬',label:'고객인지이슈',src:'Airtable SCM KPI → 고객인지이슈_RAW 뷰',fields:'등록일자, 이슈내용, 프로젝트명',row:'gen'},
-  {key:'inv_weekly',icon:'📅',label:'S&OP 재고주간',src:'GSheets S&OP → inventory_weekly 시트',fields:'파츠번호, 기준일, 재고수량, 재고금액',row:'sop'},
-  {key:'sales_monthly',icon:'📈',label:'S&OP 매출월간',src:'GSheets S&OP → sales_monthly 시트',fields:'파츠번호, 기준월, 판매량',row:'sop'},
-  {key:'purchase_review',icon:'🔍',label:'매입검토현황',src:'GSheets S&OP → purchase_review 시트',fields:'REVIEW_ID, 파츠번호, 결정상태',row:'sop'},
-  {key:'season_plan',icon:'🗓️',label:'시즌재고계획',src:'GSheets S&OP → 시즌매입_파츠연결 시트',fields:'굿즈명, 옵션, 계획구분',row:'sop'},
-  {key:'stockout_list',icon:'🚫',label:'품절리스트',src:'Airtable → sales_status_history 뷰',fields:'파츠명, 판매상태, 품절 성격, 변경일, 재고소유구분',row:'etc'},
-  {key:'sales',icon:'💰',label:'판매주문',src:'GSheets SUPER BASE (선택)',fields:'제품명, 주문수량, 판매단가, 소계',row:'etc'},
-  {key:'qms_raw',icon:'🔬',label:'QMS 품질',src:'Airtable SCM KPI → 품질이슈 뷰 (선택)',fields:'발생일, 이슈유형, 파츠번호',row:'etc'},
-  {key:'cost_reduction',icon:'💹',label:'원가/Movement',src:'Airtable → Movement 재고투입 데이터 (선택)',fields:'project, 출고자재, 수량, 실제단가, 기준발주일',row:'etc'},
+  // 외주생산파트
+  {key:'order',icon:'📦',label:'발주_RAW',src:'Airtable SCM KPI → task-SCMKPI_Raw 뷰 (연간)',fields:'과업지시일자, 발주번호, 산출물, 공급가액, 수주처',row:'prod'},
+  {key:'issue',icon:'⚠️',label:'이슈_RAW',src:'Airtable SCM KPI → KPI_이슈_RAW 뷰',fields:'이슈카테고리, 실제입하일, project_name',row:'prod'},
+  {key:'sup',icon:'🏭',label:'공급망_RAW',src:'Airtable 공급망 관리 → 공급망_RAW 뷰',fields:'협력사 이름, 1. 제조유형, 하도급계약 대상여부',row:'prod'},
+  {key:'ci',icon:'💬',label:'고객인지이슈',src:'Airtable SCM KPI → 고객인지이슈_RAW 뷰',fields:'등록일자, 이슈내용, 프로젝트명',row:'prod'},
+  // 구매전략파트
+  {key:'inv_weekly',icon:'📅',label:'S&OP 재고주간',src:'GSheets S&OP → inventory_weekly',fields:'파츠번호, 기준일, 재고수량, 재고금액',row:'buy'},
+  {key:'sales_monthly',icon:'📈',label:'S&OP 매출월간',src:'GSheets S&OP → sales_monthly',fields:'파츠번호, 기준월, 판매량',row:'buy'},
+  {key:'purchase_review',icon:'🔍',label:'매입검토현황',src:'GSheets S&OP → purchase_review',fields:'REVIEW_ID, 파츠번호, 결정상태',row:'buy'},
+  {key:'season_plan',icon:'🗓️',label:'시즌재고계획',src:'GSheets S&OP → 시즌매입_파츠연결',fields:'굿즈명, 옵션, 계획구분',row:'buy'},
+  // 공통 · 선택
+  {key:'stockout_list',icon:'🚫',label:'품절리스트',src:'Airtable → sales_status_history',fields:'파츠명, 판매상태, 품절 성격',row:'etc'},
+  {key:'sales',icon:'💰',label:'판매주문',src:'GSheets SUPER BASE',fields:'제품명, 주문수량, 판매단가, 소계',row:'etc'},
+  {key:'qms_raw',icon:'🔬',label:'QMS 품질',src:'Airtable SCM KPI → 품질이슈 뷰',fields:'발생일, 이슈유형, 파츠번호',row:'etc'},
+  {key:'cost_reduction',icon:'💹',label:'원가/Movement',src:'Airtable → Movement 재고투입',fields:'project, 출고자재, 수량, 실제단가',row:'etc'},
 ];
 function buildUploadZones() {
-  const rows={gen:[],base:[],sop:[],etc:[]};
+  const rows={prod:[],buy:[],etc:[]};
   UPLOAD_SLOTS.forEach(s=>{rows[s.row].push(s);});
   Object.entries(rows).forEach(([rowKey,slots])=>{
     const el=document.getElementById('upload-row-'+rowKey);
@@ -1640,15 +1643,19 @@ function updateSalesSection() {
   const prods=new Set(f.map(r=>r['제품명'])).size;
   setValue('sl-prod-cnt',`${prods}개 제품`);
   document.getElementById('sl-month-label').textContent=fmtMonth(mo);
-  // Margin calc: join with cost_rate
-  const costMap={};
-  if (D.cost_rate) D.cost_rate.forEach(r=>{ costMap[r['제품명']]={ cr: pa(r['원가율_300']||'0') }; });
+  // Margin calc: 공정DB 표준단가 기반 원가율 산출 (D.cost_rate 대체)
   let marginSum=0, marginCnt=0;
   const html=f.sort((a,b)=>pa(b['소계'])-pa(a['소계'])).map((r,i)=>{
     const prod=r['제품명']||'—';
     const sub=pa(r['소계']);
-    const cr=costMap[prod]?.cr||0;
-    const marginRate=cr>0?(1-cr/100)*100:null;
+    const qty=pa(r['주문수량'])||1;
+    // 굿즈코드 추출 → 공정DB에서 원가 산출
+    const gc=prod.match(/^[A-Z]{4}/)?prod.match(/^([A-Z]{4})/)[1]:'';
+    const costData=gc?calcProjectCost(gc,qty):{total:0};
+    const unitCost=costData.total>0?Math.round(costData.total/qty):0;
+    const estCost=unitCost*qty;
+    const cr=sub>0&&estCost>0?(estCost/sub*100):0;
+    const marginRate=cr>0?(100-cr):null;
     if (marginRate!==null) { marginSum+=marginRate; marginCnt++; }
     return `<tr><td class="rank">${i+1}</td><td>${esc(prod)}</td><td class="num">${pa(r['주문수량']).toLocaleString()}</td><td class="num">${faFull(pa(r['판매단가']))}</td><td class="num">${faFull(sub)}</td><td class="num">${cr>0?cr.toFixed(1)+'%':'—'}</td><td class="num" style="color:${marginRate!==null&&marginRate>30?'var(--green)':'inherit'}">${marginRate!==null?marginRate.toFixed(1)+'%':'—'}</td></tr>`;
   }).join('');
