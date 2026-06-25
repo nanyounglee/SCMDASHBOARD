@@ -1,0 +1,299 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<title>SCM 통합운영 대시보드 v4 — 데이터 로직 설명서</title>
+<style>
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{font-family:-apple-system,BlinkMacSystemFont,'Apple SD Gothic Neo','Noto Sans KR',sans-serif;font-size:13px;color:#1a1a1a;background:#fff;padding:40px 48px;line-height:1.7}
+  .container{max-width:850px;margin:0 auto}
+  h1{font-size:22px;font-weight:700;margin-bottom:6px;color:#111}
+  h2{font-size:16px;font-weight:700;margin:28px 0 10px;padding-bottom:5px;border-bottom:2px solid #e0e0dc;color:#111}
+  h3{font-size:14px;font-weight:600;margin:18px 0 8px;color:#333}
+  p{margin:4px 0 10px;color:#444}
+  .meta{font-size:12px;color:#888;margin-bottom:24px}
+  table{width:100%;border-collapse:collapse;font-size:12px;margin:8px 0 16px}
+  th{background:#f5f5f3;padding:8px 10px;text-align:left;font-weight:600;color:#444;border:1px solid #e0e0dc;white-space:nowrap}
+  td{padding:8px 10px;border:1px solid #e8e8e4;vertical-align:top;color:#333}
+  .code{font-family:'Consolas','Courier New',monospace;font-size:11px;background:#f8f8f5;border:1px solid #e0e0dc;border-radius:4px;padding:10px 14px;margin:6px 0 14px;white-space:pre-wrap;line-height:1.5;color:#333}
+  .badge{display:inline-block;font-size:10px;font-weight:600;padding:2px 8px;border-radius:4px;margin-right:4px}
+  .b-blue{background:#e8f0fd;color:#1a56c7}
+  .b-green{background:#e0f5ec;color:#0a6e45}
+  .b-amber{background:#fef3dc;color:#8a5200}
+  .b-red{background:#fde8e8;color:#c72222}
+  .b-purple{background:#f0e8fd;color:#6b21a8}
+  .b-gray{background:#f0efea;color:#666}
+  .note{background:#f5f5f3;border-left:3px solid #d0d0c8;border-radius:0 6px 6px 0;padding:10px 14px;font-size:12px;color:#666;margin:10px 0 16px;line-height:1.6}
+  .section-num{color:#1a56c7;font-weight:700;margin-right:6px}
+  ul{padding-left:20px;margin:4px 0 12px}
+  li{margin-bottom:3px}
+  .page-break{page-break-before:always;margin-top:40px}
+  @media print{body{padding:20px 24px}h2{page-break-after:avoid}.page-break{page-break-before:always}}
+</style>
+</head>
+<body>
+<div class="container">
+
+<h1>SCM 통합운영 대시보드 v4</h1>
+<p style="font-size:15px;font-weight:600;color:#555">데이터 로직 설명서</p>
+<div class="meta">
+  버전: v4.0 | 작성일: 2026-06-25 | 작성: SCM실 · Claude AI<br>
+  대상: 구매전략파트 · 외주생산파트 팀원 공유, 유지보수, 데이터 매핑 참조
+</div>
+
+<!-- ============================================================ -->
+<h2><span class="section-num">1.</span> 시스템 개요</h2>
+
+<h3>1-1. 아키텍처</h3>
+<p>단일 HTML 파일 (<code>scm_dashboard_v4.html</code>)로 동작하는 완전 오프라인 대시보드.</p>
+<table>
+  <tr><th>항목</th><th>내용</th></tr>
+  <tr><td>서버</td><td>없음 (브라우저 JS만으로 동작)</td></tr>
+  <tr><td>데이터 입력</td><td>CSV 업로드 (Airtable/Google Sheets Export) + 영구 임베딩 JSON</td></tr>
+  <tr><td>차트</td><td>Chart.js 4.4.1 CDN</td></tr>
+  <tr><td>저장</td><td>localStorage (매입검토 편집, 시즌계획 확정수량, EOQ 파라미터, JSON 캐시)</td></tr>
+  <tr><td>배포</td><td>GitHub Pages — https://nanyounglee.github.io/SCMDASHBOARD/</td></tr>
+</table>
+
+<h3>1-2. 대상 사용자</h3>
+<table>
+  <tr><th>파트</th><th>주요 활용 페이지</th></tr>
+  <tr><td><span class="badge b-blue">구매전략</span></td><td>재고운영현황, 품절상세, 매입검토, 시즌재고계획, EOQ·발주알람, 졸업검토, 매출/마진</td></tr>
+  <tr><td><span class="badge b-purple">외주생산</span></td><td>발주현황, 매입현황, 원가분석, 이슈현황, 고객인지이슈, 협력사현황, 하도급법위험</td></tr>
+  <tr><td><span class="badge b-green">공통</span></td><td>종합현황, 매출분석, 제품별판매량추이, 품질현황(QMS), AI어시스턴트, 리포트생성</td></tr>
+</table>
+
+<!-- ============================================================ -->
+<h2 class="page-break"><span class="section-num">2.</span> 데이터 입력 구조</h2>
+
+<h3>2-1. CSV 업로드 (12개 슬롯)</h3>
+<table>
+  <tr><th>구분</th><th>Key</th><th>파일명</th><th>출처</th><th>주기</th><th>필수 컬럼</th></tr>
+  <tr><td rowspan="4"><span class="badge b-red">필수</span></td><td>order</td><td>발주_RAW</td><td>Airtable SCM KPI → task-SCMKPI_Raw 뷰</td><td>주 1회</td><td>과업지시일자, 발주번호, 산출물, 공급가액, 수주처, 입하예정일, 입하확정일, 실제입하일, 취득원가, R) 판매가(최종)</td></tr>
+  <tr><td>issue</td><td>이슈_RAW</td><td>Airtable SCM KPI → KPI_이슈_RAW 뷰</td><td>주 1회</td><td>이슈카테고리, 실제입하일, project_name, 품질등급의견판단사유_SCM</td></tr>
+  <tr><td>sup</td><td>공급망_RAW</td><td>Airtable 공급망 관리 → 공급망_RAW 뷰</td><td>월 1회</td><td>협력사 이름, 1. 제조유형, 업태, 하도급계약 대상여부</td></tr>
+  <tr><td>ci</td><td>고객인지이슈_RAW</td><td>Airtable SCM KPI → 고객인지이슈_RAW 뷰</td><td>주 1회</td><td>등록일자, 이슈내용, 프로젝트명</td></tr>
+  <tr><td rowspan="4"><span class="badge b-blue">S&OP</span></td><td>inv_weekly</td><td>S&OP 재고주간</td><td>GSheets S&OP → inventory_weekly</td><td>필요시</td><td>파츠번호, 기준일, 재고수량, 재고금액</td></tr>
+  <tr><td>sales_monthly</td><td>S&OP 매출월간</td><td>GSheets S&OP → sales_monthly</td><td>필요시</td><td>파츠번호, 기준월, 판매량</td></tr>
+  <tr><td>purchase_review</td><td>매입검토현황</td><td>GSheets S&OP → purchase_review</td><td>필요시</td><td>REVIEW_ID, 파츠번호, 결정상태</td></tr>
+  <tr><td>season_plan</td><td>시즌재고계획</td><td>GSheets S&OP → 시즌매입_파츠연결</td><td>필요시</td><td>굿즈명, 옵션, 계획구분</td></tr>
+  <tr><td rowspan="4"><span class="badge b-gray">선택</span></td><td>stockout_list</td><td>품절리스트</td><td>Airtable → sales_status_history</td><td>필요시</td><td>파츠명, 판매상태, 품절 성격</td></tr>
+  <tr><td>sales</td><td>판매주문</td><td>GSheets SUPER BASE</td><td>필요시</td><td>제품명, 주문수량, 판매단가, 소계</td></tr>
+  <tr><td>qms_raw</td><td>QMS 품질데이터</td><td>Airtable SCM KPI</td><td>필요시</td><td>발생일, 이슈유형, 파츠번호</td></tr>
+  <tr><td>cost_reduction</td><td>원가/Movement</td><td>Airtable Movement 데이터</td><td>필요시</td><td>project, 출고자재, 수량, 실제단가</td></tr>
+</table>
+
+<h3>2-2. 영구 임베딩 JSON (업로드 불필요)</h3>
+<table>
+  <tr><th>파일</th><th>크기</th><th>내용</th><th>갱신 방법</th></tr>
+  <tr><td>parts_master.json</td><td>834KB</td><td>파츠 마스터 2,749개 — 코드, 파츠명, 카테고리, 협력사, 수량별 표준원가(500/1000개), MOQ, 리드타임, 제조국 등 18필드</td><td>"파츠 마스터 갱신" 버튼 → 새 CSV 업로드 시 localStorage 업데이트</td></tr>
+  <tr><td>data_2025.json</td><td>45KB</td><td>2025년 월별 사전집계 — 발주TASK(전체/프로젝트/재고생산/긴급), 매입금액(총액+협력사별+업태별+굿즈코드별), 이슈(총/품질/수량/운영), 담당자별 발주</td><td>연 1회 — 연도 마감 후 재생성</td></tr>
+  <tr><td>cost_db.json</td><td>1.3MB</td><td>공정DB 1,623개 + 단가DB 3,549개 — 굿즈코드별 공정 구성, 수량별 표준단가 10구간(1~30,000개), 제조유형, 인쇄유형</td><td>공정/단가 변경 시 재생성</td></tr>
+</table>
+
+<h3>2-3. CSV 자동 인식 (통합 드래그앤드롭)</h3>
+<p>CSV 헤더의 컬럼명 패턴으로 12종 중 어느 파일인지 자동 판별합니다.</p>
+<div class="code">// must: 모든 컬럼이 있어야 매칭 / not: 하나라도 있으면 매칭 제외
+FILE_SIGNATURES = {
+  purchase_review: { must: ['REVIEW_ID','파츠번호','결정상태'] },
+  season_plan:     { must: ['굿즈명','옵션','계획구분'] },
+  inv_weekly:      { must: ['파츠번호','기준일','재고수량','재고금액'] },
+  stockout_list:   { must: ['파츠명','판매상태','품절 성격'] },
+  order:           { must: ['과업지시일자','발주번호'] },
+  issue:           { must: ['이슈카테고리'], not: ['판매상태','총재고수량'] },
+  sup:             { must: ['협력사 이름','1. 제조유형'] },
+  ci:              { must: ['등록일자','이슈내용','프로젝트명'], not: ['이슈카테고리'] },
+  ...
+}</div>
+
+<!-- ============================================================ -->
+<h2 class="page-break"><span class="section-num">3.</span> 핵심 파싱 로직</h2>
+
+<h3>3-1. 발주 TASK 카운트 (KPI #1)</h3>
+<div class="code">기준: 과업지시일자 월 기준 행 카운트
+재고생산 판별: movement_산출이동에 '재고' 포함 또는 project에 '재고' 포함
+프로젝트 발주 = 전체 - 재고생산
+긴급 발주: 긴급여부 === '긴급' AND 수주처 !== '서울디지털인쇄협동조합'</div>
+
+<h3>3-2. 월 매입금액 (KPI #2) — 세금계산서 분할 처리</h3>
+<div class="code">function purchaseByMonth(row):
+  1. 세금계산서작성월 (from 지출결의) 파싱 → 월 배열
+     예: "25년 6월, 25년 7월" → ["2025.6", "2025.7"]
+  2. 단일 월: 공급가액 전체 배정
+  3. 분할 월: 합계_분할 필드의 월별 금액 사용
+     없거나 모두 0이면 공급가액을 월수로 균등 분할
+  → 한 발주건이 2개월에 걸쳐 있어도 월별로 정확히 분리</div>
+
+<h3>3-3. 입하경과일 자동 산출 (하도급법 연동)</h3>
+<div class="code">function calcElapsedDays(row):
+  기준일 = 입하확정일 (from movement_산출물) || 입하예정일 (from movement_산출물)
+  종료일 = 실제입하일 (from movement) || 오늘
+  경과일 = (종료일 - 기준일) / 86400000
+
+하도급법 위험 판별:
+  공급망_RAW의 하도급계약 대상여부 === '대상'
+  AND 미입하 (실제입하일 비어있음)
+  AND 경과일 >= 90일</div>
+
+<h3>3-4. 원가 자동 산출 (파츠마스터 + 공정DB)</h3>
+<div class="code">1. sync_itemdb 필드에서 파츠코드 추출 (정규식: [A-Z]{4}_PT\d+)
+2. 파츠코드 → parts_master.json에서 수량별 단가 조회
+3. 발주수량에 해당하는 구간단가 선택 (1/50/100/300/500/1000/...)
+4. 제품원가 = Σ(파츠별 구간단가 × 수량)
+
+프로젝트 원가 분석:
+  - cost_db.json의 공정DB에서 굿즈코드로 공정 목록 조회
+  - 각 공정의 표준단가 vs 실제 공급가액 비교 → 표준 대비(%) 산출
+  - 마진율 = (판매가 - 투입원가) / 판매가</div>
+
+<h3>3-5. 실패비용 산출</h3>
+<div class="code">function getReworkCostForProject(projName):
+  발주_RAW에서 project가 동일한 프로젝트의 행 중
+  task_id에 '재제작' 문자열이 포함된 행의 취득원가 합계
+
+적용 위치:
+  - 이슈 현황 (sec-issue) 전체/품질/수량/운영 탭
+  - 고객인지이슈 모달 (openModal 'ci')
+  - 이슈 모달 (openModal 'issue')</div>
+
+<h3>3-6. 전년 동기 비교 (YoY)</h3>
+<div class="code">data_2025.json에서 전년 동월 사전집계 데이터 조회 (CSV 업로드 불필요)
+
+get2025Month('2025.6') → {tasks:925, proj:874, stock:51, urgent:185, purchase:316712760, ...}
+get2025Issue('2025.6') → {total:76, q:52, n:12, o:13}
+
+KPI 카드에 "+15% YoY" / "-8% YoY" 배지 표시
+증가=빨강, 감소=초록</div>
+
+<h3>3-7. 전월 대비 (MoM)</h3>
+<div class="code">function getPrevMonth('2026.6') → '2026.5'
+function getPrevMonth('2026.1') → '2025.12'  // 연도 넘김
+
+발주현황 Top 탭:
+  제품별 발주수량의 전월 동일 제품 수량 대비 증감률
+  MoM 컬럼: "+25%" / "-10%"</div>
+
+<!-- ============================================================ -->
+<h2 class="page-break"><span class="section-num">4.</span> 페이지별 데이터 흐름</h2>
+
+<h3>4-1. 종합 현황 (overview)</h3>
+<table>
+  <tr><th>요소</th><th>데이터 소스</th><th>산출 로직</th></tr>
+  <tr><td>발주 TASK KPI</td><td>D.order</td><td>과업지시일자 월 필터 → 프로젝트/재고 분리 → 긴급 카운트 (서울디지털인쇄 제외)</td></tr>
+  <tr><td>월 매입금액 KPI</td><td>D.order</td><td>purchaseByMonth() 세금계산서 월 기준 합산</td></tr>
+  <tr><td>이슈 건수 KPI</td><td>D.issue</td><td>실제입하일/입하예정일 월 필터 → 품질/수량/운영 중복 카운트</td></tr>
+  <tr><td>긴급 발주 KPI</td><td>D.order</td><td>긴급여부==='긴급' AND 수주처!==서울디지털인쇄협동조합</td></tr>
+  <tr><td>고객인지 이슈 KPI</td><td>D.ci</td><td>등록일자 월 필터</td></tr>
+  <tr><td>모든 KPI</td><td>data_2025.json</td><td>전년 동월 YoY 비교 배지</td></tr>
+  <tr><td>매입 추이 차트</td><td>D.order</td><td>합산/협력사별/업태별/굿즈코드별 4종 뷰, 월별/주별 토글</td></tr>
+  <tr><td>제조유형 매입비중</td><td>D.order + D.sup</td><td>제조유형별/업태별/굿즈카테고리별 3종 도넛 차트</td></tr>
+</table>
+
+<h3>4-2. 발주 현황 (order)</h3>
+<table>
+  <tr><th>탭</th><th>로직</th></tr>
+  <tr><td>전체 제품 발주량</td><td>산출물별 발주수량 합산 → 내림차순 전체 표시 + MoM/YoY 증감률</td></tr>
+  <tr><td>Bottom 20</td><td>발주수량 오름차순 하위 20 (미발주=0 포함)</td></tr>
+  <tr><td>프로젝트별 매입</td><td>project 필드 기준 공급가액 합산 (purchaseByMonth 분할합산)</td></tr>
+  <tr><td>발주빈도 Top 20</td><td>산출물별 발주 건수 내림차순</td></tr>
+  <tr><td>발주 Task</td><td>calcElapsedDays()로 경과일 산출, isArrived()로 입하 판별</td></tr>
+</table>
+
+<h3>4-3. 이슈 현황 (issue)</h3>
+<table>
+  <tr><th>컬럼</th><th>소스 필드</th></tr>
+  <tr><td>입하일</td><td>실제입하일 || 입하예정일</td></tr>
+  <tr><td>프로젝트</td><td>project_name</td></tr>
+  <tr><td>제품</td><td>item (통합) (from order)</td></tr>
+  <tr><td>카테고리</td><td>이슈카테고리 (품질/수량/운영 태그)</td></tr>
+  <tr><td>내용</td><td>품질이슈내용 / 수량이슈내용 / 운영이슈내용(by물류)</td></tr>
+  <tr><td>대응</td><td>품질등급의견판단사유_SCM</td></tr>
+  <tr><td>실패비용</td><td>getReworkCostForProject() — 동일 프로젝트 재제작 task 취득원가 합계</td></tr>
+</table>
+
+<h3>4-4. 원가 분석 (cost-analysis)</h3>
+<table>
+  <tr><th>뷰</th><th>내용</th></tr>
+  <tr><td>월별 원가 요약</td><td>월별 매출액(R) 판매가(최종)) vs 투입원가(공급가액) 추이 + 원가율</td></tr>
+  <tr><td>프로젝트별 상세</td><td>프로젝트 선택 → TASK별 실제단가 vs 공정DB 표준단가 비교, Movement 재고투입, 마진율</td></tr>
+</table>
+<div class="note">
+  프로젝트별 원가율 = 공급가액 합계 / R) 판매가(최종) 합계 × 100<br>
+  표준 대비(%) = (실제단가 - 표준단가) / 표준단가 × 100 — 음수=저렴(초록), 양수=비쌈(빨강)<br>
+  확인된 원가율은 최솟값이며, 미매칭 자재·내부공정·물류비·보관비 미포함
+</div>
+
+<h3>4-5. 하도급법 위험 (subcontract)</h3>
+<div class="code">소스: D.order + D.sup (CSV 2개에서 자동 산출, 별도 CSV 불필요)
+
+1. D.sup에서 '하도급계약 대상여부' === '대상'인 협력사 목록 추출
+2. D.order에서 해당 협력사의 발주 중 미입하 건 필터
+3. calcElapsedDays()로 경과일 산출
+4. 경과일 >= 90일 → 하도급법 위험 행으로 표시
+5. 경과일 필터: 전체 / 90일+ / 120일+ / 180일+</div>
+
+<h3>4-6. 품절 현황 (stock / stockout-detail)</h3>
+<table>
+  <tr><th>필드</th><th>CSV 컬럼</th><th>용도</th></tr>
+  <tr><td>파츠명</td><td>파츠명</td><td>품목 식별</td></tr>
+  <tr><td>판매상태</td><td>판매상태</td><td>일시품절/품절예정/의도적 품절 분류</td></tr>
+  <tr><td>품절 성격</td><td>품절 성격</td><td>비의도적품절/의도적품절 구분</td></tr>
+  <tr><td>품절 사유</td><td>품절 사유</td><td>비의도적_납기지연, 의도적_졸업예정 등</td></tr>
+  <tr><td>변경일</td><td>변경일(인터페이스용)</td><td>품절 시작일 → 경과일 산출</td></tr>
+  <tr><td>재고소유구분</td><td>재고소유구분 (from sync_parts)</td><td>신시어리/협력사/생산 분류</td></tr>
+  <tr><td>굿즈품절여부</td><td>굿즈품절여부</td><td>checked → 굿즈 단위 전체 품절</td></tr>
+</table>
+
+<!-- ============================================================ -->
+<h2 class="page-break"><span class="section-num">5.</span> 검색 필터 연동</h2>
+
+<p>상단 검색창에 제품명/협력사명/파츠코드를 입력하면 모든 KPI와 차트가 실시간 필터됩니다.</p>
+<div class="code">function matchesSearch(row, query):
+  검색 대상 필드: 산출물, 수주처, 발주번호, sync_item이니셔티브,
+    project, 과업담당자_이름, 파츠유형, project_name,
+    item (통합) (from order), 프로젝트_발주자, 협력사 이름,
+    협력사, 파츠명, 제품명, 프로젝트명, 관련제품
+
+  → 위 필드 중 하나라도 검색어를 포함하면 매칭
+
+적용 범위:
+  - 발주TASK, 매입금액, 이슈건수, 긴급발주, 고객인지이슈 KPI
+  - 담당자별 발주 차트, 매입추이 차트, 제조유형 비중 차트
+  - "(필터 적용)" 텍스트 표시</div>
+
+<!-- ============================================================ -->
+<h2><span class="section-num">6.</span> 주간 업데이트 절차</h2>
+
+<table>
+  <tr><th>단계</th><th>작업</th><th>비고</th></tr>
+  <tr><td>1</td><td>Airtable에서 4개 CSV Export</td><td>발주_RAW, 이슈_RAW, 공급망_RAW, 고객인지이슈_RAW</td></tr>
+  <tr><td>2</td><td>대시보드 접속 또는 로컬 HTML 열기</td><td>https://nanyounglee.github.io/SCMDASHBOARD/</td></tr>
+  <tr><td>3</td><td>통합 드래그앤드롭 영역에 4개 파일 드래그</td><td>자동 인식 — 파일명 무관</td></tr>
+  <tr><td>4</td><td>월 칩 선택 → KPI/차트 확인</td><td>2025 YoY는 자동 표시</td></tr>
+  <tr><td>5</td><td>(선택) S&OP CSV 추가 업로드</td><td>재고운영, 매입검토 등 필요시만</td></tr>
+</table>
+
+<div class="note">
+  파츠마스터(2,749개), 2025년 데이터, 공정DB/단가DB는 영구 임베딩되어 있어 별도 업로드 불필요.<br>
+  변경 시에만 "파츠 마스터 갱신" 버튼 또는 JSON 파일 재생성.
+</div>
+
+<!-- ============================================================ -->
+<h2><span class="section-num">7.</span> 관련 링크</h2>
+<table>
+  <tr><th>리소스</th><th>URL</th></tr>
+  <tr><td>SCM 대시보드</td><td>https://nanyounglee.github.io/SCMDASHBOARD/</td></tr>
+  <tr><td>GitHub 저장소</td><td>https://github.com/nanyounglee/SCMDASHBOARD</td></tr>
+  <tr><td>협력사 변경 대시보드</td><td>https://nanyounglee.github.io/scm_vendor_change/</td></tr>
+  <tr><td>월간 리포트</td><td>https://nanyounglee.github.io/scm-monthly-report/</td></tr>
+  <tr><td>S&OP 대시보드</td><td>Google Apps Script (sincerely.one 내부)</td></tr>
+</table>
+
+<div class="meta" style="margin-top:30px;padding-top:10px;border-top:1px solid #e0e0dc">
+  문서 기준: scm_dashboard_v4.html (2026-06-25) · 3,121줄<br>
+  변경 시 이 문서도 함께 업데이트 바랍니다.
+</div>
+
+</div>
+</body>
+</html>
