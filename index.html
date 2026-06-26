@@ -265,7 +265,16 @@ a{color:var(--blue);text-decoration:none}
     <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M2 14V2M2 12h3V6h3v6h3V4h3v8"/></svg>
     제품별 판매량 추이
   </div>
+  <div class="sb-section">KPI</div>
+  <div class="sb-item" onclick="nav(this,'kpi')">
+    <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M2 14V2M2 12h3V6h3v6h3V4h3v8"/><path d="M2 5l4-2 4 3 4-4" stroke="var(--green)" stroke-dasharray="2 1"/></svg>
+    KPI 목표·트래킹
+  </div>
   <div class="sb-section">공급망</div>
+  <div class="sb-item" onclick="nav(this,'portfolio')">
+    <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="1" y="1" width="14" height="14" rx="1"/><path d="M1 8h14M8 1v14"/></svg>
+    공급망 포트폴리오
+  </div>
   <div class="sb-item" onclick="nav(this,'supplier')">
     <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="1" y="5" width="4" height="7" rx="1"/><rect x="11" y="5" width="4" height="7" rx="1"/><path d="M5 8.5h6M8 5V3M6 3h4"/></svg>
     협력사 현황
@@ -731,6 +740,14 @@ a{color:var(--blue);text-decoration:none}
     <div id="sec-supplier-product" style="display:none">
       <div class="card"><div class="card-header"><div class="card-title">협력사유형별 제품군</div></div><div class="empty">페이지 준비중...</div></div>
     </div>
+    <!-- KPI -->
+    <div id="sec-kpi" style="display:none">
+      <div id="kpi-track-content"><div class="empty">발주_RAW + 이슈_RAW를 업로드하면 KPI가 자동 산출됩니다.</div></div>
+    </div>
+    <!-- PORTFOLIO -->
+    <div id="sec-portfolio" style="display:none">
+      <div id="portfolio-content"><div class="empty">분기별평가 CSV를 업로드하면 공급망 포트폴리오가 표시됩니다.</div></div>
+    </div>
     <!-- QMS -->
     <div id="sec-qms" style="display:none">
       <div class="card"><div class="card-header"><div class="card-title">품질 현황</div></div><div class="empty">페이지 준비중...</div></div>
@@ -750,7 +767,7 @@ a{color:var(--blue);text-decoration:none}
 </div>
 <script>
 // ===== DATA =====
-const D = {order:null,issue:null,sup:null,ci:null,stockout_list:null,sales:null,inv_weekly:null,sales_monthly:null,purchase_review:null,season_plan:null,qms_raw:null,cost_reduction:null};
+const D = {order:null,issue:null,sup:null,ci:null,stockout_list:null,sales:null,inv_weekly:null,sales_monthly:null,purchase_review:null,season_plan:null,qms_raw:null,cost_reduction:null,quarter_eval:null};
 // Legacy keys kept as computed views (not uploaded)
 Object.defineProperty(D,'task',{get(){return D.order;},set(){}});
 Object.defineProperty(D,'subcontract',{get(){return null;},set(){}});
@@ -1120,6 +1137,7 @@ const UPLOAD_SLOTS=[
   {key:'issue',icon:'⚠️',label:'이슈_RAW',src:'Airtable SCM KPI → KPI_이슈_RAW 뷰',fields:'이슈카테고리, 실제입하일, project_name',row:'prod'},
   {key:'sup',icon:'🏭',label:'공급망_RAW',src:'Airtable 공급망 관리 → 공급망_RAW 뷰',fields:'협력사 이름, 1. 제조유형, 하도급계약 대상여부',row:'prod'},
   {key:'ci',icon:'💬',label:'고객인지이슈',src:'Airtable SCM KPI → 고객인지이슈_RAW 뷰',fields:'등록일자, 이슈내용, 프로젝트명',row:'prod'},
+  {key:'quarter_eval',icon:'📊',label:'분기별평가',src:'GSheets 공급망 KPI → 공급망_분기별평가(2026)',fields:'협력사, 1Q_공급망관리등급',row:'prod'},
   // 구매전략파트
   {key:'inv_weekly',icon:'📅',label:'S&OP 재고주간',src:'GSheets S&OP → inventory_weekly',fields:'파츠번호, 기준일, 재고수량, 재고금액',row:'buy'},
   {key:'sales_monthly',icon:'📈',label:'S&OP 매출월간',src:'GSheets S&OP → sales_monthly',fields:'파츠번호, 기준월, 판매량',row:'buy'},
@@ -1188,6 +1206,7 @@ const FILE_SIGNATURES={
   ci:             {must:['등록일자','이슈내용','프로젝트명'],not:['이슈카테고리']},
   sup:            {must:['협력사 이름','1. 제조유형']},
   issue:          {must:['이슈카테고리'],not:['판매상태','총재고수량']},
+  quarter_eval:   {must:['협력사','1Q_TASK 점수','1Q_공급망관리등급']},
   order:          {must:['과업지시일자','발주번호']},
 };
 function detectCSVType(headers) {
@@ -2333,7 +2352,7 @@ function nav(el,id) {
   if (sec) sec.style.display='';
   document.querySelectorAll('.sb-item').forEach(i=>i.classList.remove('active'));
   if (el) el.classList.add('active');
-  const titles={overview:'종합 현황','inventory-ops':'재고운영 현황','stockout-detail':'품절 상세','purchase-review':'매입 검토','season-plan':'시즌재고 계획',eoq:'EOQ · 발주알람',graduation:'졸업 검토',order:'발주 현황',purchase:'매입 현황','cost-analysis':'원가 분석',issue:'이슈 현황',customer:'고객인지 이슈',sales:'매출/마진 분석','product-trend':'제품별 판매량 추이',supplier:'협력사 현황','supplier-product':'협력사유형별 제품군',qms:'품질 현황',subcontract:'하도급법 위험',ai:'AI 어시스턴트',report:'리포트 생성',stock:'재고 현황'};
+  const titles={overview:'종합 현황','inventory-ops':'재고운영 현황','stockout-detail':'품절 상세','purchase-review':'매입 검토','season-plan':'시즌재고 계획',eoq:'EOQ · 발주알람',graduation:'졸업 검토',order:'발주 현황',purchase:'매입 현황','cost-analysis':'원가 분석',issue:'이슈 현황',customer:'고객인지 이슈',sales:'매출/마진 분석','product-trend':'제품별 판매량 추이',supplier:'협력사 현황','supplier-product':'협력사유형별 제품군',kpi:'KPI 목표·트래킹',portfolio:'공급망 포트폴리오',qms:'품질 현황',subcontract:'하도급법 위험',ai:'AI 어시스턴트',report:'리포트 생성',stock:'재고 현황'};
   const guides={
     overview:'<b>확인 가능 지표:</b> 발주TASK(프로젝트/재고생산/긴급) · 월매입금액 · 이슈건수(품질/수량/운영) · 긴급발주 · 고객인지이슈 — 모든 KPI에 전년 동기(YoY) 비교 표시 | <b>차트:</b> 매입추이(월별/주별·합산/협력사/업태/굿즈코드) · 이슈유형 도넛 · 담당자별 발주 · 월별이슈추이 · 제조유형 매입비중(업태/카테고리 전환) | <b>클릭:</b> KPI 카드 클릭 시 상세 모달 · 차트 월 클릭 시 Top5 모달 | <b>CSV:</b> 발주_RAW + 이슈_RAW + 공급망_RAW + 고객인지이슈_RAW',
     'inventory-ops':'<b>확인 가능 지표:</b> 재고자산평가액 · 재고회전율(1M/3M/YTD) · 품절률 · 운영밴드 상태(분기별) | <b>차트:</b> 재고금액 추이(최근12주, 밴드 상/하한 표시) · 카테고리별 재고비중/SKU수/회전율 | <b>클릭:</b> 재고자산/회전율 KPI → SKU별 상세 모달(정렬 가능, 회전율 클릭 시 12개월 판매추이 바차트+회의이력) | <b>CSV:</b> S&OP 재고주간 + 매출월간',
@@ -2350,6 +2369,8 @@ function nav(el,id) {
     sales:'<b>확인 가능 지표:</b> 월매출 · 평균마진율 · 총주문수량 | <b>차트:</b> 월별매출추이(바) · 제품별매출비중(도넛) | <b>테이블:</b> 제품명 · 주문수량 · 판매단가 · 소계 · 원가율(공정DB 기반) · 추정마진율 | <b>CSV:</b> 판매주문 | <b>임베딩:</b> cost_db.json',
     'product-trend':'<b>확인 가능 지표:</b> 제품별(SKU) 월간 판매량 추이 Top10 멀티라인차트 | <b>테이블:</b> 제품명 · 누적판매량 · 월평균 · 최근6개월 월별 수치 | <b>CSV:</b> S&OP 매출월간 또는 판매주문',
     supplier:'<b>확인 가능 지표:</b> 총 협력사수 · 턴키제작/단순구매 수 | <b>테이블:</b> 협력사명 · 업태 · 제조유형 · 인쇄 · 담당MD · 결제조건 · 상태 | <b>검색:</b> 협력사명 실시간 검색 | <b>CSV:</b> 공급망_RAW',
+    kpi:'<b>확인 가능 지표:</b> 납기준수율 · 리드타임 · 품질이슈율 · 검수합격률 · 긴급발주비율 · 재제작률 · 공급망A등급비율 · 가용협력사비율 · 재고회전율 · 품절률 | <b>구조:</b> 5개 영역(납기/품질/비용/공급망/재고) 12개 지표 · 목표 대비 달성률 게이지 · 월별 추이 · 전월 대비 | <b>CSV:</b> 발주_RAW + 이슈_RAW + 공급망_RAW + 고객인지이슈_RAW + S&OP 재고주간 + 품절리스트',
+    portfolio:'<b>확인 가능 지표:</b> 공급망 포트폴리오 4분면(Core/Strategic/Preferred/General) · 등급별(A/B/C) 협력사수·비중 · 분기별 등급 추이 | <b>차트:</b> 매입대금×관리등급 산점도 · 등급분포 도넛 · 분기비교 | <b>테이블:</b> 협력사별 5축 점수·총점·등급·담당자 | <b>CSV:</b> 분기별평가 + 발주_RAW',
     'supplier-product':'<b>확인 가능 지표:</b> 제조유형 × 굿즈코드 발주 매트릭스(히트맵) | <b>셀:</b> 발주건수(색상강도=건수비례), hover시 매입금액 표시 | <b>CSV:</b> 발주_RAW + 공급망_RAW',
     qms:'<b>확인 가능 지표:</b> 총 품질이슈 · COPQ총액 · QI(초기품질)/QC(양산통제)/QA(고객보증) 분과별 건수 | <b>차트:</b> 이슈유형 파레토(바) · QI/QC/QA 비중(도넛) · 월별COPQ추이(바+라인) | <b>CSV:</b> QMS 품질데이터 또는 이슈_RAW',
     subcontract:'<b>확인 가능 지표:</b> 총 위험건수 · 최대지연일 · 위험협력사수 | <b>자동산출:</b> 발주_RAW 입하경과일(입하확정일/예정일 기준) + 공급망_RAW 하도급대상여부=대상 + 미입하 + 90일초과 | <b>필터:</b> 전체/90일+/120일+/180일+ | <b>CSV:</b> 발주_RAW + 공급망_RAW (별도 CSV 불필요)',
@@ -2376,6 +2397,8 @@ function nav(el,id) {
   if (id==='product-trend') renderProductTrend();
   if (id==='supplier-product') renderSupplierProduct();
   if (id==='qms') renderQMS();
+  if (id==='portfolio') renderPortfolio();
+  if (id==='kpi') renderKPITracker();
 }
 
 // ===== TAB SWITCH =====
@@ -3138,6 +3161,642 @@ function renderQMS() {
       CHARTS['ch-qms-copq']=new Chart(ctx3,{type:'bar',data:{labels:monthKeys,datasets:[{label:'COPQ',data:monthKeys.map(m=>byMonth[m].copq),backgroundColor:'#dc2626',borderRadius:4},{label:'건수',data:monthKeys.map(m=>byMonth[m].cnt),type:'line',borderColor:'#1d4ed8',borderWidth:2,pointRadius:3,yAxisID:'y1',fill:false}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{position:'bottom',labels:{font:{size:10}}}},scales:{y:{ticks:{callback:v=>fmtW(v),font:{size:10}}},y1:{position:'right',ticks:{font:{size:10}},grid:{display:false}}}}});
     }
   }
+}
+
+// ===== KPI TRACKER =====
+const KPI_DEFS = [
+  {id:'delivery_ontime', area:'납기', name:'납기준수율', unit:'%', target:97, higher:true,
+   desc:'전체 TASK 중 미입하 미발생 비율', formula:'1 - (미입하건수 / 전체TASK) × 100'},
+  {id:'delivery_lead', area:'납기', name:'평균 리드타임', unit:'일', target:10, higher:false,
+   desc:'과업지시일~실제입하일 평균 소요일수', formula:'avg(실제입하일 - 과업지시일자)'},
+  {id:'quality_issue', area:'품질', name:'품질이슈율', unit:'%', target:3, higher:false,
+   desc:'전체 TASK 대비 품질이슈 발생 비율', formula:'품질이슈건수 / 전체TASK × 100'},
+  {id:'quality_inspect', area:'품질', name:'검수합격률', unit:'%', target:98, higher:true,
+   desc:'검수 건 중 불량 미발생 비율', formula:'1 - (불량수량 / 검수수량) × 100'},
+  {id:'quality_customer', area:'품질', name:'고객인지이슈율', unit:'%', target:20, higher:false,
+   desc:'전체 TASK 대비 고객인지이슈 비율', formula:'고객인지이슈 / 전체TASK × 100'},
+  {id:'cost_urgent', area:'비용', name:'긴급발주 비율', unit:'%', target:10, higher:false,
+   desc:'전체 TASK 중 긴급 발주 비율', formula:'긴급TASK / 전체TASK × 100'},
+  {id:'cost_rework', area:'비용', name:'재제작률', unit:'%', target:2, higher:false,
+   desc:'이슈 중 재제작 판정 비율', formula:'재제작건수 / 전체이슈 × 100'},
+  {id:'supply_agrade', area:'공급망', name:'B등급↑ 비율', unit:'%', target:10, higher:true,
+   desc:'전체 평가 대상 협력사 중 B등급 이상 비율', formula:'(A+B등급) / 전체 평가대상 × 100'},
+  {id:'supply_active', area:'공급망', name:'가용협력사 비율', unit:'%', target:70, higher:true,
+   desc:'등록 협력사 중 실제 거래(TASK≥1) 비율', formula:'거래중 협력사 / 전체 등록 × 100'},
+  {id:'inv_turnover', area:'재고', name:'재고회전율', unit:'회', target:6, higher:true,
+   desc:'연간 판매금액 대비 평균 재고금액', formula:'연매출 / 평균재고금액'},
+  {id:'inv_stockout', area:'재고', name:'비의도적 품절률', unit:'%', target:3, higher:false,
+   desc:'전체 SKU 대비 비의도적 품절 비율', formula:'비의도적품절 / 전체SKU × 100'},
+  {id:'inv_band', area:'재고', name:'밴드 유지율', unit:'%', target:80, higher:true,
+   desc:'재고가 적정 밴드 내에 있는 주차 비율', formula:'밴드내 주차 / 전체 주차 × 100'},
+];
+
+function computeKPIs() {
+  const r = {};
+  const monthly = {};
+
+  // --- Delivery & Cost from order ---
+  if (D.order) {
+    const byMonth = {};
+    D.order.forEach(row => {
+      const m = pOrderMonth(row['과업지시일자']);
+      if (!m) return;
+      if (!byMonth[m]) byMonth[m] = {total:0, norecv:0, urgent:0, rework:0, leadDays:[]};
+      const b = byMonth[m];
+      b.total++;
+      if (String(row['미입하 발생이력_movement']||'').includes('1 checked out of')) b.norecv++;
+      if (String(row['긴급여부']||'').includes('긴급')) b.urgent++;
+      const rwField = String(row['재제작/추가제작']||'');
+      if (rwField.includes('1 checked out of') || rwField === '재제작' || rwField === '추가제작') b.rework++;
+      const d1 = parseKPIDate(row['과업지시일자']);
+      const d2 = parseKPIDate(row['실제입하일 (from movement)']);
+      if (d1 && d2 && d2 > d1) b.leadDays.push((d2 - d1) / 86400000);
+    });
+    Object.entries(byMonth).forEach(([m, b]) => {
+      if (!monthly[m]) monthly[m] = {};
+      monthly[m].delivery_ontime = b.total ? (1 - b.norecv / b.total) * 100 : null;
+      monthly[m].delivery_lead = b.leadDays.length ? b.leadDays.reduce((a,c)=>a+c,0)/b.leadDays.length : null;
+      monthly[m].cost_urgent = b.total ? (b.urgent / b.total) * 100 : null;
+      monthly[m].cost_rework = b.total ? (b.rework / b.total) * 100 : null;
+    });
+    const allMonths = Object.keys(byMonth).sort();
+    const latest = allMonths[allMonths.length - 1];
+    if (latest) {
+      r.delivery_ontime = monthly[latest].delivery_ontime;
+      r.delivery_lead = monthly[latest].delivery_lead;
+      r.cost_urgent = monthly[latest].cost_urgent;
+      r.cost_rework = monthly[latest].cost_rework;
+    }
+  }
+
+  // --- Quality from issue ---
+  if (D.issue && D.order) {
+    const byMonth = {};
+    D.issue.forEach(row => {
+      const m = pIssueMonth(row);
+      if (!m) return;
+      if (!byMonth[m]) byMonth[m] = {quality:0, quantity:0, ops:0, inspect:0, defect:0, rework:0};
+      const cat = (row['이슈카테고리']||'').trim();
+      if (cat.includes('품질')) byMonth[m].quality++;
+      const reworkField = String(row['재제작/추가제작']||'').trim();
+      if (reworkField === '재제작' || reworkField.includes('1 checked out of')) byMonth[m].rework++;
+      const inspQty = parseInt(row['검수수량']) || 0;
+      const defQty = parseInt(row['불량수량_샘플링검수']) || 0;
+      if (inspQty > 0) { byMonth[m].inspect += inspQty; byMonth[m].defect += defQty; }
+    });
+    const orderByMonth = {};
+    D.order.forEach(row => {
+      const m = pOrderMonth(row['과업지시일자']);
+      if (m) { orderByMonth[m] = (orderByMonth[m]||0) + 1; }
+    });
+    Object.entries(byMonth).forEach(([m, b]) => {
+      if (!monthly[m]) monthly[m] = {};
+      const totalTask = orderByMonth[m] || 1;
+      monthly[m].quality_issue = (b.quality / totalTask) * 100;
+      monthly[m].quality_inspect = b.inspect > 0 ? (1 - b.defect / b.inspect) * 100 : null;
+      const totalIssuesInMonth = b.quality + b.quantity + b.ops || Object.values(b).reduce((a,c)=>a+c,0);
+      monthly[m].cost_rework = totalIssuesInMonth > 0 ? (b.rework / totalIssuesInMonth) * 100 : null;
+    });
+    const allMonths = Object.keys(byMonth).sort();
+    const latest = allMonths[allMonths.length - 1];
+    // Overall rework from issues
+    let totalReworkIssue = 0, totalIssueCount = 0;
+    Object.values(byMonth).forEach(b => { totalReworkIssue += b.rework; totalIssueCount += (b.quality + b.quantity + b.ops) || 1; });
+    r.cost_rework = totalIssueCount > 0 ? (totalReworkIssue / totalIssueCount) * 100 : null;
+    if (latest) {
+      r.quality_issue = monthly[latest].quality_issue;
+      r.quality_inspect = monthly[latest].quality_inspect;
+      if (monthly[latest].cost_rework !== undefined) r.cost_rework = monthly[latest].cost_rework;
+    }
+  }
+
+  // --- Customer issue ratio (vs total TASK, not vs issues) ---
+  if (D.ci && D.order) {
+    const ciCount = D.ci.length;
+    const orderByMonthAll = {};
+    D.order.forEach(row => { const m = pOrderMonth(row['과업지시일자']); if(m) orderByMonthAll[m]=(orderByMonthAll[m]||0)+1; });
+    const totalTaskAll = Object.values(orderByMonthAll).reduce((a,b)=>a+b,0);
+    r.quality_customer = totalTaskAll > 0 ? (ciCount / totalTaskAll) * 100 : null;
+    const allMonths = Object.keys(monthly).sort();
+    if (allMonths.length) monthly[allMonths[allMonths.length-1]].quality_customer = r.quality_customer;
+  }
+
+  // --- Supply chain grades ---
+  if (D.quarter_eval) {
+    const currentQ = new Date().getMonth() < 3 ? 1 : new Date().getMonth() < 6 ? 2 : new Date().getMonth() < 9 ? 3 : 4;
+    const qKey = currentQ + 'Q_공급망관리등급';
+    const prevKey = (currentQ > 1 ? (currentQ-1) : 1) + 'Q_공급망관리등급';
+    let totalEval = 0, abCount = 0;
+    D.quarter_eval.forEach(row => {
+      const g = (row[qKey] || row[prevKey] || '').trim();
+      if (g) { totalEval++; if (g === 'A' || g === 'B') abCount++; }
+    });
+    r.supply_agrade = totalEval > 0 ? (abCount / totalEval) * 100 : null;
+  } else if (D.order) {
+    r.supply_agrade = 0;
+  }
+
+  if (D.order && D.sup) {
+    const activeVendors = new Set();
+    D.order.forEach(row => { const v = (row['수주처']||'').trim(); if (v) activeVendors.add(v); });
+    const totalVendors = D.sup.filter(r => (r['협력사 이름']||'').trim()).length;
+    r.supply_active = totalVendors > 0 ? (activeVendors.size / totalVendors) * 100 : null;
+  }
+
+  // --- Inventory ---
+  if (D.inv_weekly) {
+    const weeks = {};
+    D.inv_weekly.forEach(row => {
+      const w = (row['기준주차'] || row['기준일'] || '').trim();
+      if (!w) return;
+      const amt = parseFloat(String(row['재고금액']||'0').replace(/,/g,'')) || 0;
+      weeks[w] = (weeks[w]||0) + amt;
+    });
+    const wKeys = Object.keys(weeks).sort();
+    if (wKeys.length) {
+      const avgInv = wKeys.reduce((s,k)=>s+weeks[k],0) / wKeys.length;
+      let annualSales = 0;
+      if (D.sales_monthly) {
+        const prices = {};
+        if (D.inv_weekly) D.inv_weekly.forEach(row => {
+          const p = (row['파츠번호']||'').trim();
+          const price = parseFloat(String(row['단가']||'0').replace(/,/g,'')) || 0;
+          if (p && price) prices[p] = price;
+        });
+        D.sales_monthly.forEach(row => {
+          const p = (row['파츠번호']||'').trim();
+          const qty = parseInt(row['판매량']) || 0;
+          annualSales += qty * (prices[p] || 0);
+        });
+      }
+      r.inv_turnover = avgInv > 0 && annualSales > 0 ? annualSales / avgInv : null;
+    }
+  }
+
+  if (D.stockout_list) {
+    const totalSku = D.inv_weekly ? new Set(D.inv_weekly.map(r=>(r['파츠번호']||'').trim()).filter(Boolean)).size : 0;
+    const unintended = D.stockout_list.filter(r => (r['품절 성격']||'').includes('비의도적')).length;
+    r.inv_stockout = totalSku > 0 ? (unintended / totalSku) * 100 : null;
+  }
+
+  r.inv_band = null;
+
+  return { current: r, monthly };
+}
+
+function parseKPIDate(s) {
+  if (!s) return null;
+  const str = String(s).trim().replace(/\//g,'.').replace(/-/g,'.');
+  const parts = str.split('.');
+  if (parts.length < 3) return null;
+  const d = new Date(+parts[0], +parts[1]-1, +parts[2]);
+  return isNaN(d.getTime()) ? null : d;
+}
+
+function renderKPITracker() {
+  const el = document.getElementById('kpi-track-content');
+  if (!el) return;
+
+  if (!D.order && !D.inv_weekly) {
+    el.innerHTML = '<div class="empty" style="padding:40px;text-align:center"><div style="font-size:32px;margin-bottom:12px">📊</div><div style="font-size:14px;font-weight:600;margin-bottom:6px">KPI 목표·트래킹</div><div style="font-size:12px;color:var(--text3)">발주_RAW 또는 S&OP 재고주간 CSV를 업로드하면 KPI가 자동 산출됩니다.</div></div>';
+    return;
+  }
+
+  const {current, monthly} = computeKPIs();
+  const savedTargets = JSON.parse(localStorage.getItem('kpi_targets') || '{}');
+  KPI_DEFS.forEach(d => { if (savedTargets[d.id] !== undefined) d.target = savedTargets[d.id]; });
+
+  const areas = [...new Set(KPI_DEFS.map(d => d.area))];
+  const areaIcons = {납기:'🚚', 품질:'🔍', 비용:'💰', 공급망:'🏭', 재고:'📦'};
+  const areaColors = {납기:'var(--blue)', 품질:'var(--red)', 비용:'var(--amber)', 공급망:'var(--purple)', 재고:'var(--green)'};
+
+  // Overall score
+  let achieved = 0, measurable = 0;
+  KPI_DEFS.forEach(d => {
+    const v = current[d.id];
+    if (v === null || v === undefined) return;
+    measurable++;
+    if (d.higher ? v >= d.target : v <= d.target) achieved++;
+  });
+  const overallPct = measurable > 0 ? Math.round(achieved / measurable * 100) : 0;
+
+  // Monthly trend data for chart
+  const mKeys = Object.keys(monthly).sort().slice(-6);
+
+  el.innerHTML = `
+    <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:16px;margin-bottom:20px">
+      <div class="card" style="padding:20px;text-align:center">
+        <div class="kpi-label">KPI 달성률</div>
+        <div style="position:relative;width:120px;height:120px;margin:12px auto">
+          <canvas id="ch-kpi-overall"></canvas>
+          <div style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;flex-direction:column">
+            <div style="font-size:28px;font-weight:700;color:${overallPct>=70?'var(--green)':overallPct>=40?'var(--amber)':'var(--red)'}">${overallPct}%</div>
+            <div style="font-size:10px;color:var(--text3)">${achieved}/${measurable} 달성</div>
+          </div>
+        </div>
+      </div>
+      <div class="card" style="padding:20px;text-align:center">
+        <div class="kpi-label">측정 가능 지표</div>
+        <div class="kpi-val" style="margin-top:20px">${measurable}<span style="font-size:14px;color:var(--text3);font-weight:400"> / ${KPI_DEFS.length}</span></div>
+        <div class="kpi-sub" style="margin-top:8px">${KPI_DEFS.length - measurable}개 지표 데이터 미업로드</div>
+      </div>
+      <div class="card" style="padding:20px;text-align:center">
+        <div class="kpi-label">월별 달성 추이</div>
+        <div style="height:100px;margin-top:8px"><canvas id="ch-kpi-trend"></canvas></div>
+      </div>
+    </div>
+
+    ${areas.map(area => {
+      const defs = KPI_DEFS.filter(d => d.area === area);
+      return `
+      <div class="card" style="padding:20px;margin-bottom:16px">
+        <div class="card-header" style="margin-bottom:14px">
+          <div class="card-title">${areaIcons[area]} ${area} 지표</div>
+        </div>
+        <div style="display:grid;grid-template-columns:repeat(${Math.min(defs.length, 4)},1fr);gap:14px">
+          ${defs.map(d => {
+            const v = current[d.id];
+            const hasData = v !== null && v !== undefined;
+            const val = hasData ? +v.toFixed(1) : null;
+            const met = hasData && (d.higher ? val >= d.target : val <= d.target);
+            const pct = hasData ? (d.higher ? Math.min(val/d.target*100, 150) : (val <= 0 ? 100 : Math.min(d.target/val*100, 150))) : 0;
+            const barColor = !hasData ? 'var(--border)' : met ? 'var(--green)' : pct >= 70 ? 'var(--amber)' : 'var(--red)';
+            return `
+            <div style="border:1px solid var(--border);border-radius:var(--r);padding:14px;position:relative">
+              <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:8px">
+                <div>
+                  <div style="font-size:12px;font-weight:600;color:var(--text)">${d.name}</div>
+                  <div style="font-size:10px;color:var(--text3);margin-top:2px">${d.desc}</div>
+                </div>
+                ${hasData && met ? '<span style="font-size:14px" title="목표 달성">✅</span>' : hasData ? '<span style="font-size:14px" title="목표 미달">⚠️</span>' : '<span style="font-size:12px;color:var(--text3)" title="데이터 없음">—</span>'}
+              </div>
+              <div style="display:flex;align-items:baseline;gap:4px;margin-bottom:6px">
+                <span style="font-size:22px;font-weight:700;color:${hasData ? (met?'var(--green)':'var(--text)') : 'var(--text3)'}">${hasData ? val : '—'}</span>
+                <span style="font-size:12px;color:var(--text3)">${d.unit}</span>
+                <span style="font-size:11px;color:var(--text3);margin-left:auto">목표 ${d.higher?'≥':'≤'} ${d.target}${d.unit}</span>
+              </div>
+              <div style="height:6px;background:var(--border);border-radius:3px;overflow:hidden">
+                <div style="height:100%;width:${Math.min(pct,100)}%;background:${barColor};border-radius:3px;transition:width .4s"></div>
+              </div>
+              <div style="display:flex;justify-content:space-between;margin-top:4px">
+                <span style="font-size:9px;color:var(--text3)">${d.formula}</span>
+                <span style="font-size:9px;color:var(--text3)">${hasData ? Math.round(pct)+'%' : ''}</span>
+              </div>
+            </div>`;
+          }).join('')}
+        </div>
+      </div>`;
+    }).join('')}
+
+    <div class="card" style="padding:20px">
+      <div class="card-header" style="margin-bottom:10px">
+        <div class="card-title">⚙️ 목표값 설정</div>
+        <div style="font-size:11px;color:var(--text3)">변경 시 자동 저장 (localStorage)</div>
+      </div>
+      <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:10px">
+        ${KPI_DEFS.map(d => `
+          <div style="display:flex;align-items:center;gap:6px;font-size:11px">
+            <span style="color:var(--text2);min-width:90px">${d.name}</span>
+            <span style="color:var(--text3)">${d.higher?'≥':'≤'}</span>
+            <input type="number" value="${d.target}" step="1" style="width:50px;padding:3px 6px;border:1px solid var(--border2);border-radius:4px;font-size:11px;text-align:center" onchange="saveKPITarget('${d.id}',+this.value)">
+            <span style="color:var(--text3)">${d.unit}</span>
+          </div>
+        `).join('')}
+      </div>
+    </div>
+  `;
+
+  // Overall donut
+  dc('ch-kpi-overall');
+  const ctx1 = getCtx('ch-kpi-overall');
+  if (ctx1) {
+    CHARTS['ch-kpi-overall'] = new Chart(ctx1, {
+      type: 'doughnut',
+      data: { datasets: [{ data: [achieved, measurable - achieved], backgroundColor: ['#059669','#e2e8f0'], borderWidth: 0 }] },
+      options: { responsive:true, maintainAspectRatio:false, cutout:'78%', plugins:{legend:{display:false},tooltip:{enabled:false}} }
+    });
+  }
+
+  // Monthly trend
+  if (mKeys.length > 1) {
+    dc('ch-kpi-trend');
+    const ctx2 = getCtx('ch-kpi-trend');
+    if (ctx2) {
+      const trendData = mKeys.map(m => {
+        const mv = monthly[m] || {};
+        let a2=0, t2=0;
+        KPI_DEFS.forEach(d => {
+          const v2 = mv[d.id];
+          if (v2 === null || v2 === undefined) return;
+          t2++;
+          if (d.higher ? v2 >= d.target : v2 <= d.target) a2++;
+        });
+        return t2 > 0 ? Math.round(a2/t2*100) : null;
+      });
+      CHARTS['ch-kpi-trend'] = new Chart(ctx2, {
+        type: 'line',
+        data: { labels: mKeys.map(m => fmtMonth(m)), datasets: [{ data: trendData, borderColor: '#1d4ed8', borderWidth: 2, pointRadius: 4, pointBackgroundColor: '#1d4ed8', fill: { target:'origin', above:'rgba(29,78,216,.08)' }, tension: 0.3 }] },
+        options: { responsive:true, maintainAspectRatio:false, plugins:{legend:{display:false}}, scales:{ y:{min:0,max:100,ticks:{callback:v=>v+'%',font:{size:9}},grid:{color:'rgba(0,0,0,.05)'}}, x:{ticks:{font:{size:9}},grid:{display:false}} } }
+      });
+    }
+  }
+}
+
+function saveKPITarget(id, val) {
+  const saved = JSON.parse(localStorage.getItem('kpi_targets') || '{}');
+  saved[id] = val;
+  localStorage.setItem('kpi_targets', JSON.stringify(saved));
+  renderKPITracker();
+}
+
+// ===== PORTFOLIO =====
+function renderPortfolio() {
+  const el=document.getElementById('portfolio-content');
+  if (!el) return;
+
+  // Try quarter_eval CSV first, fallback to computing from order+issue RAW
+  let vendors=[];
+  const currentQ=(() => { const m=new Date().getMonth()+1; return m<=3?1:m<=6?2:m<=9?3:4; })();
+
+  if (D.quarter_eval) {
+    vendors=parseQuarterEval(D.quarter_eval, currentQ);
+  } else if (D.order && D.issue) {
+    vendors=computeFromRaw(D.order, D.issue, D.sup, currentQ);
+  } else {
+    el.innerHTML='<div class="empty" style="padding:40px;text-align:center"><div style="font-size:32px;margin-bottom:12px">📊</div><div style="font-size:14px;font-weight:600;margin-bottom:6px">공급망 포트폴리오</div><div style="font-size:12px;color:var(--text3)">분기별평가 CSV를 업로드하거나, 발주_RAW + 이슈_RAW를 업로드하면 자동 산출됩니다.</div></div>';
+    return;
+  }
+
+  if (!vendors.length) { el.innerHTML='<div class="empty">협력사 데이터가 없습니다.</div>'; return; }
+
+  // Classify into quadrants
+  const qKey = currentQ <= 1 ? 'q1' : 'q' + currentQ;
+  vendors.forEach(v => {
+    const s = v[qKey] || v.q1 || {};
+    v._grade = s.grade || '';
+    v._total = s.total || 0;
+    v._amtScore = s.amount || 0;
+    v._taskScore = s.task || 0;
+    v._issueScore = s.issue || 0;
+    v._exceptScore = s.except || 0;
+    v._replaceScore = s.replace || 0;
+    const gradeHigh = v._grade === 'A' || v._grade === 'B';
+    const amtHigh = v._amtScore >= 2;
+    if (gradeHigh && amtHigh) v._quad = 'Core';
+    else if (gradeHigh && !amtHigh) v._quad = 'Strategic';
+    else if (!gradeHigh && amtHigh) v._quad = 'Preferred';
+    else v._quad = 'General';
+  });
+
+  // Grade distribution
+  const gradeDist = {A:0, B:0, C:0, D:0};
+  vendors.forEach(v => { if (gradeDist[v._grade] !== undefined) gradeDist[v._grade]++; });
+  const total = vendors.length;
+
+  // Quadrant counts
+  const quadCounts = {Core:0, Strategic:0, Preferred:0, General:0};
+  vendors.forEach(v => quadCounts[v._quad]++);
+
+  const quadColors = {Core:'var(--green)', Strategic:'var(--blue)', Preferred:'var(--amber)', General:'var(--text3)'};
+  const quadBgs = {Core:'var(--green-light)', Strategic:'var(--blue-light)', Preferred:'var(--amber-light)', General:'#f1f5f9'};
+  const quadDesc = {Core:'매입↑ 등급↑', Strategic:'매입↓ 등급↑', Preferred:'매입↑ 등급↓', General:'매입↓ 등급↓'};
+
+  // Sort vendors by total score desc
+  const sorted = [...vendors].sort((a,b) => b._total - a._total);
+
+  el.innerHTML = `
+    <div class="kpi-row-4" style="margin-bottom:20px">
+      ${['Core','Strategic','Preferred','General'].map(q => `
+        <div class="kpi-card" style="border-left:4px solid ${quadColors[q]}">
+          <div class="kpi-label">${q}</div>
+          <div class="kpi-val">${quadCounts[q]}<span style="font-size:13px;color:var(--text3);font-weight:400">사</span></div>
+          <div class="kpi-sub">${quadDesc[q]} · ${total?((quadCounts[q]/total*100).toFixed(1)):'0'}%</div>
+        </div>
+      `).join('')}
+    </div>
+
+    <div style="display:grid;grid-template-columns:2fr 1fr;gap:16px;margin-bottom:20px">
+      <div class="card" style="padding:20px">
+        <div class="card-header" style="margin-bottom:12px"><div class="card-title">포트폴리오 매트릭스 (${currentQ}Q)</div></div>
+        <div id="portfolio-matrix" style="position:relative;width:100%;height:400px;border:1px solid var(--border);border-radius:8px;overflow:hidden;background:var(--surface2)">
+          <!-- Quadrant labels -->
+          <div style="position:absolute;top:8px;left:8px;font-size:10px;font-weight:600;color:var(--blue);opacity:.6">Strategic</div>
+          <div style="position:absolute;top:8px;right:8px;font-size:10px;font-weight:600;color:var(--green);opacity:.6">Core</div>
+          <div style="position:absolute;bottom:8px;left:8px;font-size:10px;font-weight:600;color:var(--text3);opacity:.6">General</div>
+          <div style="position:absolute;bottom:8px;right:8px;font-size:10px;font-weight:600;color:var(--amber);opacity:.6">Preferred</div>
+          <!-- Axes -->
+          <div style="position:absolute;top:0;bottom:0;left:50%;border-left:1px dashed var(--border2)"></div>
+          <div style="position:absolute;left:0;right:0;top:50%;border-top:1px dashed var(--border2)"></div>
+          <!-- Axis labels -->
+          <div style="position:absolute;bottom:2px;left:50%;transform:translateX(-50%);font-size:9px;color:var(--text3)">매입대금 점수 →</div>
+          <div style="position:absolute;top:50%;left:2px;transform:rotate(-90deg) translateX(-50%);transform-origin:left;font-size:9px;color:var(--text3)">관리점수 →</div>
+          <!-- Dots rendered by JS -->
+          <div id="portfolio-dots"></div>
+        </div>
+      </div>
+
+      <div style="display:flex;flex-direction:column;gap:16px">
+        <div class="card" style="padding:20px">
+          <div class="card-header" style="margin-bottom:12px"><div class="card-title">등급 분포 (${currentQ}Q)</div></div>
+          <div style="height:180px"><canvas id="ch-portfolio-grade"></canvas></div>
+        </div>
+        <div class="card" style="padding:20px">
+          <div class="card-header" style="margin-bottom:12px"><div class="card-title">평가 기준</div></div>
+          <div style="font-size:11px;color:var(--text2);line-height:1.8">
+            <div><b>TASK 점수</b> (3점): ≥100건→3, ≥25→2, ≥3→1</div>
+            <div><b>매입대금</b> (3점): ≥2,500만→3, ≥1,250만→2</div>
+            <div><b>이슈대응</b> (3점): 이슈율70%+미입하율30%</div>
+            <div><b>예외사항</b> (3점): 정성평가 (발주담당)</div>
+            <div><b>대체가능</b> (3점): 정성평가 (발주담당)</div>
+            <div style="margin-top:6px;padding-top:6px;border-top:1px solid var(--border)">
+              <span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:var(--green);margin-right:4px"></span>A ≥12점
+              <span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:var(--amber);margin:0 4px 0 12px"></span>B 8~11점
+              <span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:var(--red);margin:0 4px 0 12px"></span>C ≤7점
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="card" style="padding:20px">
+      <div class="card-header" style="margin-bottom:4px">
+        <div class="card-title">협력사별 상세 (${total}사)</div>
+        <div style="display:flex;gap:6px;margin-left:auto" id="portfolio-quad-filter">
+          <span class="m-chip active" onclick="filterPortfolioQuad(this,'all')">전체</span>
+          ${['Core','Strategic','Preferred','General'].map(q=>`<span class="m-chip" onclick="filterPortfolioQuad(this,'${q}')" style="border-color:${quadColors[q]}">${q} (${quadCounts[q]})</span>`).join('')}
+        </div>
+      </div>
+      <div style="max-height:500px;overflow-y:auto;margin-top:10px">
+        <table class="tbl" id="portfolio-table">
+          <thead><tr>
+            <th style="width:40px">#</th>
+            <th>협력사</th>
+            <th>담당자</th>
+            <th style="width:50px">구분</th>
+            <th style="width:45px">TASK</th>
+            <th style="width:45px">매입</th>
+            <th style="width:45px">이슈</th>
+            <th style="width:45px">예외</th>
+            <th style="width:45px">대체</th>
+            <th style="width:55px">총점</th>
+            <th style="width:45px">등급</th>
+          </tr></thead>
+          <tbody id="portfolio-tbody"></tbody>
+        </table>
+      </div>
+    </div>
+  `;
+
+  // Render scatter dots
+  renderPortfolioDots(vendors, quadColors);
+
+  // Render grade donut
+  dc('ch-portfolio-grade');
+  const ctx = getCtx('ch-portfolio-grade');
+  if (ctx) {
+    CHARTS['ch-portfolio-grade'] = new Chart(ctx, {
+      type: 'doughnut',
+      data: {
+        labels: ['A등급','B등급','C등급'],
+        datasets: [{
+          data: [gradeDist.A, gradeDist.B, gradeDist.C],
+          backgroundColor: ['#059669','#d97706','#dc2626'],
+          borderWidth: 2, borderColor: '#fff'
+        }]
+      },
+      options: {
+        responsive: true, maintainAspectRatio: false, cutout: '65%',
+        plugins: {
+          legend: { position: 'bottom', labels: { font: { size: 11 } } },
+          tooltip: { callbacks: { label: (c) => `${c.label}: ${c.raw}사 (${(c.raw/total*100).toFixed(1)}%)` } }
+        }
+      }
+    });
+  }
+
+  // Render table
+  renderPortfolioTable(sorted, quadColors, 'all');
+}
+
+function renderPortfolioDots(vendors, quadColors) {
+  const container = document.getElementById('portfolio-dots');
+  if (!container) return;
+  const maxTotal = Math.max(...vendors.map(v => v._total), 15);
+  const maxAmt = 3;
+  container.innerHTML = vendors.map(v => {
+    const x = (v._amtScore / maxAmt) * 90 + 5;
+    const y = 95 - (v._total / maxTotal) * 90;
+    const color = quadColors[v._quad];
+    const size = Math.max(6, Math.min(14, 6 + v._taskScore * 2));
+    return `<div style="position:absolute;left:${x}%;top:${y}%;width:${size}px;height:${size}px;border-radius:50%;background:${color};opacity:.7;cursor:pointer;transform:translate(-50%,-50%);transition:all .15s;border:1.5px solid rgba(255,255,255,.8)" title="${v.name}\n총점: ${v._total} | 등급: ${v._grade}\nTASK:${v._taskScore} 매입:${v._amtScore} 이슈:${v._issueScore}" onmouseenter="this.style.opacity='1';this.style.transform='translate(-50%,-50%) scale(1.5)';this.style.zIndex='10'" onmouseleave="this.style.opacity='.7';this.style.transform='translate(-50%,-50%) scale(1)';this.style.zIndex=''"></div>`;
+  }).join('');
+}
+
+function renderPortfolioTable(vendors, quadColors, filter) {
+  const tbody = document.getElementById('portfolio-tbody');
+  if (!tbody) return;
+  const filtered = filter === 'all' ? vendors : vendors.filter(v => v._quad === filter);
+  const gradeStyle = g => {
+    if (g === 'A') return 'background:#d1fae5;color:#065f46;font-weight:700';
+    if (g === 'B') return 'background:#fef3c7;color:#92400e;font-weight:700';
+    return 'background:#fee2e2;color:#991b1b;font-weight:700';
+  };
+  tbody.innerHTML = filtered.map((v, i) => `<tr>
+    <td style="color:var(--text3)">${i+1}</td>
+    <td style="font-weight:500">${esc(v.name)}</td>
+    <td style="font-size:11px;color:var(--text2)">${esc(v.mgr || '')}</td>
+    <td><span style="font-size:10px;padding:2px 6px;border-radius:10px;background:${quadColors[v._quad]};color:#fff;font-weight:600">${v._quad}</span></td>
+    <td style="text-align:center">${v._taskScore}</td>
+    <td style="text-align:center">${v._amtScore}</td>
+    <td style="text-align:center">${v._issueScore}</td>
+    <td style="text-align:center">${v._exceptScore}</td>
+    <td style="text-align:center">${v._replaceScore}</td>
+    <td style="text-align:center;font-weight:600">${v._total.toFixed(1)}</td>
+    <td style="text-align:center"><span style="padding:2px 8px;border-radius:10px;font-size:11px;${gradeStyle(v._grade)}">${v._grade||'-'}</span></td>
+  </tr>`).join('');
+}
+
+function filterPortfolioQuad(chipEl, quad) {
+  const container = document.getElementById('portfolio-quad-filter');
+  container.querySelectorAll('.m-chip').forEach(c => c.classList.remove('active'));
+  chipEl.classList.add('active');
+  const qKey = (() => { const m=new Date().getMonth()+1; return m<=3?1:m<=6?2:m<=9?3:4; })();
+  // Re-sort and render
+  const vendors = window._portfolioVendors || [];
+  const sorted = [...vendors].sort((a,b) => b._total - a._total);
+  const quadColors = {Core:'var(--green)', Strategic:'var(--blue)', Preferred:'var(--amber)', General:'var(--text3)'};
+  renderPortfolioTable(sorted, quadColors, quad);
+}
+
+function parseQuarterEval(rows, currentQ) {
+  const vendors = [];
+  rows.forEach(r => {
+    const name = (r['협력사'] || '').trim();
+    if (!name) return;
+    const v = { name, mgr: (r['26.2Q 발주담당'] || r['26.1Q 발주담당'] || '').trim() };
+    for (let q = 1; q <= 4; q++) {
+      v['q'+q] = {
+        task: parseFloat(r[q+'Q_TASK 점수']) || 0,
+        amount: parseFloat(r[q+'Q_매입대금 점수']) || 0,
+        issue: parseFloat(r[q+'Q_이슈대응 점수']) || 0,
+        except: parseFloat(r[q+'Q_예외사항 점수']) || 0,
+        replace: parseFloat(r[q+'Q_협력사 대체가능여부'] || r[q+'Q_협력사 대체가능']) || 0,
+        total: parseFloat(r[q+'Q_공급망관리점수']) || 0,
+        grade: (r[q+'Q_공급망관리등급'] || '').trim()
+      };
+    }
+    vendors.push(v);
+  });
+  window._portfolioVendors = vendors;
+  return vendors;
+}
+
+function computeFromRaw(orderData, issueData, supData, currentQ) {
+  const stats = {};
+  const supMap = {};
+  if (supData) supData.forEach(r => {
+    const name = (r['협력사 이름'] || '').trim();
+    if (name) supMap[name] = { mgr: (r['발주담당자'] || '').trim() };
+  });
+
+  orderData.forEach(r => {
+    const vendor = (r['수주처'] || '').trim();
+    if (!vendor) return;
+    if (!stats[vendor]) stats[vendor] = { task: 0, amount: 0, issue: 0, norecv: 0 };
+    stats[vendor].task++;
+    const amt = parseFloat(String(r['총 지출액 (VAT 포함)'] || r['취득원가'] || '0').replace(/[,₩￦\\]/g, '')) || 0;
+    stats[vendor].amount += amt;
+    if (String(r['미입하 발생이력_movement'] || '').includes('1 checked out of')) stats[vendor].norecv++;
+  });
+
+  issueData.forEach(r => {
+    const vendor = (r['출하장소'] || r['수주처'] || '').trim();
+    if (!vendor || !stats[vendor]) return;
+    stats[vendor].issue++;
+  });
+
+  const calcTaskScore = t => t >= 100 ? 3 : t >= 25 ? 2 : t >= 3 ? 1 : 0;
+  const calcAmtScore = a => a >= 25000000 ? 3 : a >= 12500000 ? 2 : a >= 1 ? 1 : 0;
+  const calcIssueScore = r => r < 0.03 ? 3 : r < 0.05 ? 2 : 1;
+  const calcNorecvScore = r => r < 0.05 ? 3 : r < 0.20 ? 2 : 1;
+  const calcGrade = s => s >= 12 ? 'A' : s >= 8 ? 'B' : 'C';
+
+  const vendors = [];
+  Object.entries(stats).forEach(([name, s]) => {
+    const taskScore = calcTaskScore(s.task);
+    const amtScore = calcAmtScore(s.amount);
+    const issueRate = s.task > 0 ? s.issue / s.task : 0;
+    const norecvRate = s.task > 0 ? s.norecv / s.task : 0;
+    const issueScore = calcIssueScore(issueRate) * 0.7 + calcNorecvScore(norecvRate) * 0.3;
+    const total = taskScore + amtScore + issueScore;
+    const grade = calcGrade(total);
+    const v = { name, mgr: (supMap[name] || {}).mgr || '' };
+    v.q1 = v.q2 = { task: taskScore, amount: amtScore, issue: +issueScore.toFixed(1), except: 0, replace: 0, total: +total.toFixed(1), grade };
+    vendors.push(v);
+  });
+
+  window._portfolioVendors = vendors;
+  return vendors;
 }
 
 // ===== INIT =====
