@@ -781,7 +781,7 @@ let DATA_2025={order:{},issue:{}};
 function load2025Data(){
   const cached=localStorage.getItem('data_2025');
   if(cached){try{DATA_2025=JSON.parse(cached);}catch(e){}}
-  fetch('data_2025.json').then(r=>{if(r.ok)return r.json();throw new Error();}).then(d=>{
+  fetch('data/data_2025.json').then(r=>{if(r.ok)return r.json();throw new Error();}).then(d=>{
     DATA_2025=d;
     localStorage.setItem('data_2025',JSON.stringify(d));
   }).catch(()=>{});
@@ -800,7 +800,7 @@ let COST_PRICE_MAP={}; // item코드 → price row
 function loadCostDB(){
   const cached=localStorage.getItem('cost_db');
   if(cached){try{COST_DB=JSON.parse(cached);buildCostMaps();}catch(e){}}
-  fetch('cost_db.json').then(r=>{if(r.ok)return r.json();throw new Error();}).then(d=>{
+  fetch('data/cost_db.json').then(r=>{if(r.ok)return r.json();throw new Error();}).then(d=>{
     COST_DB=d;buildCostMaps();
     localStorage.setItem('cost_db',JSON.stringify(d));
   }).catch(()=>{});
@@ -844,7 +844,7 @@ function loadPartsMaster(){
       if(el) el.textContent='파츠마스터 '+PARTS_MASTER.length+'개 (캐시 '+cachedDate+')';
     }catch(e){}
   }
-  fetch('parts_master.json').then(r=>{if(r.ok)return r.json();throw new Error();}).then(data=>{
+  fetch('data/parts_master.json').then(r=>{if(r.ok)return r.json();throw new Error();}).then(data=>{
     PARTS_MASTER=data;buildPartsMap();
     const ds=new Date().toISOString().slice(0,10);
     localStorage.setItem('parts_master_data',JSON.stringify(data));
