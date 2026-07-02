@@ -893,7 +893,6 @@ let SEL_SALES_MONTH = null;
 let SEL_STOCK_STATUS = 'all';
 let SB_FILTER = 'all';
 let CHARTS = {};
-let SUP_ROWS = [];
 
 // ===== CSV PARSE =====
 function parseCSV(txt) {
@@ -934,6 +933,8 @@ function pOrderMonth(s) {
   const m=(s||'').match(/(\d{4})\.(\d{1,2})/);
   return m ? `${m[1]}.${parseInt(m[2])}` : null;
 }
+function monthKeyNum(m){ const p=String(m||'').split(/[.\-]/); if(p.length<2) return 0; let y=Number(p[0]); if(y<100) y+=2000; return y*100+(Number(p[1])||0); }
+function monthCmp(a,b){ return monthKeyNum(a)-monthKeyNum(b); }
 function pYMMonth(s) {
   // handles YYYY-MM format from new CSV files
   const m=(s||'').match(/(\d{4})-(\d{1,2})/);
@@ -1310,7 +1311,7 @@ function buildMonthChips() {
   if (D.issue) D.issue.forEach(r=>{ const m=pIssueMonth(r); if(m) ms.add(m); });
   if (D.task) D.task.forEach(r=>{ const m=pOrderMonth(r['과업지시일자']); if(m) ms.add(m); });
   if (D.sales) D.sales.forEach(r=>{ const m=pYMMonth(r['연월']); if(m) ms.add(m); });
-  const sorted=[...ms].sort();
+  const sorted=[...ms].sort(monthCmp);
   if (!SEL_MONTH && sorted.length) SEL_MONTH=sorted[sorted.length-1];
   const el=document.getElementById('month-chips');
   el.innerHTML=sorted.map(m=>`<span class="m-chip${m===SEL_MONTH?' active':''}" onclick="selMonth('${m}')">${fmtMonth(m)}</span>`).join('');
@@ -1320,7 +1321,7 @@ function buildSalesMonthChips() {
   if (!D.sales) return;
   const ms=new Set();
   D.sales.forEach(r=>{ const m=pYMMonth(r['연월']); if(m) ms.add(m); });
-  const sorted=[...ms].sort();
+  const sorted=[...ms].sort(monthCmp);
   if (!SEL_SALES_MONTH && sorted.length) SEL_SALES_MONTH=sorted[sorted.length-1];
   const el=document.getElementById('sales-month-chips');
   if (!el) return;
@@ -1584,7 +1585,6 @@ function updateCITabs() {
 // ===== SUPPLIER TAB =====
 function updateSupTab() {
   if (!D.sup) return;
-  SUP_ROWS=D.sup;
   const active=D.sup.filter(r=>!r['협력사 Status']||r['협력사 Status']==='거래중');
   setValue('s-total',active.length);
   setValue('s-turnkey',active.filter(r=>r['1. 제조유형']==='턴키제작').length);
@@ -1763,7 +1763,7 @@ function renderPurchaseTrend() {
     // Get top 8 groups by total amount
     const totals=Object.entries(byGroupMonth).map(([g,mData])=>([g,Object.values(mData).reduce((s,v)=>s+v,0)])).sort((a,b)=>b[1]-a[1]);
     const topGroups=totals.slice(0,8).map(x=>x[0]);
-    const allMonths=[...new Set(Object.values(byGroupMonth).flatMap(m=>Object.keys(m)))].sort();
+    const allMonths=[...new Set(Object.values(byGroupMonth).flatMap(m=>Object.keys(m)))].sort(monthCmp);
     const datasets=topGroups.map((g,i)=>({label:g,data:allMonths.map(m=>byGroupMonth[g]?.[m]||0),borderColor:palette[i%palette.length],borderWidth:2,tension:.3,pointRadius:2,fill:false}));
     const subText={biz:'업태별 매입추이 (Top 8)',goods:'굿즈코드별 매입추이 (Top 8)',supplier:'협력사별 매입추이 (Top 8)'};
     document.getElementById('purchase-trend-sub').textContent=subText[viewType]||'';
@@ -1772,7 +1772,7 @@ function renderPurchaseTrend() {
     // Default: monthly total
     const byM={};
     fOrders.forEach(r=>{const bm=purchaseByMonth(r);Object.entries(bm).forEach(([m,a])=>{byM[m]=(byM[m]||0)+a;});});
-    const months=Object.keys(byM).sort();
+    const months=Object.keys(byM).sort(monthCmp);
     document.getElementById('purchase-trend-sub').textContent='세금계산서 기준 공급가액 · 월 클릭 시 상세';
     CHARTS['ch-purchase-trend']=new Chart(ctx,{type:'line',data:{labels:months.map(fmtMonthShort),datasets:[{label:'매입금액',data:months.map(m=>byM[m]),borderColor:'#1d4ed8',backgroundColor:'rgba(29,78,216,.08)',fill:true,tension:.4,pointRadius:5,pointBackgroundColor:'#1d4ed8',pointHoverRadius:7,borderWidth:2}]},options:{responsive:true,maintainAspectRatio:false,onClick:(evt,elems)=>{
       if(elems.length){const idx=elems[0].index;openModal('purchaseMonth',months[idx]);}
@@ -1795,7 +1795,7 @@ function renderIssueTrendChart() {
   const ctx=getCtx('ch-issue-trend'); if(!ctx) return;
   const bM={};
   D.issue.forEach(r=>{ const m=pIssueMonth(r); if(!m) return; if(!bM[m]) bM[m]={q:0,n:0,o:0}; const c=r['이슈카테고리']||''; if(c.includes('품질'))bM[m].q++; if(c.includes('수량'))bM[m].n++; if(c.includes('운영'))bM[m].o++; });
-  const months=Object.keys(bM).sort();
+  const months=Object.keys(bM).sort(monthCmp);
   CHARTS['ch-issue-trend']=new Chart(ctx,{type:'line',data:{labels:months.map(fmtMonthShort),datasets:[{label:'품질',data:months.map(m=>bM[m].q),borderColor:'#dc2626',backgroundColor:'rgba(220,38,38,.08)',tension:.4,fill:true,borderWidth:2,pointRadius:3},{label:'수량',data:months.map(m=>bM[m].n),borderColor:'#d97706',backgroundColor:'rgba(217,119,6,.06)',tension:.4,fill:true,borderWidth:2,pointRadius:3},{label:'운영',data:months.map(m=>bM[m].o),borderColor:'#1d4ed8',backgroundColor:'rgba(29,78,216,.06)',tension:.4,fill:true,borderWidth:2,pointRadius:3}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},scales:{x:{ticks:{font:{size:10}}},y:{ticks:{font:{size:10}}}}}});
 }
 function renderMfgChart() {
@@ -1882,7 +1882,7 @@ function renderSalesCharts() {
   // Trend
   const byM={};
   D.sales.forEach(r=>{ const m=pYMMonth(r['연월']); if(m) byM[m]=(byM[m]||0)+pa(r['소계']); });
-  const months=Object.keys(byM).sort();
+  const months=Object.keys(byM).sort(monthCmp);
   const ctx1=getCtx('ch-sales-trend');
   if (ctx1) CHARTS['ch-sales-trend']=new Chart(ctx1,{type:'bar',data:{labels:months.map(fmtMonthShort),datasets:[{data:months.map(m=>byM[m]),backgroundColor:'#1d4ed8',borderRadius:4}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},scales:{x:{ticks:{font:{size:10}}},y:{ticks:{font:{size:10},callback:v=>fa(v)}}}}});
   // Product donut
@@ -1909,10 +1909,10 @@ function renderSparklines() {
   if (!D.order) return;
   const byM={};
   D.order.filter(r=>!isStock(r)).forEach(r=>{ const m=pOrderMonth(r['과업지시일자']); if(!m) return; byM[m]=(byM[m]||0)+1; });
-  drawSparkline('spark-order',Object.keys(byM).sort().slice(-6).map(m=>byM[m]),'#1d4ed8');
+  drawSparkline('spark-order',Object.keys(byM).sort(monthCmp).slice(-6).map(m=>byM[m]),'#1d4ed8');
   const purByM={};
   D.order.filter(r=>!isStock(r)).forEach(r=>{ const bm=purchaseByMonth(r); Object.entries(bm).forEach(([m,a])=>{ purByM[m]=(purByM[m]||0)+a; }); });
-  drawSparkline('spark-purchase',Object.keys(purByM).sort().slice(-6).map(m=>purByM[m]),'#059669');
+  drawSparkline('spark-purchase',Object.keys(purByM).sort(monthCmp).slice(-6).map(m=>purByM[m]),'#059669');
 }
 function drawSparkline(id,vals,color) {
   const el=document.getElementById(id); if(!el||!vals.length) return;
@@ -2003,6 +2003,7 @@ function openModal(type,extra) {
         <div class="tab" onclick="filterIssueModal('수량',this)">수량 ${f.filter(r=>(r['이슈카테고리']||'').includes('수량')).length}</div>
         <div class="tab" onclick="filterIssueModal('운영',this)">운영 ${f.filter(r=>(r['이슈카테고리']||'').includes('운영')).length}</div>
       </div>`;
+    MODAL_ISSUE_FILTER='all';
     renderIssueModalBody(f,'all');
 
   } else if (type==='urgent') {
@@ -2131,7 +2132,7 @@ function openSupplierDetailModal(supName) {
   // 3-month purchase trend
   const byM={};
   orders.forEach(r=>{ const bm=purchaseByMonth(r); Object.entries(bm).forEach(([m,a])=>{byM[m]=(byM[m]||0)+a;}); });
-  const months=Object.keys(byM).sort().slice(-6);
+  const months=Object.keys(byM).sort(monthCmp).slice(-6);
   // Top 3 products by frequency
   const byProd={};
   orders.forEach(r=>{ const p=r['산출물']||r['발주번호']||''; byProd[p]=(byProd[p]||0)+1; });
@@ -2276,7 +2277,7 @@ function analyzeQ(q) {
     const mOrders=orders.filter(r=>pOrderMonth(r['과업지시일자'])===SEL_MONTH);
     const mAmt=mOrders.reduce((s,r)=>s+pa(r['공급가액']),0);
     const byM={}; orders.forEach(r=>{ const m=pOrderMonth(r['과업지시일자']); if(m) byM[m]=(byM[m]||0)+1; });
-    const recent3=Object.keys(byM).sort().slice(-3);
+    const recent3=Object.keys(byM).sort(monthCmp).slice(-3);
     const issues=(D.issue||[]).filter(r=>{ const proj=r['project_name']||''; return mOrders.some(o=>(o['project']||'').slice(0,8)===proj.slice(0,8)); });
     const qi=issues.filter(r=>r['이슈카테고리']?.includes('품질')).length;
     const warn=qi>=3?`<br><span class="ai-warn">⚠ 품질이슈 ${qi}건 — 협력사 변경 검토 기준 도달</span>`:`<br><span class="ai-ok">✓ 품질이슈 ${qi}건</span>`;
@@ -2449,7 +2450,7 @@ function toNum(v) { return parseFloat(String(v||'').replace(/[₩,\s%]/g,''))||0
 function fmtW(n) { if(Math.abs(n)>=1e8) return (n/1e8).toFixed(1)+'억'; if(Math.abs(n)>=1e4) return Math.round(n/1e4).toLocaleString()+'만'; return Math.round(n).toLocaleString()+'원'; }
 function fmtN(n) { return Math.round(n).toLocaleString(); }
 function fmtPct(n) { return (n*100).toFixed(1)+'%'; }
-function fmtTurn(n) { return n.toFixed(2)+'회'; }
+function fmtTurn(n) { return (n==null||isNaN(n))?'—':Number(n).toFixed(2)+'회'; }
 function normalizeMonthKey(v) { const m=String(v||'').match(/^(\d{2})-0*(\d{1,2})$/); return m?m[1]+'-'+Number(m[2]):String(v||'').trim(); }
 function getMonthFromDate(d) { const p=String(d||'').match(/(\d{4})-(\d{1,2})/); if(!p) return ''; return String(p[1]).slice(-2)+'-'+Number(p[2]); }
 function invDateKey(v) { const s=String(v||'').trim(); if(/^\d{4}-\d{2}-\d{2}$/.test(s)) return s; const d=new Date(s); if(isNaN(d)) return s; return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0'); }
@@ -2461,7 +2462,7 @@ function getInvDates() {
 }
 function getInvMonths() {
   const s=new Set(); getInvDates().forEach(d=>{ const m=getMonthFromDate(d); if(m) s.add(m); });
-  return [...s].sort();
+  return [...s].sort(monthCmp);
 }
 function getInvQuarters() {
   const s=new Set(); getInvMonths().forEach(m=>{ const p=m.split('-'); s.add(p[0]+'-Q'+Math.ceil(Number(p[1])/3)); });
@@ -2864,7 +2865,7 @@ function renderCostMonthly(el, tabHtml) {
     byMonth[mo].cost+=pa(r['공급가액']);
     byMonth[mo].cnt++;
   });
-  const months=Object.keys(byMonth).sort();
+  const months=Object.keys(byMonth).sort(monthCmp);
   const totalRev=months.reduce((s,m)=>s+byMonth[m].revenue,0);
   const totalCost=months.reduce((s,m)=>s+byMonth[m].cost,0);
   const avgRate=totalRev>0?(totalCost/totalRev*100):0;
@@ -3038,7 +3039,7 @@ function renderProductTrend() {
   }
   const sorted=Object.entries(byProduct).sort((a,b)=>b[1].total-a[1].total);
   const top10=sorted.slice(0,10);
-  const allMonths=[...new Set(sorted.flatMap(([,v])=>Object.keys(v.months)))].sort();
+  const allMonths=[...new Set(sorted.flatMap(([,v])=>Object.keys(v.months)))].sort(monthCmp);
 
   el.innerHTML=`
     <div class="card"><div class="card-header"><div class="card-title">제품별 월간 판매량 추이 (Top 10)</div><div class="card-sub">총 ${sorted.length}개 제품</div></div>
@@ -3061,7 +3062,6 @@ function renderProductTrend() {
 // ===== 3-11. 협력사 현황 강화 (평가점수) =====
 // Note: Supplier eval is computed dynamically when supplier page loads
 // We override the existing updateSupTab to add eval scores
-const _origUpdateSupTab=typeof updateSupTab==='function'?updateSupTab:null;
 
 // ===== 3-12. 협력사유형별 제품군 =====
 function renderSupplierProduct() {
@@ -3109,10 +3109,11 @@ function renderQMS() {
       totalIssues++;
       const t=r['이슈유형']||'기타'; byType[t]=(byType[t]||0)+1;
       const amt=toNum(r['손실금액']||r['금액']); totalCOPQ+=amt;
-      const m=r['발생일']?getMonthFromDate(r['발생일'])||(pOrderMonth(r['발생일'])||''):'';
+      const m=r['발생일']?(pYMMonth(r['발생일'])||''):'';
       if(m){if(!byMonth[m]) byMonth[m]={copq:0,cnt:0}; byMonth[m].copq+=amt; byMonth[m].cnt++;}
       const div=r['원인분과']||''; if(div.includes('QI')) byDivision.QI++; else if(div.includes('QA')) byDivision.QA++; else byDivision.QC++;
     });
+    qualityIssues=totalIssues; // QMS 데이터는 전건 품질이슈
   } else if(D.issue) {
     D.issue.forEach(r=>{
       totalIssues++;
@@ -3123,11 +3124,11 @@ function renderQMS() {
     });
   }
   const typeSorted=Object.entries(byType).sort((a,b)=>b[1]-a[1]);
-  const monthKeys=Object.keys(byMonth).sort();
+  const monthKeys=Object.keys(byMonth).sort(monthCmp);
 
   el.innerHTML=`
     <div class="kpi-row-4">
-      <div class="kpi-card c-red"><div class="kpi-label">총 품질이슈</div><div class="kpi-val">${totalIssues}</div></div>
+      <div class="kpi-card c-red"><div class="kpi-label">총 이슈 건수</div><div class="kpi-val">${totalIssues}</div><div class="kpi-sub">품질이슈 ${qualityIssues}건</div></div>
       <div class="kpi-card c-amber"><div class="kpi-label">COPQ 총액</div><div class="kpi-val">${totalCOPQ>0?fmtW(totalCOPQ):'—'}</div></div>
       <div class="kpi-card c-blue"><div class="kpi-label">QI (초기품질)</div><div class="kpi-val">${byDivision.QI}</div></div>
       <div class="kpi-card c-purple"><div class="kpi-label">QC (양산통제)</div><div class="kpi-val">${byDivision.QC}</div><div class="kpi-sub">QA (고객보증) ${byDivision.QA}</div></div>
@@ -3219,7 +3220,7 @@ function computeKPIs() {
       monthly[m].cost_urgent = b.total ? (b.urgent / b.total) * 100 : null;
       monthly[m].cost_rework = b.total ? (b.rework / b.total) * 100 : null;
     });
-    const allMonths = Object.keys(byMonth).sort();
+    const allMonths = Object.keys(byMonth).sort(monthCmp);
     const latest = allMonths[allMonths.length - 1];
     if (latest) {
       r.delivery_ontime = monthly[latest].delivery_ontime;
@@ -3235,9 +3236,12 @@ function computeKPIs() {
     D.issue.forEach(row => {
       const m = pIssueMonth(row);
       if (!m) return;
-      if (!byMonth[m]) byMonth[m] = {quality:0, quantity:0, ops:0, inspect:0, defect:0, rework:0};
+      if (!byMonth[m]) byMonth[m] = {all:0, quality:0, quantity:0, ops:0, inspect:0, defect:0, rework:0};
       const cat = (row['이슈카테고리']||'').trim();
+      byMonth[m].all++;
       if (cat.includes('품질')) byMonth[m].quality++;
+      if (cat.includes('수량')) byMonth[m].quantity++;
+      if (cat.includes('운영')) byMonth[m].ops++;
       const reworkField = String(row['재제작/추가제작']||'').trim();
       if (reworkField === '재제작' || reworkField.includes('1 checked out of')) byMonth[m].rework++;
       const inspQty = parseInt(row['검수수량']) || 0;
@@ -3254,14 +3258,14 @@ function computeKPIs() {
       const totalTask = orderByMonth[m] || 1;
       monthly[m].quality_issue = (b.quality / totalTask) * 100;
       monthly[m].quality_inspect = b.inspect > 0 ? (1 - b.defect / b.inspect) * 100 : null;
-      const totalIssuesInMonth = b.quality + b.quantity + b.ops || Object.values(b).reduce((a,c)=>a+c,0);
+      const totalIssuesInMonth = b.all;
       monthly[m].cost_rework = totalIssuesInMonth > 0 ? (b.rework / totalIssuesInMonth) * 100 : null;
     });
-    const allMonths = Object.keys(byMonth).sort();
+    const allMonths = Object.keys(byMonth).sort(monthCmp);
     const latest = allMonths[allMonths.length - 1];
     // Overall rework from issues
     let totalReworkIssue = 0, totalIssueCount = 0;
-    Object.values(byMonth).forEach(b => { totalReworkIssue += b.rework; totalIssueCount += (b.quality + b.quantity + b.ops) || 1; });
+    Object.values(byMonth).forEach(b => { totalReworkIssue += b.rework; totalIssueCount += b.all; });
     r.cost_rework = totalIssueCount > 0 ? (totalReworkIssue / totalIssueCount) * 100 : null;
     if (latest) {
       r.quality_issue = monthly[latest].quality_issue;
@@ -3277,7 +3281,7 @@ function computeKPIs() {
     D.order.forEach(row => { const m = pOrderMonth(row['과업지시일자']); if(m) orderByMonthAll[m]=(orderByMonthAll[m]||0)+1; });
     const totalTaskAll = Object.values(orderByMonthAll).reduce((a,b)=>a+b,0);
     r.quality_customer = totalTaskAll > 0 ? (ciCount / totalTaskAll) * 100 : null;
-    const allMonths = Object.keys(monthly).sort();
+    const allMonths = Object.keys(monthly).sort(monthCmp);
     if (allMonths.length) monthly[allMonths[allMonths.length-1]].quality_customer = r.quality_customer;
   }
 
@@ -3381,7 +3385,7 @@ function renderKPITracker() {
   const overallPct = measurable > 0 ? Math.round(achieved / measurable * 100) : 0;
 
   // Monthly trend data for chart
-  const mKeys = Object.keys(monthly).sort().slice(-6);
+  const mKeys = Object.keys(monthly).sort(monthCmp).slice(-6);
 
   el.innerHTML = `
     <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:16px;margin-bottom:20px">
