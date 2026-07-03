@@ -298,6 +298,10 @@ a{color:var(--blue);text-decoration:none}
     하도급법 위험
   </div>
   <div class="sb-section">운영</div>
+  <div class="sb-item" onclick="nav(this,'quote')">
+    <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="2" y="2" width="12" height="12" rx="2"/><path d="M5 5h6M5 8h3M5 11h4"/></svg>
+    견적계산기
+  </div>
   <div class="sb-item" onclick="nav(this,'ai')">
     <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="8" cy="8" r="6"/><path d="M5.5 9.5c.5-2 1.5-3 2.5-3s2 1 2 2.5c0 .83-.83 1.5-1.5 1.5"/><circle cx="8" cy="12.5" r=".5" fill="currentColor" stroke="none"/></svg>
     AI 어시스턴트
@@ -671,6 +675,8 @@ a{color:var(--blue);text-decoration:none}
     </div>
 
     <!-- AI -->
+    <div id="sec-quote" style="display:none"></div>
+
     <div id="sec-ai" style="display:none">
       <div class="ai-panel">
         <div class="ai-header">AI 운영 어시스턴트</div>
@@ -2353,7 +2359,7 @@ function nav(el,id) {
   if (sec) sec.style.display='';
   document.querySelectorAll('.sb-item').forEach(i=>i.classList.remove('active'));
   if (el) el.classList.add('active');
-  const titles={overview:'종합 현황','inventory-ops':'재고운영 현황','stockout-detail':'품절 상세','purchase-review':'매입 검토','season-plan':'시즌재고 계획',eoq:'EOQ · 발주알람',graduation:'졸업 검토',order:'발주 현황',purchase:'매입 현황','cost-analysis':'원가 분석',issue:'이슈 현황',customer:'고객인지 이슈',sales:'매출/마진 분석','product-trend':'제품별 판매량 추이',supplier:'협력사 현황','supplier-product':'협력사유형별 제품군',kpi:'KPI 목표·트래킹',portfolio:'공급망 포트폴리오',qms:'품질 현황',subcontract:'하도급법 위험',ai:'AI 어시스턴트',report:'리포트 생성',stock:'재고 현황'};
+  const titles={overview:'종합 현황','inventory-ops':'재고운영 현황','stockout-detail':'품절 상세','purchase-review':'매입 검토','season-plan':'시즌재고 계획',eoq:'EOQ · 발주알람',graduation:'졸업 검토',order:'발주 현황',purchase:'매입 현황','cost-analysis':'원가 분석',issue:'이슈 현황',customer:'고객인지 이슈',sales:'매출/마진 분석','product-trend':'제품별 판매량 추이',supplier:'협력사 현황','supplier-product':'협력사유형별 제품군',kpi:'KPI 목표·트래킹',portfolio:'공급망 포트폴리오',qms:'품질 현황',subcontract:'하도급법 위험',ai:'AI 어시스턴트',report:'리포트 생성',stock:'재고 현황',quote:'견적계산기'};
   const guides={
     overview:'<b>확인 가능 지표:</b> 발주TASK(프로젝트/재고생산/긴급) · 월매입금액 · 이슈건수(품질/수량/운영) · 긴급발주 · 고객인지이슈 — 모든 KPI에 전년 동기(YoY) 비교 표시 | <b>차트:</b> 매입추이(월별/주별·합산/협력사/업태/굿즈코드) · 이슈유형 도넛 · 담당자별 발주 · 월별이슈추이 · 제조유형 매입비중(업태/카테고리 전환) | <b>클릭:</b> KPI 카드 클릭 시 상세 모달 · 차트 월 클릭 시 Top5 모달 | <b>CSV:</b> 발주_RAW + 이슈_RAW + 공급망_RAW + 고객인지이슈_RAW',
     'inventory-ops':'<b>확인 가능 지표:</b> 재고자산평가액 · 재고회전율(1M/3M/YTD) · 품절률 · 운영밴드 상태(분기별) | <b>차트:</b> 재고금액 추이(최근12주, 밴드 상/하한 표시) · 카테고리별 재고비중/SKU수/회전율 | <b>클릭:</b> 재고자산/회전율 KPI → SKU별 상세 모달(정렬 가능, 회전율 클릭 시 12개월 판매추이 바차트+회의이력) | <b>CSV:</b> S&OP 재고주간 + 매출월간',
@@ -2377,6 +2383,7 @@ function nav(el,id) {
     subcontract:'<b>확인 가능 지표:</b> 총 위험건수 · 최대지연일 · 위험협력사수 | <b>자동산출:</b> 발주_RAW 입하경과일(입하확정일/예정일 기준) + 공급망_RAW 하도급대상여부=대상 + 미입하 + 90일초과 | <b>필터:</b> 전체/90일+/120일+/180일+ | <b>CSV:</b> 발주_RAW + 공급망_RAW (별도 CSV 불필요)',
     stock:'<b>확인 가능 지표:</b> 전체 품절수 · 비의도적 품절(납기지연/공급부족) · 의도적 품절(졸업/시즌/효율화) · 굿즈품절 | <b>필터:</b> 판매상태별(일시품절/품절예정/의도적 품절) | <b>테이블:</b> 파츠명/굿즈 · 판매상태 · 재고소유 · 품절성격/사유 · 변경일 · 경과일 · 굿즈품절여부 | <b>CSV:</b> 품절리스트',
     ai:'<b>사용법:</b> 협력사명 입력 → 발주현황/매입금액/3개월추이/품질이슈 분석 | 긴급 → 긴급발주 목록 | 미입하/task → 미입하현황 | 전월/매입 → 전월대비 비교 | 담당자명 → 개인 실적 | <b>CSV:</b> 발주_RAW + 이슈_RAW + 공급망_RAW',
+    quote:'<b>기능:</b> 패키지(박스) 자동 견적 산출 — 마닐라박스/C형/W형/슬리브형 | <b>로직:</b> 전개사이즈 → 지류단가(27지종×15규격, 0원 규격 자동상향) → 여분·연수 → 원단/인쇄/코팅/톰슨/접착/특수공정/골판지 → 관리비(10%·최소15만) → 마진(최소20만) | <b>이력:</b> localStorage 저장 · CSV 내보내기 | <b>기준:</b> 외주버전 v1.2.2 단가표',
     report:'<b>기능:</b> 주간리포트 .md 생성(발주/이슈 자동 요약) · KPI 요약 CSV 내보내기 · 월간 대시보드 링크 · GitHub 저장소 링크',
   };
   document.getElementById('page-title').innerHTML=`${titles[id]||id}<span class="topbar-badge" id="page-month-badge">${SEL_MONTH?fmtMonth(SEL_MONTH):''}</span>`;
@@ -2398,6 +2405,7 @@ function nav(el,id) {
   if (id==='product-trend') renderProductTrend();
   if (id==='supplier-product') renderSupplierProduct();
   if (id==='qms') renderQMS();
+  if (id==='quote') renderQuoteCalc();
   if (id==='portfolio') renderPortfolio();
   if (id==='kpi') renderKPITracker();
 }
@@ -3801,6 +3809,326 @@ function computeFromRaw(orderData, issueData, supData, currentQ) {
 
   window._portfolioVendors = vendors;
   return vendors;
+}
+
+const QC_PAPER_PRICES={"sc240g": [246, 123, 123, 82, 61.5, 0, 172.2, 86.1, 0, 0, 307.2, 153.6, 153.6, 102.4, 76.8], "sc260g": [261.74, 130.87, 130.87, 87.25, 65.44, 0, 183.22, 91.61, 0, 0, 328, 164, 164, 109.33, 82], "sc300g": [290.62, 145.31, 145.31, 96.87, 72.66, 0, 203.44, 101.72, 0, 0, 363.2, 181.6, 181.6, 121.07, 90.8], "sc350g": [296.09, 148.04, 148.04, 98.7, 74.02, 0, 236.87, 118.43, 0, 0, 424, 212, 212, 141.33, 106], "sc400g": [379.55, 189.78, 189.78, 126.52, 94.89, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0], "sc450g": [422.45, 211.22, 211.22, 140.82, 105.61, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0], "riv300g": [575.02, 287.51, 287.51, 191.67, 143.76, 73.63, 402.52, 201.26, 0, 0, 720, 360, 360, 240, 180], "riv350g": [673.1, 336.55, 336.55, 224.37, 168.28, 86.64, 471.17, 235.59, 0, 0, 843.2, 421.6, 421.6, 281.07, 210.8], "riv400g": [766.7, 383.35, 383.35, 255.57, 191.68, 98.34, 536.69, 268.35, 0, 0, 960, 480, 480, 320, 240], "ab라이트270g": [440.43, 220.21, 220.21, 146.81, 110.11, 56.8, 307.54, 153.77, 0, 0, 542.95, 271.47, 271.47, 180.98, 135.74], "ab라이트295g": [482.19, 241.09, 241.09, 160.73, 120.55, 62.77, 347.13, 173.57, 0, 0, 612.36, 306.18, 306.18, 204.12, 153.09], "ab라이트325g": [531.55, 265.78, 265.78, 177.18, 132.89, 68.94, 372.09, 186.05, 0, 0, 653.04, 326.52, 326.52, 217.68, 163.26], "뉴에코블랙150g": [477, 238.5, 238.5, 159, 119.25, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0], "뉴에코블랙300g": [972, 486, 486, 324, 243, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0], "뉴에코블랙350g": [1125, 562.5, 562.5, 375, 281.25, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0], "문보드310g": [828, 414, 414, 276, 207, 105.25, 0, 0, 0, 0, 0, 0, 0, 0, 0], "문보드350g": [927, 463.5, 463.5, 309, 231.75, 118.38, 0, 0, 0, 0, 0, 0, 0, 0, 0], "마이캔버스300g": [826.5, 413.25, 413.25, 275.5, 206.63, 105.06, 570, 292, 0, 0, 0, 0, 0, 0, 0], "마이캔버스350g": [964.25, 482.13, 482.13, 321.42, 241.06, 123.03, 665, 342.5, 0, 0, 0, 0, 0, 0, 0], "스노우지180g": [290.09, 145.04, 145.04, 96.7, 72.52, 0, 201.53, 100.76, 185.6, 92.8, 360.39, 180.2, 180.2, 120.13, 90.1], "스노우지200g": [322.33, 161.16, 161.16, 107.44, 80.58, 0, 223.9, 111.95, 206.21, 103.1, 400.44, 200.22, 200.22, 133.48, 100.11], "스노우지250g": [402.89, 201.45, 201.45, 134.3, 100.72, 0, 279.88, 139.94, 257.78, 128.89, 0, 0, 0, 0, 0], "모조쇼핑백지160g": [222.71, 111.36, 111.36, 74.24, 55.68, 0, 154.71, 77.36, 0, 0, 276.53, 138.27, 138.27, 92.18, 69.13], "모조쇼핑백지180g": [388.42, 194.21, 194.21, 129.47, 97.11, 0, 0, 0, 0, 0, 352.25, 176.12, 176.12, 117.42, 88.06], "비스포크140g": [332.88, 166.44, 166.44, 110.96, 83.22, 0, 231.23, 115.62, 0, 0, 418.18, 209.09, 209.09, 139.39, 104.54], "비스포크160g": [380.43, 190.22, 190.22, 126.81, 95.11, 0, 264.27, 132.14, 0, 0, 477.92, 238.96, 238.96, 159.31, 119.48], "비스포크180g": [427.98, 213.99, 213.99, 142.66, 107, 0, 297.31, 148.66, 0, 0, 537.65, 268.82, 268.82, 179.22, 134.41]};
+const QC_CORR_PRICES={"SK K": 376, "SK S": 325, "SK B": 354, "WK K": 421, "WK B": 400, "WK S": 372, "식품 B": 395, "식품 K": 416, "KLB CK": 438, "KLB K": 414, "KLB S": 365, "흑12흑12": 1391};
+// ===== 패키지 견적 계산 엔진 (외주버전 v1.2.2 로직 재구현) =====
+const QC_SIZE_COLS=["전지","2절","장2절","3절","4절","8절","국전","국2절","소국전","소국2절","하드롱전지","하드롱2절","하드롱장2절","하드롱3절","하드롱4절"];
+const QC_SIZE_ORDER=["8절","4절","소국2절","국2절","하드롱4절","3절","하드롱3절","2절","장2절","하드롱장2절","소국전","하드롱2절","국전","전지","하드롱전지"];
+const QC_PAPER_STD=[{name:"4절",w:525,h:374,big:false},{name:"국2절",w:616,h:449,big:false},{name:"하드롱4절",w:580,h:425,big:false},{name:"3절",w:768,h:363,big:false},{name:"하드롱3절",w:869,h:380,big:false},{name:"2절",w:768,h:525,big:false},{name:"소국전",w:860,h:605,big:true},{name:"하드롱2절",w:869,h:577,big:true},{name:"국전",w:919,h:616,big:true},{name:"전지",w:1020,h:720,big:true}].sort((a,b)=>a.w*a.h-b.w*b.h);
+const QC_BIG_SIZES=QC_PAPER_STD.filter(s=>s.big).map(s=>s.name);
+const QC_CARTON_SMALL=["4절","국2절","하드롱4절","3절","하드롱3절","2절","장2절","8절","소국2절","하드롱장2절"];
+const QC_FORM_TYPES=["마닐라박스","C형","W형","슬리브형"];
+const QC_CORR_APPLY=["마닐라박스","C형","W형"];
+
+// 지류 단가 조회 (0이면 규격 자동 상향)
+function qcPaperPrice(type,size){
+  const row=QC_PAPER_PRICES[type]; if(!row) return 0;
+  const i=QC_SIZE_COLS.indexOf(size); return i<0?0:(row[i]||0);
+}
+function qcFindPaper(type,size){
+  const st=QC_SIZE_ORDER.indexOf(size);
+  if(st<0) return {valid:false,size,price:0,reason:'알 수 없는 규격: '+size};
+  for(let i=st;i<QC_SIZE_ORDER.length;i++){
+    const s=QC_SIZE_ORDER[i], p=qcPaperPrice(type,s);
+    if(p>0) return {valid:true,size:s,price:p,upgraded:s!==size,originalSize:s!==size?size:null};
+  }
+  return {valid:false,size,price:0,reason:type+' — '+size+' 이상 규격에 단가 없음'};
+}
+// 여분(로스) 장수
+function qcLoss(qty){
+  if(qty<=500) return {sheets:200,label:'≤ 500개'};
+  if(qty<=5000) return {sheets:300,label:'501 ~ 5,000개'};
+  if(qty<=10000) return {sheets:500,label:'5,001 ~ 10,000개'};
+  if(qty<=20000) return {sheets:700,label:'10,001 ~ 20,000개'};
+  return {sheets:1000,label:'20,001개 이상'};
+}
+// 연수 (대판 500, 그 외 1000 기준, 0.5 단위)
+function qcYeon(tong,size){ const base=QC_BIG_SIZES.includes(size)?500:1000; return Math.max(1,Math.round(tong/base*2)/2); }
+// 인쇄 도당단가
+function qcPrintUnit(y){ if(y<2)return 12000; if(y<=5)return 10000; if(y<=10)return 9000; if(y<=15)return 8000; if(y<=20)return 7000; if(y<=30)return 6000; return 5000; }
+// 톰슨 단가/통
+function qcTomsonUnit(s){ if(["국전","전지"].includes(s))return 80; if(["하드롱2절","소국전"].includes(s))return 70; return 50; }
+// 접착 단가/통
+function qcAdhUnit(t){ if(t<=2000)return 50; if(t<=5000)return 40; if(t<10000)return 30; return 20; }
+// 특수공정 규격단가
+function qcSpecUnit(s){ if(s==="전지")return 120; if(["소국전","하드롱2절","국전"].includes(s))return 100; return 80; }
+// 골판지 여분
+function qcCorrLoss(q){ if(q<3000)return 100; if(q<5000)return 200; if(q<10000)return 300; return 500; }
+// 합지 단가/통
+function qcLamUnit(corrType,size){ const small=QC_CARTON_SMALL.includes(size); if(corrType==='2합')return small?80:100; if(corrType==='3합')return small?180:220; return 0; }
+// 전개사이즈
+function qcParts(type,w,d,h){
+  if(!w||!d||!h) return [];
+  switch(type){
+    case "마닐라박스": return [{label:"메인",w:(w+d)*2+50,h:d*2+h+70}];
+    case "C형": return [{label:"상박스",w:w+h*4+72,h:d+h*4+72},{label:"하박스",w:w+h*4+70,h:d+h*4+70}];
+    case "W형": return [{label:"메인",w:w+h*4+60,h:d*2+h*3+60}];
+    case "슬리브형": return [{label:"슬리브",w:w+30,h:(d+h)*2+50},{label:"인박스",w:w+h*4+70,h:d+h*4+70}];
+    default: return [];
+  }
+}
+// 최소 표준용지 추천 (90° 회전 허용)
+function qcRecommendStd(pw,ph){
+  for(const s of QC_PAPER_STD){ if((pw<=s.w&&ph<=s.h)||(pw<=s.h&&ph<=s.w)) return s; }
+  return null; // tooLarge
+}
+
+// ===== 메인 계산 =====
+// input: {type,width,depth,height,qty,ganjuk,paperType1,paperSize1,paperType2,paperSize2,
+//   print,printColors,coating,coatingType,tomson,adhesive,epoxy,foil,emboss,
+//   corrType,corrMat,backPaperOn,backPaperType,backPaperSize,backPrint,backPrintColors,backCoating,
+//   extras:[{label,qty,price}], margin}
+function qcCalc(inp){
+  const qty=+inp.qty||0;
+  if(!qty||!inp.width||!inp.depth||!inp.height) return {error:'규격/수량을 입력해주세요.'};
+  const parts=qcParts(inp.type,+inp.width,+inp.depth,+inp.height);
+  if(!parts.length) return {error:'박스 형태를 선택해주세요.'};
+  const ganjuk=Math.max(1,+inp.ganjuk||1);
+  const tong=qty/ganjuk;                 // 통수
+  const loss=qcLoss(qty);
+  const realSheets=tong+loss.sheets;     // 실통수(장수)
+  let tooLarge=false;
+
+  const paperResults=parts.map((part,idx)=>{
+    const pType=inp['paperType'+(idx+1)]||inp.paperType1;
+    const pSize=inp['paperSize'+(idx+1)]||inp.paperSize1;
+    const found=qcFindPaper(pType,pSize);
+    const rows=[];
+    const std=qcRecommendStd(part.w,part.h);
+    if(!std) tooLarge=true;
+    if(!found.valid) return {...part,rows,typeName:pType,sizeName:pSize,error:found.reason,std};
+    const size=found.size, price=found.price;
+    const yeon=qcYeon(tong,size);
+    rows.push({label:'원단비',group:'원단',detail:price.toFixed(2)+'원/장 × '+realSheets.toLocaleString()+'장'+(found.upgraded?' ('+found.originalSize+'→'+size+' 상향)':''),total:Math.round(realSheets*price)});
+    if(inp.print&&+inp.printColors>0){
+      const u=qcPrintUnit(yeon), colors=+inp.printColors;
+      rows.push({label:'인쇄 작업비',group:'인쇄',detail:u.toLocaleString()+'원/도/연 × '+colors+'도 × '+yeon+'연 (최소 3.6만)',total:Math.max(36000,u*colors*yeon)});
+      rows.push({label:'인쇄 판비(CTP)',group:'인쇄',detail:colors+'도 × 7,000원',total:colors*7000});
+    }
+    if(inp.coating){
+      const faces=inp.coatingType==='양면'?2:1;
+      const u=Math.ceil(part.w*part.h*145/1000000);
+      rows.push({label:'코팅',group:'코팅',detail:u+'원/통 × '+tong.toLocaleString()+'통'+(faces===2?' × 2면':'')+' (최소 4.5만)',total:Math.max(45000,u*faces*tong)});
+    }
+    if(inp.tomson){
+      const u=qcTomsonUnit(size);
+      rows.push({label:'톰슨',group:'후가공',detail:u+'원/통 × '+tong.toLocaleString()+'통 (최소 5만)',total:Math.max(50000,u*tong)});
+    }
+    if(inp.adhesive&&inp.type==='마닐라박스'&&idx===0){
+      const u=qcAdhUnit(tong);
+      rows.push({label:'접착',group:'후가공',detail:u+'원/통 × '+tong.toLocaleString()+'통 (최소 6만)',total:Math.max(60000,u*tong)});
+    }
+    if(inp.epoxy&&idx===0){
+      rows.push({label:'에폭시 작업비',group:'특수',detail:'max(10만, '+tong.toLocaleString()+'통×100원)',total:Math.max(100000,tong*100)});
+      rows.push({label:'에폭시 필름비',group:'특수',detail:'전개면적 기준',total:Math.ceil(part.w*part.h*50/1000)});
+    }
+    ['foil','emboss'].forEach(k=>{
+      if(inp[k]&&idx===0){
+        const nm=k==='foil'?'금은박':'형압', u=qcSpecUnit(size);
+        rows.push({label:nm+' 작업비',group:'특수',detail:'max(8만, '+tong.toLocaleString()+'통×'+u+'원)',total:Math.max(80000,tong*u)});
+        rows.push({label:nm+' 필름비',group:'특수',detail:'전개면적 기준',total:Math.ceil(part.w*part.h*50/1000)});
+        rows.push({label:nm+' 동판비',group:'특수',detail:'고정',total:10000});
+      }
+    });
+    // 배면 인쇄지 (골판지 적용형, part0)
+    if(idx===0&&QC_CORR_APPLY.includes(inp.type)&&inp.corrType&&inp.corrType!=='해당없음'&&inp.backPaperOn){
+      const bf=qcFindPaper(inp.backPaperType||'sc240g',inp.backPaperSize||size);
+      if(bf.valid){
+        const by=qcYeon(tong,bf.size);
+        rows.push({label:'배면 원단비',group:'배면',detail:bf.price.toFixed(2)+'원/장 × '+realSheets.toLocaleString()+'장',total:Math.round(realSheets*bf.price)});
+        if(inp.backPrint&&+inp.backPrintColors>0){
+          const bu=qcPrintUnit(by), bc=+inp.backPrintColors;
+          rows.push({label:'배면 인쇄',group:'배면',detail:bu.toLocaleString()+'×'+bc+'도×'+by+'연 (최소 3.6만)',total:Math.max(36000,bu*bc*by)});
+          rows.push({label:'배면 CTP',group:'배면',detail:bc+'도 × 7,000원',total:bc*7000});
+        }
+        if(inp.backCoating){
+          const bfaces=inp.backCoatingType==='양면'?2:1;
+          const bu2=Math.ceil(part.w*part.h*145/1000000);
+          rows.push({label:'배면 코팅',group:'배면',detail:bu2+'원/통 × '+tong.toLocaleString()+'통 (최소 4.5만)',total:Math.max(45000,bu2*bfaces*tong)});
+        }
+      }
+    }
+    // 골판지 합지 (part0)
+    if(idx===0&&QC_CORR_APPLY.includes(inp.type)&&inp.corrType&&inp.corrType!=='해당없음'){
+      const matPrice=QC_CORR_PRICES[inp.corrMat]||0;
+      if(matPrice>0){
+        const unit=Math.ceil(matPrice*part.w*part.h/1000000);
+        const cLoss=qcCorrLoss(qty);
+        const cSheets=Math.max(500,tong+cLoss);
+        rows.push({label:'골판지 원단',group:'골판지',detail:unit+'원/장 × '+cSheets.toLocaleString()+'장 (여분 '+cLoss+')',total:cSheets*unit});
+        const lu=qcLamUnit(inp.corrType,size);
+        if(lu>0) rows.push({label:'합지('+inp.corrType+')',group:'골판지',detail:lu+'원/통 × '+tong.toLocaleString()+'통 (최소 8만)',total:Math.max(80000,Math.round(tong*lu))});
+      }
+    }
+    return {...part,rows,typeName:pType,sizeName:size,upgraded:found.upgraded,originalSize:found.originalSize,yeon,tong,realSheets,lossSheets:loss.sheets,std};
+  });
+
+  const err=paperResults.find(p=>p.error);
+  if(err) return {error:err.error,paperResults};
+
+  const mfgCost=paperResults.reduce((s,p)=>s+p.rows.reduce((a,r)=>a+r.total,0),0);   // 제조원가
+  const mgmtFee=Math.max(150000,Math.round(mfgCost*0.1));                             // 관리비
+  const extraRows=(inp.extras||[]).filter(e=>e.on&&+e.qty>0&&+e.price>0).map(e=>({label:e.label,qty:+e.qty,price:+e.price,total:(+e.qty)*(+e.price)}));
+  const extraSum=extraRows.reduce((s,e)=>s+e.total,0);
+  const totalCost=mfgCost+mgmtFee+extraSum;
+  const perUnit=totalCost/qty;
+  const marginPct=Math.max(0,Math.min(99,+inp.margin||0));
+  const marginAmt=Math.max(totalCost*marginPct/100,200000);   // 최소 마진 20만
+  const totalPrice=totalCost+marginAmt;
+  const consumer=totalPrice/qty;
+  const realMarginPct=totalCost>0?marginAmt/totalPrice*100:0;
+
+  return {paperResults,tong,realSheets,lossSheets:loss.sheets,lossLabel:loss.label,tooLarge,
+    제조원가:mfgCost,관리비:mgmtFee,추가비용행:extraRows,추가비용합계:extraSum,
+    totalCost,perUnit,marginPct,marginAmt,totalPrice,consumer,realMarginPct};
+}
+
+// ===== 견적계산기 UI =====
+const QC_HISTORY_KEY='quote_history';
+function qcState(){
+  const g=id=>document.getElementById(id);
+  const chk=id=>!!g(id)?.checked, val=id=>g(id)?.value;
+  const extras=['수작업','포장','배송비','기타'].map((label,i)=>({label,on:chk('qc-ex-on'+i),qty:val('qc-ex-q'+i),price:val('qc-ex-p'+i)}));
+  return {type:val('qc-type'),width:+val('qc-w'),depth:+val('qc-d'),height:+val('qc-h'),
+    qty:+val('qc-qty'),ganjuk:+val('qc-ganjuk')||1,
+    paperType1:val('qc-pt1'),paperSize1:val('qc-ps1'),paperType2:val('qc-pt2'),paperSize2:val('qc-ps2'),
+    print:chk('qc-print'),printColors:+val('qc-colors'),coating:chk('qc-coat'),coatingType:val('qc-coattype'),
+    tomson:chk('qc-tomson'),adhesive:chk('qc-adh'),epoxy:chk('qc-epoxy'),foil:chk('qc-foil'),emboss:chk('qc-emboss'),
+    corrType:val('qc-corrtype'),corrMat:val('qc-corrmat'),
+    backPaperOn:chk('qc-backon'),backPaperType:val('qc-backpt'),backPaperSize:val('qc-backps'),
+    backPrint:chk('qc-backprint'),backPrintColors:+val('qc-backcolors'),backCoating:chk('qc-backcoat'),
+    extras,margin:+val('qc-margin')||0};
+}
+function qcOptHtml(list,sel){ return list.map(o=>`<option${o===sel?' selected':''}>${o}</option>`).join(''); }
+function renderQuoteCalc(){
+  const el=document.getElementById('sec-quote'); if(!el||el.dataset.built) { qcToggleSections(); return; }
+  el.dataset.built='1';
+  const paperOpts=Object.keys(QC_PAPER_PRICES);
+  const inputRow=(lbl,html)=>`<div style="display:flex;align-items:center;gap:8px;margin-bottom:8px"><div style="width:92px;font-size:11px;color:var(--text2);flex-shrink:0">${lbl}</div>${html}</div>`;
+  const num=(id,ph,w)=>`<input type="number" id="${id}" placeholder="${ph}" style="width:${w||80}px;padding:5px 8px;border:1px solid var(--border2);border-radius:var(--r-sm);font-size:12px">`;
+  const sel=(id,opts,selv)=>`<select id="${id}" style="padding:5px 8px;border:1px solid var(--border2);border-radius:var(--r-sm);font-size:12px">${qcOptHtml(opts,selv)}</select>`;
+  const ck=(id,lbl)=>`<label style="display:flex;align-items:center;gap:4px;font-size:12px;cursor:pointer"><input type="checkbox" id="${id}">${lbl}</label>`;
+  el.innerHTML=`
+  <div class="grid-2" style="grid-template-columns:420px 1fr;align-items:start">
+    <div class="card">
+      <div class="card-header"><div class="card-title">📦 견적 조건 입력</div></div>
+      ${inputRow('박스 형태',sel('qc-type',QC_FORM_TYPES,'마닐라박스'))}
+      ${inputRow('내경 (mm)',num('qc-w','가로',70)+' × '+num('qc-d','세로',70)+' × '+num('qc-h','높이',70))}
+      ${inputRow('제작수량',num('qc-qty','EA',90)+' '+num('qc-ganjuk','판걸이(1)',80))}
+      ${inputRow('원단1 (메인)',sel('qc-pt1',paperOpts,'sc350g')+' '+sel('qc-ps1',QC_SIZE_COLS,'국전'))}
+      <div id="qc-paper2-row">${inputRow('원단2 (서브)',sel('qc-pt2',paperOpts,'sc300g')+' '+sel('qc-ps2',QC_SIZE_COLS,'국전'))}</div>
+      ${inputRow('인쇄',ck('qc-print','인쇄')+' '+sel('qc-colors',['1','2','4'],'4')+'<span style="font-size:11px;color:var(--text3)">도</span>')}
+      ${inputRow('코팅',ck('qc-coat','코팅')+' '+sel('qc-coattype',['단면','양면'],'단면'))}
+      ${inputRow('후가공','<div style="display:flex;gap:12px;flex-wrap:wrap">'+ck('qc-tomson','톰슨')+'<span id="qc-adh-wrap">'+ck('qc-adh','접착(마닐라)')+'</span></div>')}
+      ${inputRow('특수공정','<div style="display:flex;gap:12px;flex-wrap:wrap">'+ck('qc-epoxy','에폭시')+ck('qc-foil','금은박')+ck('qc-emboss','형압')+'</div>')}
+      <div id="qc-corr-block" style="border-top:1px dashed var(--border);padding-top:8px;margin-top:8px">
+        ${inputRow('골판지 합지',sel('qc-corrtype',['해당없음','2합','3합'],'해당없음')+' '+sel('qc-corrmat',Object.keys(QC_CORR_PRICES),'SK B'))}
+        <div id="qc-back-block">
+          ${inputRow('배면 인쇄지',ck('qc-backon','적용')+' '+sel('qc-backpt',paperOpts,'sc240g')+' '+sel('qc-backps',QC_SIZE_COLS,'국전'))}
+          ${inputRow('배면 옵션',ck('qc-backprint','인쇄')+' '+sel('qc-backcolors',['1','2','4'],'1')+'<span style="font-size:11px;color:var(--text3)">도</span> '+ck('qc-backcoat','코팅'))}
+        </div>
+      </div>
+      <div style="border-top:1px dashed var(--border);padding-top:8px;margin-top:8px">
+      ${['수작업','포장','배송비','기타'].map((l,i)=>inputRow(l,ck('qc-ex-on'+i,'적용')+' '+num('qc-ex-q'+i,'수량',70)+' × '+num('qc-ex-p'+i,'단가',80))).join('')}
+      </div>
+      ${inputRow('마진율 (%)',num('qc-margin','20',70)+'<span style="font-size:10px;color:var(--text3)">최소 마진 20만원 자동 보장</span>')}
+      <div style="display:flex;gap:8px;margin-top:12px">
+        <button class="topbar-btn primary" style="flex:1;justify-content:center" onclick="qcRun()">견적 산출</button>
+        <button class="topbar-btn" onclick="qcSave()" id="qc-save-btn" disabled>이력 저장</button>
+      </div>
+    </div>
+    <div>
+      <div class="card" id="qc-result"><div class="empty" style="padding:40px;text-align:center;color:var(--text3)">조건을 입력하고 [견적 산출]을 눌러주세요.<br><span style="font-size:10px">지류 단가표: 외주버전 v1.2.2 기준 (27지종 × 15규격)</span></div></div>
+      <div class="card" style="margin-top:14px">
+        <div class="card-header"><div class="card-title">🗂 견적 이력</div><button class="topbar-btn" onclick="qcExportCSV()">CSV 내보내기</button></div>
+        <div id="qc-history"></div>
+      </div>
+    </div>
+  </div>`;
+  document.getElementById('qc-type').addEventListener('change',qcToggleSections);
+  qcToggleSections(); qcRenderHistory();
+}
+function qcToggleSections(){
+  const t=document.getElementById('qc-type')?.value; if(!t) return;
+  const two=(t==='C형'||t==='슬리브형');
+  const p2=document.getElementById('qc-paper2-row'); if(p2) p2.style.display=two?'':'none';
+  const corr=document.getElementById('qc-corr-block'); if(corr) corr.style.display=QC_CORR_APPLY.includes(t)?'':'none';
+  const adh=document.getElementById('qc-adh-wrap'); if(adh) adh.style.display=t==='마닐라박스'?'':'none';
+}
+let QC_LAST=null;
+function qcRun(){
+  const inp=qcState(); const r=qcCalc(inp);
+  const el=document.getElementById('qc-result');
+  if(r.error){ el.innerHTML=`<div class="empty" style="padding:30px;text-align:center;color:var(--red)">⚠ ${esc(r.error)}</div>`; QC_LAST=null; document.getElementById('qc-save-btn').disabled=true; return; }
+  QC_LAST={inp,r,ts:new Date().toISOString()};
+  document.getElementById('qc-save-btn').disabled=false;
+  const partHtml=r.paperResults.map(p=>`
+    <div style="margin-bottom:12px">
+      <div style="font-size:12px;font-weight:600;margin-bottom:4px">${esc(p.label)} — 전개 ${p.w}×${p.h}mm
+        <span style="font-size:10px;color:var(--text3)">· ${esc(p.typeName)} ${esc(p.sizeName)}${p.upgraded?` (${p.originalSize}→${p.sizeName} 상향)`:''} · ${p.yeon}연 · 통수 ${p.tong.toLocaleString()}</span>
+        ${p.std?`<span style="font-size:10px;color:var(--green)"> · 최소지 추천: ${p.std.name}</span>`:'<span style="font-size:10px;color:var(--red)"> · 표준지 초과(특수발주)</span>'}
+      </div>
+      <table class="tbl"><tbody>
+      ${p.rows.map(row=>`<tr><td style="width:130px">${esc(row.label)}</td><td style="font-size:10px;color:var(--text3)">${esc(row.detail||'')}</td><td class="num" style="width:110px">${row.total.toLocaleString()}원</td></tr>`).join('')}
+      </tbody></table>
+    </div>`).join('');
+  const extraHtml=r.추가비용행.length?`<table class="tbl"><tbody>${r.추가비용행.map(e=>`<tr><td style="width:130px">${esc(e.label)}</td><td style="font-size:10px;color:var(--text3)">${e.qty.toLocaleString()} × ${e.price.toLocaleString()}원</td><td class="num" style="width:110px">${e.total.toLocaleString()}원</td></tr>`).join('')}</tbody></table>`:'';
+  el.innerHTML=`
+    <div class="card-header"><div class="card-title">💰 견적 결과</div><span style="font-size:10px;color:var(--text3)">여분 ${r.lossSheets}장 (${r.lossLabel}) 포함</span></div>
+    ${partHtml}${extraHtml}
+    <div class="kpi-row-4" style="margin-top:10px">
+      <div class="kpi-card c-blue"><div class="kpi-label">총원가 (관리비 포함)</div><div class="kpi-val" style="font-size:17px">${Math.round(r.totalCost).toLocaleString()}원</div><div class="kpi-sub">제조 ${Math.round(r.제조원가).toLocaleString()} + 관리 ${r.관리비.toLocaleString()}${r.추가비용합계?` + 추가 ${r.추가비용합계.toLocaleString()}`:''}</div></div>
+      <div class="kpi-card c-amber"><div class="kpi-label">개당 원가</div><div class="kpi-val" style="font-size:17px">${Math.round(r.perUnit).toLocaleString()}원</div></div>
+      <div class="kpi-card c-green"><div class="kpi-label">총 판매금액</div><div class="kpi-val" style="font-size:17px">${Math.round(r.totalPrice).toLocaleString()}원</div><div class="kpi-sub">마진 ${Math.round(r.marginAmt).toLocaleString()}원 (실 ${r.realMarginPct.toFixed(1)}%)</div></div>
+      <div class="kpi-card c-purple"><div class="kpi-label">개당 소비자가</div><div class="kpi-val" style="font-size:17px">${Math.round(r.consumer).toLocaleString()}원</div></div>
+    </div>`;
+}
+function qcHistList(){ try{ return JSON.parse(localStorage.getItem(QC_HISTORY_KEY)||'[]'); }catch(e){ return []; } }
+function qcSave(){
+  if(!QC_LAST) return;
+  const h=qcHistList(); const i=QC_LAST.inp, r=QC_LAST.r;
+  h.unshift({ts:QC_LAST.ts,type:i.type,spec:`${i.width}×${i.depth}×${i.height}`,qty:i.qty,paper:`${i.paperType1}/${i.paperSize1}`,
+    totalCost:Math.round(r.totalCost),totalPrice:Math.round(r.totalPrice),perUnit:Math.round(r.perUnit),consumer:Math.round(r.consumer),marginPct:r.marginPct,inp:i});
+  localStorage.setItem(QC_HISTORY_KEY,JSON.stringify(h.slice(0,200)));
+  qcRenderHistory();
+}
+function qcLoadHist(idx){
+  const h=qcHistList()[idx]; if(!h||!h.inp) return;
+  const i=h.inp, g=id=>document.getElementById(id);
+  g('qc-type').value=i.type; qcToggleSections();
+  g('qc-w').value=i.width; g('qc-d').value=i.depth; g('qc-h').value=i.height;
+  g('qc-qty').value=i.qty; g('qc-ganjuk').value=i.ganjuk;
+  g('qc-pt1').value=i.paperType1; g('qc-ps1').value=i.paperSize1;
+  if(i.paperType2) g('qc-pt2').value=i.paperType2; if(i.paperSize2) g('qc-ps2').value=i.paperSize2;
+  g('qc-print').checked=!!i.print; g('qc-colors').value=i.printColors||'4';
+  g('qc-coat').checked=!!i.coating; g('qc-coattype').value=i.coatingType||'단면';
+  g('qc-tomson').checked=!!i.tomson; g('qc-adh').checked=!!i.adhesive;
+  g('qc-epoxy').checked=!!i.epoxy; g('qc-foil').checked=!!i.foil; g('qc-emboss').checked=!!i.emboss;
+  g('qc-corrtype').value=i.corrType||'해당없음'; g('qc-corrmat').value=i.corrMat||'SK B';
+  g('qc-backon').checked=!!i.backPaperOn; g('qc-backpt').value=i.backPaperType||'sc240g'; g('qc-backps').value=i.backPaperSize||'국전';
+  g('qc-backprint').checked=!!i.backPrint; g('qc-backcolors').value=i.backPrintColors||'1'; g('qc-backcoat').checked=!!i.backCoating;
+  (i.extras||[]).forEach((e,x)=>{ g('qc-ex-on'+x).checked=!!e.on; g('qc-ex-q'+x).value=e.qty||''; g('qc-ex-p'+x).value=e.price||''; });
+  g('qc-margin').value=i.margin||0;
+  qcRun();
+}
+function qcDelHist(idx){ const h=qcHistList(); h.splice(idx,1); localStorage.setItem(QC_HISTORY_KEY,JSON.stringify(h)); qcRenderHistory(); }
+function qcRenderHistory(){
+  const el=document.getElementById('qc-history'); if(!el) return;
+  const h=qcHistList();
+  if(!h.length){ el.innerHTML='<div style="padding:16px;font-size:11px;color:var(--text3);text-align:center">저장된 견적이 없습니다.</div>'; return; }
+  el.innerHTML=`<div class="tbl-wrap"><table class="tbl"><thead><tr><th>일시</th><th>형태</th><th>규격</th><th class="num">수량</th><th class="num">총원가</th><th class="num">판매금액</th><th class="num">개당가</th><th></th></tr></thead><tbody>
+  ${h.map((r,i)=>`<tr><td style="font-size:10px">${r.ts.slice(0,16).replace('T',' ')}</td><td>${esc(r.type)}</td><td>${esc(r.spec)}</td><td class="num">${(+r.qty).toLocaleString()}</td><td class="num">${r.totalCost.toLocaleString()}</td><td class="num">${r.totalPrice.toLocaleString()}</td><td class="num">${r.consumer.toLocaleString()}</td>
+  <td style="white-space:nowrap"><span style="cursor:pointer;color:var(--blue);font-size:10px" onclick="qcLoadHist(${i})">불러오기</span> <span style="cursor:pointer;color:var(--red);font-size:10px" onclick="qcDelHist(${i})">삭제</span></td></tr>`).join('')}
+  </tbody></table></div>`;
+}
+function qcExportCSV(){
+  const h=qcHistList(); if(!h.length){ alert('저장된 견적이 없습니다.'); return; }
+  const head=['일시','형태','규격(mm)','수량','원단','마진율(%)','총원가','총판매금액','개당원가','개당소비자가'];
+  const lines=[head.join(',')].concat(h.map(r=>[r.ts,r.type,r.spec,r.qty,r.paper,r.marginPct,r.totalCost,r.totalPrice,r.perUnit,r.consumer].join(',')));
+  const blob=new Blob(['﻿'+lines.join('\n')],{type:'text/csv;charset=utf-8'});
+  const a=document.createElement('a'); a.href=URL.createObjectURL(blob); a.download='견적이력_'+new Date().toISOString().slice(0,10)+'.csv'; a.click(); URL.revokeObjectURL(a.href);
 }
 
 // ===== INIT =====
