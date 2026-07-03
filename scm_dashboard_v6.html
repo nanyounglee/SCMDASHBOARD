@@ -902,31 +902,14 @@ let CHARTS = {};
 
 // ===== CSV PARSE =====
 function parseCSV(txt) {
-  // v7: 따옴표 안 줄바꿈을 보존하는 전체 텍스트 상태머신 파서.
-  // 기존(라인 split) 파서는 멀티라인 셀에서 레코드가 조각나 품절/이슈/고객인지 건수가 왜곡됐음.
-  txt = String(txt||'').replace(/^﻿/,'').replace(/\r\n/g,'\n').replace(/\r/g,'\n');
-  const rows=[]; let field='', row=[], q=false;
-  for (let i=0;i<txt.length;i++) {
-    const ch=txt[i];
-    if (q) {
-      if (ch==='"') { if (txt[i+1]==='"') { field+='"'; i++; } else q=false; }
-      else field+=ch;
-    } else {
-      if (ch==='"') q=true;
-      else if (ch===',') { row.push(field); field=''; }
-      else if (ch==='\n') { row.push(field); rows.push(row); row=[]; field=''; }
-      else field+=ch;
-    }
-  }
-  if (field.length||row.length) { row.push(field); rows.push(row); }
-  if (!rows.length) return [];
-  const hdr=rows[0].map(h=>h.trim());
-  const out=[];
-  for (let i=1;i<rows.length;i++) {
-    const v=rows[i];
-    if (v.length===1 && v[0].trim()==='') continue;
-    const o={};
-    hdr.forEach((h,j)=>{ o[h]=(v[j]!==undefined?v[j]:'').trim(); });
+  const lines = txt.replace(/^﻿/,'').split('\n');
+  const hdr = parseCSVLine(lines[0]);
+  const out = [];
+  for (let i=1;i<lines.length;i++) {
+    if (!lines[i].trim()) continue;
+    const v = parseCSVLine(lines[i]);
+    const o = {};
+    hdr.forEach((h,j)=>{ o[h.trim()]=(v[j]||'').trim(); });
     out.push(o);
   }
   return out;
@@ -945,7 +928,7 @@ function parseCSVLine(l) {
 function pa(s) { return parseFloat((s||'').replace(/[₩,\s]/g,''))||0; }
 function fa(n) {
   if (n>=100000000) return (n/100000000).toFixed(1)+'억';
-  if (n>=10000000) return (n/10000000).toFixed(1)+'천만';
+  if (n>=10000000) return (n/10000000).toFixed(0)+'천만';
   if (n>=10000) return Math.round(n/10000)+'만';
   return n.toLocaleString();
 }
@@ -983,7 +966,7 @@ function isStock(r) {
   return (r['movement_산출이동']||'').includes('재고')||(r['project']||'').includes('재고');
 }
 function goodsCode(r) {
-  const s=r['sync_itemdb']||r['sync_item이니셔티브']||'';
+  const s=r['sync_item이니셔티브']||'';
   const m=s.match(/([A-Z]{4})_/);
   return m ? m[1] : '';
 }
@@ -1632,7 +1615,7 @@ function updateStockSection() {
   if (!D.stockout_list) return;
   const sl=D.stockout_list;
   const nonIntent=sl.filter(r=>(r['품절 성격']||'').includes('비의도적'));
-  const intent=sl.filter(r=>{const n=r['품절 성격']||'';return n.includes('의도적')&&!n.includes('비의도적');});
+  const intent=sl.filter(r=>(r['품절 성격']||'').includes('의도적'));
   const goodsSO=sl.filter(r=>(r['굿즈품절여부']||'').toLowerCase()==='checked');
   setValue('sk-total',sl.length.toLocaleString());
   setValue('sk-danger',nonIntent.length);
@@ -1662,7 +1645,7 @@ function renderStockTable() {
     const reason=r['품절 사유']||'';
     const days=calcStockoutDays(r);
     const dc=days>=30?'color:var(--red);font-weight:600':days>=14?'color:var(--amber)':'';
-    return `<tr><td class="rank">${i+1}</td><td>${esc(crop(r['파츠명']||'',35))}<div style="font-size:10px;color:var(--text3)">${esc(r['적용 굿즈명']||'')}</div></td><td><span class="tag ${nc}">${esc(r['판매상태']||'')}</span></td><td>${esc(r['재고소유구분']||r['재고소유구분 (from sync_parts)']||'')}</td><td style="font-size:11px"><span class="tag tag-gray">${esc(nature)}</span><div style="font-size:10px;color:var(--text3);margin-top:2px">${esc(reason)}</div></td><td>${r['변경일(인터페이스용)']||'—'}</td><td class="num" style="${dc}">${days>0?days+'일':'—'}</td><td>${goodsSO?'<span class="tag tag-q">굿즈품절</span>':'—'}</td></tr>`;
+    return `<tr><td class="rank">${i+1}</td><td>${esc(crop(r['파츠명']||'',35))}<div style="font-size:10px;color:var(--text3)">${esc(r['적용 굿즈명']||'')}</div></td><td><span class="tag ${nc}">${esc(r['판매상태']||'')}</span></td><td>${esc(r['재고소유구분']||'')}</td><td style="font-size:11px"><span class="tag tag-gray">${esc(nature)}</span><div style="font-size:10px;color:var(--text3);margin-top:2px">${esc(reason)}</div></td><td>${r['변경일(인터페이스용)']||'—'}</td><td class="num" style="${dc}">${days>0?days+'일':'—'}</td><td>${goodsSO?'<span class="tag tag-q">굿즈품절</span>':'—'}</td></tr>`;
   }).join('');
   setTbody('tb-stock',html||emptyRow(8,'품절 데이터 없음'));
 }
@@ -2508,11 +2491,6 @@ function getBandForDate(d) {
   return bands[q]||bands[1];
 }
 
-// v7: 관리대상여부 컬럼이 없거나 전부 공란이면 전 행을 관리대상으로 간주(재고운영/EOQ/졸업 빈화면 방지)
-function getManagedRows(rows){
-  const y=(rows||[]).filter(r=>String(r['관리대상여부']||'').toUpperCase()==='Y');
-  return y.length?y:(rows||[]);
-}
 // ===== 3-2. 재고운영 현황 =====
 function renderInventoryOps() {
   const el=document.getElementById('sec-inventory-ops');
@@ -2523,7 +2501,7 @@ function renderInventoryOps() {
   const totalInv=latestRows.reduce((s,r)=>s+toNum(r['재고금액']),0);
   const mk=getMonthFromDate(latestDate);
   const m3=getThreeMonths(mk);
-  const managedRows=getManagedRows(latestRows);
+  const managedRows=latestRows.filter(r=>String(r['관리대상여부']||'').toUpperCase()==='Y');
   let sales3m=0; managedRows.forEach(r=>{ const pn=String(r['파츠번호']||'').trim(); m3.forEach(m=>{sales3m+=getSalesQty(pn,m)*toNum(r['단가']||r['재고금액']/Math.max(1,toNum(r['재고수량'])));}); });
   const avgInv3m=totalInv;
   const turnover3m=avgInv3m>0?sales3m/avgInv3m:0;
@@ -2587,7 +2565,7 @@ function renderStockoutDetail() {
   if(D.stockout_list) {
     const sl=D.stockout_list;
     const nonIntent=sl.filter(r=>(r['품절 성격']||'').includes('비의도적'));
-    const intent=sl.filter(r=>{const n=r['품절 성격']||'';return n.includes('의도적')&&!n.includes('비의도적');});
+    const intent=sl.filter(r=>(r['품절 성격']||'').includes('의도적'));
     const goodsSO=sl.filter(r=>(r['굿즈품절여부']||'').toLowerCase()==='checked');
     // Group by 품절 성격 세부사유
     const byReason={};
@@ -2595,7 +2573,7 @@ function renderStockoutDetail() {
     const reasonSorted=Object.entries(byReason).sort((a,b)=>b[1]-a[1]);
     // Group by 재고소유구분
     const byOwner={};
-    sl.forEach(r=>{const k=r['재고소유구분']||r['재고소유구분 (from sync_parts)']||'미분류';byOwner[k]=(byOwner[k]||0)+1;});
+    sl.forEach(r=>{const k=r['재고소유구분']||'미분류';byOwner[k]=(byOwner[k]||0)+1;});
 
     el.innerHTML=`
       <div class="kpi-row-4">
@@ -2620,7 +2598,7 @@ function renderStockoutDetail() {
       <div class="tbl-wrap"><table class="tbl"><thead><tr><th class="rank">#</th><th>파츠명</th><th>굿즈명</th><th>판매상태</th><th>재고소유</th><th>품절사유</th><th>변경일</th><th class="num">경과일</th><th>굿즈품절</th><th>변경사유</th></tr></thead><tbody>
       ${nonIntent.sort((a,b)=>calcStockoutDays(b)-calcStockoutDays(a)).map((r,i)=>{
         const days=calcStockoutDays(r);const dc=days>=30?'color:var(--red);font-weight:600':days>=14?'color:var(--amber)':'';
-        return `<tr><td class="rank">${i+1}</td><td>${esc(crop(r['파츠명']||'',30))}</td><td style="font-size:11px">${esc(r['적용 굿즈명']||'')}</td><td><span class="tag tag-q">${esc(r['판매상태']||'')}</span></td><td>${esc(r['재고소유구분']||r['재고소유구분 (from sync_parts)']||'')}</td><td><span class="tag tag-gray">${esc(r['품절 사유']||'')}</span></td><td>${r['변경일(인터페이스용)']||'—'}</td><td class="num" style="${dc}">${days}일</td><td>${(r['굿즈품절여부']||'').toLowerCase()==='checked'?'<span class="tag tag-q">Y</span>':'—'}</td><td style="font-size:10px;max-width:200px;color:var(--text3)">${esc(crop(r['판매상태 변경사유']||'',60))}</td></tr>`;
+        return `<tr><td class="rank">${i+1}</td><td>${esc(crop(r['파츠명']||'',30))}</td><td style="font-size:11px">${esc(r['적용 굿즈명']||'')}</td><td><span class="tag tag-q">${esc(r['판매상태']||'')}</span></td><td>${esc(r['재고소유구분']||'')}</td><td><span class="tag tag-gray">${esc(r['품절 사유']||'')}</span></td><td>${r['변경일(인터페이스용)']||'—'}</td><td class="num" style="${dc}">${days}일</td><td>${(r['굿즈품절여부']||'').toLowerCase()==='checked'?'<span class="tag tag-q">Y</span>':'—'}</td><td style="font-size:10px;max-width:200px;color:var(--text3)">${esc(crop(r['판매상태 변경사유']||'',60))}</td></tr>`;
       }).join('')||emptyRow(10,'비의도적 품절 없음')}
       </tbody></table></div></div>
       <div class="card" style="margin-top:12px"><div class="card-header"><div class="card-title">의도적 품절</div><div class="card-sub">졸업·시즌·효율화 등</div></div>
@@ -2633,7 +2611,7 @@ function renderStockoutDetail() {
   // Fallback: inv_weekly 기반 (기존 로직)
   const dates=getInvDates(); const latest=dates[dates.length-1]||'';
   const latestRows=D.inv_weekly.filter(r=>invDateKey(r['기준일'])===latest);
-  const managed=getManagedRows(latestRows);
+  const managed=latestRows.filter(r=>String(r['관리대상여부']||'').toUpperCase()==='Y');
   const stockout=managed.filter(r=>{const s=String(r['판매상태']||''); return s==='일시품절'||s==='비의도적품절';});
   const mk=getMonthFromDate(latest);
   const rows=stockout.map(r=>{
@@ -2784,7 +2762,7 @@ function renderEOQ() {
   if(!D.inv_weekly||!D.sales_monthly) { el.innerHTML='<div class="card empty">S&OP 재고주간 + 매출월간 CSV를 업로드해주세요.</div>'; return; }
   const dates=getInvDates(); const latest=dates[dates.length-1]||'';
   const latestRows=D.inv_weekly.filter(r=>invDateKey(r['기준일'])===latest);
-  const managed=getManagedRows(latestRows);
+  const managed=latestRows.filter(r=>String(r['관리대상여부']||'').toUpperCase()==='Y');
 
   const P=EOQ_PARAMS;
   const results=managed.map(r=>{
@@ -2838,7 +2816,7 @@ function renderGraduation() {
   if(!D.inv_weekly) { el.innerHTML='<div class="card empty">S&OP 재고주간 CSV를 업로드해주세요.</div>'; return; }
   const dates=getInvDates(); const latest=dates[dates.length-1]||'';
   const latestRows=D.inv_weekly.filter(r=>invDateKey(r['기준일'])===latest);
-  const managed=getManagedRows(latestRows);
+  const managed=latestRows.filter(r=>String(r['관리대상여부']||'').toUpperCase()==='Y');
   const mk=getMonthFromDate(latest); const m3=getThreeMonths(mk);
 
   const candidates=managed.map(r=>{
@@ -4153,44 +4131,6 @@ function qcExportCSV(){
   const a=document.createElement('a'); a.href=URL.createObjectURL(blob); a.download='견적이력_'+new Date().toISOString().slice(0,10)+'.csv'; a.click(); URL.revokeObjectURL(a.href);
 }
 
-// ===== AUTO-LOAD RAW (배포용: 정적 CSV 자동 fetch) =====
-// 접속자가 매번 CSV를 수동 업로드하지 않도록, 호스팅 시 CSV/ 폴더의 RAW를 자동 로드.
-// 파일명은 CSV/_manifest.json 으로 주간 갱신 가능(HTML 수정 불필요). 없으면 아래 기본값 사용.
-// v7: 고정(영문) 파일명. Airtable export가 CSV/ 폴더에 아래 이름으로 내려주면 자동 로드됨.
-const AUTO_CSV_DEFAULT={
-  order:'order.csv',
-  issue:'issue.csv',
-  sup:'sup.csv',
-  ci:'ci.csv',
-  stockout_list:'stockout_list.csv',
-  inv_weekly:'inv_weekly.csv',
-  sales_monthly:'sales_monthly.csv'
-};
-function autoLoadRaw(){
-  fetch('CSV/_manifest.json').then(r=>r.ok?r.json():null).catch(()=>null).then(man=>{
-    const map=Object.assign({},AUTO_CSV_DEFAULT,man||{});
-    const keys=Object.keys(map); let done=0;
-    if(!keys.length) return;
-    keys.forEach(k=>{
-      fetch('CSV/'+encodeURIComponent(map[k])).then(r=>{if(!r.ok)throw 0;return r.text();}).then(txt=>{
-        const rows=parseCSV(txt);
-        if(rows&&rows.length){
-          D[k]=rows; UD[k]='자동로드';
-          const st=document.getElementById('st-'+k); if(st) st.textContent=rows.length.toLocaleString()+'행 (자동)';
-          const zn=document.getElementById('zone-'+k); if(zn) zn.classList.add('ok');
-          const ic=document.getElementById('icon-'+k); if(ic) ic.textContent='✅';
-          const dt=document.getElementById('dt-'+k); if(dt) dt.textContent='자동 로드';
-          const clr=document.getElementById('clr-'+k); if(clr) clr.style.display='';
-          try{const w=validateCSV(k,rows);showValidationBanner(k,rows,w);}catch(e){}
-        }
-      }).catch(()=>{}).finally(()=>{
-        done++;
-        if(done===keys.length){ updateGlobalUploadStatus();updateUploadSummary();buildMonthChips();buildSalesMonthChips();refreshAll(); }
-      });
-    });
-  });
-}
-
 // ===== INIT =====
 window.addEventListener('load',()=>{
   buildUploadZones();
@@ -4199,7 +4139,6 @@ window.addEventListener('load',()=>{
   loadPartsMaster();
   buildMonthChips();
   buildSalesMonthChips();
-  autoLoadRaw();
 });
 </script>
 </body>

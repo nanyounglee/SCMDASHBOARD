@@ -1,0 +1,9 @@
+{
+  "order": "order.csv",
+  "issue": "issue.csv",
+  "sup": "sup.csv",
+  "ci": "ci.csv",
+  "stockout_list": "stockout_list.csv",
+  "inv_weekly": "inv_weekly.csv",
+  "sales_monthly": "sales_monthly.csv"
+}

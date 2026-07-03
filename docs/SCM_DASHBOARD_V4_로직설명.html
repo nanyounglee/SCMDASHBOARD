@@ -34,11 +34,21 @@
 <body>
 <div class="container">
 
-<h1>SCM 통합운영 대시보드 v4</h1>
+<h1>SCM 통합운영 대시보드 v7</h1>
 <p style="font-size:15px;font-weight:600;color:#555">데이터 로직 설명서</p>
 <div class="meta">
-  버전: v4.1 | 작성일: 2026-06-25 | 작성: SCM실 · Claude AI<br>
+  버전: v7 | 작성일: 2026-07-03 | 작성: SCM실 · Claude AI<br>
   대상: 구매전략파트 · 외주생산파트 팀원 공유, 유지보수, 데이터 매핑 참조
+</div>
+
+<div class="note" style="border-left:4px solid #c0392b">
+  <b>v7 변경 요약 (2026-07-03)</b><br>
+  ① <b>CSV 파서 교체</b> — 따옴표 안 줄바꿈을 보존하는 전체텍스트 상태머신 파서로 교체(§2-4). 기존 라인분할 파서는 멀티라인 셀에서 레코드가 조각나 품절(54→87행)·이슈(296→953)·고객인지(321→1,216) 지표가 전부 왜곡됐음.<br>
+  ② <b>굿즈코드 복구</b> — <code>goodsCode()</code>가 존재하지 않는 컬럼을 보던 문제를 <code>sync_itemdb</code>로 수정(5,300행 산출).<br>
+  ③ <b>의도적 품절 집계</b> — <code>'비의도적'</code>이 <code>'의도적'</code> substring에 걸려 +17 과다되던 버그 수정(§3-8).<br>
+  ④ <b>매입 KPI 표시</b> — <code>fa()</code> 천만 구간을 1자리 소수로(2,500만이 "2천만"으로 −20% 표시되던 문제).<br>
+  ⑤ <b>재고 폴백</b> — <code>inv_weekly</code>에 <code>관리대상여부</code> 컬럼이 없으면 전 행을 관리대상으로 간주(재고운영/EOQ/졸업 빈화면 방지).<br>
+  ⑥ <b>자동 로드 + 고정 파일명</b> — 배포 시 <code>CSV/</code> 폴더의 고정 영문명 RAW를 자동 fetch(§2-0). 접속자 수동 업로드 불필요.
 </div>
 
 <!-- ============================================================ -->
@@ -49,7 +59,7 @@
 <table>
   <tr><th>항목</th><th>내용</th></tr>
   <tr><td>서버</td><td>없음 (브라우저 JS만으로 동작)</td></tr>
-  <tr><td>데이터 입력</td><td>CSV 업로드 (Airtable/Google Sheets Export) + 영구 임베딩 JSON</td></tr>
+  <tr><td>데이터 입력</td><td>① 배포용 자동 로드 (<code>CSV/</code> 폴더 고정 영문명 자동 fetch) ② 수동 CSV 업로드(드래그앤드롭) ③ 영구 임베딩 JSON</td></tr>
   <tr><td>차트</td><td>Chart.js 4.4.1 CDN</td></tr>
   <tr><td>저장</td><td>localStorage (매입검토 편집, 시즌계획 확정수량, EOQ 파라미터, JSON 캐시)</td></tr>
   <tr><td>배포</td><td>GitHub Pages — https://nanyounglee.github.io/SCMDASHBOARD/</td></tr>
@@ -66,7 +76,24 @@
 <!-- ============================================================ -->
 <h2 class="page-break"><span class="section-num">2.</span> 데이터 입력 구조</h2>
 
-<h3>2-1. CSV 업로드 (12개 슬롯)</h3>
+<h3>2-0. 자동 로드 &amp; 고정 파일명 (v7 · 배포용)</h3>
+<p>호스팅 배포 시 접속자가 CSV를 수동 업로드하지 않도록, 페이지 로드 시 <code>CSV/</code> 폴더의 고정 영문명 RAW를 자동 fetch합니다(<code>autoLoadRaw()</code>). 파일명은 <code>CSV/_manifest.json</code>으로 관리하며, 주간 갱신 시 <b>같은 파일명으로 덮어쓰기만</b> 하면 됩니다(HTML 수정 불필요).</p>
+<table>
+  <tr><th>Key</th><th>고정 파일명</th><th>Airtable/GSheets 출처</th></tr>
+  <tr><td>order</td><td><code>CSV/order.csv</code></td><td>SCM KPI → task-SCMKPI_Raw 뷰</td></tr>
+  <tr><td>issue</td><td><code>CSV/issue.csv</code></td><td>SCM KPI → KPI_이슈_RAW 뷰</td></tr>
+  <tr><td>sup</td><td><code>CSV/sup.csv</code></td><td>공급망 관리 → 공급망_RAW 뷰</td></tr>
+  <tr><td>ci</td><td><code>CSV/ci.csv</code></td><td>SCM KPI → 고객인지이슈_RAW 뷰</td></tr>
+  <tr><td>stockout_list</td><td><code>CSV/stockout_list.csv</code></td><td>Airtable → sales_status_history</td></tr>
+  <tr><td>inv_weekly</td><td><code>CSV/inv_weekly.csv</code></td><td>GSheets S&OP → inventory_weekly</td></tr>
+  <tr><td>sales_monthly</td><td><code>CSV/sales_monthly.csv</code></td><td>GSheets S&OP → sales_monthly</td></tr>
+</table>
+<div class="note">
+  <code>_manifest.json</code>이 없거나 특정 파일 fetch가 실패해도 나머지는 로드되며, 수동 드래그앤드롭(§2-3)은 그대로 동작(자동 로드분을 덮어씀).<br>
+  <b>권장:</b> Airtable export/가공 파이프라인이 위 7개 파일을 이 고정명으로 <code>CSV/</code>에 내보내도록 구성.
+</div>
+
+<h3>2-1. CSV 슬롯 (수동 업로드 · 12개)</h3>
 <table>
   <tr><th>구분</th><th>Key</th><th>파일명</th><th>출처</th><th>주기</th><th>필수 컬럼</th></tr>
   <tr><td rowspan="4"><span class="badge b-purple">외주생산</span></td><td>order</td><td>발주_RAW</td><td>Airtable SCM KPI → task-SCMKPI_Raw 뷰</td><td>주 1회</td><td>과업지시일자, 발주번호, 산출물, 공급가액, 수주처, 입하예정일, 입하확정일, 실제입하일, 취득원가, R) 판매가(최종), task_id, sync_itemdb</td></tr>
@@ -105,6 +132,20 @@ FILE_SIGNATURES = {
   ci:              { must: ['등록일자','이슈내용','프로젝트명'], not: ['이슈카테고리'] },
   ...
 }</div>
+
+<!-- ============================================================ -->
+<h3>2-4. CSV 파서 (v7 · 멀티라인 셀 안전)</h3>
+<p><code>parseCSV()</code>는 전체 텍스트를 문자 단위로 스캔하는 상태머신 파서입니다. 따옴표 안의 줄바꿈(<code>"…\n…"</code>)·쉼표·이스케이프 따옴표(<code>""</code>)를 모두 보존합니다.</p>
+<div class="code">// v6까지: txt.split('\n') 후 라인별 파싱 → 따옴표 안 줄바꿈에서 레코드가 조각남
+// v7: 전체텍스트 상태머신 (q=따옴표 내부 여부)
+//   ',' → 필드 구분 (단, q=false일 때만)
+//   '\n' → 레코드 구분 (단, q=false일 때만)
+//   '""' → 리터럴 따옴표
+// 검증: 품절/이슈/공급망/고객인지/발주/재고/매출 7개 파일 모두
+//        Python csv 모듈과 레코드 수 정확히 일치</div>
+<div class="note" style="border-left:4px solid #c0392b">
+  <b>영향:</b> 이슈내용·개선방안·변경사유 등 여러 줄 텍스트 컬럼이 있는 이슈_RAW·고객인지이슈·품절리스트·공급망_RAW의 건수·집계가 v7에서 정상화됨. (예: 품절리스트 실제 54행이 v6에서는 ~87행으로 부풀려짐)
+</div>
 
 <!-- ============================================================ -->
 <h2 class="page-break"><span class="section-num">3.</span> 핵심 파싱 로직</h2>
@@ -172,6 +213,13 @@ function getPrevMonth('2026.1') → '2025.12'  // 연도 넘김
 발주현황 Top 탭:
   제품별 발주수량의 전월 동일 제품 수량 대비 증감률
   MoM 컬럼: "+25%" / "-10%"</div>
+
+<!-- ============================================================ -->
+<h3>3-8. 품절 성격 분류 (v7 수정)</h3>
+<div class="code">비의도적 = 품절성격.includes('비의도적')
+의도적   = 품절성격.includes('의도적') AND NOT includes('비의도적')   // v7: substring 오분류 방지
+// v6 버그: '비의도적품절'이 '의도적'에도 걸려 의도적 카운트에 중복 → 실제 35건이 52건으로 과다
+// 데이터 예: 비의도적품절 17 / 의도적품절 35 / 전체 54</div>
 
 <!-- ============================================================ -->
 <h2 class="page-break"><span class="section-num">4.</span> 페이지별 데이터 흐름</h2>
@@ -264,14 +312,17 @@ function getPrevMonth('2026.1') → '2025.12'  // 연도 넘김
 <!-- ============================================================ -->
 <h2><span class="section-num">6.</span> 주간 업데이트 절차</h2>
 
+<p><b>배포 방식 (v7 · 권장):</b> Airtable/GSheets 가공 파이프라인이 고정 영문명(§2-0)으로 <code>CSV/</code>에 내보내고, 저장소에 커밋·push하면 접속자는 자동 로드된 최신 데이터를 그대로 봄.</p>
 <table>
   <tr><th>단계</th><th>작업</th><th>비고</th></tr>
-  <tr><td>1</td><td>Airtable에서 4개 CSV Export</td><td>발주_RAW, 이슈_RAW, 공급망_RAW, 고객인지이슈_RAW</td></tr>
-  <tr><td>2</td><td>대시보드 접속 또는 로컬 HTML 열기</td><td>https://nanyounglee.github.io/SCMDASHBOARD/</td></tr>
-  <tr><td>3</td><td>통합 드래그앤드롭 영역에 4개 파일 드래그</td><td>자동 인식 — 파일명 무관</td></tr>
-  <tr><td>4</td><td>월 칩 선택 → KPI/차트 확인</td><td>2025 YoY는 자동 표시</td></tr>
-  <tr><td>5</td><td>(선택) S&OP CSV 추가 업로드</td><td>재고운영, 매입검토 등 필요시만</td></tr>
+  <tr><td>1</td><td>파이프라인이 RAW를 고정명으로 export</td><td>order.csv, issue.csv, sup.csv, ci.csv, stockout_list.csv, inv_weekly.csv, sales_monthly.csv</td></tr>
+  <tr><td>2</td><td><code>SCMDASHBOARD/CSV/</code>에 같은 파일명으로 덮어쓰기</td><td>HTML·manifest 수정 불필요</td></tr>
+  <tr><td>3</td><td>git add · commit · push</td><td>GitHub Pages 자동 반영(수 분)</td></tr>
+  <tr><td>4</td><td>대시보드 접속 → 자동 로드 확인</td><td>슬롯에 "N행 (자동)" 표시 · 월 칩/2025 YoY 자동</td></tr>
 </table>
+<div class="note">
+  <b>수동 보정:</b> 자동 로드가 안 되는 환경(로컬 file://, 특정 파일 누락)에서는 통합 드래그앤드롭 영역에 CSV를 직접 올리면 자동 로드분을 덮어씀(파일명 무관 자동 인식).
+</div>
 
 <div class="note">
   파츠마스터(2,749개), 2025년 데이터, 공정DB/단가DB는 영구 임베딩되어 있어 별도 업로드 불필요.<br>
@@ -290,7 +341,7 @@ function getPrevMonth('2026.1') → '2025.12'  // 연도 넘김
 </table>
 
 <div class="meta" style="margin-top:30px;padding-top:10px;border-top:1px solid #e0e0dc">
-  문서 기준: scm_dashboard_v4.html v4.1 (2026-06-25) · 슬롯 파트별 분리 반영<br>
+  문서 기준: index.html (scm_dashboard_v7.html) v7 (2026-07-03) · 파서 교체·자동로드·고정파일명·품절/굿즈코드/재고 폴백 반영<br>
   변경 시 이 문서도 함께 업데이트 바랍니다.
 </div>
 
