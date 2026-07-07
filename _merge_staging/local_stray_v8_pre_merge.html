@@ -588,8 +588,8 @@ a{color:var(--blue);text-decoration:none}
     <div id="sec-supplier" style="display:none">
       <div class="chart-grid-3" style="margin-bottom:16px">
         <div class="card" style="text-align:center">
-          <div class="kpi-label" style="margin-bottom:8px">등록 협력사</div>
-          <div class="kpi-val" id="s-total">—</div><div class="kpi-sub" id="s-active-sub">마스터 기준 · 운영중 —</div>
+          <div class="kpi-label" style="margin-bottom:8px">총 협력사</div>
+          <div class="kpi-val" id="s-total">—</div><div class="kpi-sub">거래중</div>
         </div>
         <div class="card" style="text-align:center">
           <div class="kpi-label" style="margin-bottom:8px">턴키제작</div>
@@ -790,7 +790,6 @@ function load2025Data(){
   fetch('data/data_2025.json').then(r=>{if(r.ok)return r.json();throw new Error();}).then(d=>{
     DATA_2025=d;
     localStorage.setItem('data_2025',JSON.stringify(d));
-    if(typeof SEL_MONTH!=='undefined'&&SEL_MONTH) refreshAll(); // v9: YoY 데이터 도착 후 화면 갱신
   }).catch(()=>{});
 }
 function get2025Month(mo) {
@@ -1021,10 +1020,6 @@ function calcElapsedDays(r) {
 }
 function isArrived(r) {
   return !!(r['실제입하일 (from movement)']||'').trim();
-}
-// v9 기준 단일화: 미입하 = '미입하 발생이력_movement' 이력 기준 (카드·Task탭·트래커·AI 공통)
-function hasNoReceipt(r) {
-  return String(r['미입하 발생이력_movement']||'').includes('1 checked out of');
 }
 function getSubcontractMap() {
   const m={}; if(!D.sup) return m;
@@ -1446,8 +1441,7 @@ function updateKPIs() {
     const projOrders=allMo.filter(r=>!isStock(r));
     const stockOrders=allMo.filter(r=>isStock(r));
     const f=projOrders;
-    // v9: 긴급 분자·분모 모두 전체 발주(재고 포함) 기준 · 서디협 제외 유지
-    const urg=allMo.filter(r=>r['긴급여부']==='긴급'&&r['수주처']!==URGENT_EXCLUDE_SUP).length;
+    const urg=f.filter(r=>r['긴급여부']==='긴급'&&r['수주처']!==URGENT_EXCLUDE_SUP).length;
     // YoY: from pre-aggregated 2025 data (no CSV upload needed)
     const py25=get2025Month(pyMo);
     const pyTasks=py25?py25.tasks:null;
@@ -1456,16 +1450,14 @@ function updateKPIs() {
     setValue('k-order',allMo.length.toLocaleString());
     document.getElementById('k-order-sub').innerHTML=`프로젝트 ${f.length} + 재고생산 ${stockOrders.length} · 긴급 ${urg}${yoyBadge(allMo.length,pyTasks)}<br><span style="font-size:10px;color:var(--text3)">${pyTasks!==null?'전년 동월 '+pyTasks+'건':''}</span>`;
     setValue('k-urgent',urg);
-    document.getElementById('k-urgent-sub').innerHTML=`긴급률 ${allMo.length?(urg/allMo.length*100).toFixed(1):0}% (전체 발주 대비)${yoyBadge(urg,pyUrg)}${q?' <span style="color:var(--text3)">(필터)</span>':''}`;
+    document.getElementById('k-urgent-sub').innerHTML=`긴급률 ${f.length?(urg/f.length*100).toFixed(1):0}%${yoyBadge(urg,pyUrg)}${q?' <span style="color:var(--text3)">(필터)</span>':''}`;
     document.getElementById('mgr-month').textContent=mo+(q?' (필터)':'');
     document.getElementById('mfg-month').textContent=mo;
-    document.getElementById('sup-pur-month').textContent=mo+' (세금계산서 기준 · 재고제외)';
-    // v9: 재고 포함 총액을 메인 값으로, 재고제외/재고생산분 병기 · YoY도 재고 포함 기준(data_2025 동일 기준 필요)
-    let totAll=0,totProj=0,purCnt=0;
-    getFilteredAllOrders().forEach(r=>{ const byM=purchaseByMonth(r); if(byM[mo]){totAll+=byM[mo];purCnt++;if(!isStock(r))totProj+=byM[mo];} });
-    const totStock=totAll-totProj;
-    setValue('k-purchase',fa(totAll));
-    document.getElementById('k-purchase-sub').innerHTML=`${purCnt}건 · 재고제외 ${fa(totProj)} · 재고생산 ${fa(totStock)}${yoyBadge(totAll,pyPur)}${q?' <span style="color:var(--text3)">(필터)</span>':''}<br><span style="font-size:10px;color:var(--text3)">${pyPur!==null?'전년 동월 '+fa(pyPur)+' (재고 포함)':''}</span>`;
+    document.getElementById('sup-pur-month').textContent=mo+' (세금계산서 기준)';
+    let totPur=0,purCnt=0;
+    getFilteredOrders().forEach(r=>{ const byM=purchaseByMonth(r); if(byM[mo]){totPur+=byM[mo];purCnt++;} });
+    setValue('k-purchase',fa(totPur));
+    document.getElementById('k-purchase-sub').innerHTML=`${purCnt}건${yoyBadge(totPur,pyPur)}${q?' <span style="color:var(--text3)">(필터)</span>':''}<br><span style="font-size:10px;color:var(--text3)">${pyPur!==null?'전년 동월 '+fa(pyPur):''}</span>`;
   }
   if (D.issue) {
     let fi=D.issue.filter(r=>pIssueMonth(r)===mo);
@@ -1479,8 +1471,8 @@ function updateKPIs() {
     document.getElementById('issue-chart-period').textContent=mo+' 기준';
   }
   if (D.ci) {
-    let fc=D.ci.filter(r=>{ const d=r['등록일자']||''; const m=d.match(/(\d+)\.(\d+)\./); return m&&`${m[1]}.${parseInt(m[2])}`===mo; });
-    let pyFc=D.ci.filter(r=>{ const d=r['등록일자']||''; const m=d.match(/(\d+)\.(\d+)\./); return m&&`${m[1]}.${parseInt(m[2])}`===pyMo; });
+    let fc=D.ci.filter(r=>{ const d=r['등록일자']; const m=d.match(/(\d+)\.(\d+)\./); return m&&`${m[1]}.${parseInt(m[2])}`===mo; });
+    let pyFc=D.ci.filter(r=>{ const d=r['등록일자']; const m=d.match(/(\d+)\.(\d+)\./); return m&&`${m[1]}.${parseInt(m[2])}`===pyMo; });
     if(q) { fc=fc.filter(r=>matchesSearch(r,q)); pyFc=pyFc.filter(r=>matchesSearch(r,q)); }
     setValue('k-ci',fc.length);
     document.getElementById('k-ci-sub').innerHTML=`${mo} 등록${yoyBadge(fc.length,pyFc.length)}${q?' <span style="color:var(--text3)">(필터)</span>':''}`;
@@ -1546,9 +1538,9 @@ function updateTaskTabs() {
   if (!D.order||!SEL_MONTH) return;
   const f=D.order.filter(r=>pOrderMonth(r['과업지시일자'])===SEL_MONTH);
   document.getElementById('task-month-label').textContent=SEL_MONTH;
-  const notArrivedRows=f.filter(r=>hasNoReceipt(r));
+  const notArrivedRows=f.filter(r=>!isArrived(r));
   const delayedRows=f.filter(r=>{const d=calcElapsedDays(r);return d!==null&&d>14&&!isArrived(r);});
-  document.getElementById('task-kpi-bar').innerHTML=`<span>전체 ${f.length}건</span><span style="color:var(--amber);margin-left:8px">미입하(이력) ${notArrivedRows.length}건 · ${f.length?(notArrivedRows.length/f.length*100).toFixed(1):0}%</span><span style="color:var(--red);margin-left:8px">지연>14일 ${delayedRows.length}건</span>`;
+  document.getElementById('task-kpi-bar').innerHTML=`<span>전체 ${f.length}건</span><span style="color:var(--amber);margin-left:8px">미입하 ${notArrivedRows.length}건</span><span style="color:var(--red);margin-left:8px">지연>14일 ${delayedRows.length}건</span>`;
   const mkRow8=(r)=>{
     const elapsed=calcElapsedDays(r);
     const eText=elapsed!==null?elapsed+'일':'—';
@@ -1622,11 +1614,8 @@ function updateCITabs() {
 // ===== SUPPLIER TAB =====
 function updateSupTab() {
   if (!D.sup) return;
-  // v9: 등록(마스터 전체) / 운영중(거래중) 분리 — 26년 기준 등록 146 · 운영 132
-  const registered=D.sup.filter(r=>(r['협력사 이름']||'').trim()).length;
   const active=D.sup.filter(r=>!r['협력사 Status']||r['협력사 Status']==='거래중');
-  setValue('s-total',registered);
-  const actSub=document.getElementById('s-active-sub'); if(actSub) actSub.textContent=`마스터 기준 · 운영중(거래중) ${active.length}`;
+  setValue('s-total',active.length);
   setValue('s-turnkey',active.filter(r=>r['1. 제조유형']==='턴키제작').length);
   setValue('s-purchase',active.filter(r=>r['1. 제조유형']==='단순구매').length);
   renderSupTable(D.sup);
@@ -2001,12 +1990,9 @@ function openModal(type,extra) {
     title.textContent='매입금액 상세 — '+(SEL_MONTH?fmtMonth(SEL_MONTH):'전체');
     if (!D.order) { body.innerHTML=emptyRow(1,'발주 RAW 업로드 필요'); return; }
     const mfgMap={}; if(D.sup) D.sup.forEach(r=>{mfgMap[r['협력사 이름']]=r['1. 제조유형']||'기타';});
-    // v9: 재고 포함 집계 + 재고제외/재고생산분 병기
     const bySup={};
-    let mTotProj=0,mTotStock=0;
-    D.order.forEach(r=>{
+    D.order.filter(r=>!isStock(r)).forEach(r=>{
       const byM=purchaseByMonth(r); const amt=byM[SEL_MONTH]; if(!amt) return;
-      if(isStock(r)) mTotStock+=amt; else mTotProj+=amt;
       const s=r['수주처']||'미상';
       if(!bySup[s]) bySup[s]={amt:0,cnt:0,prods:{}};
       bySup[s].amt+=amt; bySup[s].cnt++;
@@ -2032,13 +2018,7 @@ function openModal(type,extra) {
       });
       html+=`</tbody></table>`;
     });
-    body.innerHTML=`
-      <div style="display:flex;gap:12px;margin-bottom:10px;font-size:12px;flex-wrap:wrap">
-        <span style="background:var(--blue-light);color:var(--blue);padding:4px 10px;border-radius:20px;font-weight:600">전체 ${faFull(total)}</span>
-        <span style="background:var(--green-light);color:var(--green);padding:4px 10px;border-radius:20px">재고제외 ${faFull(mTotProj)}</span>
-        <span style="background:var(--amber-light);color:var(--amber);padding:4px 10px;border-radius:20px">재고생산 ${faFull(mTotStock)}</span>
-      </div>
-      <div style="font-size:11px;color:var(--text3);margin-bottom:8px">협력사명 클릭 → 매입추이 · 주요 제품 상세 · 재고생산분 포함 집계</div>${html}<div style="font-size:10px;color:var(--text3);margin-top:10px">전체 ${sorted.length}개 협력사 · 매입금액 내림차순</div>`;
+    body.innerHTML=`<div style="font-size:11px;color:var(--text3);margin-bottom:8px">협력사명 클릭 → 매입추이 · 주요 제품 상세</div>${html}<div style="font-size:10px;color:var(--text3);margin-top:10px">전체 ${sorted.length}개 협력사 · 매입금액 내림차순</div>`;
 
   } else if (type==='issue') {
     title.textContent='이슈 상세 — '+(SEL_MONTH?fmtMonth(SEL_MONTH):'전체');
@@ -2064,7 +2044,7 @@ function openModal(type,extra) {
   } else if (type==='ci') {
     title.textContent='고객인지이슈 — '+(SEL_MONTH?fmtMonth(SEL_MONTH):'전체');
     if (!D.ci) { body.innerHTML=emptyRow(1,'고객인지이슈 RAW 업로드 필요'); return; }
-    const f=SEL_MONTH?D.ci.filter(r=>{ const d=r['등록일자']||''; const m=d.match(/(\d+)\.(\d+)\./); return m&&`${m[1]}.${parseInt(m[2])}`===SEL_MONTH; }):D.ci;
+    const f=SEL_MONTH?D.ci.filter(r=>{ const d=r['등록일자']; const m=d.match(/(\d+)\.(\d+)\./); return m&&`${m[1]}.${parseInt(m[2])}`===SEL_MONTH; }):D.ci;
     const totalRework=f.reduce((s,r)=>s+getReworkCostForProject(r['프로젝트명']),0);
     body.innerHTML=`
       <div style="display:flex;gap:12px;margin-bottom:12px;font-size:12px;flex-wrap:wrap">
@@ -2084,7 +2064,12 @@ function openModal(type,extra) {
     if (D.dashboard_sku_snapshot) {
       const p=getSelectedAggPeriod()||getLatestAggPeriod('weekly');
       const rows=p?getAggSkuRows(p.period_unit||SEL_INV_PERIOD,p.period_key):D.dashboard_sku_snapshot;
-      const skuData=rows.filter(r=>!D.dashboard_period_summary || isAggManaged(r)).map(aggSkuToInvModalRow);
+      const skuData=rows.filter(r=>!D.dashboard_period_summary || isAggManaged(r)).map(r=>{
+        const invAmt=toNum(r.inv_amount);
+        const qty=toNum(r.inv_qty);
+        const up=toNum(r.unit_price)||(qty>0?invAmt/qty:0);
+        return {pn:String(r.parts_no||'').trim(),name:r.parts_name||r.parts_no,cat:r.category||r.sub_category||'',procure:r.procurement_type||r.sourcing_type||r.production_type||'',qty,up,invAmt,turnover:toNum(r.turnover_3m),s3:toNum(r.sales_3m),launchDate:''};
+      });
       INV_MODAL_DATA=skuData;
       INV_MODAL_SORT='invDesc';
       tabsEl.innerHTML=`<div style="display:flex;gap:6px;padding:8px 8px 0;align-items:center;font-size:11px;color:var(--text3)">
@@ -2245,64 +2230,18 @@ function renderInvModalTable(data,sortKey) {
   </tr></thead><tbody>
   ${sorted.map((r,i)=>{
     const isExp=INV_EXPANDED.has(r.pn);
+    const turnColor=r.turnover<0.1?'color:var(--red)':r.turnover<0.5?'color:var(--amber)':'color:var(--green)';
     let html=`<tr id="inv-row-${i}"><td class="rank">${i+1}</td>
       <td><div style="font-weight:500">${esc(r.name)}</div><div style="font-size:10px;color:var(--text3)">${esc(r.pn)}</div></td>
       <td>${esc(r.cat)}</td><td style="font-size:11px">${esc(r.procure)}</td>
       <td class="num">${fmtN(r.qty)}</td><td class="num">${r.up>0?fmtN(r.up)+'원':'—'}</td>
       <td class="num">${fmtW(r.invAmt)}</td>
-      <td class="num">${invTurnoverCell(r,i)}</td>
+      <td class="num"><span style="cursor:pointer;${turnColor};font-weight:600;text-decoration:underline;text-decoration-style:dotted" onclick="toggleInvTurnover(${i},'${esc(r.pn).replace(/'/g,"\\'")}')">${fmtTurn(r.turnover)} ▾</span></td>
     </tr>`;
     if(isExp) html+=buildInvAccordion(r,i);
     return html;
   }).join('')}
   </tbody></table>`;
-}
-
-function invTurnoverCell(row,idx) {
-  const turnColor=row.turnover<0.1?'color:var(--red)':row.turnover<0.5?'color:var(--amber)':'color:var(--green)';
-  const pn=esc(row.pn).replace(/'/g,"\\'");
-  return `<span style="cursor:pointer;${turnColor};font-weight:600;text-decoration:underline;text-decoration-style:dotted" onclick="toggleInvTurnover(${idx},'${pn}')">${fmtTurn(row.turnover)} ▾</span>`;
-}
-
-function aggSkuToInvModalRow(r) {
-  const invAmt=toNum(r.inv_amount);
-  const qty=toNum(r.inv_qty);
-  const up=toNum(r.unit_price)||(qty>0?invAmt/qty:0);
-  return {
-    pn:String(r.parts_no||'').trim(),
-    name:r.parts_name||r.parts_no,
-    cat:r.category||'',
-    subcat:aggRealSubcategory(r),
-    procure:r.procurement_type||r.sourcing_type||r.production_type||'',
-    production:r.production_type||'',
-    sourcing:r.sourcing_type||'',
-    qty,
-    up,
-    invAmt,
-    turnover:toNum(r.turnover_3m),
-    s3:toNum(r.sales_3m),
-    launchDate:r.launch_date||''
-  };
-}
-
-function renderAggSkuDetailRows(rows,kind='group') {
-  INV_MODAL_DATA=rows.map(aggSkuToInvModalRow);
-  INV_EXPANDED.clear();
-  return INV_MODAL_DATA.map((row,i)=>{
-    let html='';
-    if(kind==='status') {
-      const raw=rows[i];
-      html=`<tr id="inv-row-${i}"><td class="rank">${i+1}</td><td>${esc(crop(row.name||'',34))}<div style="font-size:10px;color:var(--text3)">${esc(row.pn)}</div></td><td>${esc(row.cat)}</td><td>${esc(row.subcat)}</td><td>${aggStatusTag(raw.sales_status)}</td><td class="num">${fmtN(aggStockoutDays(raw))}</td><td class="num">${fmtN(row.qty)}</td><td class="num">${fmtW(row.invAmt)}</td><td class="num">${invTurnoverCell(row,i)}</td><td style="font-size:11px">${esc(crop(raw.last_issue_summary||raw.last_issue_date||'',45))}</td></tr>`;
-    } else if(kind==='stockout') {
-      const raw=rows[i];
-      html=`<tr id="inv-row-${i}"><td class="rank">${i+1}</td><td>${esc(crop(row.name||'',34))}<div style="font-size:10px;color:var(--text3)">${esc(row.pn)}</div></td><td>${esc(row.cat)}</td><td>${aggStatusTag(raw.sales_status)}</td><td class="num">${fmtN(aggStockoutDays(raw))}</td><td class="num">${fmtW(row.invAmt)}</td><td class="num">${invTurnoverCell(row,i)}</td><td style="font-size:11px">${esc(crop(raw.last_issue_summary||raw.last_issue_date||'',45))}</td></tr>`;
-    } else if(kind==='stagnant') {
-      html=`<tr id="inv-row-${i}"><td class="rank">${i+1}</td><td>${esc(crop(row.name||'',34))}<div style="font-size:10px;color:var(--text3)">${esc(row.pn)}</div></td><td>${esc(row.cat)}</td><td>${esc(row.procure)}</td><td class="num">${fmtN(row.qty)}</td><td class="num">${fmtW(row.invAmt)}</td><td class="num">${fmtN(row.s3)}</td><td class="num">${invTurnoverCell(row,i)}</td></tr>`;
-    } else {
-      html=`<tr id="inv-row-${i}"><td class="rank">${i+1}</td><td>${esc(crop(row.name||'',34))}<div style="font-size:10px;color:var(--text3)">${esc(row.pn)}</div></td><td>${esc(row.cat)}</td><td>${esc(row.subcat)}</td><td>${esc((row.production||'')+' / '+(row.sourcing||''))}</td><td class="num">${fmtN(row.qty)}</td><td class="num">${fmtW(row.invAmt)}</td><td class="num">${fmtN(row.s3)}</td><td class="num">${invTurnoverCell(row,i)}</td></tr>`;
-    }
-    return html;
-  }).join('');
 }
 
 function toggleInvTurnover(idx,pn) {
@@ -2318,7 +2257,7 @@ function toggleInvTurnover(idx,pn) {
 }
 
 function buildInvAccordion(r,idx) {
-  const allMonths=getSalesMonths().length?getSalesMonths():getInvMonths();
+  const allMonths=getInvMonths().slice(-12);
   const monthlyQty=allMonths.map(m=>({month:m,qty:getSalesQty(r.pn,m)}));
   const totalQty=monthlyQty.reduce((s,m)=>s+m.qty,0);
   const avgQty=allMonths.length>0?(totalQty/allMonths.length).toFixed(1):'0';
@@ -2353,7 +2292,7 @@ function buildInvAccordion(r,idx) {
         <span style="font-size:11px;color:var(--text3)">월평균 판매 <strong style="color:var(--text)">${avgQty}개</strong></span>
         <span style="font-size:11px;color:var(--text3)">3M판매 <strong style="color:var(--text)">${fmtN(r.s3)}개</strong></span>
       </div>
-      <div style="font-size:11px;font-weight:600;margin-bottom:6px">월별 판매추이 (${allMonths[0]||'-'} ~ ${allMonths[allMonths.length-1]||'-'})</div>
+      <div style="font-size:11px;font-weight:600;margin-bottom:6px">월별 판매추이 (최근 12개월)</div>
       <div style="display:flex;gap:6px;align-items:flex-end;flex-wrap:wrap">
         ${monthlyQty.map(m=>{
           const h=m.qty>0?Math.max(4,Math.round(m.qty/maxQty*48)):2;
@@ -2398,22 +2337,20 @@ function analyzeQ(q) {
     return `<strong>${supName}</strong> (업태: ${biz})<br>${SEL_MONTH||'전체'} 발주 ${mOrders.length}건 / ${faFull(mAmt)}<br>최근 3개월: ${recent3.map(m=>m+'('+byM[m]+')').join(' → ')}${warn}`;
   }
   if (q.includes('긴급')&&D.order) {
-    const f=D.order.filter(r=>r['긴급여부']==='긴급'&&pOrderMonth(r['과업지시일자'])===SEL_MONTH&&r['수주처']!==URGENT_EXCLUDE_SUP);
+    const f=D.order.filter(r=>r['긴급여부']==='긴급'&&pOrderMonth(r['과업지시일자'])===SEL_MONTH);
     if (!f.length) return `<span class="ai-ok">✓ ${SEL_MONTH} 긴급 발주 없음</span>`;
     const mg={}; f.forEach(r=>{ const m=r['과업담당자_이름']||'미상'; mg[m]=(mg[m]||0)+1; });
     return `<strong>${SEL_MONTH} 긴급 발주 ${f.length}건</strong><br>담당자: ${Object.entries(mg).map(([k,v])=>`${k}(${v}건)`).join(', ')}`;
   }
   if ((q.includes('미입하')||q.includes('task'))&&D.task) {
     const f=D.task.filter(r=>pOrderMonth(r['과업지시일자'])===SEL_MONTH);
-    // v9: 미입하 이력 기준 + 지연은 calcElapsedDays 산출값 사용
-    const notArrived=f.filter(r=>hasNoReceipt(r));
-    const delayed=f.filter(r=>{const d=calcElapsedDays(r);return d!==null&&d>14&&!isArrived(r);});
-    return `<strong>${SEL_MONTH} 발주 Task</strong><br>전체 ${f.length}건 / 미입하(이력) ${notArrived.length}건 / 지연(>14일) ${delayed.length}건`;
+    const notArrived=f.filter(r=>!(r['입하여부']||'').includes('입하완료'));
+    return `<strong>${SEL_MONTH} 발주 Task</strong><br>전체 ${f.length}건 / 미입하 ${notArrived.length}건 / 지연(>14일) ${f.filter(r=>parseInt(r['입하경과일']||'0')>14).length}건`;
   }
   if ((q.includes('전월')||q.includes('매입'))&&D.order&&SEL_MONTH) {
     const [y,mo]=SEL_MONTH.split('.').map(Number);
     const prev=mo===1?`${y-1}.12`:`${y}.${mo-1}`;
-    const calcM=m=>{ let t=0; D.order.forEach(r=>{ const bm=purchaseByMonth(r); if(bm[m]) t+=bm[m]; }); return t; }; // v9: 재고 포함
+    const calcM=m=>{ let t=0; D.order.filter(r=>!isStock(r)).forEach(r=>{ const bm=purchaseByMonth(r); if(bm[m]) t+=bm[m]; }); return t; };
     const cur=calcM(SEL_MONTH),pr=calcM(prev);
     const diff=cur-pr,icon=diff>=0?`<span class="ai-warn">▲</span>`:`<span class="ai-ok">▼</span>`;
     return `매입 비교<br>전월 (${prev}): ${faFull(pr)}<br>이번달 (${SEL_MONTH}): ${faFull(cur)}<br>${icon} ${faFull(Math.abs(diff))} (${pr?(diff/pr*100).toFixed(1):0}%)`;
@@ -2581,12 +2518,6 @@ function getInvMonths() {
   const s=new Set(); getInvDates().forEach(d=>{ const m=getMonthFromDate(d); if(m) s.add(m); });
   return [...s].sort(monthCmp);
 }
-function getSalesMonths() {
-  if(!D.sales_monthly) return [];
-  const s=new Set();
-  D.sales_monthly.forEach(r=>{ const m=normalizeMonthKey(r['기준월']); if(m) s.add(m); });
-  return [...s].sort(monthCmp);
-}
 function getInvQuarters() {
   const s=new Set(); getInvMonths().forEach(m=>{ const p=m.split('-'); s.add(p[0]+'-Q'+Math.ceil(Number(p[1])/3)); });
   return [...s].sort();
@@ -2727,19 +2658,6 @@ function aggAmountRows(rows,total,type){
     return `<tr${click}><td>${esc(name)}</td><td class="num">${fmtW(inv)}</td><td class="num">${total?(inv/total*100).toFixed(1)+'%':'-'}</td><td class="num">${fmtN(toNum(r.sku_count))}</td><td class="num">${fmtTurn(toNum(r.turnover_3m))}</td></tr>`;
   }).join('');
 }
-function renderAggInventoryDonut(canvasId,rows){
-  dc(canvasId);
-  const ctx=document.getElementById(canvasId);
-  if(!ctx) return;
-  const sorted=(rows||[]).filter(r=>toNum(r.inv_amount)>0).sort((a,b)=>toNum(b.inv_amount)-toNum(a.inv_amount));
-  const top=sorted.slice(0,7);
-  const rest=sorted.slice(7).reduce((s,r)=>s+toNum(r.inv_amount),0);
-  const labels=top.map(r=>r.group_name||'미분류');
-  const data=top.map(r=>toNum(r.inv_amount));
-  if(rest>0){ labels.push('기타'); data.push(rest); }
-  if(!data.length) return;
-  CHARTS[canvasId]=new Chart(ctx,{type:'doughnut',data:{labels,datasets:[{data,backgroundColor:['#1d4ed8','#059669','#d97706','#7c3aed','#dc2626','#0891b2','#65a30d','#94a3b8'],borderWidth:2,borderColor:'#fff',hoverOffset:4}]},options:{responsive:true,maintainAspectRatio:false,cutout:'62%',plugins:{legend:{position:'right',labels:{font:{size:10},boxWidth:10}},tooltip:{callbacks:{label:c=>`${c.label}: ${fmtW(c.raw)}`}}}}});
-}
 function aggCategoryRows(catRows,subRows,total){
   return catRows.sort((a,b)=>toNum(b.inv_amount)-toNum(a.inv_amount)).map((r,idx)=>{
     const name=r.group_name||'미분류';
@@ -2747,7 +2665,7 @@ function aggCategoryRows(catRows,subRows,total){
     const children=subRows.filter(s=>String(s.parent_group||'').trim()===String(name).trim()).sort((a,b)=>toNum(b.inv_amount)-toNum(a.inv_amount));
     const childHtml=children.length?`
       <tr id="agg-sub-${idx}" style="display:none;background:var(--surface2)"><td colspan="5" style="padding:10px 14px">
-        <table class="tbl" style="margin:0;table-layout:fixed"><thead><tr><th style="width:34%">서브카테고리</th><th class="num" style="width:22%">재고금액</th><th class="num" style="width:14%">카테고리 내 비중</th><th class="num" style="width:12%">SKU</th><th class="num" style="width:18%">3M회전율</th></tr></thead><tbody>
+        <table class="tbl" style="margin:0"><thead><tr><th>서브카테고리</th><th class="num">재고금액</th><th class="num">카테고리 내 비중</th><th class="num">SKU</th><th class="num">3M회전율</th></tr></thead><tbody>
         ${children.map(s=>{const sinv=toNum(s.inv_amount);const sname=s.group_name||'미분류';return `<tr onclick="openAggGroupDetail('subcategory','${encArg(sname)}','${encArg(name)}')" style="cursor:pointer"><td>${esc(sname)}</td><td class="num">${fmtW(sinv)}</td><td class="num">${inv?(sinv/inv*100).toFixed(1)+'%':'-'}</td><td class="num">${fmtN(toNum(s.sku_count))}</td><td class="num">${fmtTurn(toNum(s.turnover_3m))}</td></tr>`;}).join('')}
         </tbody></table>
       </td></tr>`:'';
@@ -2781,7 +2699,7 @@ function openAggGroupDetail(type,value,parent){
   title.textContent=label;
   body.innerHTML=`<div style="display:flex;gap:10px;margin-bottom:12px;flex-wrap:wrap"><span class="tag tag-gray">${esc(aggPeriodLabel(p))}</span><span class="tag tag-gray">${rows.length} SKU</span><span class="tag tag-gray">${fmtW(total)}</span></div>
     <table class="tbl"><thead><tr><th class="rank">#</th><th>파츠명</th><th>카테고리</th><th>서브카테고리</th><th>생산/소싱</th><th class="num">재고수량</th><th class="num">재고금액</th><th class="num">3M매출</th><th class="num">3M회전율</th></tr></thead><tbody>
-    ${renderAggSkuDetailRows(rows.slice(0,160),'group')||emptyRow(9,'대상 없음')}
+    ${rows.slice(0,160).map((r,i)=>`<tr><td class="rank">${i+1}</td><td>${esc(crop(r.parts_name||'',34))}<div style="font-size:10px;color:var(--text3)">${esc(r.parts_no||'')}</div></td><td>${esc(r.category||'')}</td><td>${esc(aggRealSubcategory(r))}</td><td>${esc((r.production_type||'')+' / '+(r.sourcing_type||''))}</td><td class="num">${fmtN(toNum(r.inv_qty))}</td><td class="num">${fmtW(toNum(r.inv_amount))}</td><td class="num">${fmtN(toNum(r.sales_3m))}</td><td class="num">${fmtTurn(toNum(r.turnover_3m))}</td></tr>`).join('')||emptyRow(9,'대상 없음')}
     </tbody></table>`;
 }
 function openAggStatusDetail(value){
@@ -2801,7 +2719,7 @@ function openAggStatusDetail(value){
   title.textContent='판매상태 상세 · '+status;
   body.innerHTML=`<div style="display:flex;gap:10px;margin-bottom:12px;flex-wrap:wrap"><span class="tag tag-gray">${esc(aggPeriodLabel(p))}</span><span class="tag tag-gray">${rows.length} SKU</span><span class="tag tag-gray">${fmtW(total)}</span></div>
     <table class="tbl"><thead><tr><th class="rank">#</th><th>파츠명</th><th>카테고리</th><th>서브카테고리</th><th>판매상태</th><th class="num">품절일수</th><th class="num">재고수량</th><th class="num">재고금액</th><th class="num">3M회전율</th><th>최근 출고</th></tr></thead><tbody>
-    ${renderAggSkuDetailRows(rows.slice(0,160),'status')||emptyRow(10,'대상 없음')}
+    ${rows.slice(0,160).map((r,i)=>`<tr><td class="rank">${i+1}</td><td>${esc(crop(r.parts_name||'',34))}<div style="font-size:10px;color:var(--text3)">${esc(r.parts_no||'')}</div></td><td>${esc(r.category||'')}</td><td>${esc(aggRealSubcategory(r))}</td><td>${aggStatusTag(r.sales_status)}</td><td class="num">${fmtN(aggStockoutDays(r))}</td><td class="num">${fmtN(toNum(r.inv_qty))}</td><td class="num">${fmtW(toNum(r.inv_amount))}</td><td class="num">${fmtTurn(toNum(r.turnover_3m))}</td><td style="font-size:11px">${esc(crop(r.last_issue_summary||r.last_issue_date||'',45))}</td></tr>`).join('')||emptyRow(10,'대상 없음')}
     </tbody></table>`;
 }
 function openAggInventoryModal(kind){
@@ -2823,7 +2741,7 @@ function openAggInventoryModal(kind){
     title.textContent='품절 상세 · '+aggPeriodLabel(p);
     body.innerHTML=`<div style="display:flex;gap:10px;margin-bottom:12px;flex-wrap:wrap"><span class="tag tag-q">품절 ${stockout.length} SKU</span><span class="tag tag-gray">30일+ ${stockout.filter(r=>aggStockoutDays(r)>=30).length}</span><span class="tag tag-gray">60일+ ${stockout.filter(r=>aggStockoutDays(r)>=60).length}</span></div>
     <table class="tbl"><thead><tr><th class="rank">#</th><th>파츠명</th><th>카테고리</th><th>판매상태</th><th class="num">품절일수</th><th class="num">재고금액</th><th class="num">3M회전율</th><th>최근 출고</th></tr></thead><tbody>
-    ${renderAggSkuDetailRows(stockout.slice(0,120),'stockout')||emptyRow(8,'품절 없음')}
+    ${stockout.slice(0,120).map((r,i)=>`<tr><td class="rank">${i+1}</td><td>${esc(crop(r.parts_name||'',34))}<div style="font-size:10px;color:var(--text3)">${esc(r.parts_no||'')}</div></td><td>${esc(r.category||'')}</td><td>${aggStatusTag(r.sales_status)}</td><td class="num">${fmtN(aggStockoutDays(r))}</td><td class="num">${fmtW(toNum(r.inv_amount))}</td><td class="num">${fmtTurn(toNum(r.turnover_3m))}</td><td style="font-size:11px">${esc(crop(r.last_issue_summary||r.last_issue_date||'',45))}</td></tr>`).join('')||emptyRow(8,'품절 없음')}
     </tbody></table>`;
     return;
   }
@@ -2838,7 +2756,7 @@ function openAggInventoryModal(kind){
   if(kind==='stagnant'){
     title.textContent='장기미회전 재고 상세 · '+aggPeriodLabel(p);
     body.innerHTML=`<table class="tbl"><thead><tr><th class="rank">#</th><th>파츠명</th><th>카테고리</th><th>조달유형</th><th class="num">재고수량</th><th class="num">재고금액</th><th class="num">3M매출</th><th class="num">3M회전율</th></tr></thead><tbody>
-    ${renderAggSkuDetailRows(stagnant.slice(0,120),'stagnant')||emptyRow(8,'대상 없음')}
+    ${stagnant.slice(0,120).map((r,i)=>`<tr><td class="rank">${i+1}</td><td>${esc(crop(r.parts_name||'',34))}<div style="font-size:10px;color:var(--text3)">${esc(r.parts_no||'')}</div></td><td>${esc(r.category||'')}</td><td>${esc(r.procurement_type||r.sourcing_type||'')}</td><td class="num">${fmtN(toNum(r.inv_qty))}</td><td class="num">${fmtW(toNum(r.inv_amount))}</td><td class="num">${fmtN(toNum(r.sales_3m))}</td><td class="num">${fmtTurn(toNum(r.turnover_3m))}</td></tr>`).join('')||emptyRow(8,'대상 없음')}
     </tbody></table>`;
     return;
   }
@@ -2882,8 +2800,8 @@ function renderInventoryOpsFromAgg(){
     </div>
     <div style="font-size:15px;font-weight:700;margin:18px 0 10px">2. 재고 구조</div>
     <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:16px">
-      <div class="card"><div class="card-header"><div class="card-title">생산유형별 재고</div><div class="card-sub">행 클릭 시 SKU 상세</div></div><div class="ch" style="height:170px;margin-bottom:10px"><canvas id="ch-agg-prod-donut"></canvas></div><div class="tbl-wrap"><table class="tbl"><thead><tr><th>유형</th><th class="num">재고금액</th><th class="num">비중</th><th class="num">SKU</th><th class="num">3M회전율</th></tr></thead><tbody>${aggAmountRows(prodRows,inv,'production')||emptyRow(5,'데이터 없음')}</tbody></table></div></div>
-      <div class="card"><div class="card-header"><div class="card-title">소싱유형별 재고</div><div class="card-sub">행 클릭 시 SKU 상세</div></div><div class="ch" style="height:170px;margin-bottom:10px"><canvas id="ch-agg-sourcing-donut"></canvas></div><div class="tbl-wrap"><table class="tbl"><thead><tr><th>유형</th><th class="num">재고금액</th><th class="num">비중</th><th class="num">SKU</th><th class="num">3M회전율</th></tr></thead><tbody>${aggAmountRows(sourcingRows,inv,'sourcing')||emptyRow(5,'데이터 없음')}</tbody></table></div></div>
+      <div class="card"><div class="card-header"><div class="card-title">생산유형별 재고</div><div class="card-sub">행 클릭 시 SKU 상세</div></div><div class="tbl-wrap"><table class="tbl"><thead><tr><th>유형</th><th class="num">재고금액</th><th class="num">비중</th><th class="num">SKU</th><th class="num">3M회전율</th></tr></thead><tbody>${aggAmountRows(prodRows,inv,'production')||emptyRow(5,'데이터 없음')}</tbody></table></div></div>
+      <div class="card"><div class="card-header"><div class="card-title">소싱유형별 재고</div><div class="card-sub">행 클릭 시 SKU 상세</div></div><div class="tbl-wrap"><table class="tbl"><thead><tr><th>유형</th><th class="num">재고금액</th><th class="num">비중</th><th class="num">SKU</th><th class="num">3M회전율</th></tr></thead><tbody>${aggAmountRows(sourcingRows,inv,'sourcing')||emptyRow(5,'데이터 없음')}</tbody></table></div></div>
       <div class="card" onclick="openAggInventoryModal('stagnant')" style="cursor:pointer"><div class="card-header"><div class="card-title">장기미회전 재고</div><div class="card-sub">관리대상 Product Parts · 3M 회전율 &lt; 0.1</div></div>
         <div style="display:flex;gap:12px;margin-bottom:10px"><span class="tag tag-q">${stagnant.length} SKU</span><span class="tag tag-gray">${fmtW(stagnantAmt)}</span></div>
         <div class="tbl-wrap"><table class="tbl"><thead><tr><th>파츠명</th><th>카테고리</th><th class="num">재고금액</th><th class="num">3M회전율</th></tr></thead><tbody>${stagnant.slice(0,10).map(r=>`<tr><td>${esc(crop(r.parts_name||r.parts_no||'',26))}<div style="font-size:10px;color:var(--text3)">${esc(r.parts_no||'')}</div></td><td>${esc(r.category||'')}</td><td class="num">${fmtW(toNum(r.inv_amount))}</td><td class="num">${fmtTurn(toNum(r.turnover_3m))}</td></tr>`).join('')||emptyRow(4,'대상 없음')}</tbody></table></div>
@@ -2891,11 +2809,8 @@ function renderInventoryOpsFromAgg(){
     </div>
     <div style="font-size:15px;font-weight:700;margin:18px 0 10px">3. 카테고리별</div>
     <div class="card">
-      <div class="card-header"><div class="card-title">카테고리별 재고 현황</div><div class="card-sub">카테고리 행 클릭 시 SKU 상세 · 서브 버튼으로 하위 서브카테고리 보기</div></div>
-      <div style="display:grid;grid-template-columns:minmax(0,1.25fr) minmax(260px,.75fr);gap:16px;align-items:start">
-        <div class="tbl-wrap"><table class="tbl" style="table-layout:fixed"><thead><tr><th style="width:34%">카테고리</th><th class="num" style="width:22%">재고금액</th><th class="num" style="width:14%">비중</th><th class="num" style="width:12%">SKU</th><th class="num" style="width:18%">3M회전율</th></tr></thead><tbody>${aggCategoryRows(catRows.slice(0,12),subRows,inv)||emptyRow(5,'데이터 없음')}</tbody></table></div>
-        <div class="ch" style="height:260px"><canvas id="ch-agg-cat-donut"></canvas></div>
-      </div>
+      <div class="card-header"><div class="card-title">카테고리별 재고 및 판매 현황</div><div class="card-sub">카테고리 행 클릭 시 SKU 상세 · 서브 버튼으로 하위 서브카테고리 보기</div></div>
+      <div class="tbl-wrap"><table class="tbl"><thead><tr><th>카테고리</th><th class="num">재고금액</th><th class="num">비중</th><th class="num">SKU</th><th class="num">3M회전율</th></tr></thead><tbody>${aggCategoryRows(catRows.slice(0,12),subRows,inv)||emptyRow(5,'데이터 없음')}</tbody></table></div>
     </div>
     <div style="font-size:15px;font-weight:700;margin:18px 0 10px">4. 품절현황</div>
     <div class="grid-2" style="margin-top:16px">
@@ -2911,9 +2826,6 @@ function renderInventoryOpsFromAgg(){
       <div class="card"><div class="card-header"><div class="card-title">회전율/품절율 추이</div><div class="card-sub">3M 회전율 · 품절율</div></div><div class="ch" style="height:240px"><canvas id="ch-agg-turn-stock"></canvas></div></div>
     </div>`;
   dc('ch-inv-trend'); dc('ch-agg-turn-stock');
-  renderAggInventoryDonut('ch-agg-prod-donut',prodRows);
-  renderAggInventoryDonut('ch-agg-sourcing-donut',sourcingRows);
-  renderAggInventoryDonut('ch-agg-cat-donut',catRows);
   const ctx1=getCtx('ch-inv-trend');
   if(ctx1) CHARTS['ch-inv-trend']=new Chart(ctx1,{type:'line',data:{labels:trend.map(r=>String(r.period_key||'').slice(5)),datasets:[{label:'재고금액',data:trend.map(r=>toNum(r.inv_amount)),borderColor:'#1d4ed8',backgroundColor:'rgba(29,78,216,.08)',fill:true,tension:.35,pointRadius:3,borderWidth:2},{label:'밴드 상한',data:trend.map(()=>band.max),borderColor:'#dc2626',borderDash:[4,4],borderWidth:1,pointRadius:0},{label:'밴드 하한',data:trend.map(()=>band.min),borderColor:'#d97706',borderDash:[4,4],borderWidth:1,pointRadius:0}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{position:'bottom',labels:{font:{size:10}}}},scales:{y:{ticks:{callback:v=>fmtW(v),font:{size:10}}}}}});
   const ctx2=getCtx('ch-agg-turn-stock');
@@ -3668,8 +3580,8 @@ const KPI_DEFS = [
    desc:'전체 TASK 중 긴급 발주 비율', formula:'긴급TASK / 전체TASK × 100'},
   {id:'cost_rework', area:'비용', name:'재제작률', unit:'%', target:2, higher:false,
    desc:'이슈 중 재제작 판정 비율', formula:'재제작건수 / 전체이슈 × 100'},
-  {id:'supply_agrade', area:'공급망', name:'A등급 비율', unit:'%', target:10, higher:true,
-   desc:'평가 협력사 중 A등급 비율 (2Q까지 기준 · 1Q/2Q 상이 시 점수 평균)', formula:'A등급 / 전체 평가대상 × 100'},
+  {id:'supply_agrade', area:'공급망', name:'B등급↑ 비율', unit:'%', target:10, higher:true,
+   desc:'전체 평가 대상 협력사 중 B등급 이상 비율', formula:'(A+B등급) / 전체 평가대상 × 100'},
   {id:'supply_active', area:'공급망', name:'가용협력사 비율', unit:'%', target:70, higher:true,
    desc:'등록 협력사 중 실제 거래(TASK≥1) 비율', formula:'거래중 협력사 / 전체 등록 × 100'},
   {id:'inv_turnover', area:'재고', name:'재고회전율', unit:'회', target:6, higher:true,
@@ -3690,12 +3602,13 @@ function computeKPIs() {
     D.order.forEach(row => {
       const m = pOrderMonth(row['과업지시일자']);
       if (!m) return;
-      if (!byMonth[m]) byMonth[m] = {total:0, norecv:0, urgent:0, leadDays:[]};
+      if (!byMonth[m]) byMonth[m] = {total:0, norecv:0, urgent:0, rework:0, leadDays:[]};
       const b = byMonth[m];
       b.total++;
-      if (hasNoReceipt(row)) b.norecv++;
-      // v9: 카드와 동일 기준 — 서디협 제외
-      if (String(row['긴급여부']||'').includes('긴급')&&(row['수주처']||'').trim()!==URGENT_EXCLUDE_SUP) b.urgent++;
+      if (String(row['미입하 발생이력_movement']||'').includes('1 checked out of')) b.norecv++;
+      if (String(row['긴급여부']||'').includes('긴급')) b.urgent++;
+      const rwField = String(row['재제작/추가제작']||'');
+      if (rwField.includes('1 checked out of') || rwField === '재제작' || rwField === '추가제작') b.rework++;
       const d1 = parseKPIDate(row['과업지시일자']);
       const d2 = parseKPIDate(row['실제입하일 (from movement)']);
       if (d1 && d2 && d2 > d1) b.leadDays.push((d2 - d1) / 86400000);
@@ -3705,7 +3618,7 @@ function computeKPIs() {
       monthly[m].delivery_ontime = b.total ? (1 - b.norecv / b.total) * 100 : null;
       monthly[m].delivery_lead = b.leadDays.length ? b.leadDays.reduce((a,c)=>a+c,0)/b.leadDays.length : null;
       monthly[m].cost_urgent = b.total ? (b.urgent / b.total) * 100 : null;
-      // v9: 재제작률은 이슈 RAW 기준으로만 산출 (아래 issue 블록) — 발주 기준 이중 정의 제거
+      monthly[m].cost_rework = b.total ? (b.rework / b.total) * 100 : null;
     });
     const allMonths = Object.keys(byMonth).sort(monthCmp);
     const latest = allMonths[allMonths.length - 1];
@@ -3713,6 +3626,7 @@ function computeKPIs() {
       r.delivery_ontime = monthly[latest].delivery_ontime;
       r.delivery_lead = monthly[latest].delivery_lead;
       r.cost_urgent = monthly[latest].cost_urgent;
+      r.cost_rework = monthly[latest].cost_rework;
     }
   }
 
@@ -3773,23 +3687,17 @@ function computeKPIs() {
 
   // --- Supply chain grades ---
   if (D.quarter_eval) {
-    // v9: 2Q까지 데이터 기준 · 1Q/2Q 등급 상이 시 점수 평균으로 등급 재산정 · A등급만 카운트
-    const gradeMid = {A:13.5, B:8.5, C:4, D:1};
-    const gradeOf = s => s >= 12 ? 'A' : s >= 6 ? 'B' : s >= 3 ? 'C' : 'D';
-    let totalEval = 0, aCount = 0;
+    const currentQ = new Date().getMonth() < 3 ? 1 : new Date().getMonth() < 6 ? 2 : new Date().getMonth() < 9 ? 3 : 4;
+    const qKey = currentQ + 'Q_공급망관리등급';
+    const prevKey = (currentQ > 1 ? (currentQ-1) : 1) + 'Q_공급망관리등급';
+    let totalEval = 0, abCount = 0;
     D.quarter_eval.forEach(row => {
-      const g1 = (row['1Q_공급망관리등급'] || '').trim();
-      const g2 = (row['2Q_공급망관리등급'] || '').trim();
-      const t1 = parseFloat(row['1Q_공급망관리점수']) || 0;
-      const t2 = parseFloat(row['2Q_공급망관리점수']) || 0;
-      let g = '';
-      if (g1 && g2 && g1 !== g2) {
-        const avg = ((t1 || gradeMid[g1] || 0) + (t2 || gradeMid[g2] || 0)) / 2;
-        g = gradeOf(avg);
-      } else g = g2 || g1;
-      if (g) { totalEval++; if (g === 'A') aCount++; }
+      const g = (row[qKey] || row[prevKey] || '').trim();
+      if (g) { totalEval++; if (g === 'A' || g === 'B') abCount++; }
     });
-    r.supply_agrade = totalEval > 0 ? (aCount / totalEval) * 100 : null;
+    r.supply_agrade = totalEval > 0 ? (abCount / totalEval) * 100 : null;
+  } else if (D.order) {
+    r.supply_agrade = 0;
   }
 
   if (D.order && D.sup) {
@@ -4034,18 +3942,9 @@ function renderPortfolio() {
   if (!vendors.length) { el.innerHTML='<div class="empty">협력사 데이터가 없습니다.</div>'; return; }
 
   // Classify into quadrants
-  // v9: 2Q까지 데이터 기준 · 1Q/2Q 등급 상이 시 점수 평균으로 등급 재산정
-  const gradeMidP = {A:13.5, B:8.5, C:4, D:1};
-  const gradeOfP = t => t >= 12 ? 'A' : t >= 6 ? 'B' : t >= 3 ? 'C' : 'D';
+  const qKey = currentQ <= 1 ? 'q1' : 'q' + currentQ;
   vendors.forEach(v => {
-    const q1 = v.q1 || {}, q2 = v.q2 || {};
-    let s;
-    if (q1.grade && q2.grade && q1.grade !== q2.grade) {
-      const avg = ((q1.total || gradeMidP[q1.grade] || 0) + (q2.total || gradeMidP[q2.grade] || 0)) / 2;
-      s = {...q2, total: +avg.toFixed(1), grade: gradeOfP(avg)};
-    } else {
-      s = (q2.grade || q2.total) ? q2 : q1;
-    }
+    const s = v[qKey] || v.q1 || {};
     v._grade = s.grade || '';
     v._total = s.total || 0;
     v._amtScore = s.amount || 0;
@@ -4090,7 +3989,7 @@ function renderPortfolio() {
 
     <div style="display:grid;grid-template-columns:2fr 1fr;gap:16px;margin-bottom:20px">
       <div class="card" style="padding:20px">
-        <div class="card-header" style="margin-bottom:12px"><div class="card-title">포트폴리오 매트릭스 (~2Q 기준 · 1·2Q 상이 시 점수 평균)</div></div>
+        <div class="card-header" style="margin-bottom:12px"><div class="card-title">포트폴리오 매트릭스 (${currentQ}Q)</div></div>
         <div id="portfolio-matrix" style="position:relative;width:100%;height:400px;border:1px solid var(--border);border-radius:8px;overflow:hidden;background:var(--surface2)">
           <!-- Quadrant labels -->
           <div style="position:absolute;top:8px;left:8px;font-size:10px;font-weight:600;color:var(--blue);opacity:.6">Strategic</div>
@@ -4110,24 +4009,22 @@ function renderPortfolio() {
 
       <div style="display:flex;flex-direction:column;gap:16px">
         <div class="card" style="padding:20px">
-          <div class="card-header" style="margin-bottom:12px"><div class="card-title">등급 분포 (~2Q 기준)</div></div>
+          <div class="card-header" style="margin-bottom:12px"><div class="card-title">등급 분포 (${currentQ}Q)</div></div>
           <div style="height:180px"><canvas id="ch-portfolio-grade"></canvas></div>
         </div>
         <div class="card" style="padding:20px">
           <div class="card-header" style="margin-bottom:12px"><div class="card-title">평가 기준</div></div>
           <div style="font-size:11px;color:var(--text2);line-height:1.8">
-            <div><b>TASK 점수</b> (3점): 반기 ≥200건→3, ≥50→2, ≥6→1 (연 400/100/11 환산)</div>
-            <div><b>매입대금</b> (3점): 반기 ≥5,000만→3, ≥2,500만→2, ≥1원→1 (연 1억/5천만 환산)</div>
-            <div><b>이슈대응</b> (3점): 이슈율 점수×70% + 미입하율 점수×30%</div>
-            <div><b>예외사항</b> (3점): 정성평가 (발주담당 분기 기입)</div>
-            <div><b>대체가능</b> (3점): 정성평가 (발주담당 분기 기입)</div>
+            <div><b>TASK 점수</b> (3점): ≥100건→3, ≥25→2, ≥3→1</div>
+            <div><b>매입대금</b> (3점): ≥2,500만→3, ≥1,250만→2</div>
+            <div><b>이슈대응</b> (3점): 이슈율70%+미입하율30%</div>
+            <div><b>예외사항</b> (3점): 정성평가 (발주담당)</div>
+            <div><b>대체가능</b> (3점): 정성평가 (발주담당)</div>
             <div style="margin-top:6px;padding-top:6px;border-top:1px solid var(--border)">
-              <span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:var(--green);margin-right:4px"></span>A ≥12
-              <span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:var(--amber);margin:0 4px 0 12px"></span>B 6~11
-              <span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:var(--red);margin:0 4px 0 12px"></span>C 3~5
-              <span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:var(--text3);margin:0 4px 0 12px"></span>D 0~2
+              <span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:var(--green);margin-right:4px"></span>A ≥12점
+              <span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:var(--amber);margin:0 4px 0 12px"></span>B 8~11점
+              <span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:var(--red);margin:0 4px 0 12px"></span>C ≤7점
             </div>
-            <div style="margin-top:4px;color:var(--text3)">※ RAW 자동산출 시 정성 2개 항목 미반영(0점) — 총점 최대 9점</div>
           </div>
         </div>
       </div>
@@ -4172,10 +4069,10 @@ function renderPortfolio() {
     CHARTS['ch-portfolio-grade'] = new Chart(ctx, {
       type: 'doughnut',
       data: {
-        labels: ['A등급','B등급','C등급','D등급'],
+        labels: ['A등급','B등급','C등급'],
         datasets: [{
-          data: [gradeDist.A, gradeDist.B, gradeDist.C, gradeDist.D],
-          backgroundColor: ['#059669','#d97706','#dc2626','#64748b'],
+          data: [gradeDist.A, gradeDist.B, gradeDist.C],
+          backgroundColor: ['#059669','#d97706','#dc2626'],
           borderWidth: 2, borderColor: '#fff'
         }]
       },
@@ -4235,6 +4132,7 @@ function filterPortfolioQuad(chipEl, quad) {
   const container = document.getElementById('portfolio-quad-filter');
   container.querySelectorAll('.m-chip').forEach(c => c.classList.remove('active'));
   chipEl.classList.add('active');
+  const qKey = (() => { const m=new Date().getMonth()+1; return m<=3?1:m<=6?2:m<=9?3:4; })();
   // Re-sort and render
   const vendors = window._portfolioVendors || [];
   const sorted = [...vendors].sort((a,b) => b._total - a._total);
@@ -4280,7 +4178,7 @@ function computeFromRaw(orderData, issueData, supData, currentQ) {
     stats[vendor].task++;
     const amt = parseFloat(String(r['총 지출액 (VAT 포함)'] || r['취득원가'] || '0').replace(/[,₩￦\\]/g, '')) || 0;
     stats[vendor].amount += amt;
-    if (hasNoReceipt(r)) stats[vendor].norecv++;
+    if (String(r['미입하 발생이력_movement'] || '').includes('1 checked out of')) stats[vendor].norecv++;
   });
 
   issueData.forEach(r => {
@@ -4289,13 +4187,11 @@ function computeFromRaw(orderData, issueData, supData, currentQ) {
     stats[vendor].issue++;
   });
 
-  // v9: 반기(1~6월 데이터) 기준 환산 = 연 기준 ÷2 (TASK 연400/100/11 → 반기 200/50/6 · 매입 연1억/5천만/1원 → 반기 5천만/2,500만/1원)
-  const calcTaskScore = t => t >= 200 ? 3 : t >= 50 ? 2 : t >= 6 ? 1 : 0;
-  const calcAmtScore = a => a >= 50000000 ? 3 : a >= 25000000 ? 2 : a >= 1 ? 1 : 0;
+  const calcTaskScore = t => t >= 100 ? 3 : t >= 25 ? 2 : t >= 3 ? 1 : 0;
+  const calcAmtScore = a => a >= 25000000 ? 3 : a >= 12500000 ? 2 : a >= 1 ? 1 : 0;
   const calcIssueScore = r => r < 0.03 ? 3 : r < 0.05 ? 2 : 1;
   const calcNorecvScore = r => r < 0.05 ? 3 : r < 0.20 ? 2 : 1;
-  // v9: 등급 A 12↑ / B 6~11 / C 3~5 / D 0~2 (공급망 평가 기준)
-  const calcGrade = s => s >= 12 ? 'A' : s >= 6 ? 'B' : s >= 3 ? 'C' : 'D';
+  const calcGrade = s => s >= 12 ? 'A' : s >= 8 ? 'B' : 'C';
 
   const vendors = [];
   Object.entries(stats).forEach(([name, s]) => {

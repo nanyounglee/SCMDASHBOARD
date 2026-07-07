@@ -1,13 +1,11 @@
 ﻿# =============================================================
-# SCM 대시보드 배포 스크립트 v8 (PC에서 실행)
-# 실행이 막히면:  powershell -ExecutionPolicy Bypass -File .\deploy_v8.ps1
-# 배포 후 자동검증까지: powershell -ExecutionPolicy Bypass -File .\deploy_v8.ps1 -Verify
+# SCM 대시보드 배포 스크립트 v10 (PC에서 실행) — 이후 정기 배포용
+# 실행이 막히면:  powershell -ExecutionPolicy Bypass -File .\deploy_v10.ps1
+# 배포 후 자동검증까지: powershell -ExecutionPolicy Bypass -File .\deploy_v10.ps1 -Verify
 #
-# v7 대비 변경점
-#  0) git 자가진단/복구: index 손상·잔류 index.lock 자동 복구
-#  2) 버전 스냅샷 자동 카운트: scm_dashboard_vN.html 최대번호+1
-#  4) merge -s ours 제거 → rebase 동기화 (구버전이 원격 최신을 덮어쓰는 사고 방지)
-#  5) -Verify 스위치: 배포 후 autoLoadRaw 포함 여부 자동 확인
+# v8/v9 스크립트와 로직 동일(자가진단, 버전 자동카운트, rebase 동기화, -Verify).
+# 파일명만 v10으로 단일화 — merge_resolve_v10.ps1로 원격(haeun)·로컬(v9) 병합을
+# 마친 뒤부터는 이 스크립트로 정기 배포한다.
 # =============================================================
 param([switch]$Verify)
 $ErrorActionPreference = "Stop"
@@ -93,7 +91,7 @@ if ($remote -eq $local) {
   git rebase origin/main
   if ($LASTEXITCODE -ne 0) {
     git rebase --abort
-    throw "충돌 발생: 원격에 로컬에 없는 변경이 있습니다. 'git log HEAD..origin/main'으로 확인 후 수동 해결하세요."
+    throw "충돌 발생: 원격에 로컬에 없는 변경이 있습니다. 'git log HEAD..origin/main'으로 확인 후 수동 해결하세요(다른 팀원이 동시에 수정 중일 수 있음)."
   }
 }
 git push origin main; Assert-Git
