@@ -2725,7 +2725,7 @@ function aggCategoryRows(catRows,subRows,total){
     const children=subRows.filter(s=>String(s.parent_group||'').trim()===String(name).trim()).sort((a,b)=>toNum(b.inv_amount)-toNum(a.inv_amount));
     const childHtml=children.length?`
       <tr id="agg-sub-${idx}" style="display:none;background:var(--surface2)"><td colspan="5" style="padding:10px 14px">
-        <table class="tbl" style="margin:0"><thead><tr><th>서브카테고리</th><th class="num">재고금액</th><th class="num">카테고리 내 비중</th><th class="num">SKU</th><th class="num">3M회전율</th></tr></thead><tbody>
+        <table class="tbl" style="margin:0;table-layout:fixed"><thead><tr><th style="width:34%">서브카테고리</th><th class="num" style="width:22%">재고금액</th><th class="num" style="width:14%">카테고리 내 비중</th><th class="num" style="width:12%">SKU</th><th class="num" style="width:18%">3M회전율</th></tr></thead><tbody>
         ${children.map(s=>{const sinv=toNum(s.inv_amount);const sname=s.group_name||'미분류';return `<tr onclick="openAggGroupDetail('subcategory','${encArg(sname)}','${encArg(name)}')" style="cursor:pointer"><td>${esc(sname)}</td><td class="num">${fmtW(sinv)}</td><td class="num">${inv?(sinv/inv*100).toFixed(1)+'%':'-'}</td><td class="num">${fmtN(toNum(s.sku_count))}</td><td class="num">${fmtTurn(toNum(s.turnover_3m))}</td></tr>`;}).join('')}
         </tbody></table>
       </td></tr>`:'';
@@ -2869,8 +2869,11 @@ function renderInventoryOpsFromAgg(){
     </div>
     <div style="font-size:15px;font-weight:700;margin:18px 0 10px">3. 카테고리별</div>
     <div class="card">
-      <div class="card-header"><div class="card-title">카테고리별 재고 및 판매 현황</div><div class="card-sub">카테고리 행 클릭 시 SKU 상세 · 서브 버튼으로 하위 서브카테고리 보기</div></div>
-      <div class="tbl-wrap"><table class="tbl"><thead><tr><th>카테고리</th><th class="num">재고금액</th><th class="num">비중</th><th class="num">SKU</th><th class="num">3M회전율</th></tr></thead><tbody>${aggCategoryRows(catRows.slice(0,12),subRows,inv)||emptyRow(5,'데이터 없음')}</tbody></table></div>
+      <div class="card-header"><div class="card-title">카테고리별 재고 현황</div><div class="card-sub">카테고리 행 클릭 시 SKU 상세 · 서브 버튼으로 하위 서브카테고리 보기</div></div>
+      <div style="display:grid;grid-template-columns:minmax(0,1.25fr) minmax(260px,.75fr);gap:16px;align-items:start">
+        <div class="tbl-wrap"><table class="tbl" style="table-layout:fixed"><thead><tr><th style="width:34%">카테고리</th><th class="num" style="width:22%">재고금액</th><th class="num" style="width:14%">비중</th><th class="num" style="width:12%">SKU</th><th class="num" style="width:18%">3M회전율</th></tr></thead><tbody>${aggCategoryRows(catRows.slice(0,12),subRows,inv)||emptyRow(5,'데이터 없음')}</tbody></table></div>
+        <div class="ch" style="height:260px"><canvas id="ch-agg-cat-donut"></canvas></div>
+      </div>
     </div>
     <div style="font-size:15px;font-weight:700;margin:18px 0 10px">4. 품절현황</div>
     <div class="grid-2" style="margin-top:16px">
@@ -2888,6 +2891,7 @@ function renderInventoryOpsFromAgg(){
   dc('ch-inv-trend'); dc('ch-agg-turn-stock');
   renderAggInventoryDonut('ch-agg-prod-donut',prodRows);
   renderAggInventoryDonut('ch-agg-sourcing-donut',sourcingRows);
+  renderAggInventoryDonut('ch-agg-cat-donut',catRows);
   const ctx1=getCtx('ch-inv-trend');
   if(ctx1) CHARTS['ch-inv-trend']=new Chart(ctx1,{type:'line',data:{labels:trend.map(r=>String(r.period_key||'').slice(5)),datasets:[{label:'재고금액',data:trend.map(r=>toNum(r.inv_amount)),borderColor:'#1d4ed8',backgroundColor:'rgba(29,78,216,.08)',fill:true,tension:.35,pointRadius:3,borderWidth:2},{label:'밴드 상한',data:trend.map(()=>band.max),borderColor:'#dc2626',borderDash:[4,4],borderWidth:1,pointRadius:0},{label:'밴드 하한',data:trend.map(()=>band.min),borderColor:'#d97706',borderDash:[4,4],borderWidth:1,pointRadius:0}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{position:'bottom',labels:{font:{size:10}}}},scales:{y:{ticks:{callback:v=>fmtW(v),font:{size:10}}}}}});
   const ctx2=getCtx('ch-agg-turn-stock');
