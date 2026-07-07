@@ -2064,12 +2064,7 @@ function openModal(type,extra) {
     if (D.dashboard_sku_snapshot) {
       const p=getSelectedAggPeriod()||getLatestAggPeriod('weekly');
       const rows=p?getAggSkuRows(p.period_unit||SEL_INV_PERIOD,p.period_key):D.dashboard_sku_snapshot;
-      const skuData=rows.filter(r=>!D.dashboard_period_summary || isAggManaged(r)).map(r=>{
-        const invAmt=toNum(r.inv_amount);
-        const qty=toNum(r.inv_qty);
-        const up=toNum(r.unit_price)||(qty>0?invAmt/qty:0);
-        return {pn:String(r.parts_no||'').trim(),name:r.parts_name||r.parts_no,cat:r.category||r.sub_category||'',procure:r.procurement_type||r.sourcing_type||r.production_type||'',qty,up,invAmt,turnover:toNum(r.turnover_3m),s3:toNum(r.sales_3m),launchDate:''};
-      });
+      const skuData=rows.filter(r=>!D.dashboard_period_summary || isAggManaged(r)).map(aggSkuToInvModalRow);
       INV_MODAL_DATA=skuData;
       INV_MODAL_SORT='invDesc';
       tabsEl.innerHTML=`<div style="display:flex;gap:6px;padding:8px 8px 0;align-items:center;font-size:11px;color:var(--text3)">
@@ -2230,18 +2225,64 @@ function renderInvModalTable(data,sortKey) {
   </tr></thead><tbody>
   ${sorted.map((r,i)=>{
     const isExp=INV_EXPANDED.has(r.pn);
-    const turnColor=r.turnover<0.1?'color:var(--red)':r.turnover<0.5?'color:var(--amber)':'color:var(--green)';
     let html=`<tr id="inv-row-${i}"><td class="rank">${i+1}</td>
       <td><div style="font-weight:500">${esc(r.name)}</div><div style="font-size:10px;color:var(--text3)">${esc(r.pn)}</div></td>
       <td>${esc(r.cat)}</td><td style="font-size:11px">${esc(r.procure)}</td>
       <td class="num">${fmtN(r.qty)}</td><td class="num">${r.up>0?fmtN(r.up)+'원':'—'}</td>
       <td class="num">${fmtW(r.invAmt)}</td>
-      <td class="num"><span style="cursor:pointer;${turnColor};font-weight:600;text-decoration:underline;text-decoration-style:dotted" onclick="toggleInvTurnover(${i},'${esc(r.pn).replace(/'/g,"\\'")}')">${fmtTurn(r.turnover)} ▾</span></td>
+      <td class="num">${invTurnoverCell(r,i)}</td>
     </tr>`;
     if(isExp) html+=buildInvAccordion(r,i);
     return html;
   }).join('')}
   </tbody></table>`;
+}
+
+function invTurnoverCell(row,idx) {
+  const turnColor=row.turnover<0.1?'color:var(--red)':row.turnover<0.5?'color:var(--amber)':'color:var(--green)';
+  const pn=esc(row.pn).replace(/'/g,"\\'");
+  return `<span style="cursor:pointer;${turnColor};font-weight:600;text-decoration:underline;text-decoration-style:dotted" onclick="toggleInvTurnover(${idx},'${pn}')">${fmtTurn(row.turnover)} ▾</span>`;
+}
+
+function aggSkuToInvModalRow(r) {
+  const invAmt=toNum(r.inv_amount);
+  const qty=toNum(r.inv_qty);
+  const up=toNum(r.unit_price)||(qty>0?invAmt/qty:0);
+  return {
+    pn:String(r.parts_no||'').trim(),
+    name:r.parts_name||r.parts_no,
+    cat:r.category||'',
+    subcat:aggRealSubcategory(r),
+    procure:r.procurement_type||r.sourcing_type||r.production_type||'',
+    production:r.production_type||'',
+    sourcing:r.sourcing_type||'',
+    qty,
+    up,
+    invAmt,
+    turnover:toNum(r.turnover_3m),
+    s3:toNum(r.sales_3m),
+    launchDate:r.launch_date||''
+  };
+}
+
+function renderAggSkuDetailRows(rows,kind='group') {
+  INV_MODAL_DATA=rows.map(aggSkuToInvModalRow);
+  INV_EXPANDED.clear();
+  return INV_MODAL_DATA.map((row,i)=>{
+    let html='';
+    if(kind==='status') {
+      const raw=rows[i];
+      html=`<tr id="inv-row-${i}"><td class="rank">${i+1}</td><td>${esc(crop(row.name||'',34))}<div style="font-size:10px;color:var(--text3)">${esc(row.pn)}</div></td><td>${esc(row.cat)}</td><td>${esc(row.subcat)}</td><td>${aggStatusTag(raw.sales_status)}</td><td class="num">${fmtN(aggStockoutDays(raw))}</td><td class="num">${fmtN(row.qty)}</td><td class="num">${fmtW(row.invAmt)}</td><td class="num">${invTurnoverCell(row,i)}</td><td style="font-size:11px">${esc(crop(raw.last_issue_summary||raw.last_issue_date||'',45))}</td></tr>`;
+    } else if(kind==='stockout') {
+      const raw=rows[i];
+      html=`<tr id="inv-row-${i}"><td class="rank">${i+1}</td><td>${esc(crop(row.name||'',34))}<div style="font-size:10px;color:var(--text3)">${esc(row.pn)}</div></td><td>${esc(row.cat)}</td><td>${aggStatusTag(raw.sales_status)}</td><td class="num">${fmtN(aggStockoutDays(raw))}</td><td class="num">${fmtW(row.invAmt)}</td><td class="num">${invTurnoverCell(row,i)}</td><td style="font-size:11px">${esc(crop(raw.last_issue_summary||raw.last_issue_date||'',45))}</td></tr>`;
+    } else if(kind==='stagnant') {
+      html=`<tr id="inv-row-${i}"><td class="rank">${i+1}</td><td>${esc(crop(row.name||'',34))}<div style="font-size:10px;color:var(--text3)">${esc(row.pn)}</div></td><td>${esc(row.cat)}</td><td>${esc(row.procure)}</td><td class="num">${fmtN(row.qty)}</td><td class="num">${fmtW(row.invAmt)}</td><td class="num">${fmtN(row.s3)}</td><td class="num">${invTurnoverCell(row,i)}</td></tr>`;
+    } else {
+      html=`<tr id="inv-row-${i}"><td class="rank">${i+1}</td><td>${esc(crop(row.name||'',34))}<div style="font-size:10px;color:var(--text3)">${esc(row.pn)}</div></td><td>${esc(row.cat)}</td><td>${esc(row.subcat)}</td><td>${esc((row.production||'')+' / '+(row.sourcing||''))}</td><td class="num">${fmtN(row.qty)}</td><td class="num">${fmtW(row.invAmt)}</td><td class="num">${fmtN(row.s3)}</td><td class="num">${invTurnoverCell(row,i)}</td></tr>`;
+    }
+    return html;
+  }).join('');
 }
 
 function toggleInvTurnover(idx,pn) {
@@ -2257,7 +2298,7 @@ function toggleInvTurnover(idx,pn) {
 }
 
 function buildInvAccordion(r,idx) {
-  const allMonths=getInvMonths().slice(-12);
+  const allMonths=(getSalesMonths().length?getSalesMonths():getInvMonths()).slice(-12);
   const monthlyQty=allMonths.map(m=>({month:m,qty:getSalesQty(r.pn,m)}));
   const totalQty=monthlyQty.reduce((s,m)=>s+m.qty,0);
   const avgQty=allMonths.length>0?(totalQty/allMonths.length).toFixed(1):'0';
@@ -2518,6 +2559,12 @@ function getInvMonths() {
   const s=new Set(); getInvDates().forEach(d=>{ const m=getMonthFromDate(d); if(m) s.add(m); });
   return [...s].sort(monthCmp);
 }
+function getSalesMonths() {
+  if(!D.sales_monthly) return [];
+  const s=new Set();
+  D.sales_monthly.forEach(r=>{ const m=normalizeMonthKey(r['기준월']); if(m) s.add(m); });
+  return [...s].sort(monthCmp);
+}
 function getInvQuarters() {
   const s=new Set(); getInvMonths().forEach(m=>{ const p=m.split('-'); s.add(p[0]+'-Q'+Math.ceil(Number(p[1])/3)); });
   return [...s].sort();
@@ -2699,7 +2746,7 @@ function openAggGroupDetail(type,value,parent){
   title.textContent=label;
   body.innerHTML=`<div style="display:flex;gap:10px;margin-bottom:12px;flex-wrap:wrap"><span class="tag tag-gray">${esc(aggPeriodLabel(p))}</span><span class="tag tag-gray">${rows.length} SKU</span><span class="tag tag-gray">${fmtW(total)}</span></div>
     <table class="tbl"><thead><tr><th class="rank">#</th><th>파츠명</th><th>카테고리</th><th>서브카테고리</th><th>생산/소싱</th><th class="num">재고수량</th><th class="num">재고금액</th><th class="num">3M매출</th><th class="num">3M회전율</th></tr></thead><tbody>
-    ${rows.slice(0,160).map((r,i)=>`<tr><td class="rank">${i+1}</td><td>${esc(crop(r.parts_name||'',34))}<div style="font-size:10px;color:var(--text3)">${esc(r.parts_no||'')}</div></td><td>${esc(r.category||'')}</td><td>${esc(aggRealSubcategory(r))}</td><td>${esc((r.production_type||'')+' / '+(r.sourcing_type||''))}</td><td class="num">${fmtN(toNum(r.inv_qty))}</td><td class="num">${fmtW(toNum(r.inv_amount))}</td><td class="num">${fmtN(toNum(r.sales_3m))}</td><td class="num">${fmtTurn(toNum(r.turnover_3m))}</td></tr>`).join('')||emptyRow(9,'대상 없음')}
+    ${renderAggSkuDetailRows(rows.slice(0,160),'group')||emptyRow(9,'대상 없음')}
     </tbody></table>`;
 }
 function openAggStatusDetail(value){
@@ -2719,7 +2766,7 @@ function openAggStatusDetail(value){
   title.textContent='판매상태 상세 · '+status;
   body.innerHTML=`<div style="display:flex;gap:10px;margin-bottom:12px;flex-wrap:wrap"><span class="tag tag-gray">${esc(aggPeriodLabel(p))}</span><span class="tag tag-gray">${rows.length} SKU</span><span class="tag tag-gray">${fmtW(total)}</span></div>
     <table class="tbl"><thead><tr><th class="rank">#</th><th>파츠명</th><th>카테고리</th><th>서브카테고리</th><th>판매상태</th><th class="num">품절일수</th><th class="num">재고수량</th><th class="num">재고금액</th><th class="num">3M회전율</th><th>최근 출고</th></tr></thead><tbody>
-    ${rows.slice(0,160).map((r,i)=>`<tr><td class="rank">${i+1}</td><td>${esc(crop(r.parts_name||'',34))}<div style="font-size:10px;color:var(--text3)">${esc(r.parts_no||'')}</div></td><td>${esc(r.category||'')}</td><td>${esc(aggRealSubcategory(r))}</td><td>${aggStatusTag(r.sales_status)}</td><td class="num">${fmtN(aggStockoutDays(r))}</td><td class="num">${fmtN(toNum(r.inv_qty))}</td><td class="num">${fmtW(toNum(r.inv_amount))}</td><td class="num">${fmtTurn(toNum(r.turnover_3m))}</td><td style="font-size:11px">${esc(crop(r.last_issue_summary||r.last_issue_date||'',45))}</td></tr>`).join('')||emptyRow(10,'대상 없음')}
+    ${renderAggSkuDetailRows(rows.slice(0,160),'status')||emptyRow(10,'대상 없음')}
     </tbody></table>`;
 }
 function openAggInventoryModal(kind){
@@ -2741,7 +2788,7 @@ function openAggInventoryModal(kind){
     title.textContent='품절 상세 · '+aggPeriodLabel(p);
     body.innerHTML=`<div style="display:flex;gap:10px;margin-bottom:12px;flex-wrap:wrap"><span class="tag tag-q">품절 ${stockout.length} SKU</span><span class="tag tag-gray">30일+ ${stockout.filter(r=>aggStockoutDays(r)>=30).length}</span><span class="tag tag-gray">60일+ ${stockout.filter(r=>aggStockoutDays(r)>=60).length}</span></div>
     <table class="tbl"><thead><tr><th class="rank">#</th><th>파츠명</th><th>카테고리</th><th>판매상태</th><th class="num">품절일수</th><th class="num">재고금액</th><th class="num">3M회전율</th><th>최근 출고</th></tr></thead><tbody>
-    ${stockout.slice(0,120).map((r,i)=>`<tr><td class="rank">${i+1}</td><td>${esc(crop(r.parts_name||'',34))}<div style="font-size:10px;color:var(--text3)">${esc(r.parts_no||'')}</div></td><td>${esc(r.category||'')}</td><td>${aggStatusTag(r.sales_status)}</td><td class="num">${fmtN(aggStockoutDays(r))}</td><td class="num">${fmtW(toNum(r.inv_amount))}</td><td class="num">${fmtTurn(toNum(r.turnover_3m))}</td><td style="font-size:11px">${esc(crop(r.last_issue_summary||r.last_issue_date||'',45))}</td></tr>`).join('')||emptyRow(8,'품절 없음')}
+    ${renderAggSkuDetailRows(stockout.slice(0,120),'stockout')||emptyRow(8,'품절 없음')}
     </tbody></table>`;
     return;
   }
@@ -2756,7 +2803,7 @@ function openAggInventoryModal(kind){
   if(kind==='stagnant'){
     title.textContent='장기미회전 재고 상세 · '+aggPeriodLabel(p);
     body.innerHTML=`<table class="tbl"><thead><tr><th class="rank">#</th><th>파츠명</th><th>카테고리</th><th>조달유형</th><th class="num">재고수량</th><th class="num">재고금액</th><th class="num">3M매출</th><th class="num">3M회전율</th></tr></thead><tbody>
-    ${stagnant.slice(0,120).map((r,i)=>`<tr><td class="rank">${i+1}</td><td>${esc(crop(r.parts_name||'',34))}<div style="font-size:10px;color:var(--text3)">${esc(r.parts_no||'')}</div></td><td>${esc(r.category||'')}</td><td>${esc(r.procurement_type||r.sourcing_type||'')}</td><td class="num">${fmtN(toNum(r.inv_qty))}</td><td class="num">${fmtW(toNum(r.inv_amount))}</td><td class="num">${fmtN(toNum(r.sales_3m))}</td><td class="num">${fmtTurn(toNum(r.turnover_3m))}</td></tr>`).join('')||emptyRow(8,'대상 없음')}
+    ${renderAggSkuDetailRows(stagnant.slice(0,120),'stagnant')||emptyRow(8,'대상 없음')}
     </tbody></table>`;
     return;
   }
