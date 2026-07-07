@@ -2705,6 +2705,19 @@ function aggAmountRows(rows,total,type){
     return `<tr${click}><td>${esc(name)}</td><td class="num">${fmtW(inv)}</td><td class="num">${total?(inv/total*100).toFixed(1)+'%':'-'}</td><td class="num">${fmtN(toNum(r.sku_count))}</td><td class="num">${fmtTurn(toNum(r.turnover_3m))}</td></tr>`;
   }).join('');
 }
+function renderAggInventoryDonut(canvasId,rows){
+  dc(canvasId);
+  const ctx=document.getElementById(canvasId);
+  if(!ctx) return;
+  const sorted=(rows||[]).filter(r=>toNum(r.inv_amount)>0).sort((a,b)=>toNum(b.inv_amount)-toNum(a.inv_amount));
+  const top=sorted.slice(0,7);
+  const rest=sorted.slice(7).reduce((s,r)=>s+toNum(r.inv_amount),0);
+  const labels=top.map(r=>r.group_name||'미분류');
+  const data=top.map(r=>toNum(r.inv_amount));
+  if(rest>0){ labels.push('기타'); data.push(rest); }
+  if(!data.length) return;
+  CHARTS[canvasId]=new Chart(ctx,{type:'doughnut',data:{labels,datasets:[{data,backgroundColor:['#1d4ed8','#059669','#d97706','#7c3aed','#dc2626','#0891b2','#65a30d','#94a3b8'],borderWidth:2,borderColor:'#fff',hoverOffset:4}]},options:{responsive:true,maintainAspectRatio:false,cutout:'62%',plugins:{legend:{position:'right',labels:{font:{size:10},boxWidth:10}},tooltip:{callbacks:{label:c=>`${c.label}: ${fmtW(c.raw)}`}}}}});
+}
 function aggCategoryRows(catRows,subRows,total){
   return catRows.sort((a,b)=>toNum(b.inv_amount)-toNum(a.inv_amount)).map((r,idx)=>{
     const name=r.group_name||'미분류';
@@ -2847,8 +2860,8 @@ function renderInventoryOpsFromAgg(){
     </div>
     <div style="font-size:15px;font-weight:700;margin:18px 0 10px">2. 재고 구조</div>
     <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:16px">
-      <div class="card"><div class="card-header"><div class="card-title">생산유형별 재고</div><div class="card-sub">행 클릭 시 SKU 상세</div></div><div class="tbl-wrap"><table class="tbl"><thead><tr><th>유형</th><th class="num">재고금액</th><th class="num">비중</th><th class="num">SKU</th><th class="num">3M회전율</th></tr></thead><tbody>${aggAmountRows(prodRows,inv,'production')||emptyRow(5,'데이터 없음')}</tbody></table></div></div>
-      <div class="card"><div class="card-header"><div class="card-title">소싱유형별 재고</div><div class="card-sub">행 클릭 시 SKU 상세</div></div><div class="tbl-wrap"><table class="tbl"><thead><tr><th>유형</th><th class="num">재고금액</th><th class="num">비중</th><th class="num">SKU</th><th class="num">3M회전율</th></tr></thead><tbody>${aggAmountRows(sourcingRows,inv,'sourcing')||emptyRow(5,'데이터 없음')}</tbody></table></div></div>
+      <div class="card"><div class="card-header"><div class="card-title">생산유형별 재고</div><div class="card-sub">행 클릭 시 SKU 상세</div></div><div class="ch" style="height:170px;margin-bottom:10px"><canvas id="ch-agg-prod-donut"></canvas></div><div class="tbl-wrap"><table class="tbl"><thead><tr><th>유형</th><th class="num">재고금액</th><th class="num">비중</th><th class="num">SKU</th><th class="num">3M회전율</th></tr></thead><tbody>${aggAmountRows(prodRows,inv,'production')||emptyRow(5,'데이터 없음')}</tbody></table></div></div>
+      <div class="card"><div class="card-header"><div class="card-title">소싱유형별 재고</div><div class="card-sub">행 클릭 시 SKU 상세</div></div><div class="ch" style="height:170px;margin-bottom:10px"><canvas id="ch-agg-sourcing-donut"></canvas></div><div class="tbl-wrap"><table class="tbl"><thead><tr><th>유형</th><th class="num">재고금액</th><th class="num">비중</th><th class="num">SKU</th><th class="num">3M회전율</th></tr></thead><tbody>${aggAmountRows(sourcingRows,inv,'sourcing')||emptyRow(5,'데이터 없음')}</tbody></table></div></div>
       <div class="card" onclick="openAggInventoryModal('stagnant')" style="cursor:pointer"><div class="card-header"><div class="card-title">장기미회전 재고</div><div class="card-sub">관리대상 Product Parts · 3M 회전율 &lt; 0.1</div></div>
         <div style="display:flex;gap:12px;margin-bottom:10px"><span class="tag tag-q">${stagnant.length} SKU</span><span class="tag tag-gray">${fmtW(stagnantAmt)}</span></div>
         <div class="tbl-wrap"><table class="tbl"><thead><tr><th>파츠명</th><th>카테고리</th><th class="num">재고금액</th><th class="num">3M회전율</th></tr></thead><tbody>${stagnant.slice(0,10).map(r=>`<tr><td>${esc(crop(r.parts_name||r.parts_no||'',26))}<div style="font-size:10px;color:var(--text3)">${esc(r.parts_no||'')}</div></td><td>${esc(r.category||'')}</td><td class="num">${fmtW(toNum(r.inv_amount))}</td><td class="num">${fmtTurn(toNum(r.turnover_3m))}</td></tr>`).join('')||emptyRow(4,'대상 없음')}</tbody></table></div>
@@ -2873,6 +2886,8 @@ function renderInventoryOpsFromAgg(){
       <div class="card"><div class="card-header"><div class="card-title">회전율/품절율 추이</div><div class="card-sub">3M 회전율 · 품절율</div></div><div class="ch" style="height:240px"><canvas id="ch-agg-turn-stock"></canvas></div></div>
     </div>`;
   dc('ch-inv-trend'); dc('ch-agg-turn-stock');
+  renderAggInventoryDonut('ch-agg-prod-donut',prodRows);
+  renderAggInventoryDonut('ch-agg-sourcing-donut',sourcingRows);
   const ctx1=getCtx('ch-inv-trend');
   if(ctx1) CHARTS['ch-inv-trend']=new Chart(ctx1,{type:'line',data:{labels:trend.map(r=>String(r.period_key||'').slice(5)),datasets:[{label:'재고금액',data:trend.map(r=>toNum(r.inv_amount)),borderColor:'#1d4ed8',backgroundColor:'rgba(29,78,216,.08)',fill:true,tension:.35,pointRadius:3,borderWidth:2},{label:'밴드 상한',data:trend.map(()=>band.max),borderColor:'#dc2626',borderDash:[4,4],borderWidth:1,pointRadius:0},{label:'밴드 하한',data:trend.map(()=>band.min),borderColor:'#d97706',borderDash:[4,4],borderWidth:1,pointRadius:0}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{position:'bottom',labels:{font:{size:10}}}},scales:{y:{ticks:{callback:v=>fmtW(v),font:{size:10}}}}}});
   const ctx2=getCtx('ch-agg-turn-stock');
