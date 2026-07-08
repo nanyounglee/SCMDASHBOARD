@@ -2,7 +2,7 @@
 <html lang="ko">
 <head>
 <meta charset="UTF-8">
-<title>SCM 통합운영 대시보드 사용자 가이드</title>
+<title>SCM 통합운영 대시보드 사용자 가이드 v10</title>
 <style>
   *{box-sizing:border-box;margin:0;padding:0}
   body{font-family:-apple-system,BlinkMacSystemFont,'Apple SD Gothic Neo','Noto Sans KR',sans-serif;font-size:13px;color:#1a1a1a;background:#fff;padding:36px 44px;line-height:1.7}
@@ -24,6 +24,8 @@
   .warn{background:#fef3dc;border-left:3px solid #d97706;border-radius:0 6px 6px 0;padding:8px 14px;font-size:12px;color:#92400e;margin:8px 0 14px}
   ul{padding-left:18px;margin:4px 0 10px}
   li{margin-bottom:3px}
+  .page-break{page-break-before:always;margin-top:30px}
+  @media print{body{padding:20px 24px}h2{page-break-after:avoid}.page-break{page-break-before:always}}
 </style>
 </head>
 <body>
@@ -31,21 +33,24 @@
   <h1>SCM 통합운영 대시보드</h1>
   <p style="font-size:15px;font-weight:600;color:#555">사용자 가이드</p>
   <div class="meta">
-    v8 | 2026-07-06 | SCM실 구매전략파트 · 외주생산파트<br>
+    v10 | 2026-07-07 | SCM실 구매전략파트 · 외주생산파트<br>
     배포: https://nanyounglee.github.io/SCMDASHBOARD/
   </div>
 
+  <div class="tip"><b>v8→v10 변경 요약:</b> 구매 재고 화면이 GSheets 사전집계 CSV 3종 우선 구조로 전환(v8), 공급망 포트폴리오 등급이 반기(1~6월) 기준으로 재산정(v9), 두 변경이 이번 v10에서 하나로 합쳐짐.</div>
+
   <h2>1. 접속과 데이터 로드</h2>
   <p>브라우저에서 대시보드 URL에 접속하면 <code>CSV/</code> 폴더의 고정 파일을 자동으로 읽어 KPI와 차트를 채웁니다. 임시 검증이 필요할 때만 상단 업로드 영역에 CSV를 직접 올리면 됩니다.</p>
-  <div class="tip"><b>v8 핵심 변경:</b> 구매 재고 화면은 원천 RAW인 <code>inventory_weekly</code>를 직접 계산하기보다, 구글스프레드시트에서 미리 집계한 대시보드용 CSV 3종을 우선 사용합니다.</div>
+  <div class="tip"><b>핵심:</b> 구매 재고 화면은 원천 RAW인 <code>inventory_weekly</code>를 직접 계산하기보다, 구글스프레드시트에서 미리 집계한 대시보드용 CSV 3종을 우선 사용합니다. 이 3종이 없을 때만 원천 RAW를 브라우저가 직접 계산합니다(숫자가 약간 달라질 수 있음).</div>
 
   <h3>자동 로드 파일</h3>
   <table>
     <tr><th>파트</th><th>파일</th><th>고정 파일명</th><th>용도</th></tr>
-    <tr><td rowspan="4"><span class="badge b-purple">외주생산</span></td><td>발주 RAW</td><td><code>order.csv</code></td><td>발주, 매입, 납기, 비용 KPI</td></tr>
+    <tr><td rowspan="5"><span class="badge b-purple">외주생산</span></td><td>발주 RAW</td><td><code>order.csv</code></td><td>발주, 매입, 납기, 비용 KPI</td></tr>
     <tr><td>이슈 RAW</td><td><code>issue.csv</code></td><td>이슈, 품질, 재작업 KPI</td></tr>
     <tr><td>공급망 RAW</td><td><code>sup.csv</code></td><td>협력사, 하도급법 위험</td></tr>
     <tr><td>고객인지 이슈 RAW</td><td><code>ci.csv</code></td><td>고객인지 이슈 KPI</td></tr>
+    <tr><td>분기별평가</td><td>(수동 업로드)</td><td>공급망 포트폴리오 등급(§4)</td></tr>
     <tr><td rowspan="5"><span class="badge b-blue">구매전략</span></td><td>재고 KPI 요약</td><td><code>dashboard_period_summary.csv</code></td><td>재고자산, 회전율, 품절율, 운영밴드</td></tr>
     <tr><td>재고 그룹 요약</td><td><code>dashboard_group_summary.csv</code></td><td>생산유형, 소싱유형, 카테고리별 재고 구조</td></tr>
     <tr><td>재고 SKU 스냅샷</td><td><code>dashboard_sku_snapshot.csv</code></td><td>SKU 상세, 품절 상세, 장기미회전 후보</td></tr>
@@ -57,10 +62,10 @@
   <h3>재고운영 현황</h3>
   <table>
     <tr><th>영역</th><th>표시 내용</th></tr>
-    <tr><td>KPI 카드</td><td>재고자산 평가액, 1M/3M/YTD 재고회전율, 품절율, 운영밴드, 입고예정금액 상태</td></tr>
+    <tr><td>KPI 카드</td><td>재고자산 평가액, 1M/3M/YTD 재고회전율, 품절율, 운영밴드. <b>입고예정금액은 아직 "추후 반영" 플레이스홀더 상태</b>(실제 데이터 미연결)</td></tr>
     <tr><td>기간 선택</td><td>주별, 월별, 분기별 토글과 기준일 선택으로 집계 CSV의 원하는 기간을 조회</td></tr>
     <tr><td>추이 차트</td><td>최근 12주 재고금액, 3M 회전율, 품절율</td></tr>
-    <tr><td>구조 테이블</td><td>생산유형별, 소싱유형별, 카테고리별 재고금액과 비중. 서브카테고리는 카테고리 행 하위에서 펼쳐 확인</td></tr>
+    <tr><td>구조 테이블/도넛차트</td><td>생산유형별, 소싱유형별, 카테고리별 재고금액과 비중을 표+도넛차트 3종으로 확인. 서브카테고리는 카테고리 행 하위에서 펼쳐 확인</td></tr>
     <tr><td>SKU 상세</td><td>재고자산 KPI 클릭 시 SKU별 재고금액, 재고수량, 단가, 3M 회전율을 확인</td></tr>
   </table>
 
@@ -70,26 +75,43 @@
   <h3>장기미회전/졸업 검토 후보</h3>
   <p>관리대상 Product Parts 중 3M 회전율이 0.1 미만이고 재고금액이 있는 SKU를 후보로 보여줍니다. 기존 원천 RAW 계산보다 구글시트에서 확정된 스냅샷 값을 우선합니다.</p>
 
-  <div class="warn"><b>v8 제외 범위:</b> 매입검토와 시즌재고계획은 기존 구매 대시보드에서도 별도 테이블 기반의 확정 전 기능이므로 이번 통합 범위에서 제외했습니다. 대시보드에는 “추후 반영”으로 표시됩니다.</div>
+  <div class="warn"><b>제외 범위 (유지):</b> 매입검토와 시즌재고계획은 기존 구매 대시보드에서도 별도 테이블 기반의 확정 전 기능이므로 통합 범위에서 계속 제외됩니다. 화면은 남아 있으나 저장은 브라우저 임시저장(localStorage)뿐이며, 운영 원본은 여전히 구글스프레드시트입니다.</div>
 
-  <h2>3. CSV 저장 규칙</h2>
+  <h2 class="page-break">3. 외주생산 화면</h2>
+  <table>
+    <tr><th>페이지</th><th>확인 가능한 것</th></tr>
+    <tr><td>발주 현황</td><td>전체 제품 발주량(MoM/YoY), Bottom 20(미발주 포함), 프로젝트별 매입, 발주빈도</td></tr>
+    <tr><td>매입 현황</td><td>협력사별 매입 Top 10, 제조유형/업태/인쇄유형별 비중</td></tr>
+    <tr><td>원가 분석</td><td>월별 원가율 추이, 프로젝트별 실제단가 vs 표준단가 비교, 마진율</td></tr>
+    <tr><td>이슈 현황 / 고객인지 이슈</td><td>품질·수량·운영 이슈 상세, 대응 내용, 재제작 실패비용</td></tr>
+    <tr><td>하도급법 위험</td><td>하도급대상 협력사의 미입하 90일/120일/180일 이상 건 자동 표시</td></tr>
+  </table>
+
+  <h2>4. 공급망 포트폴리오 <span class="badge b-blue">v9 변경</span></h2>
+  <p>협력사를 TASK 건수·매입대금·이슈대응·예외사항·대체가능 5개 항목(각 3점, 총 15점)으로 평가해 A/B/C/D 등급과 Core/Strategic/Preferred/General 4분면으로 분류합니다.</p>
+  <div class="tip"><b>v9부터:</b> 등급 산정 기준이 <b>반기(1~6월, 2Q까지) 데이터 기준</b>으로 바뀌었습니다. 1분기·2분기 등급이 서로 다르면 두 분기 점수의 평균으로 등급을 다시 매깁니다. 연간 기준(TASK 400/100/11건, 매입 1억/5천만원)의 절반 수준으로 반기 기준값이 조정되어 있습니다.</div>
+  <p>C등급은 거래 축소·이관 검토 대상, D등급은 더 우선적으로 검토가 필요한 협력사로 표시됩니다.</p>
+
+  <h2>5. CSV 저장 규칙</h2>
   <ul>
     <li>구글스프레드시트에서 <b>쉼표로 구분된 값 CSV</b>로 내려받습니다.</li>
     <li>파일명은 접두어 없이 <code>dashboard_period_summary.csv</code>, <code>dashboard_group_summary.csv</code>, <code>dashboard_sku_snapshot.csv</code>로 저장합니다.</li>
     <li>저장 위치는 저장소의 <code>CSV/</code> 폴더입니다.</li>
     <li><code>CSV/_manifest.json</code>에 등록된 고정 파일명이 자동 로드 기준입니다.</li>
+    <li>구매전략파트 CSV 3종은 <b>항상 함께</b> 갱신해야 합니다 — 하나만 갱신하면 나머지 화면이 이전 데이터 또는 레거시 계산으로 어긋날 수 있습니다.</li>
   </ul>
 
-  <h2>4. 문제 확인</h2>
+  <h2>6. 문제 확인</h2>
   <table>
     <tr><th>상황</th><th>확인할 것</th></tr>
     <tr><td>구매 재고 화면이 비어 있음</td><td>CSV 3종이 <code>CSV/</code> 폴더에 있는지, 파일명이 정확한지 확인합니다.</td></tr>
     <tr><td>품절율/회전율이 예상과 다름</td><td>구글스프레드시트의 집계 시트 값이 최신인지 확인합니다. 대시보드는 CSV 값을 그대로 표시합니다.</td></tr>
+    <tr><td>품절율/회전율이 갑자기 크게 달라짐</td><td>CSV 3종 중 하나가 빠져 레거시(inv_weekly 직접계산) 경로로 전환됐을 가능성이 있습니다. 업로드 상태를 확인하세요.</td></tr>
     <tr><td>로컬 파일로 열면 자동 로드가 안 됨</td><td>브라우저 보안 정책 때문에 <code>file://</code> 자동 로드가 막힐 수 있습니다. GitHub Pages URL에서 확인하거나 직접 업로드합니다.</td></tr>
   </table>
 
   <div class="meta" style="margin-top:24px;padding-top:10px;border-top:1px solid #e0e0dc">
-    문서 기준: index.html / scm_dashboard_v8.html v8 (2026-07-06) · 구매 재고 집계 CSV 3종 우선 로드 · 매입검토/시즌재고계획 추후 반영
+    문서 기준: index.html (scm_dashboard_v10.html) v10 (2026-07-07, 커밋 013824d) · 구매 재고 집계 CSV 3종 우선 로드 · 공급망 포트폴리오 반기환산 · 매입검토/시즌재고계획 추후 반영
   </div>
 </div>
 </body>

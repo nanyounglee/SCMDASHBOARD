@@ -1,0 +1,96 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<title>SCM 통합운영 대시보드 사용자 가이드</title>
+<style>
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{font-family:-apple-system,BlinkMacSystemFont,'Apple SD Gothic Neo','Noto Sans KR',sans-serif;font-size:13px;color:#1a1a1a;background:#fff;padding:36px 44px;line-height:1.7}
+  .container{max-width:860px;margin:0 auto}
+  h1{font-size:22px;font-weight:700;margin-bottom:4px}
+  h2{font-size:16px;font-weight:700;margin:26px 0 10px;padding:6px 12px;background:#f5f5f3;border-radius:6px;color:#111}
+  h3{font-size:13px;font-weight:700;margin:14px 0 6px;color:#333}
+  p{margin:4px 0 8px;color:#444}
+  .meta{font-size:12px;color:#888;margin-bottom:20px}
+  table{width:100%;border-collapse:collapse;font-size:12px;margin:6px 0 14px}
+  th{background:#f8f8f5;padding:7px 10px;text-align:left;font-weight:600;color:#444;border:1px solid #e0e0dc}
+  td{padding:7px 10px;border:1px solid #e8e8e4;vertical-align:top;color:#333}
+  code{font-family:ui-monospace,SFMono-Regular,Consolas,monospace;background:#f5f5f3;padding:1px 4px;border-radius:4px}
+  .badge{display:inline-block;font-size:10px;font-weight:600;padding:2px 7px;border-radius:4px}
+  .b-blue{background:#e8f0fd;color:#1a56c7}
+  .b-purple{background:#f0e8fd;color:#6b21a8}
+  .b-green{background:#e0f5ec;color:#0a6e45}
+  .tip{background:#eff6ff;border-left:3px solid #3b82f6;border-radius:0 6px 6px 0;padding:8px 14px;font-size:12px;color:#1d4ed8;margin:8px 0 14px}
+  .warn{background:#fef3dc;border-left:3px solid #d97706;border-radius:0 6px 6px 0;padding:8px 14px;font-size:12px;color:#92400e;margin:8px 0 14px}
+  ul{padding-left:18px;margin:4px 0 10px}
+  li{margin-bottom:3px}
+</style>
+</head>
+<body>
+<div class="container">
+  <h1>SCM 통합운영 대시보드</h1>
+  <p style="font-size:15px;font-weight:600;color:#555">사용자 가이드</p>
+  <div class="meta">
+    v8 | 2026-07-06 | SCM실 구매전략파트 · 외주생산파트<br>
+    배포: https://nanyounglee.github.io/SCMDASHBOARD/
+  </div>
+
+  <h2>1. 접속과 데이터 로드</h2>
+  <p>브라우저에서 대시보드 URL에 접속하면 <code>CSV/</code> 폴더의 고정 파일을 자동으로 읽어 KPI와 차트를 채웁니다. 임시 검증이 필요할 때만 상단 업로드 영역에 CSV를 직접 올리면 됩니다.</p>
+  <div class="tip"><b>v8 핵심 변경:</b> 구매 재고 화면은 원천 RAW인 <code>inventory_weekly</code>를 직접 계산하기보다, 구글스프레드시트에서 미리 집계한 대시보드용 CSV 3종을 우선 사용합니다.</div>
+
+  <h3>자동 로드 파일</h3>
+  <table>
+    <tr><th>파트</th><th>파일</th><th>고정 파일명</th><th>용도</th></tr>
+    <tr><td rowspan="4"><span class="badge b-purple">외주생산</span></td><td>발주 RAW</td><td><code>order.csv</code></td><td>발주, 매입, 납기, 비용 KPI</td></tr>
+    <tr><td>이슈 RAW</td><td><code>issue.csv</code></td><td>이슈, 품질, 재작업 KPI</td></tr>
+    <tr><td>공급망 RAW</td><td><code>sup.csv</code></td><td>협력사, 하도급법 위험</td></tr>
+    <tr><td>고객인지 이슈 RAW</td><td><code>ci.csv</code></td><td>고객인지 이슈 KPI</td></tr>
+    <tr><td rowspan="5"><span class="badge b-blue">구매전략</span></td><td>재고 KPI 요약</td><td><code>dashboard_period_summary.csv</code></td><td>재고자산, 회전율, 품절율, 운영밴드</td></tr>
+    <tr><td>재고 그룹 요약</td><td><code>dashboard_group_summary.csv</code></td><td>생산유형, 소싱유형, 카테고리별 재고 구조</td></tr>
+    <tr><td>재고 SKU 스냅샷</td><td><code>dashboard_sku_snapshot.csv</code></td><td>SKU 상세, 품절 상세, 장기미회전 후보</td></tr>
+    <tr><td>품절 리스트</td><td><code>stockout_list.csv</code></td><td>기존 품절 상세 백업 데이터</td></tr>
+    <tr><td>S&OP 원천 RAW</td><td><code>inv_weekly.csv</code>, <code>sales_monthly.csv</code></td><td>집계 CSV가 없을 때의 백업 계산용</td></tr>
+  </table>
+
+  <h2>2. 구매 재고 화면</h2>
+  <h3>재고운영 현황</h3>
+  <table>
+    <tr><th>영역</th><th>표시 내용</th></tr>
+    <tr><td>KPI 카드</td><td>재고자산 평가액, 1M/3M/YTD 재고회전율, 품절율, 운영밴드, 입고예정금액 상태</td></tr>
+    <tr><td>기간 선택</td><td>주별, 월별, 분기별 토글과 기준일 선택으로 집계 CSV의 원하는 기간을 조회</td></tr>
+    <tr><td>추이 차트</td><td>최근 12주 재고금액, 3M 회전율, 품절율</td></tr>
+    <tr><td>구조 테이블</td><td>생산유형별, 소싱유형별, 카테고리별 재고금액과 비중. 서브카테고리는 카테고리 행 하위에서 펼쳐 확인</td></tr>
+    <tr><td>SKU 상세</td><td>재고자산 KPI 클릭 시 SKU별 재고금액, 재고수량, 단가, 3M 회전율을 확인</td></tr>
+  </table>
+
+  <h3>품절 상세</h3>
+  <p><code>dashboard_sku_snapshot.csv</code>의 판매상태, 품절일수, 재고금액을 기준으로 비의도적 품절, 일시품절, 30일 이상 장기 품절을 표시합니다.</p>
+
+  <h3>장기미회전/졸업 검토 후보</h3>
+  <p>관리대상 Product Parts 중 3M 회전율이 0.1 미만이고 재고금액이 있는 SKU를 후보로 보여줍니다. 기존 원천 RAW 계산보다 구글시트에서 확정된 스냅샷 값을 우선합니다.</p>
+
+  <div class="warn"><b>v8 제외 범위:</b> 매입검토와 시즌재고계획은 기존 구매 대시보드에서도 별도 테이블 기반의 확정 전 기능이므로 이번 통합 범위에서 제외했습니다. 대시보드에는 “추후 반영”으로 표시됩니다.</div>
+
+  <h2>3. CSV 저장 규칙</h2>
+  <ul>
+    <li>구글스프레드시트에서 <b>쉼표로 구분된 값 CSV</b>로 내려받습니다.</li>
+    <li>파일명은 접두어 없이 <code>dashboard_period_summary.csv</code>, <code>dashboard_group_summary.csv</code>, <code>dashboard_sku_snapshot.csv</code>로 저장합니다.</li>
+    <li>저장 위치는 저장소의 <code>CSV/</code> 폴더입니다.</li>
+    <li><code>CSV/_manifest.json</code>에 등록된 고정 파일명이 자동 로드 기준입니다.</li>
+  </ul>
+
+  <h2>4. 문제 확인</h2>
+  <table>
+    <tr><th>상황</th><th>확인할 것</th></tr>
+    <tr><td>구매 재고 화면이 비어 있음</td><td>CSV 3종이 <code>CSV/</code> 폴더에 있는지, 파일명이 정확한지 확인합니다.</td></tr>
+    <tr><td>품절율/회전율이 예상과 다름</td><td>구글스프레드시트의 집계 시트 값이 최신인지 확인합니다. 대시보드는 CSV 값을 그대로 표시합니다.</td></tr>
+    <tr><td>로컬 파일로 열면 자동 로드가 안 됨</td><td>브라우저 보안 정책 때문에 <code>file://</code> 자동 로드가 막힐 수 있습니다. GitHub Pages URL에서 확인하거나 직접 업로드합니다.</td></tr>
+  </table>
+
+  <div class="meta" style="margin-top:24px;padding-top:10px;border-top:1px solid #e0e0dc">
+    문서 기준: index.html / scm_dashboard_v8.html v8 (2026-07-06) · 구매 재고 집계 CSV 3종 우선 로드 · 매입검토/시즌재고계획 추후 반영
+  </div>
+</div>
+</body>
+</html>

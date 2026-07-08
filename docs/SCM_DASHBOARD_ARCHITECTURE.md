@@ -1,6 +1,6 @@
 # SCM 통합운영 대시보드 — 프로젝트 설계 아키텍처
 
-> 버전: v7 | 갱신일: 2026-07-03 | 작성: 이난영 / Claude AI  
+> 버전: v10 | 갱신일: 2026-07-07 | 작성: 이난영 / Claude AI  
 > 대상: 구매전략파트 · 외주생산파트 팀원 공유, 유지보수, 버그 대응
 
 ---
@@ -13,9 +13,10 @@
 
 ### 핵심 특성
 - **서버 없음** — 단일 `.html` 파일 하나로 동작. 외부 API 호출 없음.
-- **자동 로드 (v7)** — GitHub Pages 접속만 하면 `CSV/` 폴더의 고정 파일명 RAW 7종을 자동 fetch. 접속자 수동 업로드 불필요.
-- **데이터 입력** — 자동 로드 CSV 7종 + 수동 업로드(보정용) + 영구 임베딩 JSON 3종
-- **파싱은 브라우저 JS** — 모든 집계·필터·차트 렌더링이 브라우저에서 실행. v7부터 멀티라인 셀 안전 상태머신 파서.
+- **자동 로드 (v7~)** — GitHub Pages 접속만 하면 `CSV/` 폴더의 고정 파일명 RAW를 자동 fetch. 접속자 수동 업로드 불필요.
+- **데이터 입력** — 자동 로드 CSV + 수동 업로드(보정용) + 영구 임베딩 JSON 3종
+- **v10부터 구매전략파트(재고운영) 데이터가 "사전집계 우선" 구조로 전환** — GSheets Apps Script가 `dashboard_period_summary` / `dashboard_group_summary` / `dashboard_sku_snapshot` 3종을 미리 계산해 CSV로 내보내고, 브라우저는 이를 그대로 표시(계산 엔진이 아니라 표시·필터·드릴다운 역할). 3종 CSV가 없으면 기존처럼 `inv_weekly`/`sales_monthly`를 브라우저에서 직접 집계하는 레거시 경로로 자동 폴백(`hasAggInventoryData()`).
+- **파싱은 브라우저 JS** — 모든 집계·필터·차트 렌더링이 브라우저에서 실행(재고운영 사전집계 3종 제외). v7부터 멀티라인 셀 안전 상태머신 파서.
 - **localStorage** — 업로드 일시, 매입검토 편집, 시즌계획 확정수량, JSON 캐시 저장
 - **Chart.js 4.4.1** — CDN 로드, 오프라인 시 차트만 미표시
 
@@ -23,7 +24,7 @@
 | 파일 | 위치 |
 |---|---|
 | 운영 원본 | `index.html` (GitHub Pages가 직접 서빙) |
-| 버전 스냅샷 | `scm_dashboard_v7.html` (index.html 복사본, 이전 버전은 `archive/`) |
+| 버전 스냅샷 | `scm_dashboard_v10.html` (index.html 복사본, 이전 버전은 `archive/`) |
 | GitHub Pages | https://nanyounglee.github.io/SCMDASHBOARD/ |
 | 레포지토리 | https://github.com/nanyounglee/SCMDASHBOARD |
 
@@ -36,10 +37,17 @@
 │                   Airtable (원천 데이터)                           │
 │  SCM KPI 베이스          │  공급망 관리 베이스  │  S&OP GSheets     │
 │  · 발주_RAW (task)       │  · 공급망_RAW        │  · inventory_weekly│
-│  · 이슈_RAW              │                      │  · sales_monthly   │
+│  · 이슈_RAW              │  · 분기별평가         │  · sales_monthly   │
 │  · 고객인지이슈_RAW       │                      │  · purchase_review │
 │  · 품절리스트             │                      │  · 시즌매입_파츠연결 │
 └──────────────┬───────────────────────────────────────────────────┘
+               │
+               │  ※ 구매전략파트는 v10부터 GSheets Apps Script(재고운영 담당)가
+               │    inventory_weekly/sales_monthly를 원본으로 아래 3종을 "사전집계"
+               │    → dashboard_period_summary / dashboard_group_summary /
+               │      dashboard_sku_snapshot (turnover_1m/3m/ytd, band_status,
+               │      stockout_days, group_type/group_name 포함)
+               │
                │  CSV Export (수동) — 주 1회 (외주생산) / 필요시 (구매전략)
                ▼
 ┌──────────────────────────────────────────────────────────────────┐
@@ -52,13 +60,13 @@
                │  git push → GitHub Pages 재빌드 (1~3분)
                ▼
 ┌──────────────────────────────────────────────────────────────────┐
-│         접속자 브라우저 (index.html · v7 · 4,206줄 · 287KB)         │
+│         접속자 브라우저 (index.html · v10 · 4,691줄 · 330KB)        │
 │                                                                    │
 │  ┌───────────────────────┐  ┌────────────────────────────────┐   │
 │  │ autoLoadRaw() 자동 로드 │  │ 영구 임베딩 JSON (data/ 폴더)    │   │
 │  │ · CSV/_manifest.json   │  │ · parts_master.json (2,749파츠) │   │
 │  │   에서 파일명 매핑 확인  │  │ · data_2025.json (YoY 집계)    │   │
-│  │ · 고정명 7종 fetch      │  │ · cost_db.json (공정+단가DB)    │   │
+│  │ · 고정명 fetch          │  │ · cost_db.json (공정+단가DB)    │   │
 │  │ · 슬롯에 "N행 (자동)"   │  └──────────────┬─────────────────┘   │
 │  └──────────┬────────────┘                 │ fetch → localStorage │
 │             │  (수동 드래그앤드롭 업로드는 자동 로드분을 덮어씀)       │
@@ -69,6 +77,13 @@
 │  │  purchaseByMonth() │ calcElapsedDays() │ calcProjectCost()    │ │
 │  │  getReworkCostForProject() │ matchesSearch() │ YoY/MoM        │ │
 │  │  getSubcontractRiskRows() │ getPartCostForQty() │ goodsCode() │ │
+│  ├──────────────────────────────────────────────────────────────┤ │
+│  │  [v10 신규] 재고운영 Agg 경로 (구매전략파트)                    │ │
+│  │  hasAggInventoryData() → true면 아래로, false면 레거시 계산    │ │
+│  │  getAggPeriodRows/getAggGroupRows/getAggSkuRows                │ │
+│  │  isAggManaged/isAggProduct/isAggStockout/aggStockoutDays       │ │
+│  │  renderInventoryOpsFromAgg/renderStockoutDetailFromAgg/        │ │
+│  │  renderGraduationFromAgg/renderAggInventoryDonut               │ │
 │  └──────────────────────────────────┬───────────────────────────┘ │
 │                                     ▼                              │
 │  ┌──────────────────────────────────────────────────────────────┐ │
@@ -175,14 +190,28 @@
 | `이슈내용` | 상세 표시 |
 | `상태` | 상태 태그 |
 
-### 3-2. 구매전략파트 CSV (필요시)
+### 3-2. 구매전략파트 CSV
+
+**[v10 신규] 사전집계 3종 — 재고운영/품절/졸업검토의 기본 소스**
+
+GSheets S&OP Apps Script가 `inventory_weekly`/`sales_monthly` 원본을 기간(주/월/분기)·그룹(카테고리·서브카테고리·조달유형·생산구분·소싱구분) 단위로 미리 계산해 내보낸다. `purchase_dashboard_migration_strategy.md`(2026-07-06)에서 지적된 "사전집계 시트 3종 부재" 갭을 해소한 것으로, 통합 대시보드는 이제 이 3종을 그대로 표시만 한다.
+
+| Key | 파일명 | 출처 | 필수 컬럼 | 비고 |
+|---|---|---|---|---|
+| `dashboard_period_summary` | (자동/수동) | GSheets S&OP → dashboard_period_summary | period_unit, period_key, inv_amount, turnover_3m (+turnover_1m/ytd, stockout_rate, band_status) | 기간 단위 KPI. `getAggPeriodRows()` |
+| `dashboard_group_summary` | (자동/수동) | GSheets S&OP → dashboard_group_summary | group_type, group_name, inv_amount, turnover_3m (+sku_count) | 카테고리/서브카테고리/생산구분/소싱구분별 집계. `getAggGroupRows()`, 도넛차트 3종 소스 |
+| `dashboard_sku_snapshot` | (자동/수동) | GSheets S&OP → dashboard_sku_snapshot | parts_no, parts_name, inv_amount, turnover_3m (+is_managed, sales_status, stockout_days) | SKU 단위 상세. `getAggSkuRows()`, 재고자산 모달·품절상세·졸업검토 공통 소스 |
+
+**3종 모두 있어야 Agg 경로 활성화** — `hasAggInventoryData()`가 세 CSV를 모두 확인. 하나라도 없으면 아래 레거시 경로로 폴백.
 
 | Key | 파일명 | 출처 | 필수 컬럼 |
 |---|---|---|---|
-| `inv_weekly` | inv_weekly.csv | GSheets S&OP → inventory_weekly | 파츠번호, 기준일, 재고수량, 재고금액, 단가, 판매상태, 굿즈카테고리 (※ `관리대상여부` 없으면 v7 폴백: 전 행 관리대상 간주) |
+| `inv_weekly` | inv_weekly.csv | GSheets S&OP → inventory_weekly | 파츠번호, 기준일, 재고수량, 재고금액, 단가, 판매상태, 굿즈카테고리 (※ `관리대상여부` 없으면 폴백: 전 행 관리대상 간주). Agg 3종 부재 시 레거시 프론트 계산의 원본 |
 | `sales_monthly` | sales_monthly.csv | GSheets S&OP → sales_monthly | 파츠번호, 기준월, 판매량 |
 | `purchase_review` | (수동 업로드) | GSheets S&OP → purchase_review | REVIEW_ID, 파츠번호, 결정상태, 파츠명, 매입계획수량, 매입확정수량 |
 | `season_plan` | (수동 업로드) | GSheets S&OP → 시즌매입_파츠연결 | 굿즈명, 옵션, 계획구분, 표준원가, 매입희망수량 |
+
+> `purchase_review`·`season_plan`은 1차 통합 범위에서 제외([[purchase_dashboard_migration_strategy.md]] 참고) — 화면·업로드 슬롯은 남아있으나 운영 원본은 GSheets이며 저장 기능은 없음.
 
 ### 3-3. 공통/선택 CSV
 
@@ -288,6 +317,26 @@ function matchesSearch(row, query) {
 }
 ```
 
+### 4-9. 재고운영 Agg 경로 (v10 신규 · 구매전략파트)
+```javascript
+function hasAggInventoryData(){
+  // dashboard_period_summary/group_summary/sku_snapshot 3종 모두 있어야 true
+  return !!(D.dashboard_period_summary && D.dashboard_group_summary && D.dashboard_sku_snapshot);
+}
+// renderInventoryOps() / renderStockoutDetail() / renderGraduation() 공통 패턴:
+//   if (hasAggInventoryData()) { render...FromAgg(); return; }
+//   (없으면) 기존 inv_weekly 기반 프론트 계산으로 폴백
+
+function isAggManaged(r){ return String(r.is_managed).trim().toUpperCase()==='Y'; }
+function isAggProduct(r){ return String(r.sub_category||r['서브카테고리']).trim()==='Product Parts'; }
+function isAggStockout(r){
+  const s=String(r.sales_status).trim();
+  return s==='일시품절' || s==='비의도적품절';
+}
+function aggStockoutDays(r){ return toNum(r.stockout_days); } // GSheets가 사전산출, 브라우저는 조회만
+```
+그룹 도넛차트 3종(`renderAggInventoryDonut`)은 `dashboard_group_summary`의 `group_type`별(생산구분/소싱구분/카테고리) 행을 그대로 그린다 — `purchase_dashboard_migration_strategy.md`의 갭 #5(그룹 집계) 해소.
+
 ---
 
 ## 5. UI 섹션 구조 (22개 페이지)
@@ -303,13 +352,14 @@ sidebar 네비게이션
 │       ├── 월별 이슈 추이 (품질/수량/운영 3색 라인)
 │       └── 제조유형 매입비중 (제조유형/업태/굿즈카테고리 전환)
 │
-├── [S&OP · 재고운영] — 구매전략파트
-│   ├── 재고운영 현황 (inventory-ops) — KPI, 재고추이, 카테고리별, 운영밴드
-│   ├── 품절 상세 (stockout-detail) — 품절예측, 사유별/소유별 분포
-│   ├── 매입 검토 (purchase-review) — 파이프라인, 인라인 편집
-│   ├── 시즌재고 계획 (season-plan) — 3구분 탭, 확정수량 입력
+├── [S&OP · 재고운영] — 구매전략파트 (v10: 사전집계 3종 있으면 Agg 경로, 없으면 레거시 계산 폴백)
+│   ├── 재고운영 현황 (inventory-ops) — KPI(재고자산·1M/3M/YTD회전율·품절율·운영밴드), 재고추이,
+│   │     생산구분·소싱구분·카테고리별 도넛차트 3종[v10], 장기미회전재고
+│   ├── 품절 상세 (stockout-detail) — 품절일수(사전산출 stockout_days)·재고수량·회전율 상세
+│   ├── 매입 검토 (purchase-review) — 파이프라인, 인라인 편집 (1차 통합 제외 대상 · 화면은 유지)
+│   ├── 시즌재고 계획 (season-plan) — 3구분 탭, 확정수량 입력 (1차 통합 제외 대상 · 화면은 유지)
 │   ├── EOQ · 발주알람 (eoq) — 경제적발주량, 리오더포인트
-│   └── 졸업 검토 (graduation) — EOL 후보
+│   └── 졸업 검토 (graduation) — EOL 후보 (Agg 경로: dashboard_sku_snapshot 기준)
 │
 ├── [발주 · 매입] — 외주생산파트
 │   ├── 발주 현황 (order) — 전체제품 MoM/YoY, Bottom20, 프로젝트별, 빈도, Task
@@ -362,14 +412,23 @@ sidebar 네비게이션
 
 ```javascript
 const FILE_SIGNATURES = {
+  // [v10 신규] 사전집계 3종 — 우선순위 최상단(period_key 등 공통 컬럼명 충돌 방지 위해 more-specific 필드로 구분)
+  dashboard_period_summary: { must: ['period_unit','period_key','inv_amount','turnover_3m'] },
+  dashboard_group_summary:  { must: ['period_unit','period_key','group_type','group_name','inv_amount'] },
+  dashboard_sku_snapshot:   { must: ['period_unit','period_key','parts_no','parts_name','inv_amount'] },
   purchase_review: { must: ['REVIEW_ID','파츠번호','결정상태'] },
   season_plan:     { must: ['굿즈명','옵션','계획구분'] },
   inv_weekly:      { must: ['파츠번호','기준일','재고수량','재고금액'] },
+  sales_monthly:   { must: ['파츠번호','기준월','판매량'] },
+  qms_raw:         { must: ['발생일','이슈유형'], not: ['이슈카테고리'] },
+  cost_reduction:  { must: ['절감액','항목'] },
   stockout_list:   { must: ['파츠명','판매상태','품절 성격'] },
+  sales:           { must: ['제품명','주문수량','판매단가','소계'] },
   order:           { must: ['과업지시일자','발주번호'] },
   issue:           { must: ['이슈카테고리'], not: ['판매상태','총재고수량'] },
   sup:             { must: ['협력사 이름','1. 제조유형'] },
   ci:              { must: ['등록일자','이슈내용','프로젝트명'], not: ['이슈카테고리'] },
+  quarter_eval:    { must: ['협력사','1Q_TASK 점수','1Q_공급망관리등급'] }, // v9: 공급망 포트폴리오 반기환산의 원본
   // must: 모든 필드 존재 + not: 하나라도 있으면 매칭 제외
 };
 // BOM(UTF-8 0xFEFF) 자동 제거 적용
@@ -392,53 +451,67 @@ const FILE_SIGNATURES = {
 | v6 | `c05c52b` | 대시보드 갱신 배포 (index.html 329줄 추가) |
 | v7 | `839f2aa` | CSV 파서 상태머신 교체, goodsCode/의도적품절/재고 폴백 수정, **자동 로드 + 고정 파일명** |
 | v7 | `18d23e4` | `.nojekyll` 추가 — GitHub Pages Jekyll 빌드 실패 수정 |
+| v8 (haeun.kim 원격) | `246bb15`~`255531a` | 매입재고 대시보드 추가, **GSheets 사전집계 3종(dashboard_period/group_summary, dashboard_sku_snapshot) 연동**, 도넛차트 3종(생산구분/소싱구분/카테고리), 회전율 드릴다운 판매이력 전체표시, sales_monthly 갱신 |
+| v9 (로컬) | (병합 전 별도 브랜치) | 공급망 포트폴리오 등급 반기환산(1~6월 기준, 연 400/100/11 TASK·1억/5천만 매입대금 → 반기 절반 환산), A/B/C/D 4단계 재산정(1Q/2Q 등급 상이 시 점수 평균), KPI 리팩터(hasNoReceipt 등) |
+| **v10** | `013824d` | **v8(원격)+v9(로컬) 3-way 병합.** 겹치는 함수(포트폴리오 렌더, 재고 상세 모달)를 `merge_resolve_v10.ps1`로 수동 해소. index.html 4,206→4,691줄 (+552/-67, 순증 485줄) |
 
 ### 파일 구조
 ```
 SCMDASHBOARD/
-├── index.html                       ← 운영 원본 (GitHub Pages 직접 서빙 · v7)
-├── scm_dashboard_v7.html            ← 현행 버전 스냅샷 (index.html 복사본)
-├── archive/                         ← 이전 버전 스냅샷 (v3~v6)
+├── index.html                       ← 운영 원본 (GitHub Pages 직접 서빙 · v10 · 4,691줄)
+├── scm_dashboard_v10.html           ← 현행 버전 스냅샷 (index.html 복사본)
+├── archive/                         ← 이전 버전 스냅샷 (v3~v9)
+├── _merge_staging/                  ← v10 3-way 병합 산출물(1회성) · index_v10_merged.html, ARCHITECTURE_local.md
 ├── CSV/                             ← 자동 로드 대상 CSV
 │   ├── order.csv · issue.csv · sup.csv · ci.csv
 │   ├── stockout_list.csv · inv_weekly.csv · sales_monthly.csv
+│   ├── dashboard_period_summary.csv · dashboard_group_summary.csv · dashboard_sku_snapshot.csv  ← v10 신규
 │   ├── _manifest.json               ← key→파일명 매핑 (HTML 수정 없이 파일명 변경)
 │   └── (한글 원본 CSV — 보존용)
 ├── data/                            ← 영구 임베딩 JSON
 │   ├── parts_master.json · data_2025.json · cost_db.json
 ├── docs/
-│   ├── SCM_DASHBOARD_ARCHITECTURE.md   ← 이 파일
-│   ├── SCM_DASHBOARD_V4_로직설명.html   ← 로직 설명서 (내용은 v7 기준)
-│   ├── SCM_DASHBOARD_로직설명_v7.pdf
-│   ├── SCM_DASHBOARD_사용자가이드.html  ← 사용자 가이드 (v7 기준)
-│   ├── SCM_DASHBOARD_사용자가이드_v7.pdf
-│   └── archive/                     ← 구버전 PDF
-├── deploy_v8.ps1                    ← 배포 스크립트 (git 자가복구 + 버전 자동카운트 + 안전 동기화)
+│   ├── SCM_DASHBOARD_ARCHITECTURE.md       ← 이 파일 (v10 갱신)
+│   ├── purchase_dashboard_migration_strategy.md  ← 구매파트 Apps Script 이식 전략 (v10 반영 현황 갱신)
+│   ├── SCM_DASHBOARD_로직설명_v10.html/.pdf  ← 로직 설명서 (v10 갱신 — 파일명에 버전 고정, "V4" 표기 정리)
+│   ├── SCM_DASHBOARD_사용자가이드_v10.html/.pdf  ← 사용자 가이드 (v10 갱신)
+│   ├── SCM_KPI_리포트_2026Q2.xlsx
+│   └── archive/                     ← 구버전 (V4_로직설명_v7.html, 로직설명_v7.pdf, 사용자가이드_v7/v8.*)
+├── deploy_v10.ps1                   ← 배포 스크립트 (git 자가복구 + 버전 자동카운트 + 안전 동기화)
+├── merge_resolve_v10.ps1            ← v8+v9 3-way 병합 1회용 스크립트 (실행 완료, 이후 정기배포는 deploy_v10.ps1)
 ├── .nojekyll                        ← Pages Jekyll 비활성화 (빌드 실패 방지)
 └── .claude/                         ← Claude 설정
 ```
 
 ### 버전 규칙 (v7~)
 - **운영 원본은 `index.html`** — 수정 작업은 index.html에 직접, 로컬 확인은 수동 업로드 모드
-- **배포는 `deploy_v8.ps1`** — 실행 시 자동으로:
+- **배포는 `deploy_v{N}.ps1`(현재 `deploy_v10.ps1`)** — 실행 시 자동으로:
   1. git 저장소 자가진단/복구 (index 손상, 잔류 lock)
   2. 한글 원본 CSV → 고정 영문명 복사
   3. index.html이 바뀐 경우에만 `scm_dashboard_v{N+1}.html` 스냅샷 생성 (버전 자동 카운트, 이전 버전 archive 이동)
   4. 커밋 → 원격이 앞서 있으면 rebase (구버전이 원격 최신을 덮어쓰는 사고 방지) → 푸시
 - `-Verify` 스위치: 푸시 90초 후 배포 페이지에 `autoLoadRaw` 포함 여부 자동 검증
-- **대시보드 버전 업 시 docs/ 문서 3종(아키텍처 md, 로직설명, 사용자가이드)도 같은 커밋에서 갱신**
+- **여러 담당자가 각자 브랜치에서 수정할 경우(v10처럼) rebase 자동화가 실패할 수 있음** — 겹치는 함수를 수동 3-way 병합한 뒤 `merge_resolve_v10.ps1` 같은 1회용 스크립트로 원격 tip 위에 병합 커밋을 얹는 방식 사용
+- **대시보드 버전 업 시 docs/ 문서(아키텍처 md, 로직설명, 사용자가이드, 이식전략 md)도 같은 커밋에서 갱신**
 
 ---
 
-## 9. 주간 업데이트 절차 (v7 · 자동 로드 기준)
+## 9. 주간 업데이트 절차 (v10 · 자동 로드 기준)
 
-### 데이터 담당자 (주 1회)
+### 데이터 담당자 — 외주생산파트 (주 1회)
 | 단계 | 작업 | 비고 |
 |---|---|---|
-| 1 | Airtable에서 CSV Export | 발주_RAW, 이슈_RAW, 공급망_RAW, 고객인지이슈_RAW (+필요시 S&OP 2종, 품절리스트) |
+| 1 | Airtable에서 CSV Export | 발주_RAW, 이슈_RAW, 공급망_RAW, 고객인지이슈_RAW, 분기별평가 |
 | 2 | 프로젝트 폴더 `CSV/`에 저장 | 한글 원본명 그대로 저장해도 됨 |
-| 3 | `deploy_v8.ps1` 실행 | 고정명 복사 + 커밋 + 푸시 자동. 또는 GitHub 웹에서 고정명 파일 직접 덮어쓰기 |
+| 3 | `deploy_v10.ps1` 실행 | 고정명 복사 + 커밋 + 푸시 자동. 또는 GitHub 웹에서 고정명 파일 직접 덮어쓰기 |
 | 4 | 1~3분 후 배포 확인 | `-Verify` 스위치 또는 브라우저 Ctrl+F5 |
+
+### 데이터 담당자 — 구매전략파트 (필요시, v10부터 사전집계 3종 필수)
+| 단계 | 작업 | 비고 |
+|---|---|---|
+| 1 | GSheets S&OP Apps Script에서 `dashboard_period_summary`/`dashboard_group_summary`/`dashboard_sku_snapshot` 3종 생성·Export | 3종 모두 있어야 Agg 경로 작동. 하나라도 없으면 재고 화면이 레거시(inv_weekly 직접계산)로 폴백해 v10 이전 숫자와 달라질 수 있음 |
+| 2 | `CSV/`에 저장 후 `deploy_v10.ps1` 실행 | 외주생산파트와 동일 배포 경로 공유 |
+| 3 | 배포 후 재고운영/품절상세/졸업검토 화면에서 도넛차트 3종·회전율 숫자 확인 | 기존 GSheets 화면과 동일 기준일로 1:1 대조 권장 |
 
 ### 접속자 (팀원)
 | 단계 | 작업 |
@@ -461,5 +534,5 @@ SCMDASHBOARD/
 
 ---
 
-*문서 기준: index.html (scm_dashboard_v7.html) v7 (2026-07-03) · 4,206줄 · 287KB*  
+*문서 기준: index.html (scm_dashboard_v10.html) v10 (2026-07-07, 커밋 `013824d`) · 4,691줄 · 330KB*  
 *대시보드 변경 시 이 문서도 함께 업데이트 바랍니다.*
