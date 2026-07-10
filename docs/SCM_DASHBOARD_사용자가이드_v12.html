@@ -1,0 +1,131 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<title>SCM 통합운영 대시보드 사용자 가이드 v12</title>
+<style>
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{font-family:-apple-system,BlinkMacSystemFont,'Apple SD Gothic Neo','Noto Sans KR',sans-serif;font-size:13px;color:#1a1a1a;background:#fff;padding:36px 44px;line-height:1.7}
+  .container{max-width:860px;margin:0 auto}
+  h1{font-size:22px;font-weight:700;margin-bottom:4px}
+  h2{font-size:16px;font-weight:700;margin:26px 0 10px;padding:6px 12px;background:#f5f5f3;border-radius:6px;color:#111}
+  h3{font-size:13px;font-weight:700;margin:14px 0 6px;color:#333}
+  p{margin:4px 0 8px;color:#444}
+  .meta{font-size:12px;color:#888;margin-bottom:20px}
+  table{width:100%;border-collapse:collapse;font-size:12px;margin:6px 0 14px}
+  th{background:#f8f8f5;padding:7px 10px;text-align:left;font-weight:600;color:#444;border:1px solid #e0e0dc}
+  td{padding:7px 10px;border:1px solid #e8e8e4;vertical-align:top;color:#333}
+  code{font-family:ui-monospace,SFMono-Regular,Consolas,monospace;background:#f5f5f3;padding:1px 4px;border-radius:4px}
+  .badge{display:inline-block;font-size:10px;font-weight:600;padding:2px 7px;border-radius:4px}
+  .b-blue{background:#e8f0fd;color:#1a56c7}
+  .b-purple{background:#f0e8fd;color:#6b21a8}
+  .b-green{background:#e0f5ec;color:#0a6e45}
+  .tip{background:#eff6ff;border-left:3px solid #3b82f6;border-radius:0 6px 6px 0;padding:8px 14px;font-size:12px;color:#1d4ed8;margin:8px 0 14px}
+  .warn{background:#fef3dc;border-left:3px solid #d97706;border-radius:0 6px 6px 0;padding:8px 14px;font-size:12px;color:#92400e;margin:8px 0 14px}
+  ul{padding-left:18px;margin:4px 0 10px}
+  li{margin-bottom:3px}
+  .page-break{page-break-before:always;margin-top:30px}
+  @media print{body{padding:20px 24px}h2{page-break-after:avoid}.page-break{page-break-before:always}}
+</style>
+</head>
+<body>
+<div class="container">
+  <h1>SCM 통합운영 대시보드</h1>
+  <p style="font-size:15px;font-weight:600;color:#555">사용자 가이드</p>
+  <div class="meta">
+    v12 | 2026-07-10 | SCM실 구매전략파트 · 외주생산파트<br>
+    배포: https://nanyounglee.github.io/SCMDASHBOARD/
+  </div>
+
+  <div class="tip"><b>v10→v12 변경 요약:</b> 외주생산파트 화면 위주로 갱신됐다. ① 발주 현황 클릭 모달이 3-tab(발주현황/미발주현황/DB원가비교)으로 확장 ② 공급망 포트폴리오가 QCD×관계 기준 Tier로 재분류(활성 필터·변경검토리스트 추가) ③ 협력사 상세에 연도별 매입추이와 이슈 상세 추가 ④ 이슈 화면에 제품×협력사 이슈율 탭 신규 ⑤ 제품별 추이 화면이 "판매량"에서 "발주수량" 기준으로 변경. 구매전략파트(재고운영) 화면은 v10과 동일하다.</div>
+
+  <h2>1. 접속과 데이터 로드</h2>
+  <p>브라우저에서 대시보드 URL에 접속하면 <code>CSV/</code> 폴더의 고정 파일을 자동으로 읽어 KPI와 차트를 채웁니다. 임시 검증이 필요할 때만 상단 업로드 영역에 CSV를 직접 올리면 됩니다.</p>
+  <div class="tip"><b>핵심:</b> 구매 재고 화면은 원천 RAW인 <code>inventory_weekly</code>를 직접 계산하기보다, 구글스프레드시트에서 미리 집계한 대시보드용 CSV 3종을 우선 사용합니다. 발주 상세분석의 DB원가비교 탭은 <b>코스트베이스(파츠리스트) CSV</b>가 있어야 채워집니다 — 없어도 다른 화면에는 영향이 없습니다.</div>
+
+  <h3>자동 로드 파일</h3>
+  <table>
+    <tr><th>파트</th><th>파일</th><th>고정 파일명</th><th>용도</th></tr>
+    <tr><td rowspan="6"><span class="badge b-purple">외주생산</span></td><td>발주 RAW</td><td><code>order.csv</code></td><td>발주, 매입, 납기, 비용 KPI, 제품별 발주수량 추이</td></tr>
+    <tr><td>이슈 RAW</td><td><code>issue.csv</code></td><td>이슈, 품질, 재작업 KPI, 제품×협력사 이슈율</td></tr>
+    <tr><td>공급망 RAW</td><td><code>sup.csv</code></td><td>협력사, 하도급법 위험</td></tr>
+    <tr><td>고객인지 이슈 RAW</td><td><code>ci.csv</code></td><td>고객인지 이슈 KPI</td></tr>
+    <tr><td>분기별평가</td><td>(수동 업로드)</td><td>공급망 포트폴리오 Tier/등급(§4)</td></tr>
+    <tr><td><span class="badge b-blue">v11</span> 코스트베이스(파츠리스트)</td><td><code>parts.csv</code></td><td>발주 상세분석의 DB원가비교 탭(§3)</td></tr>
+    <tr><td rowspan="5"><span class="badge b-blue">구매전략</span></td><td>재고 KPI 요약</td><td><code>dashboard_period_summary.csv</code></td><td>재고자산, 회전율, 품절율, 운영밴드</td></tr>
+    <tr><td>재고 그룹 요약</td><td><code>dashboard_group_summary.csv</code></td><td>생산유형, 소싱유형, 카테고리별 재고 구조</td></tr>
+    <tr><td>재고 SKU 스냅샷</td><td><code>dashboard_sku_snapshot.csv</code></td><td>SKU 상세, 품절 상세, 장기미회전 후보</td></tr>
+    <tr><td>품절 리스트</td><td><code>stockout_list.csv</code></td><td>기존 품절 상세 백업 데이터</td></tr>
+    <tr><td>S&OP 원천 RAW</td><td><code>inv_weekly.csv</code>, <code>sales_monthly.csv</code></td><td>집계 CSV가 없을 때의 백업 계산용</td></tr>
+  </table>
+
+  <h2>2. 구매 재고 화면 (변경 없음)</h2>
+  <p>재고운영 현황, 품절 상세, 장기미회전/졸업 검토는 v10과 동일하게 동작합니다. 매입검토·시즌재고계획은 계속 통합 범위에서 제외되며 화면만 유지됩니다.</p>
+
+  <h2 class="page-break">3. 외주생산 화면 — 발주 상세분석 <span class="badge b-blue">v11 변경</span></h2>
+  <p>발주 현황에서 발주 TASK 숫자를 클릭하면 뜨는 모달이 3개 탭으로 나뉩니다.</p>
+  <table>
+    <tr><th>탭</th><th>보는 법</th></tr>
+    <tr><td>발주현황 Top</td><td>전체 굿즈를 발주량 내림차순으로 확인(프로젝트/재고생산 구분) — 기존과 동일</td></tr>
+    <tr><td>미발주현황</td><td>과거에 발주 이력이 있는 품목 중 이번 달 발주가 없는 품목을 모아서 보여줍니다. 신제품·비스포크는 대상에서 빠집니다.</td></tr>
+    <tr><td>DB원가비교</td><td>발주수량 기준으로 코스트베이스(파츠 구성 단가)를 합산한 "DB원가"와 실제 매입금액을 비교해 절감율을 보여줍니다. 코스트베이스 CSV가 없으면 이 탭만 비어 있습니다.</td></tr>
+  </table>
+  <div class="tip"><b>DB원가란:</b> 굿즈(제품) 하나를 구성하는 모든 파츠(본품/패키지/인쇄)의 표준 단가를 발주수량 구간에 맞춰 합산한 뒤 수량을 곱한 값입니다. 예를 들어 200개를 발주하면 100개 구간의 단가가 적용됩니다(발주수량 이하로 가장 큰 구간을 씀).</div>
+
+  <h2>4. 이슈 관리 <span class="badge b-blue">v12 변경</span></h2>
+  <table>
+    <tr><th>탭</th><th>내용</th></tr>
+    <tr><td>전체 / 품질 / 수량 / 운영</td><td>기존과 동일 — 이슈 상세 + 대응 + 실패비용</td></tr>
+    <tr><td>제품×협력사 이슈율 <span class="badge b-blue">신규</span></td><td>제품과 협력사 조합별로 "발주 건수 대비 이슈가 얼마나 자주 발생했는지"를 비율로 보여줍니다. 행을 클릭하면 해당 조합의 이슈 상세가 펼쳐집니다.</td></tr>
+  </table>
+
+  <h2>5. 공급망 포트폴리오 <span class="badge b-blue">v12 변경 — 분류 기준 교체</span></h2>
+  <p>기존에는 협력사를 "매입액 규모 × 등급"으로 4분면(Core/Strategic/Preferred/General)에 나눴습니다. v12부터는 <b>QCD(품질·원가·납기 대응력) × 관계(협조성·대체가능성)</b> 두 축으로 4분면 Tier를 매깁니다.</p>
+  <table>
+    <tr><th>Tier</th><th>기준</th><th>의미</th></tr>
+    <tr><td>Tier1 · Core</td><td>QCD 높음 + 관계 좋음</td><td>핵심 협력사 — 우선 유지·확대</td></tr>
+    <tr><td>Tier2 · Performer</td><td>QCD 높음 + 관계 보통</td><td>성과는 좋으나 협조성 관리 필요</td></tr>
+    <tr><td>Tier3 · Developing</td><td>QCD 낮음 + 관계 좋음</td><td>관계는 좋으나 QCD 개선 지원 필요</td></tr>
+    <tr><td>Tier4 · General</td><td>QCD 낮음 + 관계 보통</td><td>일반 관리 대상</td></tr>
+  </table>
+  <p>기존 A/B/C/D 등급은 그대로 함께 표시됩니다 — Tier와 등급은 서로 다른 관점(협력 구조 vs 종합 성과)이라 병행해서 봅니다.</p>
+  <div class="tip"><b>신규 기능:</b> "이번 달 발주실적 있는 협력사만 보기" 체크박스로 비활성 협력사를 걸러낼 수 있고, C/D등급 협력사는 화면 하단 "변경검토 리스트"에 사유와 함께 별도로 정리됩니다.</div>
+
+  <h2>6. 협력사 현황 — 상세 모달 <span class="badge b-blue">v12 변경</span></h2>
+  <p>협력사명을 클릭하면 뜨는 상세창에 아래가 추가됐습니다.</p>
+  <ul>
+    <li><b>연도별 매입추이</b> — 25년/26년 등 연도별 매입금액을 선 그래프로 비교</li>
+    <li><b>이슈 상세</b> — 해당 협력사와 관련된 이슈를 최대 30건까지 표로 표시</li>
+  </ul>
+  <p>"가장 빈번한 발주 제품 Top 3" 드릴다운은 기존 그대로입니다 — 협력사를 눌렀을 때 올해 누적으로 어떤 제품을 많이 발주했는지 보여주는 기능은 바뀌지 않았습니다.</p>
+  <div class="warn"><b>참고:</b> 이슈 상세는 이슈 데이터에 협력사명이 직접 기록돼 있지 않아 프로젝트 코드로 추정 매칭한 결과입니다. 드물게 코드 표기가 다른 건은 상세에서 누락될 수 있습니다.</div>
+
+  <h2>7. 매출 분석 — 제품별 발주수량 추이 <span class="badge b-blue">v12 변경</span></h2>
+  <p>기존 "제품별 판매량 추이" 화면이 항상 비어 보였던 것은, 사용하지 않는 판매 데이터(sales_monthly)에 의존했던 설계 문제였습니다. v12부터는 <b>발주_RAW의 발주수량</b>을 기준으로 다시 계산하도록 바꿔, 매주 올리는 데이터만으로 화면이 항상 채워집니다. 화면 이름도 "발주수량 추이"로 바뀌었습니다.</p>
+
+  <h2>8. CSV 저장 규칙</h2>
+  <ul>
+    <li>구글스프레드시트/Airtable에서 <b>쉼표로 구분된 값 CSV</b>로 내려받습니다.</li>
+    <li>파일명은 접두어 없이 고정 영문명(<code>order.csv</code>, <code>parts.csv</code> 등)으로 저장합니다.</li>
+    <li>저장 위치는 저장소의 <code>CSV/</code> 폴더입니다.</li>
+    <li>구매전략파트 CSV 3종(재고 사전집계)은 <b>항상 함께</b> 갱신해야 합니다.</li>
+    <li>코스트베이스(<code>parts.csv</code>)는 파츠 단가가 바뀔 때만 갱신하면 되며, 매주 갱신하지 않아도 다른 화면에는 영향이 없습니다.</li>
+  </ul>
+
+  <h2>9. 문제 확인</h2>
+  <table>
+    <tr><th>상황</th><th>확인할 것</th></tr>
+    <tr><td>DB원가비교 탭이 비어 있음</td><td><code>parts.csv</code>(코스트베이스)가 <code>CSV/</code> 폴더에 있는지 확인합니다.</td></tr>
+    <tr><td>포트폴리오 Tier가 이상함</td><td>분기별평가 CSV의 예외사항/대체가능 점수 컬럼이 최신인지 확인합니다.</td></tr>
+    <tr><td>협력사 이슈 상세에 일부 건이 안 보임</td><td>프로젝트 코드 접두어 추정 매칭의 한계입니다 — 발주 코드와 이슈 코드 표기가 다른 경우입니다.</td></tr>
+    <tr><td>제품별 발주수량 추이가 비어 있음</td><td>해당 기간 발주_RAW(order.csv)에 산출물(제품명)이 채워진 행이 있는지 확인합니다.</td></tr>
+    <tr><td>구매 재고 화면이 비어 있음</td><td>재고 사전집계 CSV 3종이 <code>CSV/</code> 폴더에 있는지, 파일명이 정확한지 확인합니다.</td></tr>
+    <tr><td>로컬 파일로 열면 자동 로드가 안 됨</td><td>브라우저 보안 정책 때문에 <code>file://</code> 자동 로드가 막힐 수 있습니다. GitHub Pages URL에서 확인하거나 직접 업로드합니다.</td></tr>
+  </table>
+
+  <div class="meta" style="margin-top:24px;padding-top:10px;border-top:1px solid #e0e0dc">
+    문서 기준: index.html (scm_dashboard_v12.html) v12 (2026-07-10) · 발주상세 3-tab/DB원가비교 · 포트폴리오 QCD×관계 Tier · 협력사상세 이슈탭 · 제품별 발주수량 추이
+  </div>
+</div>
+</body>
+</html>

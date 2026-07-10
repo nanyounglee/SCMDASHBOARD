@@ -52,11 +52,39 @@ Get-ChildItem "." -Filter "scm_dashboard_v*.html" -File | Where-Object { $_.Name
 Copy-Item "index.html" "scm_dashboard_v12.html" -Force
 Write-Host "Snapshot created: scm_dashboard_v12.html" -ForegroundColor Cyan
 
+# 1b) Archive old docs (v10 logic doc / user guide) now superseded by v12 docs
+# (use a wildcard match on the ASCII "_v10." suffix instead of spelling the Korean
+#  filenames here, to avoid any PowerShell console encoding/codepage risk)
+New-Item -ItemType Directory -Force -Path "docs\archive" | Out-Null
+Get-ChildItem "docs" -Filter "*_v10.html" -File -ErrorAction SilentlyContinue | ForEach-Object {
+  Move-Item $_.FullName "docs\archive\" -Force
+  Write-Host "Archived: docs/$($_.Name) -> docs/archive" -ForegroundColor Yellow
+}
+Get-ChildItem "docs" -Filter "*_v10.pdf" -File -ErrorAction SilentlyContinue | ForEach-Object {
+  Move-Item $_.FullName "docs\archive\" -Force
+  Write-Host "Archived: docs/$($_.Name) -> docs/archive" -ForegroundColor Yellow
+}
+
+# 1c) Remove obsolete deploy/merge scripts (superseded by this script)
+$oldScripts = @("deploy_v10.ps1", "merge_resolve_v10.ps1")
+foreach ($s in $oldScripts) {
+  if (Test-Path $s) {
+    Remove-Item $s -Force
+    Write-Host "Removed obsolete script: $s" -ForegroundColor Yellow
+  }
+}
+
+# 1d) Remove one-time v10 merge staging folder (no longer needed)
+if (Test-Path "_merge_staging") {
+  Remove-Item "_merge_staging" -Recurse -Force
+  Write-Host "Removed obsolete folder: _merge_staging" -ForegroundColor Yellow
+}
+
 # 2) Commit
 git add -A; Assert-Git
 git diff --cached --quiet
 if ($LASTEXITCODE -ne 0) {
-  $msg = "v12: order detail (no-order status + DB cost compare) / portfolio switched to QCD-relationship tier / supplier detail yearly trend + issues / product x supplier issue rate / product order-qty trend / KPI targets synced $(Get-Date -Format 'yyyy-MM-dd HH:mm')"
+  $msg = "v12: order detail (no-order status + DB cost compare) / portfolio switched to QCD-relationship tier / supplier detail yearly trend + issues / product x supplier issue rate / product order-qty trend / KPI targets synced / docs updated to v12 + removed obsolete deploy files $(Get-Date -Format 'yyyy-MM-dd HH:mm')"
   git commit -m $msg; Assert-Git
   Write-Host "Committed: $msg"
 } else {
