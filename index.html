@@ -2391,7 +2391,9 @@ function filterIssueModal(cat,el) {
   MODAL_ISSUE_FILTER=cat;
   el.closest('[style]').querySelectorAll('.tab').forEach(t=>t.classList.remove('active'));
   el.classList.add('active');
-  const f=SEL_MONTH?D.issue.filter(r=>pIssueMonth(r)===SEL_MONTH):D.issue;
+  let f=SEL_MONTH?D.issue.filter(r=>pIssueMonth(r)===SEL_MONTH):D.issue;
+  const iq=getSearchQuery();
+  if(iq) f=f.filter(r=>matchesSearch(r,iq));
   renderIssueModalBody(f,cat);
 }
 function getReworkCostForProject(projName) {
