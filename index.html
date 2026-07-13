@@ -1387,37 +1387,7 @@ function matchesSearch(r,q) {
   if(!q) return true;
   const fields=['산출물','수주처','발주번호','sync_item이니셔티브','project','과업담당자_이름','파츠유형',
     'project_name','item (통합) (from order)','프로젝트_발주자','협력사 이름','협력사','파츠명','제품명','프로젝트명','관련제품','출하장소'];
-  if(fields.some(f=>(r[f]||'').toLowerCase().includes(q))) return true;
-  // 고객인지이슈(D.ci)는 자체 수주처/협력사 컬럼이 없으므로, '관련제품'을 발주 RAW의 산출물과
-  // 대조해 연결된 수주처(협력사)로도 검색 매칭되게 한다 (order-ci 연계, 결과는 화면에 노출하지 않음)
-  if(r['관련제품']!==undefined){
-    return getCiRowSuppliers(r).some(s=>s.toLowerCase().includes(q));
-  }
-  return false;
-}
-function normProdName(s) { return (s||'').replace(/\s+/g,'').toLowerCase(); }
-let PROD_SUP_IDX=null, PROD_SUP_SRC=null;
-function getProductSupplierIndex() {
-  if(PROD_SUP_SRC!==D.order) {
-    PROD_SUP_IDX=[];
-    (D.order||[]).forEach(r=>{
-      const norm=normProdName(r['산출물']); const sup=(r['수주처']||'').trim();
-      if(norm&&sup) PROD_SUP_IDX.push({norm,sup});
-    });
-    PROD_SUP_SRC=D.order;
-  }
-  return PROD_SUP_IDX;
-}
-let CI_SUP_SRC=null;
-function getCiRowSuppliers(r) {
-  if(CI_SUP_SRC!==D.order) { CI_SUP_SRC=D.order; (D.ci||[]).forEach(row=>{ delete row.__ciSup; }); }
-  if(r.__ciSup) return r.__ciSup;
-  const idx=getProductSupplierIndex();
-  const tokens=(r['관련제품']||'').split(',').map(t=>normProdName(t)).filter(t=>t.length>=2);
-  const sups=new Set();
-  if(tokens.length) idx.forEach(({norm,sup})=>{ if(tokens.some(t=>norm.includes(t)||t.includes(norm))) sups.add(sup); });
-  r.__ciSup=[...sups];
-  return r.__ciSup;
+  return fields.some(f=>(r[f]||'').toLowerCase().includes(q));
 }
 function getFilteredOrders() {
   if(!D.order) return [];
