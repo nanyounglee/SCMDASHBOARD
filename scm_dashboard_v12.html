@@ -1387,7 +1387,54 @@ function matchesSearch(r,q) {
   if(!q) return true;
   const fields=['산출물','수주처','발주번호','sync_item이니셔티브','project','과업담당자_이름','파츠유형',
     'project_name','item (통합) (from order)','입고물품','프로젝트_발주자','협력사 이름','협력사','파츠명','제품명','프로젝트명','관련제품','출하장소'];
-  return fields.some(f=>(r[f]||'').toLowerCase().includes(q));
+  if(fields.some(f=>(r[f]||'').toLowerCase().includes(q))) return true;
+  // 고객인지이슈(D.ci)는 자체 수주처 컬럼이 없으므로, 프로젝트명을 발주 RAW의 project로
+  // 1차 조회한 뒤 그 프로젝트 내 산출물 중 관련제품과 가장 가까운 행의 수주처로 검색 매칭한다.
+  // (프로젝트 범위로 좁힌 뒤 매칭 → 전체 발주이력 대상 부분일치보다 훨씬 정밀함. 화면엔 노출 안 함)
+  if(r['관련제품']!==undefined){
+    return getCiRowSuppliers(r).some(s=>s.toLowerCase().includes(q));
+  }
+  return false;
+}
+function normProdName(s) { return (s||'').replace(/\s+/g,'').toLowerCase(); }
+let PROJ_PROD_IDX=null, PROJ_PROD_SRC=null;
+function getProjectProductIndex() {
+  if(PROJ_PROD_SRC!==D.order) {
+    PROJ_PROD_IDX={};
+    (D.order||[]).forEach(r=>{
+      const proj=(r['project']||'').trim(); const prod=(r['산출물']||'').trim(); const sup=(r['수주처']||'').trim();
+      if(!proj||!prod||!sup) return;
+      if(!PROJ_PROD_IDX[proj]) PROJ_PROD_IDX[proj]=[];
+      PROJ_PROD_IDX[proj].push({norm:normProdName(prod),sup});
+    });
+    PROJ_PROD_SRC=D.order;
+  }
+  return PROJ_PROD_IDX;
+}
+function closestSupplierInProject(candidates,token) {
+  if(!token||!candidates||!candidates.length) return null;
+  const exact=candidates.find(c=>c.norm===token);
+  if(exact) return exact.sup;
+  let best=null,bestDiff=Infinity;
+  candidates.forEach(c=>{
+    if(c.norm.includes(token)||token.includes(c.norm)) {
+      const diff=Math.abs(c.norm.length-token.length);
+      if(diff<bestDiff){bestDiff=diff;best=c;}
+    }
+  });
+  return best?best.sup:null;
+}
+let CI_SUP_SRC=null;
+function getCiRowSuppliers(r) {
+  if(CI_SUP_SRC!==D.order) { CI_SUP_SRC=D.order; (D.ci||[]).forEach(row=>{ delete row.__ciSup; }); }
+  if(r.__ciSup) return r.__ciSup;
+  const idx=getProjectProductIndex();
+  const candidates=idx[(r['프로젝트명']||'').trim()]||[];
+  const tokens=(r['관련제품']||'').split(',').map(t=>normProdName(t)).filter(Boolean);
+  const sups=new Set();
+  tokens.forEach(t=>{ const s=closestSupplierInProject(candidates,t); if(s) sups.add(s); });
+  r.__ciSup=[...sups];
+  return r.__ciSup;
 }
 function getFilteredOrders() {
   if(!D.order) return [];
