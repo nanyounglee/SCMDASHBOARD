@@ -1990,9 +1990,11 @@ function openModal(type,extra) {
     if (!D.order) { body.innerHTML=emptyRow(1,'발주 RAW 업로드 필요'); return; }
     const mfgMap={}; if(D.sup) D.sup.forEach(r=>{mfgMap[r['협력사 이름']]=r['1. 제조유형']||'기타';});
     // v9: 재고 포함 집계 + 재고제외/재고생산분 병기
+    const q=getSearchQuery();
     const bySup={};
     let mTotProj=0,mTotStock=0;
     D.order.forEach(r=>{
+      if(q&&!matchesSearch(r,q)) return;
       const byM=purchaseByMonth(r); const amt=byM[SEL_MONTH]; if(!amt) return;
       if(isStock(r)) mTotStock+=amt; else mTotProj+=amt;
       const s=r['수주처']||'미상';
@@ -2032,7 +2034,9 @@ function openModal(type,extra) {
     title.textContent='이슈 상세 — '+(SEL_MONTH?fmtMonth(SEL_MONTH):'전체');
     if (!D.issue) { body.innerHTML=emptyRow(1,'이슈 RAW 업로드 필요'); return; }
     MODAL_ISSUE_FILTER='all';
-    const f=SEL_MONTH?D.issue.filter(r=>pIssueMonth(r)===SEL_MONTH):D.issue;
+    const iq=getSearchQuery();
+    let f=SEL_MONTH?D.issue.filter(r=>pIssueMonth(r)===SEL_MONTH):D.issue;
+    if(iq) f=f.filter(r=>matchesSearch(r,iq));
     tabsEl.innerHTML=`
       <div style="display:flex;gap:0;border-bottom:1px solid var(--border);padding:0 8px">
         <div class="tab active" onclick="filterIssueModal('all',this)">전체 ${f.length}</div>
@@ -2046,13 +2050,16 @@ function openModal(type,extra) {
   } else if (type==='urgent') {
     title.textContent='긴급 발주 — '+(SEL_MONTH?fmtMonth(SEL_MONTH):'전체');
     if (!D.order) { body.innerHTML=emptyRow(1,'발주 RAW 업로드 필요'); return; }
-    const rows=D.order.filter(r=>r['긴급여부']==='긴급'&&pOrderMonth(r['과업지시일자'])===SEL_MONTH&&r['수주처']!==URGENT_EXCLUDE_SUP);
+    const uq=getSearchQuery();
+    const rows=D.order.filter(r=>r['긴급여부']==='긴급'&&pOrderMonth(r['과업지시일자'])===SEL_MONTH&&r['수주처']!==URGENT_EXCLUDE_SUP&&(!uq||matchesSearch(r,uq)));
     body.innerHTML=`<div style="font-size:11px;color:var(--text3);margin-bottom:8px">※ ${URGENT_EXCLUDE_SUP} 산출물 제외</div><table class="tbl"><thead><tr><th class="rank">#</th><th>과업지시일</th><th>발주번호</th><th>수주처</th><th>산출물</th><th>담당자</th></tr></thead><tbody>`+rows.map((r,i)=>`<tr><td class="rank">${i+1}</td><td>${r['과업지시일자']||'—'}</td><td class="mono">${r['발주번호']||'—'}</td><td>${esc(r['수주처']||'')}</td><td style="font-size:11px">${esc(crop(r['산출물']||'[비스포크] '+r['발주번호']))}</td><td>${r['과업담당자_이름']||'—'}</td></tr>`).join('')+`</tbody></table>`;
 
   } else if (type==='ci') {
     title.textContent='고객인지이슈 — '+(SEL_MONTH?fmtMonth(SEL_MONTH):'전체');
     if (!D.ci) { body.innerHTML=emptyRow(1,'고객인지이슈 RAW 업로드 필요'); return; }
-    const f=SEL_MONTH?D.ci.filter(r=>{ const d=r['등록일자']||''; const m=d.match(/(\d+)\.(\d+)\./); return m&&`${m[1]}.${parseInt(m[2])}`===SEL_MONTH; }):D.ci;
+    const cq=getSearchQuery();
+    let f=SEL_MONTH?D.ci.filter(r=>{ const d=r['등록일자']||''; const m=d.match(/(\d+)\.(\d+)\./); return m&&`${m[1]}.${parseInt(m[2])}`===SEL_MONTH; }):D.ci;
+    if(cq) f=f.filter(r=>matchesSearch(r,cq));
     const totalRework=f.reduce((s,r)=>s+getReworkCostForProject(r['프로젝트명']),0);
     body.innerHTML=`
       <div style="display:flex;gap:12px;margin-bottom:12px;font-size:12px;flex-wrap:wrap">
@@ -2143,7 +2150,8 @@ let ORDERTASK_TAB='top';
 function switchOrderTaskTab(t) { ORDERTASK_TAB=t; renderOrderTaskModal(); }
 function renderOrderTaskModal() {
   const tabsEl=document.getElementById('modal-tabs-el');
-  const allMo=D.order.filter(r=>pOrderMonth(r['과업지시일자'])===SEL_MONTH);
+  const q=getSearchQuery();
+  const allMo=D.order.filter(r=>pOrderMonth(r['과업지시일자'])===SEL_MONTH&&(!q||matchesSearch(r,q)));
   const byProd={};
   allMo.forEach(r=>{
     const prod=r['산출물']||'[비스포크] '+r['발주번호'];
@@ -2181,12 +2189,14 @@ function renderOrderTaskTop(sorted,allMo) {
 function computeNoOrderStatus() {
   const res={zero:[],low:[]};
   if(!D.order||!SEL_MONTH) return res;
+  const q=getSearchQuery();
   const allMonths=[...new Set(D.order.map(r=>pOrderMonth(r['과업지시일자'])).filter(Boolean))].sort(monthCmp);
   const selIdx=allMonths.indexOf(SEL_MONTH);
   if(selIdx===-1) return res;
   const hist={};
   D.order.forEach(r=>{
     if(isStock(r)) return;
+    if(q&&!matchesSearch(r,q)) return;
     const gc=goodsCode(r); if(!gc) return;
     const m=pOrderMonth(r['과업지시일자']); if(!m) return;
     if(!hist[gc]) hist[gc]={months:{},amtMonths:{},name:r['산출물']||gc,sup:r['수주처']||''};
