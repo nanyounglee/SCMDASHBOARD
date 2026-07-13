@@ -1888,8 +1888,9 @@ function renderIssueTrendChart() {
   if (!D.issue) return;
   dc('ch-issue-trend');
   const ctx=getCtx('ch-issue-trend'); if(!ctx) return;
+  const itq=getSearchQuery();
   const bM={};
-  D.issue.forEach(r=>{ const m=pIssueMonth(r); if(!m) return; if(!bM[m]) bM[m]={q:0,n:0,o:0}; const c=r['이슈카테고리']||''; if(c.includes('품질'))bM[m].q++; if(c.includes('수량'))bM[m].n++; if(c.includes('운영'))bM[m].o++; });
+  D.issue.forEach(r=>{ if(itq&&!matchesSearch(r,itq)) return; const m=pIssueMonth(r); if(!m) return; if(!bM[m]) bM[m]={q:0,n:0,o:0}; const c=r['이슈카테고리']||''; if(c.includes('품질'))bM[m].q++; if(c.includes('수량'))bM[m].n++; if(c.includes('운영'))bM[m].o++; });
   const months=Object.keys(bM).sort(monthCmp);
   CHARTS['ch-issue-trend']=new Chart(ctx,{type:'line',data:{labels:months.map(fmtMonthShort),datasets:[{label:'품질',data:months.map(m=>bM[m].q),borderColor:'#dc2626',backgroundColor:'rgba(220,38,38,.08)',tension:.4,fill:true,borderWidth:2,pointRadius:3},{label:'수량',data:months.map(m=>bM[m].n),borderColor:'#d97706',backgroundColor:'rgba(217,119,6,.06)',tension:.4,fill:true,borderWidth:2,pointRadius:3},{label:'운영',data:months.map(m=>bM[m].o),borderColor:'#1d4ed8',backgroundColor:'rgba(29,78,216,.06)',tension:.4,fill:true,borderWidth:2,pointRadius:3}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},scales:{x:{ticks:{font:{size:10}}},y:{ticks:{font:{size:10}}}}}});
 }
@@ -1923,7 +1924,9 @@ function renderMfgChart() {
 }
 function renderIssueLegend() {
   if (!D.issue||!SEL_MONTH) return;
-  const f=D.issue.filter(r=>pIssueMonth(r)===SEL_MONTH);
+  let f=D.issue.filter(r=>pIssueMonth(r)===SEL_MONTH);
+  const ilq=getSearchQuery();
+  if(ilq) f=f.filter(r=>matchesSearch(r,ilq));
   let q=0,n=0,o=0;
   f.forEach(r=>{ const c=r['이슈카테고리']||''; if(c.includes('품질'))q++; if(c.includes('수량'))n++; if(c.includes('운영'))o++; });
   dc('ch-issue-donut');
@@ -2170,8 +2173,10 @@ function openModal(type,extra) {
     title.textContent='매입 상세 — '+(mo?fmtMonth(mo):'');
     if (!D.order) { body.innerHTML=emptyRow(1,'발주 RAW 업로드 필요'); return; }
     const mfgMap={}; if(D.sup) D.sup.forEach(r=>{mfgMap[r['협력사 이름']]=r['1. 제조유형']||'기타';});
+    const pmq=getSearchQuery();
     const bySup={},byProd={};
     D.order.filter(r=>!isStock(r)).forEach(r=>{
+      if(pmq&&!matchesSearch(r,pmq)) return;
       const byM=purchaseByMonth(r); const amt=byM[mo]; if(!amt) return;
       const s=r['수주처']||'미상'; bySup[s]=(bySup[s]||0)+amt;
       const prod=r['산출물']||r['발주번호']||'기타'; const gc=goodsCode(r)||'';
