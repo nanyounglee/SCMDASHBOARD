@@ -331,6 +331,10 @@ a{color:var(--blue);text-decoration:none}
         <svg width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M8 2v8M5 4l3-3 3 3M2 12v2h12v-2"/></svg>
         CSV 업로드
       </button>
+      <button class="topbar-btn" onclick="exportCurrentTables()" title="현재 화면에 보이는 표를 CSV로 다운로드">
+        <svg width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M8 10V2M5 5l3-3 3 3M2 12v2h12v-2"/></svg>
+        현재 화면 CSV
+      </button>
       <a class="topbar-btn primary" href="https://nanyounglee.github.io/SCMDASHBOARD/" target="_blank">
         <svg width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M8 3H3v10h10V8M8 8l5-5M10 3h3v3"/></svg>
         GitHub Pages
@@ -2746,6 +2750,28 @@ function dlFile(name,content,type) {
   const a=document.createElement('a');
   a.href=URL.createObjectURL(new Blob(['﻿'+content],{type}));
   a.download=name; a.click();
+}
+// ===== 현재 화면 테이블 → CSV (범용 export) =====
+function getCurrentSecEl(){
+  return Array.from(document.querySelectorAll('[id^="sec-"]')).find(s=>s.id!=='sec-upload' && s.style.display!=='none');
+}
+function csvCell(v){ return `"${String(v==null?'':v).replace(/\s+/g,' ').trim().replace(/"/g,'""')}"`; }
+function exportCurrentTables(){
+  const sec=getCurrentSecEl();
+  if(!sec){ alert('현재 화면을 찾을 수 없습니다.'); return; }
+  const tables=Array.from(sec.querySelectorAll('table.tbl')).filter(t=>t.offsetParent!==null);
+  if(!tables.length){ alert('이 화면에는 표(테이블)가 없습니다. 차트/카드 전용 화면은 CSV로 뽑을 수 없습니다 — 관련 원본 CSV를 이용해주세요.'); return; }
+  const out=[];
+  tables.forEach((t,ti)=>{
+    if(tables.length>1) out.push(`# 표 ${ti+1}`);
+    t.querySelectorAll('tr').forEach(r=>{
+      const cells=r.querySelectorAll('th,td');
+      out.push(Array.from(cells).map(c=>csvCell(c.innerText)).join(','));
+    });
+    out.push('');
+  });
+  const secId=sec.id.replace(/^sec-/,'');
+  dlFile(`export_${secId}_${(SEL_MONTH||'').replace('.','_')}.csv`, out.join('\n'), 'text/csv');
 }
 
 // ===== NAV =====
