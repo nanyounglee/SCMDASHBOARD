@@ -1,6 +1,6 @@
 # =============================================================
-# SCM Dashboard deploy script v13 (run on PC)
-# Run: powershell -ExecutionPolicy Bypass -File .\deploy_v13.ps1
+# SCM Dashboard deploy script v14 (run on PC)
+# Run: powershell -ExecutionPolicy Bypass -File .\deploy_v14.ps1
 # =============================================================
 $ErrorActionPreference = "Stop"
 Set-Location "C:\Users\user\Documents\Claude\Projects\SCMNEST\SCMDASHBOARD"
@@ -27,32 +27,32 @@ if ($LASTEXITCODE -ne 0) {
 
 # 1) Version snapshot housekeeping
 New-Item -ItemType Directory -Force -Path "archive" | Out-Null
-# Move any older version snapshots in root to archive (keep only v13)
-Get-ChildItem "." -Filter "scm_dashboard_v*.html" -File | Where-Object { $_.Name -ne "scm_dashboard_v13.html" } | ForEach-Object {
+# Move any older version snapshots in root to archive (keep only v14)
+Get-ChildItem "." -Filter "scm_dashboard_v*.html" -File | Where-Object { $_.Name -ne "scm_dashboard_v14.html" } | ForEach-Object {
   Move-Item $_.FullName "archive\" -Force
   Write-Host "Archived: $($_.Name) -> archive" -ForegroundColor Yellow
 }
-Copy-Item "index.html" "scm_dashboard_v13.html" -Force
-Write-Host "Snapshot created: scm_dashboard_v13.html" -ForegroundColor Cyan
+Copy-Item "index.html" "scm_dashboard_v14.html" -Force
+Write-Host "Snapshot created: scm_dashboard_v14.html" -ForegroundColor Cyan
 
-# 1b) Archive superseded v12 docs
+# 1b) Archive superseded v13 docs
 New-Item -ItemType Directory -Force -Path "docs\archive" | Out-Null
-Get-ChildItem "docs" -Filter "*_v12.html" -File -ErrorAction SilentlyContinue | ForEach-Object {
+Get-ChildItem "docs" -Filter "*_v13.html" -File -ErrorAction SilentlyContinue | ForEach-Object {
   Move-Item $_.FullName "docs\archive\" -Force
   Write-Host "Archived: docs/$($_.Name) -> docs/archive" -ForegroundColor Yellow
 }
 
 # 1c) Remove obsolete deploy script (superseded by this one)
-if (Test-Path "deploy_v12.ps1") {
-  Remove-Item "deploy_v12.ps1" -Force
-  Write-Host "Removed obsolete script: deploy_v12.ps1" -ForegroundColor Yellow
+if (Test-Path "deploy_v13.ps1") {
+  Remove-Item "deploy_v13.ps1" -Force
+  Write-Host "Removed obsolete script: deploy_v13.ps1" -ForegroundColor Yellow
 }
 
 # 2) Commit
 git add -A; Assert-Git
 git diff --cached --quiet
 if ($LASTEXITCODE -ne 0) {
-  $msg = "v13: progress tab (weekly CSV diff + manager summary + task progress + notes w/ GitHub auto-commit) / period range on overview / stock-production KPI split / search-linked charts+modals / project revenue x cost / portfolio formal-eval criteria / supplier active months / weekly CSV archive $(Get-Date -Format 'yyyy-MM-dd HH:mm')"
+  $msg = "v14: merge v13(progress tab / period range / stock-production KPI split / CI_OVERRIDES) + search-filter fixes across modals&charts / CI project-scoped product-supplier matching / issue.csv 입고물품 field / filtered-view CSV export $(Get-Date -Format 'yyyy-MM-dd HH:mm')"
   git commit -m $msg; Assert-Git
   Write-Host "Committed: $msg"
 } else {
@@ -84,4 +84,4 @@ git push origin main; Assert-Git
 # 4) Confirm
 Write-Host ""
 Write-Host "Done. In 1-3 minutes: https://nanyounglee.github.io/SCMDASHBOARD/" -ForegroundColor Green
-Write-Host "Check: sidebar should show 'SCM.. v13'." -ForegroundColor Green
+Write-Host "Check: sidebar should show 'SCM.. v14'." -ForegroundColor Green
