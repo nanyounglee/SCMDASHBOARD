@@ -410,7 +410,7 @@ a{color:var(--blue);text-decoration:none}
           <div><div class="card-title">📢 월간 공지사항</div><div class="card-sub" id="notice-month-label"></div></div>
         </div>
         <div id="notice-body" style="display:grid;grid-template-columns:repeat(3,1fr);gap:12px"></div>
-        <div style="font-size:10px;color:var(--text3);margin-top:10px">※ 졸업/출시 = 굿즈마스터(goods_master.csv) 출시일·졸업일 기준 · 품절 = 품절리스트(stockout_list) 판매상태·변경일 기준 · 협력사 변동 = 거래처(sup.csv) 이번 달 스냅샷과 직전 스냅샷(CSV_BANK/sup_YYYY_MM.csv) 명단 비교 · 선택된 월(상단 월 선택) 기준으로 자동 집계</div>
+        <div style="font-size:10px;color:var(--text3);margin-top:10px">※ 졸업/출시 = 굿즈마스터(goods_master.csv) 출시일·졸업일 기준 · 품절 = 품절리스트(stockout_list) 판매상태·변경일 기준("(수동입력)" 표시는 자동 집계로 잡히지 않아 담당자가 직접 등록한 건) · 협력사 변동 = 거래처(sup.csv) 이번 달 스냅샷과 직전 스냅샷(CSV_BANK/sup_YYYY_MM.csv) 명단 비교(괄호 표시는 담당자 직접 등록 건) · 선택된 월(상단 월 선택) 기준으로 자동 집계</div>
       </div>
       <div class="kpi-row">
         <div class="kpi-card c-blue" onclick="openModal('orderTask')">
@@ -2117,7 +2117,7 @@ function renderMonthlyNotice() {
     const rows=D.goods_master.filter(r=>monthKeyOfDate(r['출시일'])===SEL_MONTH);
     launchHtml=noticeBox('🚀 출시 제품',rows.length,rows.map(r=>`${esc(r['Goods Name']||'')} <span style="color:var(--text3)">(${esc(r['Goods Code']||'')})</span> · ${esc(r['출시일']||'')}`));
   }
-  // 3) 품절 제품 — stockout_list.csv 판매상태+변경일 기준 (졸업 성격 제외)
+  // 3) 품절 제품 — stockout_list.csv 판매상태+변경일 기준 (졸업 성격 제외) + 수동입력 보강
   let stockHtml;
   if (!D.stockout_list) {
     stockHtml=noticeEmptyBox('품절 제품','stockout_list.csv 업로드 필요');
@@ -2128,30 +2128,54 @@ function renderMonthlyNotice() {
       const chgDate=r['변경일']||r['변경일(인터페이스용)']||'';
       return monthKeyOfDate(chgDate)===SEL_MONTH;
     });
-    stockHtml=noticeBox('🚫 품절 제품',rows.length,rows.map(r=>`${esc(r['파츠명']||'')} <span style="color:var(--text3)">${esc(r['적용 굿즈명']||'')}</span> · ${esc(r['판매상태']||'')}`));
+    const already=new Set(rows.map(r=>r['파츠명']));
+    const manualStock=SEL_MONTH===MANUAL_STOCKOUT_MONTH?MANUAL_STOCKOUT.filter(m=>!already.has(m.parts)):[];
+    const items=rows.map(r=>`${esc(r['파츠명']||'')} <span style="color:var(--text3)">${esc(r['적용 굿즈명']||'')}</span> · ${esc(r['판매상태']||'')}`)
+      .concat(manualStock.map(m=>`${esc(m.parts)} <span style="color:var(--text3)">담당 ${esc(m.manager)}</span> · ${esc(m.status)} <span style="color:var(--text3)">(수동입력)</span>`));
+    stockHtml=noticeBox('🚫 품절 제품',rows.length+manualStock.length,items);
   }
-  // 4) 협력사 변동 — sup.csv 이번 달 스냅샷 vs 직전 스냅샷(CSV_BANK/sup_YYYY_MM.csv) 명단 비교
-  let vendorHtml;
+  // 4) 협력사 변동 — sup.csv 이번 달 스냅샷 vs 직전 스냅샷(CSV_BANK/sup_YYYY_MM.csv) 명단 비교 + 수동입력 거래종료 보강
+  let addedNames=[], removedNames=[], vendorAutoNote=null;
   if (!D.sup) {
-    vendorHtml=noticeEmptyBox('협력사 변동(신규/거래종료)','sup.csv 업로드 필요');
+    vendorAutoNote='sup.csv 업로드 필요';
   } else {
     const {y,m}=monthKeyToYM(SEL_MONTH);
     const key=y+'_'+m;
     const cached=SUP_ROSTER_CACHE[key];
-    if (cached===undefined) {
-      vendorHtml=noticeEmptyBox('협력사 변동(신규/거래종료)','스냅샷 비교 중...');
-      loadSupRosterDiff(y,m);
-    } else if (cached===null) {
-      vendorHtml=noticeEmptyBox('협력사 변동(신규/거래종료)','스냅샷 비교 중...');
-    } else if (cached.none) {
-      vendorHtml=noticeEmptyBox('협력사 변동(신규/거래종료)',cached.reason==='no-prev'?'비교할 이전 스냅샷 없음 (다음 달부터 자동 비교)':'해당 월 스냅샷 없음');
-    } else {
-      vendorHtml=noticeBox('🆕 신규 협력사',cached.added.length,cached.added.map(n=>esc(n)))
-               + noticeBox('🔚 거래종료 협력사',cached.removed.length,cached.removed.map(n=>esc(n)));
-    }
+    if (cached===undefined) { vendorAutoNote='스냅샷 비교 중...'; loadSupRosterDiff(y,m); }
+    else if (cached===null) { vendorAutoNote='스냅샷 비교 중...'; }
+    else if (cached.none) { vendorAutoNote=cached.reason==='no-prev'?'비교할 이전 스냅샷 없음 (다음 달부터 자동 비교)':'해당 월 스냅샷 없음'; }
+    else { addedNames=cached.added; removedNames=cached.removed; }
   }
+  const removedSet=new Set(removedNames);
+  const manualTerm=MANUAL_VENDOR_TERMINATIONS.filter(m=>!removedSet.has(m.name));
+  const removedLabels=removedNames.map(n=>esc(n)).concat(manualTerm.map(m=>`${esc(m.name)} <span style="color:var(--text3)">(${esc(m.note)})</span>`));
+  const addedHtml=(vendorAutoNote&&!addedNames.length)?noticeEmptyBox('🆕 신규 협력사',vendorAutoNote):noticeBox('🆕 신규 협력사',addedNames.length,addedNames.map(n=>esc(n)));
+  const removedHtml=noticeBox('🔚 거래종료 협력사',removedLabels.length,removedLabels);
+  const vendorHtml=addedHtml+removedHtml;
   wrap.innerHTML=gradHtml+launchHtml+stockHtml+vendorHtml;
 }
+// 수동 등록 예외 — 자동 집계(스냅샷 diff/변경일)로 잡히지 않는 건을 담당자가 직접 기입
+const MANUAL_VENDOR_TERMINATIONS=[
+  {name:'주식회사 베러웨이시스템즈',note:'거래종료'},
+  {name:'(주)포텍',note:'26.2Q 거래종료'},
+  {name:'주식회사 유경',note:'26.2Q 거래종료'},
+  {name:'(주)파워',note:'26.2Q 거래종료'},
+  {name:'아이큐아이',note:'26.2Q 거래종료'},
+  {name:'모아산업',note:'26.2Q 거래종료'},
+  {name:'강천FNT',note:'거래종료 예정·26.4Q'}
+];
+const MANUAL_STOCKOUT_MONTH='2026.7';
+const MANUAL_STOCKOUT=[
+  {parts:'PT3086-휴대용치약(언파차차20g)_화이트',status:'일시품절',manager:'김하은'},
+  {parts:'PT1731-폴더블텀블러_스틸블루',status:'일시품절',manager:'김하은'},
+  {parts:'PT5294-모먼트골드스파클',status:'일시품절',manager:'이난영'},
+  {parts:'PT4159-하이업노트북폴딩스탠드(세트_본품및파우치)',status:'일시품절',manager:'김민지'},
+  {parts:'PT5386-슬림터보선풍기(냉각패드형)_올리브',status:'일시품절',manager:'육승미'},
+  {parts:'PT4477-스탠리슬림보틀_해머톤그린',status:'일시품절',manager:'김민정'},
+  {parts:'PT4476-스탠리슬림보틀_폴라화이트',status:'일시품절',manager:'김민정'},
+  {parts:'PT4478-스탠리슬림보틀_매트블랙',status:'일시품절',manager:'김민정'}
+];
 // ===== v14: 협력사(sup.csv) 월간 스냅샷 비교 — 신규/거래종료 협력사 =====
 const SUP_ROSTER_CACHE={};
 function monthKeyToYM(mk){ const p=String(mk||'').split('.'); return {y:+p[0],m:+p[1]}; }
