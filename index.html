@@ -2011,6 +2011,7 @@ function renderCIFailCostPanel() {
 // ===== SUPPLIER TAB =====
 // v12: 발주 거래 개월수(기준 월 연도 1월~기준 월) + 활성 협력사(2개월 이상 거래) 필터 + 협력사명 클릭 시 매입추이 모달
 let SUP_ACTIVE_ONLY=false;
+let SUP_EXPANDED=new Set();
 function getSupTradeMonths() {
   const res={map:{},elapsed:0,year:''};
   if(!D.order||!SEL_MONTH) return res;
@@ -2057,7 +2058,16 @@ function updateSupTab() {
   setValue('s-purchase',trading.filter(r=>r['1. 제조유형']==='단순구매').length);
   renderSupTable(getSupSearchRows());
 }
-function filterSup(q) { renderSupTable(getSupSearchRows()); }
+function filterSup(q) {
+  const list=renderSupTable(getSupSearchRows());
+  const query=(document.getElementById('sup-search')?.value||'').trim();
+  if (query && list && list.length===1) { SUP_EXPANDED.add(list[0]['협력사 이름']); renderSupTable(list); } // 검색 결과가 1곳으로 좁혀지면 드릴다운 자동으로 펼침
+}
+function toggleSupDrilldown(name) {
+  if (SUP_EXPANDED.has(name)) SUP_EXPANDED.delete(name);
+  else SUP_EXPANDED.add(name);
+  renderSupTable(getSupSearchRows());
+}
 function renderSupTable(rows) {
   const tm=getSupTradeMonths();
   let list=rows||[];
@@ -2067,14 +2077,15 @@ function renderSupTable(rows) {
   });
   const sub=document.getElementById('sup-list-sub');
   if(sub) sub.textContent=`(${list.length}개사${SUP_ACTIVE_ONLY?' · 활성 필터':''}${tm.elapsed?` · ${tm.year}년 1~${tm.elapsed}월 발주 기준`:''})`;
-  if (!list.length) { setTbody('tb-sup','<tr><td colspan="7" class="empty">데이터 없음</td></tr>'); return; }
+  if (!list.length) { setTbody('tb-sup','<tr><td colspan="7" class="empty">데이터 없음</td></tr>'); return list; }
   // 거래 개월수 내림차순 → 이름순 정렬
   list=[...list].sort((a,b)=>{
     const ca=(tm.map[(a['협력사 이름']||'').trim()]||new Set()).size;
     const cb=(tm.map[(b['협력사 이름']||'').trim()]||new Set()).size;
     return cb-ca||String(a['협력사 이름']||'').localeCompare(String(b['협력사 이름']||''),'ko');
   });
-  const html=list.map(r=>{
+  const expandedInList=[];
+  const html=list.map((r,i)=>{
     const name=(r['협력사 이름']||'').trim();
     const mfg=r['1. 제조유형']||''; const tc=mfg==='턴키제작'?'tag-turnkey':mfg==='외주용역'?'tag-service':'tag-gray';
     const biz=(r['업태']||'').split(',')[0].trim()||'—';
@@ -2082,9 +2093,15 @@ function renderSupTable(rows) {
     const cnt=(tm.map[name]||new Set()).size;
     const isActive=cnt>=2;
     const monthsCell=tm.elapsed?`<span style="font-weight:700;color:${isActive?'var(--green)':cnt>0?'var(--text)':'var(--text3)'}">${cnt}/${tm.elapsed}</span>${isActive?' <span class="tag tag-ok">활성</span>':''}`:'—';
-    return `<tr><td><strong style="color:var(--blue);cursor:pointer" onclick="openSupplierDetailModal('${esc(name).replace(/'/g,"\\'")}')">${esc(name)}</strong></td><td style="font-size:11px;color:var(--text3)">${esc(crop(biz,18))}</td><td>${mfg?`<span class="tag ${tc}">${mfg}</span>`:'—'}</td><td style="font-size:11px">${esc(crop(print,20))}</td><td style="font-size:11px">${r['발주담당자']||'—'}</td><td style="font-size:11px">${r['협력사 결제조건']||'—'}</td><td class="num">${monthsCell}</td></tr>`;
+    const expanded=SUP_EXPANDED.has(name);
+    const nameArg=esc(name).replace(/'/g,"\\'");
+    const row=`<tr${expanded?' style="background:var(--blue-light)"':''}><td><strong style="color:var(--blue);cursor:pointer" onclick="toggleSupDrilldown('${nameArg}')">${expanded?'▾':'▸'} ${esc(name)}</strong></td><td style="font-size:11px;color:var(--text3)">${esc(crop(biz,18))}</td><td>${mfg?`<span class="tag ${tc}">${mfg}</span>`:'—'}</td><td style="font-size:11px">${esc(crop(print,20))}</td><td style="font-size:11px">${r['발주담당자']||'—'}</td><td style="font-size:11px">${r['협력사 결제조건']||'—'}</td><td class="num">${monthsCell}</td></tr>`;
+    if (expanded) { expandedInList.push({name,idx:i}); return row+`<tr id="sup-drill-row-${i}"><td colspan="7" style="padding:0"><div id="sup-drill-${i}" style="padding:16px;background:var(--surface2);border-top:1px solid var(--border)"></div></td></tr>`; }
+    return row;
   }).join('');
   setTbody('tb-sup',html);
+  expandedInList.forEach(({name,idx})=>renderSupplierDrilldown(name,idx));
+  return list;
 }
 
 // ===== MONTHLY NOTICE (월간 공지사항: 졸업/출시/품절) =====
@@ -2130,8 +2147,7 @@ function renderMonthlyNotice() {
     });
     const already=new Set(rows.map(r=>r['파츠명']));
     const manualStock=SEL_MONTH===MANUAL_STOCKOUT_MONTH?MANUAL_STOCKOUT.filter(m=>!already.has(m.parts)):[];
-    const items=rows.map(r=>`${esc(r['파츠명']||'')} <span style="color:var(--text3)">${esc(r['적용 굿즈명']||'')}</span> · ${esc(r['판매상태']||'')}`)
-      .concat(manualStock.map(m=>`${esc(m.parts)} <span style="color:var(--text3)">담당 ${esc(m.manager)}</span> · ${esc(m.status)} <span style="color:var(--text3)">(수동입력)</span>`));
+    const items=rows.map(r=>esc(r['파츠명']||'')).concat(manualStock.map(m=>esc(m.parts)));
     stockHtml=noticeBox('🚫 품절 제품',rows.length+manualStock.length,items);
   }
   // 4) 협력사 변동 — sup.csv 이번 달 스냅샷 vs 직전 스냅샷(CSV_BANK/sup_YYYY_MM.csv) 명단 비교 + 수동입력 거래종료 보강
@@ -2221,16 +2237,16 @@ function loadSupRosterDiff(y,m){
 }
 function noticeBox(title,count,items) {
   return `<div style="border:1px solid var(--border2);border-radius:var(--r-sm);padding:12px">
-    <div style="font-size:13px;font-weight:600;margin-bottom:8px">${title} <span style="color:var(--blue)">${count}건</span></div>
-    <div style="max-height:160px;overflow-y:auto;font-size:11px;line-height:1.9;color:var(--text2)">
+    <div style="font-size:15px;font-weight:600;margin-bottom:8px">${title} <span style="color:var(--blue)">${count}건</span></div>
+    <div style="max-height:180px;overflow-y:auto;font-size:13px;line-height:1.9;color:var(--text2)">
       ${items.length?items.map(t=>`<div>· ${t}</div>`).join(''):'<span style="color:var(--text3)">해당 없음</span>'}
     </div>
   </div>`;
 }
 function noticeEmptyBox(title,msg) {
   return `<div style="border:1px dashed var(--border2);border-radius:var(--r-sm);padding:12px">
-    <div style="font-size:13px;font-weight:600;margin-bottom:8px">${title}</div>
-    <div style="font-size:11px;color:var(--text3)">${msg}</div>
+    <div style="font-size:15px;font-weight:600;margin-bottom:8px">${title}</div>
+    <div style="font-size:13px;color:var(--text3)">${msg}</div>
   </div>`;
 }
 
@@ -3101,55 +3117,81 @@ function openSupplierDetailModal(supName) {
   document.getElementById('modal-tabs-el').innerHTML='';
   title.textContent='협력사 상세 — '+supName;
   if (!D.order) { body.innerHTML='데이터 없음'; return; }
+  const canvasId='ch-sup-detail-trend';
+  const footer=`<div style="margin-top:12px;text-align:right"><button style="font-size:11px;padding:5px 14px;border:1px solid var(--border2);border-radius:var(--r-sm);background:var(--surface);cursor:pointer" onclick="openModal('purchase')">← 협력사 목록으로</button></div>`;
+  const built=buildSupplierDetail(supName,canvasId,footer);
+  body.innerHTML=built.html;
+  initSupplierDetailChart(canvasId,built.chartData);
+}
+// 협력사 상세 콘텐츠(매입추이+발주제품 전체+이슈상세) — 모달/드릴다운 공용 빌더
+function buildSupplierDetail(supName,canvasId,footerHtml) {
   const mfgMap={}; if(D.sup) D.sup.forEach(r=>{mfgMap[r['협력사 이름']]=r['1. 제조유형']||'기타';});
-  const orders=D.order.filter(r=>r['수주처']===supName&&!isStock(r));
+  const orders=(D.order||[]).filter(r=>r['수주처']===supName&&!isStock(r));
   // 연도별(25/26) 월별 매입추이
   const byM={};
   orders.forEach(r=>{ const bm=purchaseByMonth(r); Object.entries(bm).forEach(([m,a])=>{byM[m]=(byM[m]||0)+a;}); });
   const allMonths=Object.keys(byM).sort(monthCmp);
   const years=[...new Set(allMonths.map(m=>m.split('.')[0]))].sort();
   const monthNums=[...new Set(allMonths.map(m=>+m.split('.')[1]))].sort((a,b)=>a-b);
-  // Top 3 products by frequency
+  // 발주 제품 전체 — 발주 횟수 내림차순(0회 포함: sup.csv 아이템연결굿즈에는 있으나 발주 이력 없는 제품)
   const byProd={};
   orders.forEach(r=>{ const p=r['산출물']||r['발주번호']||''; byProd[p]=(byProd[p]||0)+1; });
-  const top3=Object.entries(byProd).sort((a,b)=>b[1]-a[1]).slice(0,3);
+  const supRow=(D.sup||[]).find(r=>(r['협력사 이름']||'').trim()===supName);
+  const linkedGoods=supRow?(supRow['아이템연결굿즈_최희주']||'').split(',').map(s=>s.trim()).filter(Boolean):[];
+  const allProdNames=new Set([...Object.keys(byProd).filter(Boolean),...linkedGoods]);
+  const allProds=[...allProdNames].map(p=>[p,byProd[p]||0]).sort((a,b)=>b[1]-a[1]||a[0].localeCompare(b[0],'ko'));
   const mfg=mfgMap[supName]||'—';
   const bizMap=getBizTypeMap(); const biz=bizMap[supName]||'—';
   // 이슈 상세 (project_name↔project 코드 매칭)
   const issues=getIssuesForSupplier(supName);
   const issueRate=orders.length?(issues.length/orders.length*100):0;
-  body.innerHTML=`
-    <div style="display:flex;gap:12px;margin-bottom:14px;font-size:12px;flex-wrap:wrap">
+  const html=`
+    <div style="display:flex;gap:12px;margin-bottom:14px;font-size:13px;flex-wrap:wrap">
       <span class="tag ${mfg==='턴키제작'?'tag-turnkey':mfg==='외주용역'?'tag-service':'tag-gray'}">${mfg}</span>
       <span style="color:var(--text3)">업태: ${esc(biz)}</span>
       <span style="color:var(--text3)">총 발주 ${orders.length}건</span>
       <span style="color:${issueRate>=10?'var(--red)':'var(--text3)'}">이슈율 ${issueRate.toFixed(1)}% (${issues.length}건)</span>
     </div>
-    <div style="font-size:13px;font-weight:600;margin-bottom:8px">연도별 매입추이 (${years.join(', ')||'데이터 없음'})</div>
-    <div class="ch" style="height:200px;margin-bottom:8px"><canvas id="ch-sup-detail-trend"></canvas></div>
-    <div style="font-size:13px;font-weight:600;margin:16px 0 8px">가장 빈번한 발주 제품 Top 3</div>
+    <div style="font-size:14px;font-weight:600;margin-bottom:8px">연도별 매입추이 (${years.join(', ')||'데이터 없음'})</div>
+    <div class="ch" style="height:200px;margin-bottom:8px"><canvas id="${canvasId}"></canvas></div>
+    <div style="font-size:14px;font-weight:600;margin:16px 0 8px">발주 제품 전체 (발주 횟수 내림차순, ${allProds.length}개)</div>
+    <div style="max-height:280px;overflow-y:auto">
     <table class="tbl"><thead><tr><th class="rank">#</th><th>제품명</th><th class="num">발주 횟수</th></tr></thead><tbody>
-    ${top3.map(([p,c],i)=>`<tr><td class="rank">${i+1}</td><td>${esc(crop(p,40))}</td><td class="num">${c}회</td></tr>`).join('')||emptyRow(3,'발주 이력 없음')}
+    ${allProds.map(([p,c],i)=>`<tr><td class="rank">${i+1}</td><td style="font-size:13px">${esc(crop(p,40))}</td><td class="num" style="font-size:13px${c===0?';color:var(--text3)':''}">${c}회</td></tr>`).join('')||emptyRow(3,'제품 이력 없음')}
     </tbody></table>
-    <div style="font-size:13px;font-weight:600;margin:16px 0 8px">이슈 상세 (${issues.length}건)</div>
+    </div>
+    <div style="font-size:10px;color:var(--text3);margin-top:4px">※ 발주 횟수 = 발주_RAW 산출물 기준 · 0회 = sup.csv 아이템연결굿즈(최희주)에는 연결돼 있으나 발주 이력이 없는 제품</div>
+    <div style="font-size:14px;font-weight:600;margin:16px 0 8px">이슈 상세 (${issues.length}건)</div>
     <table class="tbl"><thead><tr><th class="rank">#</th><th>입하일</th><th>제품</th><th>유형</th><th>내용</th><th>대응</th></tr></thead><tbody>
     ${issues.slice(0,30).map((r,i)=>{
       const content=r['품질이슈내용']||r['수량이슈내용']||r['운영이슈내용(by물류)']||'';
       const response=r['품질등급의견판단사유_SCM']||r['수량이슈대응방안']||r['운영이슈개선방안_SCM']||'';
-      return `<tr><td class="rank">${i+1}</td><td style="font-size:11px">${r['실제입하일']||r['입하예정일']||'—'}</td><td style="font-size:11px">${esc(crop(r['입고물품']||r['item (통합) (from order)']||r['project_name']||'',25))}</td><td>${catTags(r['이슈카테고리']||'')}</td><td style="font-size:11px;max-width:160px">${esc(crop(content,45))}</td><td style="font-size:11px;max-width:160px;color:var(--text2)">${response?esc(crop(response,45)):'—'}</td></tr>`;
+      return `<tr><td class="rank">${i+1}</td><td style="font-size:13px">${r['실제입하일']||r['입하예정일']||'—'}</td><td style="font-size:13px">${esc(crop(r['입고물품']||r['item (통합) (from order)']||r['project_name']||'',25))}</td><td>${catTags(r['이슈카테고리']||'')}</td><td style="font-size:13px;max-width:160px">${esc(crop(content,45))}</td><td style="font-size:13px;max-width:160px;color:var(--text2)">${response?esc(crop(response,45)):'—'}</td></tr>`;
     }).join('')||emptyRow(6,'이슈 이력 없음')}
     </tbody></table>
     ${issues.length>30?`<div style="font-size:10px;color:var(--text3);margin-top:4px">최근 30건만 표시 (전체 ${issues.length}건)</div>`:''}
     <div style="font-size:10px;color:var(--text3);margin-top:8px">※ 이슈 귀속 = 이슈_RAW project_name ↔ 발주_RAW project 코드 접두어 매칭(추정치, 프로젝트 코드 불일치 시 누락 가능)</div>
-    <div style="margin-top:12px;text-align:right"><button style="font-size:11px;padding:5px 14px;border:1px solid var(--border2);border-radius:var(--r-sm);background:var(--surface);cursor:pointer" onclick="openModal('purchase')">← 협력사 목록으로</button></div>`;
-
-  if (years.length && monthNums.length) {
-    dc('ch-sup-detail-trend'); const ctx=getCtx('ch-sup-detail-trend');
-    if (ctx) {
-      const palette={'2024':'#94a3b8','2025':'#1d4ed8','2026':'#dc2626'};
-      CHARTS['ch-sup-detail-trend']=new Chart(ctx,{type:'line',data:{labels:monthNums.map(n=>n+'월'),datasets:years.map(y=>({label:y+'년',data:monthNums.map(n=>byM[y+'.'+n]||null),borderColor:palette[y]||'#059669',borderWidth:2,tension:.3,pointRadius:3,spanGaps:true,fill:false}))},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{position:'bottom',labels:{font:{size:10},boxWidth:10}}},scales:{y:{ticks:{font:{size:10},callback:v=>fmtW(v)}}}}});
-    }
+    ${footerHtml||''}`;
+  return {html,chartData:{byM,years,monthNums}};
+}
+function initSupplierDetailChart(canvasId,chartData) {
+  const {byM,years,monthNums}=chartData;
+  if (!(years.length && monthNums.length)) return;
+  dc(canvasId); const ctx=getCtx(canvasId);
+  if (ctx) {
+    const palette={'2024':'#94a3b8','2025':'#1d4ed8','2026':'#dc2626'};
+    CHARTS[canvasId]=new Chart(ctx,{type:'line',data:{labels:monthNums.map(n=>n+'월'),datasets:years.map(y=>({label:y+'년',data:monthNums.map(n=>byM[y+'.'+n]||null),borderColor:palette[y]||'#059669',borderWidth:2,tension:.3,pointRadius:3,spanGaps:true,fill:false}))},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{position:'bottom',labels:{font:{size:10},boxWidth:10}}},scales:{y:{ticks:{font:{size:10},callback:v=>fmtW(v)}}}}});
   }
+}
+// 협력사 목록 드릴다운(모달 대신 테이블 내에서 인라인 펼침)
+function renderSupplierDrilldown(supName,idx) {
+  const wrap=document.getElementById('sup-drill-'+idx);
+  if (!wrap) return;
+  if (!D.order) { wrap.innerHTML='데이터 없음'; return; }
+  const canvasId='ch-sup-drill-'+idx;
+  const built=buildSupplierDetail(supName,canvasId,'');
+  wrap.innerHTML=built.html;
+  initSupplierDetailChart(canvasId,built.chartData);
 }
 // ===== INVENTORY ASSET MODAL — SKU detail + turnover accordion =====
 let INV_MODAL_DATA=[];
@@ -6011,16 +6053,16 @@ function progNoteCell(id){
   const idArg=esc(id).replace(/'/g,"\\'");
   if(editing){
     const latest=n?((n.edits&&n.edits.length)?n.edits[n.edits.length-1].text:n.text):'';
-    return `<textarea id="prog-note-input-${esc(id)}" rows="2" style="width:100%;font-size:11px;padding:5px;border:1px solid var(--blue);border-radius:4px;font-family:inherit;resize:vertical">${esc(latest)}</textarea>
+    return `<textarea id="prog-note-input-${esc(id)}" rows="2" style="width:100%;font-size:13px;padding:5px;border:1px solid var(--blue);border-radius:4px;font-family:inherit;resize:vertical">${esc(latest)}</textarea>
       <div style="margin-top:3px;display:flex;gap:4px">
-        <button onclick="saveProgNote('${idArg}')" style="font-size:10px;padding:3px 10px;border:none;border-radius:4px;background:var(--blue);color:#fff;cursor:pointer">${n?'수정 저장':'저장'}</button>
-        <button onclick="cancelProgNote('${idArg}')" style="font-size:10px;padding:3px 8px;border:1px solid var(--border2);border-radius:4px;background:none;cursor:pointer">취소</button>
+        <button onclick="saveProgNote('${idArg}')" style="font-size:12px;padding:3px 10px;border:none;border-radius:4px;background:var(--blue);color:#fff;cursor:pointer">${n?'수정 저장':'저장'}</button>
+        <button onclick="cancelProgNote('${idArg}')" style="font-size:12px;padding:3px 8px;border:1px solid var(--border2);border-radius:4px;background:none;cursor:pointer">취소</button>
       </div>`;
   }
-  if(!n) return `<button onclick="editProgNote('${idArg}')" style="font-size:10px;padding:3px 10px;border:1px dashed var(--border2);border-radius:4px;background:none;color:var(--text3);cursor:pointer">+ 비고 입력</button>`;
-  const editsHtml=(n.edits||[]).map(e=>`<div style="margin-top:3px;padding-top:3px;border-top:1px dashed var(--border)"><span style="color:var(--amber);font-weight:600;font-size:9px">[수정 ${esc(e.date)}]</span> ${esc(e.text)}</div>`).join('');
-  return `<div style="font-size:11px;line-height:1.5"><span style="color:var(--text3);font-size:9px">[최초 ${esc(n.date)}]</span> ${esc(n.text)}${editsHtml}</div>
-    <button onclick="editProgNote('${idArg}')" style="margin-top:3px;font-size:10px;padding:3px 10px;border:1px solid var(--border2);border-radius:4px;background:none;cursor:pointer">수정</button>`;
+  if(!n) return `<button onclick="editProgNote('${idArg}')" style="font-size:12px;padding:3px 10px;border:1px dashed var(--border2);border-radius:4px;background:none;color:var(--text3);cursor:pointer">+ 비고 입력</button>`;
+  const editsHtml=(n.edits||[]).map(e=>`<div style="margin-top:3px;padding-top:3px;border-top:1px dashed var(--border)"><span style="color:var(--amber);font-weight:600;font-size:11px">[수정 ${esc(e.date)}]</span> ${esc(e.text)}</div>`).join('');
+  return `<div style="font-size:13px;line-height:1.5"><span style="color:var(--text3);font-size:11px">[최초 ${esc(n.date)}]</span> ${esc(n.text)}${editsHtml}</div>
+    <button onclick="editProgNote('${idArg}')" style="margin-top:3px;font-size:12px;padding:3px 10px;border:1px solid var(--border2);border-radius:4px;background:none;cursor:pointer">수정</button>`;
 }
 function editProgNote(id){ PROG_NOTE_EDITING.add(id); renderProgressSection(); }
 function cancelProgNote(id){ PROG_NOTE_EDITING.delete(id); renderProgressSection(); }
@@ -6093,13 +6135,13 @@ function renderProgressSection(){
     const dueRaw=(r['입하예정일 (from movement_산출물)']||'').split(',').map(x=>x.trim()).filter(Boolean);
     const due=dueRaw.length?dueRaw[dueRaw.length-1]:'—';
     return `<tr${status==='done'?' style="opacity:.6"':''}>
-      <td style="font-size:11px;white-space:nowrap">${esc(m)}</td>
-      <td class="mono" style="font-size:10px">${esc(r['발주번호']||'')}</td>
-      <td style="font-size:11px">${esc(crop(r['project']||'',22))}</td>
-      <td style="font-size:11px">${esc(crop((r['산출물']||'').trim()||'—',25))}</td>
-      <td style="font-size:11px">${esc(crop((r['수주처']||'').replace(/^"+|"+$/g,''),16))}</td>
-      <td style="font-size:11px;white-space:nowrap">${esc(r['과업지시일자']||'—')}</td>
-      <td style="font-size:11px;white-space:nowrap">${esc(due)}</td>
+      <td style="font-size:13px;white-space:nowrap">${esc(m)}</td>
+      <td class="mono" style="font-size:12px">${esc(r['발주번호']||'')}</td>
+      <td style="font-size:13px">${esc(crop(r['project']||'',22))}</td>
+      <td style="font-size:13px">${esc(crop((r['산출물']||'').trim()||'—',25))}</td>
+      <td style="font-size:13px">${esc(crop((r['수주처']||'').replace(/^"+|"+$/g,''),16))}</td>
+      <td style="font-size:13px;white-space:nowrap">${esc(r['과업지시일자']||'—')}</td>
+      <td style="font-size:13px;white-space:nowrap">${esc(due)}</td>
       <td>${stTag[status]}</td>
       <td>${bar}</td>
       <td>${progNoteCell(id)}</td>
