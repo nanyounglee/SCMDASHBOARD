@@ -14,6 +14,9 @@
 # is not a data file). CSV_BANK IS committed to git (v13): the dashboard
 # falls back to CSV_BANK/<year>_W<week>/ when comparing weekly progress
 # files, so the archive must be deployed with the site.
+#
+# v14: also saves CSV_BANK/sup_YYYY_MM.csv (one snapshot per calendar month)
+# so the 월간 공지사항 card can show 신규/거래종료 협력사 month over month.
 # =============================================================
 $ErrorActionPreference = "Stop"
 Set-Location "C:\Users\user\Documents\Claude\Projects\SCMNEST\SCMDASHBOARD"
@@ -30,6 +33,25 @@ $csvDir  = "CSV"
 $bankDir = "CSV_BANK"
 if (-not (Test-Path $csvDir)) { throw "CSV folder not found: $csvDir" }
 New-Item -ItemType Directory -Force -Path $bankDir | Out-Null
+
+# --- Vendor (sup.csv) monthly snapshot ---
+# Copies today's outgoing CSV\sup.csv into CSV_BANK\sup_YYYY_MM.csv (keyed by the
+# file's own last-modified month) BEFORE it gets moved/replaced below, so the
+# dashboard can diff "이번 달 신규/거래종료 협력사" month over month. Skips if a
+# snapshot for that month already exists (keeps the earliest known state of the
+# month instead of clobbering it if this script is re-run mid-month).
+$supFile = Join-Path $csvDir "sup.csv"
+if (Test-Path $supFile) {
+  $supInfo = Get-Item $supFile
+  $supYm = "{0}_{1:D2}" -f $supInfo.LastWriteTime.Year, $supInfo.LastWriteTime.Month
+  $supSnapshot = Join-Path $bankDir ("sup_{0}.csv" -f $supYm)
+  if (-not (Test-Path $supSnapshot)) {
+    Copy-Item $supFile $supSnapshot
+    Write-Host ("Vendor monthly snapshot saved: {0}" -f $supSnapshot) -ForegroundColor Cyan
+  } else {
+    Write-Host ("Vendor monthly snapshot already exists for {0}, skipped." -f $supYm) -ForegroundColor DarkGray
+  }
+}
 
 $files = Get-ChildItem $csvDir -Filter "*.csv" -File
 if (-not $files) {

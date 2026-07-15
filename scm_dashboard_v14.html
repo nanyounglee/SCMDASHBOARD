@@ -405,6 +405,13 @@ a{color:var(--blue);text-decoration:none}
     </div>
     <!-- OVERVIEW -->
     <div id="sec-overview">
+      <div class="card" style="margin-bottom:16px">
+        <div class="card-header">
+          <div><div class="card-title">📢 월간 공지사항</div><div class="card-sub" id="notice-month-label"></div></div>
+        </div>
+        <div id="notice-body" style="display:grid;grid-template-columns:repeat(3,1fr);gap:12px"></div>
+        <div style="font-size:10px;color:var(--text3);margin-top:10px">※ 졸업/출시 = 굿즈마스터(goods_master.csv) 출시일·졸업일 기준 · 품절 = 품절리스트(stockout_list) 판매상태·변경일 기준 · 협력사 변동 = 거래처(sup.csv) 이번 달 스냅샷과 직전 스냅샷(CSV_BANK/sup_YYYY_MM.csv) 명단 비교 · 선택된 월(상단 월 선택) 기준으로 자동 집계</div>
+      </div>
       <div class="kpi-row">
         <div class="kpi-card c-blue" onclick="openModal('orderTask')">
           <div class="kpi-label">발주 TASK</div><div class="kpi-val" id="k-order">—</div>
@@ -1178,12 +1185,13 @@ const FIELD_HINTS = {
   season_plan:{required:['굿즈명','옵션','계획구분']},
   qms_raw:{required:['발생일','이슈유형','파츠번호']},
   cost_reduction:{required:['일자','항목','절감액']},
-  parts:{required:['파츠명 (Long ver)','굿즈 연결 현황 (from item)']}
+  parts:{required:['파츠명 (Long ver)','굿즈 연결 현황 (from item)']},
+  goods_master:{required:['Goods Name','Goods Code','굿즈 Status','출시일','졸업일']}
 };
 const KEY_LABELS = {
   order:'발주_RAW',issue:'이슈_RAW',sup:'공급망_RAW',ci:'고객인지이슈_RAW',
   stockout_list:'품절리스트',sales:'판매주문',
-  inv_weekly:'S&OP_재고주간',sales_monthly:'S&OP_매출월간',purchase_review:'매입검토현황',season_plan:'시즌재고계획',qms_raw:'QMS_품질데이터',cost_reduction:'원가절감실적',parts:'코스트베이스(파츠리스트)'
+  inv_weekly:'S&OP_재고주간',sales_monthly:'S&OP_매출월간',purchase_review:'매입검토현황',season_plan:'시즌재고계획',qms_raw:'QMS_품질데이터',cost_reduction:'원가절감실적',parts:'코스트베이스(파츠리스트)',goods_master:'굿즈마스터(졸업/출시)'
 };
 function validateCSV(key,rows) {
   const warns=[];
@@ -1222,6 +1230,7 @@ const UPLOAD_SLOTS=[
   {key:'ci',icon:'💬',label:'고객인지이슈',src:'Airtable SCM KPI → 고객인지이슈_RAW 뷰',fields:'등록일자, 이슈내용, 프로젝트명',row:'prod'},
   {key:'quarter_eval',icon:'📊',label:'분기별평가',src:'GSheets 공급망 KPI → 공급망_분기별평가(2026)',fields:'협력사, 1Q_공급망관리등급',row:'prod'},
   {key:'parts',icon:'🧩',label:'코스트베이스(파츠리스트)',src:'Airtable 4. parts 뷰',fields:'파츠명 (Long ver), 굿즈 연결 현황 (from item), 100개_표준원가 등 수량구간별 표준원가',row:'prod'},
+  {key:'goods_master',icon:'🎓',label:'굿즈마스터(졸업/출시)',src:'Airtable Sincerely DB → 1. goods 뷰',fields:'Goods Name, Goods Code, 굿즈 Status, 출시일, 졸업일',row:'prod'},
   // 구매전략파트
   {key:'dashboard_period_summary',icon:'📊',label:'재고 KPI 요약',src:'GSheets S&OP → dashboard_period_summary',fields:'period_unit, period_key, inv_amount, turnover_3m',row:'buy'},
   {key:'dashboard_group_summary',icon:'🧩',label:'재고 그룹 요약',src:'GSheets S&OP → dashboard_group_summary',fields:'group_type, group_name, inv_amount, turnover_3m',row:'buy'},
@@ -1298,6 +1307,7 @@ const FILE_SIGNATURES={
   issue:          {must:['이슈카테고리'],not:['판매상태','총재고수량']},
   quarter_eval:   {must:['협력사','1Q_TASK 점수','1Q_공급망관리등급']},
   parts:          {must:['파츠명 (Long ver)','굿즈 연결 현황 (from item)','파츠 유형']},
+  goods_master:   {must:['Goods Name','Goods Code','굿즈 Status','출시일','졸업일']},
   order:          {must:['과업지시일자','발주번호']},
 };
 function detectCSVType(headers) {
@@ -1540,6 +1550,7 @@ function getFilteredAllOrders() {
 // ===== REFRESH ALL =====
 function refreshAll() {
   updateKPIs();
+  renderMonthlyNotice();
   updateOrderTabs();
   updatePurchaseTabs();
   updateIssueTabs();
@@ -2074,6 +2085,129 @@ function renderSupTable(rows) {
     return `<tr><td><strong style="color:var(--blue);cursor:pointer" onclick="openSupplierDetailModal('${esc(name).replace(/'/g,"\\'")}')">${esc(name)}</strong></td><td style="font-size:11px;color:var(--text3)">${esc(crop(biz,18))}</td><td>${mfg?`<span class="tag ${tc}">${mfg}</span>`:'—'}</td><td style="font-size:11px">${esc(crop(print,20))}</td><td style="font-size:11px">${r['발주담당자']||'—'}</td><td style="font-size:11px">${r['협력사 결제조건']||'—'}</td><td class="num">${monthsCell}</td></tr>`;
   }).join('');
   setTbody('tb-sup',html);
+}
+
+// ===== MONTHLY NOTICE (월간 공지사항: 졸업/출시/품절) =====
+function monthKeyOfDate(s) {
+  const d=parseAnyDate(s);
+  if(!d) return null;
+  return d.getFullYear()+'.'+(d.getMonth()+1);
+}
+const STOCKOUT_STATUSES=['품절예정','일시품절','의도적 품절','비의도적품절'];
+function renderMonthlyNotice() {
+  const wrap=document.getElementById('notice-body');
+  if(!wrap) return;
+  const lbl=document.getElementById('notice-month-label');
+  if(lbl) lbl.textContent=SEL_MONTH?fmtMonth(SEL_MONTH)+' 기준':'';
+  if(!SEL_MONTH) { wrap.innerHTML='<div class="empty" style="grid-column:1/-1">월을 선택해주세요</div>'; return; }
+
+  // 1) 졸업제품 — goods_master.csv 졸업일 기준
+  let gradHtml;
+  if (!D.goods_master) {
+    gradHtml=noticeEmptyBox('졸업 제품','goods_master.csv 업로드 필요');
+  } else {
+    const rows=D.goods_master.filter(r=>monthKeyOfDate(r['졸업일'])===SEL_MONTH);
+    gradHtml=noticeBox('🎓 졸업 제품',rows.length,rows.map(r=>`${esc(r['Goods Name']||'')} <span style="color:var(--text3)">(${esc(r['Goods Code']||'')})</span> · ${esc(r['졸업일']||'')}`));
+  }
+  // 2) 출시 제품 — goods_master.csv 출시일 기준
+  let launchHtml;
+  if (!D.goods_master) {
+    launchHtml=noticeEmptyBox('출시 제품','goods_master.csv 업로드 필요');
+  } else {
+    const rows=D.goods_master.filter(r=>monthKeyOfDate(r['출시일'])===SEL_MONTH);
+    launchHtml=noticeBox('🚀 출시 제품',rows.length,rows.map(r=>`${esc(r['Goods Name']||'')} <span style="color:var(--text3)">(${esc(r['Goods Code']||'')})</span> · ${esc(r['출시일']||'')}`));
+  }
+  // 3) 품절 제품 — stockout_list.csv 판매상태+변경일 기준 (졸업 성격 제외)
+  let stockHtml;
+  if (!D.stockout_list) {
+    stockHtml=noticeEmptyBox('품절 제품','stockout_list.csv 업로드 필요');
+  } else {
+    const rows=D.stockout_list.filter(r=>{
+      const st=(r['판매상태']||'').trim();
+      if(!STOCKOUT_STATUSES.includes(st)) return false;
+      const chgDate=r['변경일']||r['변경일(인터페이스용)']||'';
+      return monthKeyOfDate(chgDate)===SEL_MONTH;
+    });
+    stockHtml=noticeBox('🚫 품절 제품',rows.length,rows.map(r=>`${esc(r['파츠명']||'')} <span style="color:var(--text3)">${esc(r['적용 굿즈명']||'')}</span> · ${esc(r['판매상태']||'')}`));
+  }
+  // 4) 협력사 변동 — sup.csv 이번 달 스냅샷 vs 직전 스냅샷(CSV_BANK/sup_YYYY_MM.csv) 명단 비교
+  let vendorHtml;
+  if (!D.sup) {
+    vendorHtml=noticeEmptyBox('협력사 변동(신규/거래종료)','sup.csv 업로드 필요');
+  } else {
+    const {y,m}=monthKeyToYM(SEL_MONTH);
+    const key=y+'_'+m;
+    const cached=SUP_ROSTER_CACHE[key];
+    if (cached===undefined) {
+      vendorHtml=noticeEmptyBox('협력사 변동(신규/거래종료)','스냅샷 비교 중...');
+      loadSupRosterDiff(y,m);
+    } else if (cached===null) {
+      vendorHtml=noticeEmptyBox('협력사 변동(신규/거래종료)','스냅샷 비교 중...');
+    } else if (cached.none) {
+      vendorHtml=noticeEmptyBox('협력사 변동(신규/거래종료)',cached.reason==='no-prev'?'비교할 이전 스냅샷 없음 (다음 달부터 자동 비교)':'해당 월 스냅샷 없음');
+    } else {
+      vendorHtml=noticeBox('🆕 신규 협력사',cached.added.length,cached.added.map(n=>esc(n)))
+               + noticeBox('🔚 거래종료 협력사',cached.removed.length,cached.removed.map(n=>esc(n)));
+    }
+  }
+  wrap.innerHTML=gradHtml+launchHtml+stockHtml+vendorHtml;
+}
+// ===== v14: 협력사(sup.csv) 월간 스냅샷 비교 — 신규/거래종료 협력사 =====
+const SUP_ROSTER_CACHE={};
+function monthKeyToYM(mk){ const p=String(mk||'').split('.'); return {y:+p[0],m:+p[1]}; }
+function prevYM(y,m){ return m>1?{y,m:m-1}:{y:y-1,m:12}; }
+function supSnapshotFile(y,m){ return 'sup_'+y+'_'+String(m).padStart(2,'0')+'.csv'; }
+function fetchSupSnapshotFile(y,m){
+  return fetch('CSV_BANK/'+supSnapshotFile(y,m)).then(r=>r.ok?r.text():null).catch(()=>null).then(txt=>txt?parseCSV(txt):null);
+}
+function walkSupSnapshot(y,m,remain){
+  if (remain<=0) return Promise.resolve(null);
+  return fetchSupSnapshotFile(y,m).then(rows=>{
+    if (rows&&rows.length) return {rows,y,m};
+    const p=prevYM(y,m); return walkSupSnapshot(p.y,p.m,remain-1);
+  });
+}
+function diffSupNames(prevRows,curRows){
+  const prevNames=new Set(prevRows.map(r=>(r['협력사 이름']||'').trim()).filter(Boolean));
+  const curNames=new Set(curRows.map(r=>(r['협력사 이름']||'').trim()).filter(Boolean));
+  return {
+    added:[...curNames].filter(n=>!prevNames.has(n)).sort((a,b)=>a.localeCompare(b,'ko')),
+    removed:[...prevNames].filter(n=>!curNames.has(n)).sort((a,b)=>a.localeCompare(b,'ko'))
+  };
+}
+function loadSupRosterDiff(y,m){
+  const key=y+'_'+m;
+  SUP_ROSTER_CACHE[key]=null; // in-flight marker (prevents duplicate fetches from repeated renders)
+  const today=new Date();
+  const isCurMonth=(y===today.getFullYear()&&m===today.getMonth()+1);
+  const curP=isCurMonth?Promise.resolve(D.sup):fetchSupSnapshotFile(y,m);
+  curP.then(curRows=>{
+    const stillSelected=()=>{ const cur2=monthKeyToYM(SEL_MONTH); return cur2.y===y&&cur2.m===m; };
+    if (!curRows||!curRows.length) {
+      SUP_ROSTER_CACHE[key]={none:true,reason:'no-cur'};
+      if (stillSelected()) renderMonthlyNotice();
+      return;
+    }
+    const p=prevYM(y,m);
+    walkSupSnapshot(p.y,p.m,12).then(prev=>{
+      SUP_ROSTER_CACHE[key]=prev?diffSupNames(prev.rows,curRows):{none:true,reason:'no-prev'};
+      if (stillSelected()) renderMonthlyNotice();
+    });
+  });
+}
+function noticeBox(title,count,items) {
+  return `<div style="border:1px solid var(--border2);border-radius:var(--r-sm);padding:12px">
+    <div style="font-size:13px;font-weight:600;margin-bottom:8px">${title} <span style="color:var(--blue)">${count}건</span></div>
+    <div style="max-height:160px;overflow-y:auto;font-size:11px;line-height:1.9;color:var(--text2)">
+      ${items.length?items.map(t=>`<div>· ${t}</div>`).join(''):'<span style="color:var(--text3)">해당 없음</span>'}
+    </div>
+  </div>`;
+}
+function noticeEmptyBox(title,msg) {
+  return `<div style="border:1px dashed var(--border2);border-radius:var(--r-sm);padding:12px">
+    <div style="font-size:13px;font-weight:600;margin-bottom:8px">${title}</div>
+    <div style="font-size:11px;color:var(--text3)">${msg}</div>
+  </div>`;
 }
 
 // ===== STOCK SECTION =====
@@ -3263,7 +3397,7 @@ function nav(el,id) {
   if (el) el.classList.add('active');
   const titles={overview:'종합 현황','inventory-ops':'재고운영 현황','stockout-detail':'품절 상세','purchase-review':'매입 검토','season-plan':'시즌재고 계획',eoq:'EOQ · 발주알람',graduation:'졸업 검토',order:'발주 현황',progress:'발주 진행현황',purchase:'매입 현황','cost-analysis':'원가 분석',issue:'이슈 현황',customer:'고객인지 이슈',sales:'매출/마진 분석','product-trend':'제품별 판매량 추이',supplier:'협력사 현황','supplier-product':'협력사유형별 제품군',kpi:'KPI 목표·트래킹',portfolio:'공급망 포트폴리오',qms:'품질 현황',subcontract:'하도급법 위험',ai:'AI 어시스턴트',report:'리포트 생성',stock:'재고 현황',quote:'견적계산기'};
   const guides={
-    overview:'<b>확인 가능 지표:</b> 발주TASK(프로젝트/재고생산/긴급) · 월매입금액 · 이슈건수(품질/수량/운영) · 긴급발주 · 고객인지이슈 — 모든 KPI에 전년 동기(YoY) 비교 표시 | <b>차트:</b> 매입추이(월별/주별·합산/협력사/업태/굿즈코드) · 이슈유형 도넛 · 담당자별 발주 · 월별이슈추이 · 제조유형 매입비중(업태/카테고리 전환) | <b>클릭:</b> KPI 카드 클릭 시 상세 모달 · 차트 월 클릭 시 Top5 모달 | <b>CSV:</b> 발주_RAW + 이슈_RAW + 공급망_RAW + 고객인지이슈_RAW',
+    overview:'<b>확인 가능 지표:</b> 월간 공지사항(졸업/출시/품절 제품, 선택 월 기준 자동집계) · 발주TASK(프로젝트/재고생산/긴급) · 월매입금액 · 이슈건수(품질/수량/운영) · 긴급발주 · 고객인지이슈 — 모든 KPI에 전년 동기(YoY) 비교 표시 | <b>차트:</b> 매입추이(월별/주별·합산/협력사/업태/굿즈코드) · 이슈유형 도넛 · 담당자별 발주 · 월별이슈추이 · 제조유형 매입비중(업태/카테고리 전환) | <b>클릭:</b> KPI 카드 클릭 시 상세 모달 · 차트 월 클릭 시 Top5 모달 | <b>CSV:</b> 발주_RAW + 이슈_RAW + 공급망_RAW + 고객인지이슈_RAW + 굿즈마스터(졸업/출시) + 품절리스트',
     'inventory-ops':'<b>확인 가능 지표:</b> 재고자산평가액 · 재고회전율(1M/3M/YTD) · 품절률 · 운영밴드 상태(분기별) | <b>차트:</b> 재고금액 추이(최근12주, 밴드 상/하한 표시) · 카테고리별 재고비중/SKU수/회전율 | <b>클릭:</b> 재고자산/회전율 KPI → SKU별 상세 모달(정렬 가능, 회전율 클릭 시 12개월 판매추이 바차트+회의이력) | <b>CSV:</b> S&OP 재고주간 + 매출월간',
     'stockout-detail':'<b>확인 가능 지표:</b> 비의도적/의도적 품절 건수 · 굿즈 품절 건수 · 품절 사유별 분포 · 재고소유구분별 분포 | <b>테이블:</b> 비의도적 품절 상세(경과일 내림차순, 30일+ 빨강) · 의도적 품절(졸업/시즌/효율화) · 변경사유 전문 표시 | <b>CSV:</b> 품절리스트 (sales_status_history)',
     'purchase-review':'<b>확인 가능 지표:</b> 전체 검토건수 · 미확정 계획금액 · 확정 매입금액 | <b>필터:</b> 전체/미확정/확정 상태 전환 | <b>테이블:</b> 파츠명·번호 · 재고수량 · 계획/확정 수량 · 결정상태/사항 · 회의명 | <b>CSV:</b> 매입검토현황 (S&OP purchase_review)',
@@ -3292,7 +3426,7 @@ function nav(el,id) {
   document.getElementById('page-title').innerHTML=`${titles[id]||id}<span class="topbar-badge" id="page-month-badge">${SEL_MONTH?fmtMonth(SEL_MONTH):''}</span>`;
   const guideEl=document.getElementById('page-guide');
   if(guideEl){const g=guides[id];if(g){guideEl.innerHTML=g;guideEl.style.display='';}else{guideEl.style.display='none';}}
-  if (id==='overview') renderIssueLegend();
+  if (id==='overview') { renderIssueLegend(); renderMonthlyNotice(); }
   if (id==='purchase') updatePurchaseTabs();
   if (id==='customer') renderCICharts();
   if (id==='progress') renderProgressSection();
@@ -5633,7 +5767,8 @@ const AUTO_CSV_DEFAULT={
   dashboard_sku_snapshot:'dashboard_sku_snapshot.csv',
   inv_weekly:'inv_weekly.csv',
   sales_monthly:'sales_monthly.csv',
-  parts:'parts.csv'
+  parts:'parts.csv',
+  goods_master:'goods_master.csv'
 };
 function autoLoadRaw(){
   fetch('CSV/_manifest.json').then(r=>r.ok?r.json():null).catch(()=>null).then(man=>{

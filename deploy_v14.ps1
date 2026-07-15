@@ -52,7 +52,7 @@ if (Test-Path "deploy_v13.ps1") {
 git add -A; Assert-Git
 git diff --cached --quiet
 if ($LASTEXITCODE -ne 0) {
-  $msg = "v14: merge v13(progress tab / period range / stock-production KPI split / CI_OVERRIDES) + search-filter fixes across modals&charts / CI project-scoped product-supplier matching / issue.csv 입고물품 field / filtered-view CSV export $(Get-Date -Format 'yyyy-MM-dd HH:mm')"
+  $msg = "v14 update $(Get-Date -Format 'yyyy-MM-dd HH:mm')"
   git commit -m $msg; Assert-Git
   Write-Host "Committed: $msg"
 } else {
@@ -84,4 +84,4 @@ git push origin main; Assert-Git
 # 4) Confirm
 Write-Host ""
 Write-Host "Done. In 1-3 minutes: https://nanyounglee.github.io/SCMDASHBOARD/" -ForegroundColor Green
-Write-Host "Check: sidebar should show 'SCM.. v14'." -ForegroundColor Green
+Write-Host "Check: sidebar should show 'SCM.. v14', and upload/auto-load a goods_master.csv export (Sincerely DB '1. goods' view: Goods Name/Goods Code/굿즈 Status/출시일/졸업일) to populate the new 월간 공지사항 section." -ForegroundColor Green
