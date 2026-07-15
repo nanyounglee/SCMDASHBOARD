@@ -2164,7 +2164,7 @@ function renderMonthlyNotice() {
     else { addedNames=cached.added; removedNames=cached.removed; }
   }
   const removedSet=new Set(removedNames);
-  const manualTerm=MANUAL_VENDOR_TERMINATIONS.filter(m=>!removedSet.has(m.name));
+  const manualTerm=SEL_MONTH===MANUAL_VENDOR_TERM_MONTH?MANUAL_VENDOR_TERMINATIONS.filter(m=>!removedSet.has(m.name)):[];
   const removedLabels=removedNames.map(n=>esc(n)).concat(manualTerm.map(m=>`${esc(m.name)} <span style="color:var(--text3)">(${esc(m.note)})</span>`));
   const addedHtml=(vendorAutoNote&&!addedNames.length)?noticeEmptyBox('🆕 신규 협력사',vendorAutoNote):noticeBox('🆕 신규 협력사',addedNames.length,addedNames.map(n=>esc(n)));
   const removedHtml=noticeBox('🔚 거래종료 협력사',removedLabels.length,removedLabels);
@@ -2172,14 +2172,14 @@ function renderMonthlyNotice() {
   wrap.innerHTML=gradHtml+launchHtml+stockHtml+vendorHtml;
 }
 // 수동 등록 예외 — 자동 집계(스냅샷 diff/변경일)로 잡히지 않는 건을 담당자가 직접 기입
+const MANUAL_VENDOR_TERM_MONTH='2026.6'; // 6월 = 26.2Q 마지막 달 기준으로 종료 처리
 const MANUAL_VENDOR_TERMINATIONS=[
   {name:'주식회사 베러웨이시스템즈',note:'거래종료'},
-  {name:'(주)포텍',note:'26.2Q 거래종료'},
-  {name:'주식회사 유경',note:'26.2Q 거래종료'},
-  {name:'(주)파워',note:'26.2Q 거래종료'},
-  {name:'아이큐아이',note:'26.2Q 거래종료'},
-  {name:'모아산업',note:'26.2Q 거래종료'},
-  {name:'강천FNT',note:'거래종료 예정·26.4Q'}
+  {name:'(주)포텍',note:'거래종료'},
+  {name:'주식회사 유경',note:'거래종료'},
+  {name:'(주)파워',note:'거래종료'},
+  {name:'아이큐아이',note:'거래종료'},
+  {name:'모아산업',note:'거래종료'}
 ];
 const MANUAL_STOCKOUT_MONTH='2026.7';
 const MANUAL_STOCKOUT=[
@@ -3123,54 +3123,97 @@ function openSupplierDetailModal(supName) {
   body.innerHTML=built.html;
   initSupplierDetailChart(canvasId,built.chartData);
 }
-// 협력사 상세 콘텐츠(매입추이+발주제품 전체+이슈상세) — 모달/드릴다운 공용 빌더
+// 협력사 상세 콘텐츠(매입추이+발주제품 전체+이슈상세+발주내역) — 모달/드릴다운 공용 빌더
+let SUP_DRILL_MONTH={}; // supName -> 선택된 월(YYYY.M) 또는 'all'
+function setSupDrillMonth(supName,val) {
+  SUP_DRILL_MONTH[supName]=val;
+  const title=document.getElementById('modal-title');
+  const ov=document.getElementById('modal-overlay');
+  if (ov&&ov.classList.contains('open')&&title&&title.textContent==='협력사 상세 — '+supName) openSupplierDetailModal(supName);
+  if (document.getElementById('tb-sup')) renderSupTable(getSupSearchRows());
+}
 function buildSupplierDetail(supName,canvasId,footerHtml) {
   const mfgMap={}; if(D.sup) D.sup.forEach(r=>{mfgMap[r['협력사 이름']]=r['1. 제조유형']||'기타';});
   const orders=(D.order||[]).filter(r=>r['수주처']===supName&&!isStock(r));
-  // 연도별(25/26) 월별 매입추이
+  // 연도별(25/26) 월별 매입추이 + MoM
   const byM={};
   orders.forEach(r=>{ const bm=purchaseByMonth(r); Object.entries(bm).forEach(([m,a])=>{byM[m]=(byM[m]||0)+a;}); });
   const allMonths=Object.keys(byM).sort(monthCmp);
   const years=[...new Set(allMonths.map(m=>m.split('.')[0]))].sort();
   const monthNums=[...new Set(allMonths.map(m=>+m.split('.')[1]))].sort((a,b)=>a-b);
-  // 발주 제품 전체 — 발주 횟수 내림차순(0회 포함: sup.csv 아이템연결굿즈에는 있으나 발주 이력 없는 제품)
-  const byProd={};
-  orders.forEach(r=>{ const p=r['산출물']||r['발주번호']||''; byProd[p]=(byProd[p]||0)+1; });
-  const supRow=(D.sup||[]).find(r=>(r['협력사 이름']||'').trim()===supName);
-  const linkedGoods=supRow?(supRow['아이템연결굿즈_최희주']||'').split(',').map(s=>s.trim()).filter(Boolean):[];
-  const allProdNames=new Set([...Object.keys(byProd).filter(Boolean),...linkedGoods]);
-  const allProds=[...allProdNames].map(p=>[p,byProd[p]||0]).sort((a,b)=>b[1]-a[1]||a[0].localeCompare(b[0],'ko'));
+  const momOf=(mkey)=>{
+    const p=mkey.split('.'); const prev=prevYM(+p[0],+p[1]); const pkey=prev.y+'.'+prev.m;
+    const cur=byM[mkey]||0, pv=byM[pkey];
+    return (pv===undefined||pv===0)?null:((cur-pv)/pv*100);
+  };
+  const monthStripHtml=allMonths.map(mkey=>{
+    const pct=momOf(mkey);
+    const pctHtml=pct===null?'<span style="color:var(--text3)">—</span>':`<span style="color:${pct>=0?'var(--red)':'var(--green)'}">${pct>=0?'+':''}${pct.toFixed(0)}%</span>`;
+    return `<div style="flex-shrink:0;text-align:center;padding:6px 10px;border:1px solid ${mkey===(SUP_DRILL_MONTH[supName]||'')?'var(--blue)':'var(--border2)'};border-radius:6px;min-width:78px">
+      <div style="font-size:10px;color:var(--text3)">${esc(mkey)}</div>
+      <div style="font-size:12px;font-weight:600">${fmtW(byM[mkey]||0)}</div>
+      <div style="font-size:10px">${pctHtml}</div>
+    </div>`;
+  }).join('');
+  // 발주 제품 전체 — 발주 횟수/발주 수량 내림차순 (발주 이력 없는 제품은 제외)
+  const byProd={}, byProdQty={};
+  orders.forEach(r=>{ const p=r['산출물']||r['발주번호']||''; if(!p) return; byProd[p]=(byProd[p]||0)+1; byProdQty[p]=(byProdQty[p]||0)+pa(r['발주지시수량']); });
+  const allProds=Object.entries(byProd).sort((a,b)=>b[1]-a[1]||a[0].localeCompare(b[0],'ko'));
   const mfg=mfgMap[supName]||'—';
   const bizMap=getBizTypeMap(); const biz=bizMap[supName]||'—';
   // 이슈 상세 (project_name↔project 코드 매칭)
   const issues=getIssuesForSupplier(supName);
   const issueRate=orders.length?(issues.length/orders.length*100):0;
+  // 월별 필터 — 금액/이슈/발주내역 공통 적용
+  const selMonth=SUP_DRILL_MONTH[supName]||'all';
+  const nameArg=esc(supName).replace(/'/g,"\\'");
+  const monthSelectHtml=`<select onchange="setSupDrillMonth('${nameArg}',this.value)" style="font-size:12px;padding:4px 8px;border:1px solid var(--border2);border-radius:var(--r-sm)">
+    <option value="all"${selMonth==='all'?' selected':''}>전체 기간</option>
+    ${allMonths.map(m=>`<option value="${m}"${selMonth===m?' selected':''}>${esc(m)}</option>`).join('')}
+  </select>`;
+  const selMonthSummary=selMonth!=='all'?(()=>{
+    const pct=momOf(selMonth);
+    const pctHtml=pct===null?'<span style="color:var(--text3)">전월 대비 데이터 없음</span>':`<span style="color:${pct>=0?'var(--red)':'var(--green)'}">전월 대비 ${pct>=0?'+':''}${pct.toFixed(1)}%</span>`;
+    return `<div style="margin-bottom:10px;font-size:13px;padding:8px 12px;background:var(--blue-light);border-radius:var(--r-sm)"><b>${esc(selMonth)} 매입액 ${faFull(byM[selMonth]||0)}</b> · ${pctHtml}</div>`;
+  })():'';
+  const filteredIssues=selMonth==='all'?issues:issues.filter(r=>pIssueMonth(r)===selMonth);
+  const filteredOrders=(selMonth==='all'?orders:orders.filter(r=>Object.keys(purchaseByMonth(r)).includes(selMonth)))
+    .slice().sort((a,b)=>{const da=parseAnyDate(a['과업지시일자']),db=parseAnyDate(b['과업지시일자']); return (db?db.getTime():0)-(da?da.getTime():0);});
   const html=`
-    <div style="display:flex;gap:12px;margin-bottom:14px;font-size:13px;flex-wrap:wrap">
+    <div style="display:flex;gap:12px;margin-bottom:14px;font-size:13px;flex-wrap:wrap;align-items:center">
       <span class="tag ${mfg==='턴키제작'?'tag-turnkey':mfg==='외주용역'?'tag-service':'tag-gray'}">${mfg}</span>
       <span style="color:var(--text3)">업태: ${esc(biz)}</span>
       <span style="color:var(--text3)">총 발주 ${orders.length}건</span>
       <span style="color:${issueRate>=10?'var(--red)':'var(--text3)'}">이슈율 ${issueRate.toFixed(1)}% (${issues.length}건)</span>
+      <span style="margin-left:auto;display:flex;gap:6px;align-items:center;font-size:12px;color:var(--text3)">월별 필터 ${monthSelectHtml}</span>
     </div>
+    ${selMonthSummary}
     <div style="font-size:14px;font-weight:600;margin-bottom:8px">연도별 매입추이 (${years.join(', ')||'데이터 없음'})</div>
+    <div style="display:flex;gap:8px;overflow-x:auto;padding-bottom:6px;margin-bottom:8px">${monthStripHtml||'<span style="font-size:12px;color:var(--text3)">데이터 없음</span>'}</div>
     <div class="ch" style="height:200px;margin-bottom:8px"><canvas id="${canvasId}"></canvas></div>
     <div style="font-size:14px;font-weight:600;margin:16px 0 8px">발주 제품 전체 (발주 횟수 내림차순, ${allProds.length}개)</div>
     <div style="max-height:280px;overflow-y:auto">
-    <table class="tbl"><thead><tr><th class="rank">#</th><th>제품명</th><th class="num">발주 횟수</th></tr></thead><tbody>
-    ${allProds.map(([p,c],i)=>`<tr><td class="rank">${i+1}</td><td style="font-size:13px">${esc(crop(p,40))}</td><td class="num" style="font-size:13px${c===0?';color:var(--text3)':''}">${c}회</td></tr>`).join('')||emptyRow(3,'제품 이력 없음')}
+    <table class="tbl"><thead><tr><th class="rank">#</th><th>제품명</th><th class="num">발주 횟수</th><th class="num">발주 수량</th></tr></thead><tbody>
+    ${allProds.map(([p,c],i)=>`<tr><td class="rank">${i+1}</td><td style="font-size:13px">${esc(crop(p,40))}</td><td class="num" style="font-size:13px">${c}회</td><td class="num" style="font-size:13px">${fmtN(byProdQty[p]||0)}개</td></tr>`).join('')||emptyRow(4,'발주 이력 없음')}
     </tbody></table>
     </div>
-    <div style="font-size:10px;color:var(--text3);margin-top:4px">※ 발주 횟수 = 발주_RAW 산출물 기준 · 0회 = sup.csv 아이템연결굿즈(최희주)에는 연결돼 있으나 발주 이력이 없는 제품</div>
-    <div style="font-size:14px;font-weight:600;margin:16px 0 8px">이슈 상세 (${issues.length}건)</div>
+    <div style="font-size:14px;font-weight:600;margin:16px 0 8px">발주내역 (${filteredOrders.length}건${selMonth!=='all'?' · '+esc(selMonth):''})</div>
+    <div style="max-height:280px;overflow-y:auto">
+    <table class="tbl"><thead><tr><th class="rank">#</th><th>발주번호</th><th>산출물</th><th class="num">발주수량</th><th class="num">공급가액</th><th>과업지시일자</th></tr></thead><tbody>
+    ${filteredOrders.slice(0,50).map((r,i)=>`<tr><td class="rank">${i+1}</td><td class="mono" style="font-size:12px">${esc(r['발주번호']||'')}</td><td style="font-size:13px">${esc(crop(r['산출물']||'',30))}</td><td class="num" style="font-size:13px">${fmtN(pa(r['발주지시수량']))}개</td><td class="num" style="font-size:13px">${faFull(pa(r['공급가액']))}</td><td style="font-size:13px">${esc(r['과업지시일자']||'—')}</td></tr>`).join('')||emptyRow(6,'발주 이력 없음')}
+    </tbody></table>
+    </div>
+    ${filteredOrders.length>50?`<div style="font-size:10px;color:var(--text3);margin-top:4px">최근 50건만 표시 (전체 ${filteredOrders.length}건)</div>`:''}
+    <div style="font-size:14px;font-weight:600;margin:16px 0 8px">이슈 상세 (${filteredIssues.length}건${selMonth!=='all'?' · '+esc(selMonth):''})</div>
     <table class="tbl"><thead><tr><th class="rank">#</th><th>입하일</th><th>제품</th><th>유형</th><th>내용</th><th>대응</th></tr></thead><tbody>
-    ${issues.slice(0,30).map((r,i)=>{
+    ${filteredIssues.slice(0,30).map((r,i)=>{
       const content=r['품질이슈내용']||r['수량이슈내용']||r['운영이슈내용(by물류)']||'';
       const response=r['품질등급의견판단사유_SCM']||r['수량이슈대응방안']||r['운영이슈개선방안_SCM']||'';
       return `<tr><td class="rank">${i+1}</td><td style="font-size:13px">${r['실제입하일']||r['입하예정일']||'—'}</td><td style="font-size:13px">${esc(crop(r['입고물품']||r['item (통합) (from order)']||r['project_name']||'',25))}</td><td>${catTags(r['이슈카테고리']||'')}</td><td style="font-size:13px;max-width:160px">${esc(crop(content,45))}</td><td style="font-size:13px;max-width:160px;color:var(--text2)">${response?esc(crop(response,45)):'—'}</td></tr>`;
     }).join('')||emptyRow(6,'이슈 이력 없음')}
     </tbody></table>
-    ${issues.length>30?`<div style="font-size:10px;color:var(--text3);margin-top:4px">최근 30건만 표시 (전체 ${issues.length}건)</div>`:''}
-    <div style="font-size:10px;color:var(--text3);margin-top:8px">※ 이슈 귀속 = 이슈_RAW project_name ↔ 발주_RAW project 코드 접두어 매칭(추정치, 프로젝트 코드 불일치 시 누락 가능)</div>
+    ${filteredIssues.length>30?`<div style="font-size:10px;color:var(--text3);margin-top:4px">최근 30건만 표시 (전체 ${filteredIssues.length}건)</div>`:''}
+    <div style="font-size:10px;color:var(--text3);margin-top:8px">※ 이슈 귀속 = 이슈_RAW project_name ↔ 발주_RAW project 코드 접두어 매칭(추정치, 프로젝트 코드 불일치 시 누락 가능) · 발주내역 월 필터 = 세금계산서작성월 기준</div>
     ${footerHtml||''}`;
   return {html,chartData:{byM,years,monthNums}};
 }
