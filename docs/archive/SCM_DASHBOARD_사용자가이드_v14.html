@@ -40,11 +40,19 @@
     <li><b>파트장님 작업(v13) 포함</b>: 발주 진행현황 탭, 기간 통합 선택, 이슈 3단 상세, 고객인지이슈 수기입력 등 v13의 모든 기능이 이번 버전에 그대로 포함되어 있습니다.</li>
   </ul>
 </div>
+<div style='max-width:900px;margin:20px auto;padding:18px 24px;border:2px solid #0a6e45;border-radius:8px;background:#e0f5ec;font-family:sans-serif'>
+  <div style='font-size:15px;font-weight:800;color:#0a6e45;margin-bottom:10px'>🆕 추가 변경 내역 (2026.07.15)</div>
+  <ul style='font-size:12.5px;line-height:1.9;color:#334155;margin:0;padding-left:18px'>
+    <li><b>월간 공지사항 카드 신규</b>: 종합 현황 화면 맨 위에 선택한 월 기준으로 졸업 제품·출시 제품(goods_master.csv)·품절 제품(stockout_list)·신규/거래종료 협력사(sup.csv 월간 스냅샷 비교)를 자동 집계해 보여줍니다(§13 참고).</li>
+    <li><b>협력사 목록 — 모달 대신 드릴다운으로 변경</b>: 협력사 현황 탭에서 협력사명을 클릭하면 더 이상 팝업이 뜨지 않고, 그 행 바로 아래에 상세 내용이 펼쳐집니다(다시 클릭하면 접힘, 여러 곳을 동시에 펼쳐도 됩니다). 협력사명을 검색해서 결과가 1곳으로 좁혀지면 자동으로 펼쳐집니다(§7 참고).</li>
+    <li><b>협력사 상세 — 월별 매입금액·MoM, 발주내역, 월별 필터 신규</b>: 매입추이 그래프 위에 월별 금액과 전월 대비 증감률이 함께 표시되고, "발주 제품 전체"는 실제 주문 이력이 있는 제품만(발주 수량도 함께) 보여줍니다. 월별 필터를 선택하면 그 달의 매입액·발주내역(개별 발주 목록)·이슈 상세만 걸러서 볼 수 있습니다.</li>
+  </ul>
+</div>
 <div class="container">
   <h1>SCM 통합운영 대시보드</h1>
   <p style="font-size:15px;font-weight:600;color:#555">사용자 가이드</p>
   <div class="meta">
-    v14 | 2026-07-14 | SCM실 구매전략파트 · 외주생산파트<br>
+    v14 | 2026-07-15 | SCM실 구매전략파트 · 외주생산파트<br>
     배포: https://nanyounglee.github.io/SCMDASHBOARD/
   </div>
 
@@ -59,7 +67,8 @@
     <tr><th>파트</th><th>파일</th><th>고정 파일명</th><th>용도</th></tr>
     <tr><td rowspan="6"><span class="badge b-purple">외주생산</span></td><td>발주 RAW</td><td><code>order.csv</code></td><td>발주, 매입, 납기, 비용 KPI, 제품별 발주수량 추이</td></tr>
     <tr><td>이슈 RAW</td><td><code>issue.csv</code></td><td>이슈, 품질, 재작업 KPI, 제품×협력사 이슈율 <span class="badge b-red">v14</span> 입고물품 컬럼 포함</td></tr>
-    <tr><td>공급망 RAW</td><td><code>sup.csv</code></td><td>협력사, 하도급법 위험</td></tr>
+    <tr><td>공급망 RAW</td><td><code>sup.csv</code></td><td>협력사, 하도급법 위험, <span class="badge b-green">신규</span> 월간 공지사항의 신규/거래종료 협력사 비교(§13)</td></tr>
+    <tr><td><span class="badge b-green">신규</span> 굿즈마스터(졸업/출시)</td><td><code>goods_master.csv</code></td><td>월간 공지사항의 졸업/출시 제품(§13) — Airtable Sincerely DB "1. goods" 뷰</td></tr>
     <tr><td>고객인지 이슈 RAW</td><td><code>ci.csv</code></td><td>고객인지 이슈 KPI, <span class="badge b-red">v14</span> 협력사 검색 매칭</td></tr>
     <tr><td>분기별평가</td><td>(수동 업로드)</td><td>공급망 포트폴리오 Tier/등급(§5)</td></tr>
     <tr><td><span class="badge b-blue">v11</span> 코스트베이스(파츠리스트)</td><td><code>parts.csv</code></td><td>발주 상세분석의 DB원가비교 탭(§3)</td></tr>
@@ -116,14 +125,18 @@
   <p>기존 A/B/C/D 등급은 그대로 함께 표시됩니다. <span class="badge b-red">v13</span> 평가 기준이 월간리포트 정식 기준(2026.07)으로 통일되어, 반기 누적 실적으로 계산하고 예외·대체 항목이 비어있으면 1점, 반기 발주가 0건이면 D등급으로 고정됩니다.</p>
   <div class="tip"><b>기능:</b> "이번 달 발주실적 있는 협력사만 보기" 체크박스로 비활성 협력사를 걸러낼 수 있고, C/D등급 협력사는 화면 하단 "변경검토 리스트"에 사유와 함께 별도로 정리됩니다.</div>
 
-  <h2>7. 협력사 현황 — 상세 모달 <span class="badge b-blue">v12 확장 · v13 개월수 표기</span></h2>
-  <p>협력사명을 클릭하면 뜨는 상세창에 아래가 표시됩니다.</p>
+  <h2>7. 협력사 현황 — 목록 드릴다운 <span class="badge b-green">2026.07.15 모달→드릴다운 전환</span></h2>
+  <p>협력사명을 클릭하면 <b>더 이상 팝업(모달)이 뜨지 않고</b>, 그 행 바로 아래에 상세 내용이 펼쳐집니다(▸ 클릭 시 펼침, ▾ 클릭 시 접힘). 여러 협력사를 동시에 펼쳐 비교할 수 있습니다. 상단 "협력사명 검색" 창에 이름을 입력해 결과가 <b>1곳으로 좁혀지면 자동으로 펼쳐집니다.</b></p>
+  <p>펼쳐진 상세에 표시되는 내용:</p>
   <ul>
-    <li><b>연도별 매입추이</b> — 25년/26년 등 연도별 매입금액을 선 그래프로 비교</li>
-    <li><b>이슈 상세</b> — 해당 협력사와 관련된 이슈를 최대 30건까지 표로 표시</li>
-    <li><b><span class="badge b-red">v13</span> 발주 거래 개월수</b> — 26년 기준 몇 개월 거래했는지(예: 7월 기준 7/7), 2개월 이상이면 "활성" 표기. 활성 카드 클릭 시 필터도 가능합니다.</li>
+    <li><b>월별 필터</b> — 우측 상단 드롭다운에서 특정 월을 선택하면, 그 달의 매입액(전월 대비 증감률 포함)·발주내역·이슈 상세만 걸러서 볼 수 있습니다. "전체 기간"으로 되돌리면 전체 이력이 다시 보입니다.</li>
+    <li><b>연도별 매입추이</b> — 25년/26년 등 연도별 매입금액을 선 그래프로 비교. 그래프 위에 <b>월별 금액과 전월 대비(MoM) 증감률</b>이 카드 형태로 나열됩니다(선택한 월은 파란 테두리로 강조).</li>
+    <li><b>발주 제품 전체</b> — 실제 주문 이력이 있는 제품만 발주 횟수 내림차순으로 나열하고, 옆에 <b>발주 수량</b>도 함께 표시합니다(주문 이력이 없는 제품은 목록에서 제외됩니다).</li>
+    <li><b>발주내역</b> — 개별 발주 건(발주번호·산출물·발주수량·공급가액·과업지시일자)을 최근순으로 나열. 월별 필터를 선택하면 그 달 건만 보입니다.</li>
+    <li><b>이슈 상세</b> — 해당 협력사와 관련된 이슈를 최대 30건까지 표로 표시(월별 필터 적용 시 해당 월 건만).</li>
+    <li><b>발주 거래 개월수</b> — 26년 기준 몇 개월 거래했는지(예: 7월 기준 7/7), 2개월 이상이면 "활성" 표기. 활성 카드 클릭 시 필터도 가능합니다.</li>
   </ul>
-  <p>"가장 빈번한 발주 제품 Top 3" 드릴다운은 변경되지 않았습니다.</p>
+  <div class="tip"><b>참고:</b> 매입 현황 탭 등 다른 화면에서 협력사명을 클릭했을 때 뜨는 상세 팝업은 그대로 유지됩니다 — 모달 → 드릴다운 전환은 "협력사 현황" 탭의 협력사 목록에만 적용됩니다.</div>
   <div class="warn"><b>참고:</b> 이슈 상세는 이슈 데이터에 협력사명이 직접 기록돼 있지 않아 프로젝트 코드로 추정 매칭한 결과입니다. 드물게 코드 표기가 다른 건은 상세에서 누락될 수 있습니다.</div>
 
   <h2>8. 매출 분석 — 제품별 발주수량 추이 <span class="badge b-blue">v12</span></h2>
@@ -148,6 +161,7 @@
     <li>코스트베이스(<code>parts.csv</code>)는 파츠 단가가 바뀔 때만 갱신하면 되며, 매주 갱신하지 않아도 다른 화면에는 영향이 없습니다.</li>
     <li><span class="badge b-red">v14</span> 큰 CSV 파일은 채팅으로 붙여넣기보다 로컬 <code>CSV/</code> 폴더에 직접 저장하는 것을 권장합니다 — 대용량 텍스트를 채팅으로 옮기면 일부 문자가 손상될 위험이 있습니다.</li>
     <li><span class="badge b-red">v14</span> 원본 CSV의 컬럼(헤더)명이 추가/변경되면 <code>docs/CHANGELOG_v{N}.md</code>에 남겨서 팀에 공유합니다.</li>
+    <li><span class="badge b-green">신규</span> 거래처(<code>sup.csv</code>)를 매달 새로 받아 교체할 때는, 새 파일을 덮어쓰기 전에 <code>archive_csv.ps1</code>을 먼저 실행하세요 — 교체 직전 상태를 <code>CSV_BANK/sup_YYYY_MM.csv</code>로 자동 스냅샷 저장해, 다음 달 월간 공지사항에서 신규/거래종료 협력사를 비교할 수 있게 해줍니다(§13).</li>
   </ul>
 
   <h2>12. 문제 확인</h2>
@@ -161,10 +175,22 @@
     <tr><td>구매 재고 화면이 비어 있음</td><td>재고 사전집계 CSV 3종이 <code>CSV/</code> 폴더에 있는지, 파일명이 정확한지 확인합니다.</td></tr>
     <tr><td>로컬 파일로 열면 자동 로드가 안 됨</td><td>브라우저 보안 정책 때문에 <code>file://</code> 자동 로드가 막힐 수 있습니다. GitHub Pages URL에서 확인하거나 직접 업로드합니다.</td></tr>
     <tr><td>고객인지이슈가 협력사 검색에 안 잡힘</td><td>ci.csv의 프로젝트명이 order.csv의 project 값과 일치하는지, 관련제품 표기가 산출물명과 충분히 유사한지 확인합니다(§9).</td></tr>
+    <tr><td>월간 공지사항의 신규/거래종료 협력사가 항상 "비교할 이전 스냅샷 없음"으로 뜸</td><td><code>CSV_BANK/</code>에 지난달 <code>sup_YYYY_MM.csv</code> 스냅샷이 있는지 확인합니다. 매달 최소 1번은 새 명단을 반영하기 전에 <code>archive_csv.ps1</code>을 실행해야 스냅샷이 쌓입니다(§11).</td></tr>
   </table>
 
+  <h2>13. 월간 공지사항 <span class="badge b-green">2026.07 신규</span></h2>
+  <p>종합 현황 화면 맨 위에서 선택한 월 기준으로 아래 5가지를 자동 집계해 카드로 보여줍니다.</p>
+  <table>
+    <tr><th>카드</th><th>기준</th></tr>
+    <tr><td>🎓 졸업 제품 / 🚀 출시 제품</td><td><code>goods_master.csv</code>의 졸업일·출시일이 선택한 월에 속하는 제품</td></tr>
+    <tr><td>🚫 품절 제품</td><td><code>stockout_list.csv</code>의 판매상태(품절예정·일시품절·의도적/비의도적 품절)+변경일이 선택한 월인 항목. "PT번호-제품명"만 간단히 표시됩니다.</td></tr>
+    <tr><td>🆕 신규 협력사 / 🔚 거래종료 협력사</td><td><code>sup.csv</code>의 이번 달 명단과 <code>CSV_BANK/sup_YYYY_MM.csv</code>(직전 달 스냅샷)를 협력사 이름 기준으로 비교 — 이번 달에 새로 등장한 이름은 신규, 지난달엔 있었는데 이번 달 명단에서 빠진 이름은 거래종료로 표시됩니다.</td></tr>
+  </table>
+  <div class="tip"><b>수동 등록 예외:</b> 협력사 상태변경일 필드가 따로 없어 스냅샷 비교로 못 잡아내는 건(예: 명단엔 남아있지만 실제로는 거래종료된 곳)은 담당자가 직접 목록에 추가해 표시할 수 있습니다. 특정 달에만 보이도록 월을 지정할 수도 있습니다.</div>
+  <div class="warn"><b>참고:</b> 신규/거래종료 협력사 비교는 스냅샷이 최소 2개월치 쌓여야 동작합니다 — 처음 도입한 달에는 "비교할 이전 스냅샷 없음"으로 표시되는 것이 정상입니다.</div>
+
   <div class="meta" style="margin-top:24px;padding-top:10px;border-top:1px solid #e0e0dc">
-    문서 기준: index.html (scm_dashboard_v14.html) v14 (2026-07-14) · 검색 필터 전면 수정 · 고객인지이슈 검색 매칭 · 필터 적용 CSV 다운로드 · v13(발주진행현황/기간통합선택/이슈3단구성) 병합
+    문서 기준: index.html (scm_dashboard_v14.html) v14 (2026-07-15) · 월간 공지사항(졸업/출시/품절/신규·거래종료 협력사) · 협력사 목록 드릴다운 전환 · 협력사 상세 월별 매입금액·MoM·발주내역·월별 필터 신규 · (2026-07-14 이전 변경 이력은 위 배너 및 §1~12 참고)
   </div>
 </div>
 </body>
