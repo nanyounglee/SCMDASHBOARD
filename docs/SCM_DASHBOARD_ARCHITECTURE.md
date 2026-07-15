@@ -1,6 +1,6 @@
 # SCM 통합운영 대시보드 — 프로젝트 설계 아키텍처
 
-> 버전: v14 | 갱신일: 2026-07-14 | 작성: 이난영 / Claude AI  
+> 버전: v15 | 갱신일: 2026-07-15 | 작성: 이난영 / Claude AI  
 > 대상: 구매전략파트 · 외주생산파트 팀원 공유, 유지보수, 버그 대응
 
 ---
@@ -24,7 +24,7 @@
 | 파일 | 위치 |
 |---|---|
 | 운영 원본 | `index.html` (GitHub Pages가 직접 서빙) |
-| 버전 스냅샷 | `scm_dashboard_v14.html` (index.html 복사본, 이전 버전은 `archive/`) |
+| 버전 스냅샷 | `scm_dashboard_v15.html` (index.html 복사본, 이전 버전은 `archive/`) |
 | GitHub Pages | https://nanyounglee.github.io/SCMDASHBOARD/ |
 | 레포지토리 | https://github.com/nanyounglee/SCMDASHBOARD |
 
@@ -508,6 +508,50 @@ function getCiRowSuppliers(r) {
 // 별도 재계산 없이 렌더링된 DOM이 소스이므로 검색·기간 필터가 화면과 100% 일치.
 ```
 
+### 4-24. 월간 공지사항 — 자동집계 + 스냅샷 diff + 수동 예외 (v14 추가분, 난영님 원격 반영)
+```javascript
+function renderMonthlyNotice() {
+  // goods_master.csv 졸업일/출시일, stockout_list.csv 판매상태+변경일을
+  // 선택 기준으로 필터해 졸업/출시/품절 제품 3개 박스 렌더
+  // + 협력사 변동(신규/거래종료) 박스
+}
+// 협력사 변동: sup.csv 이번 달 명단 vs 직전 스냅샷(CSV_BANK/sup_YYYY_MM.csv, archive_csv.ps1이 매달 저장)을
+// 협력사 이름 기준으로 diff(loadSupRosterDiff/diffSupNames) — 상태변경일 필드가 없어 명단 증감으로 판별
+// 스냅샷 diff로 못 잡는 예외는 MANUAL_VENDOR_TERMINATIONS/MANUAL_STOCKOUT 하드코딩 리스트로 보강
+```
+> §4-26에서 이 함수의 기간 판정 방식이 SEL_MONTH 단일 비교 → SEL_DATE_RANGE 정확 매칭으로 교체됨.
+
+### 4-25. 기간선택 통합 — 주별/월별/분기별/기간지정 (v15 신규)
+```javascript
+let PERIOD_UNIT='month'; // 'week'|'month'|'quarter'|'custom'
+let SEL_DATE_RANGE=null; // {from:Date, to:Date} — 실제 일자 정밀 비교의 단일 소스
+// selMonth/selRange/selWeek/selCustomRange 모두 SEL_DATE_RANGE를 설정한 뒤,
+// deriveMonthCompat(from,to)로 레거시 SEL_MONTH/SEL_RANGE(월 문자열 기반)를 역산해
+// 기존 ~80개 호출부를 무수정으로 유지.
+function inSelDateRange(dateStr) {
+  // parseAnyDate(dateStr)가 SEL_DATE_RANGE.from~to 사이인지 정확한 날짜로 비교
+}
+// FROZEN_SECTIONS(13개 화면)는 동일 선택기 UI를 보여주되 month 외 단위 탭을 비활성화
+// (세부 필터 로직 업그레이드는 다음 버전 과제) — SOP_SECTIONS(6개, 구매전략파트)는
+// 이미 자체 선택기(renderAggPeriodControls)가 있어 이 전역 바 자체를 숨김.
+// MoM/YoY 배지 라벨은 periodUnitAdjacentLabel()로 단위별 전환(WoW/MoM/QoQ, 기간지정은 YoY만).
+// 매입금액(purchaseByMonth)은 세금계산서작성월이 월 단위로만 존재해 selPeriodMonths()로 항상 월 스냅.
+```
+
+### 4-26. 월간 공지사항 — 정확한 날짜/다중월 합산으로 개선 (v15)
+```javascript
+// §4-24의 renderMonthlyNotice()를 SEL_MONTH 단일 월 비교에서 아래로 교체:
+//   - 졸업/출시/품절: monthKeyOfDate(date)===SEL_MONTH → inSelDateRange(date) (정확한 날짜 비교)
+//   - 협력사 변동/수동 예외 리스트: monthsTouchedBy(SEL_DATE_RANGE)가 반환하는
+//     선택 구간에 걸치는 모든 달에 대해 개별 스냅샷 diff 후 Set으로 합산
+// loadSupRosterDiff()의 stillSelected() 가드도 단일 SEL_MONTH 비교 대신
+// monthsTouchedBy(SEL_DATE_RANGE).includes(y+'.'+m)로 교체 — 다중월 비동기 fetch 완료 시
+// 이미 다른 기간으로 넘어갔으면 재렌더 생략.
+```
+> 배경: 기간지정(custom) 기본값이 "최근 7일"이라 SEL_MONTH가 항상 최신월로 근사되어,
+> MANUAL_VENDOR_TERM_MONTH='2026.6' 같은 특정월 하드코딩 예외가 5~7월처럼 6월을 포함하는
+> 임의 구간에서 보이지 않는 문제가 있었음 — 팀원 리포트로 발견.
+
 ---
 
 ## 5. UI 섹션 구조 (22개 페이지)
@@ -515,7 +559,9 @@ function getCiRowSuppliers(r) {
 ```
 sidebar 네비게이션
 ├── [대시보드]
-│   └── 종합 현황 (overview)
+│   └── 종합 현황 (overview) — 기간 단위 4탭(주별/월별/분기별/기간지정) 지원[v15, §4-25]
+│       ├── 월간 공지사항[v14 추가분, §4-24] — 졸업/출시/품절 제품, 신규/거래종료 협력사 자동집계
+│       │     (v15: 정확한 날짜·다중월 합산으로 개선, §4-26)
 │       ├── KPI 5개 (발주TASK, 매입금액, 이슈건수, 긴급발주, 고객인지이슈) + YoY
 │       ├── 매입 추이 (월별/주별 · 합산/협력사/업태/굿즈코드)
 │       ├── 이슈 유형 분포 (도넛)
@@ -591,6 +637,8 @@ const FILE_SIGNATURES = {
   dashboard_sku_snapshot:   { must: ['period_unit','period_key','parts_no','parts_name','inv_amount'] },
   // [v11 신규] 코스트베이스(파츠리스트) — DB원가비교 탭(§4-10) 전용
   parts: { must: ['파츠명 (Long ver)','굿즈 연결 현황 (from item)','파츠 유형'] },
+  // [v14 신규] 굿즈마스터 — 월간 공지사항 졸업/출시 제품(§4-24) 전용
+  goods_master: { must: ['Goods Name','Goods Code','굿즈 Status','출시일','졸업일'] },
   purchase_review: { must: ['REVIEW_ID','파츠번호','결정상태'] },
   season_plan:     { must: ['굿즈명','옵션','계획구분'] },
   inv_weekly:      { must: ['파츠번호','기준일','재고수량','재고금액'] },
@@ -633,62 +681,67 @@ const FILE_SIGNATURES = {
 | v12 | (로컬→PC 배포) | 같은 날 연속 작업. 제품별 발주수량 추이로 기준 교체(§4-14), KPI 목표값 리포트 수치 동기화 + 실패비용율 신규(§4-15), 공급망 포트폴리오 QCD×관계 Tier로 기준 교체(§4-11) + 활성필터·변경검토리스트, 협력사 상세모달 연도별 매입추이+이슈상세 추가(§4-12, 기존 Top3 드릴다운 유지), 이슈 탭에 제품×협력사 이슈율 매트릭스 신규(§4-13) |
 | v13 (원격, 파트장님) | `af0ece0` | 발주 진행현황 탭 신규(주간 CSV 비교, §4-17), 기간 통합 선택 SEL_RANGE(§4-16), 재고생산 TASK·매입 별도 KPI 카드, 검색어를 이슈추이·도넛·매입상세 모달에 반영(단, 일부 모달은 검색 필터 결합이 누락된 상태로 병합 전까지 남아있었음 — v14에서 §4-22로 완결), 이슈 상세 3단 구성(추이차트+제품×협력사 매트릭스), 고객인지이슈 대응내용·실패비용 수기입력(CI_OVERRIDES, §4-18), GitHub 직접 커밋 연동(§4-19), 주간 매출결산 CSV 연동, 공급망 포트폴리오 평가기준 단일화, 협력사 발주 거래개월수·활성필터, `archive_csv.ps1`·`deploy_v13.ps1` |
 | **v14** | `0cd0407` (병합 커밋) | 같은 날 별도 세션에서 진행되던 작업과 v13(원격 force-push)이 서로 모르는 채 분기 — 병합으로 통합. 세션측 변경: 검색 필터 누락 지점 전수 수정(발주TASK 상세·매입추이 월클릭 상세·이슈 서브탭·이슈유형도넛·월별이슈추이, §4-22), 고객인지이슈 프로젝트범위 매칭 신규(§4-20), issue.csv `입고물품` 컬럼 반영(§4-21), 필터 적용 CSV 다운로드 신규(§4-23), ci.csv 인코딩 CP949→UTF-8 수정. 겹치는 함수(발주TASK 모달·이슈 서브탭 등)는 v13의 `inSelPeriod()`/3단 구성 로직에 세션측 `matchesSearch()` 검색 필터를 결합하는 방식으로 수동 병합. |
-| **v14 (추가분)** | (로컬→PC 배포) | 위 v14 병합과 별도로 로컬에서 진행되던 작업 반영. 종합 현황(overview)에 **월간 공지사항** 카드 신규 — 졸업 제품(goods_master `졸업일`), 출시 제품(goods_master `출시일`), 품절 제품(stockout_list `판매상태`+`변경일`)을 선택 월 기준 자동 집계. 신규 CSV 슬롯 `goods_master`(Airtable Sincerely DB "1. goods" 뷰: Goods Name/Goods Code/굿즈 Status/출시일/졸업일) 추가. 협력사 거래종료는 Airtable에 상태변경일 필드가 없고(현재 거래종료 상태가 256/약 390곳으로 대부분을 차지) "이번 달 신규"를 가려낼 수 없어 당초 제외했으나, `archive_csv.ps1`이 매달 아카이브 시점의 `sup.csv`를 `CSV_BANK/sup_YYYY_MM.csv`로 스냅샷 저장하도록 확장하고 대시보드가 이번 달 명단(라이브 `sup.csv` 또는 해당 월 스냅샷) vs 직전 스냅샷을 **협력사 이름 기준으로 diff**하여 신규/거래종료 협력사를 공지사항에 표시하도록 후속 반영(상태변경일 필드 없이도 명단 증감으로 판별). 스냅샷 diff로 잡히지 않는 예외(현재 명단엔 남아있지만 실제로는 거래종료·품절인 건)를 위해 `MANUAL_VENDOR_TERMINATIONS`/`MANUAL_STOCKOUT` 하드코딩 리스트 신규 — 품절 건은 "(수동입력)" 표시로 구분, 거래종료 협력사는 26.2Q 종료분(포텍/유경/파워/아이큐아이/모아산업)·베러웨이시스템즈(거래종료)·강천FNT(거래종료 예정·26.4Q) 수동 반영. 자동 신규 협력사 비교는 임시 기준선(5월 명단)을 제거하고 다음 달 `archive_csv.ps1` 스냅샷부터 정식 계산되도록 초기화 |
+| **v14 (추가분, 난영님)** | `d64630e`~`0ee26eb` (원격 직접 푸시) | 위 v14 병합과 별도로 원격(origin/main)에 직접 반영된 작업. 종합 현황(overview)에 **월간 공지사항** 카드 신규 — 졸업 제품(goods_master `졸업일`), 출시 제품(goods_master `출시일`), 품절 제품(stockout_list `판매상태`+`변경일`)을 선택 월 기준 자동 집계(§4-24). 신규 CSV 슬롯 `goods_master`(Airtable Sincerely DB "1. goods" 뷰: Goods Name/Goods Code/굿즈 Status/출시일/졸업일) 추가. 협력사 거래종료는 Airtable에 상태변경일 필드가 없고(현재 거래종료 상태가 256/약 390곳으로 대부분을 차지) "이번 달 신규"를 가려낼 수 없어 당초 제외했으나, `archive_csv.ps1`이 매달 아카이브 시점의 `sup.csv`를 `CSV_BANK/sup_YYYY_MM.csv`로 스냅샷 저장하도록 확장하고 대시보드가 이번 달 명단(라이브 `sup.csv` 또는 해당 월 스냅샷) vs 직전 스냅샷을 **협력사 이름 기준으로 diff**하여 신규/거래종료 협력사를 공지사항에 표시하도록 후속 반영(상태변경일 필드 없이도 명단 증감으로 판별). 스냅샷 diff로 잡히지 않는 예외(현재 명단엔 남아있지만 실제로는 거래종료·품절인 건)를 위해 `MANUAL_VENDOR_TERMINATIONS`/`MANUAL_STOCKOUT` 하드코딩 리스트 신규 — 품절 건은 "(수동입력)" 표시로 구분, 거래종료 협력사는 26.2Q 종료분(포텍/유경/파워/아이큐아이/모아산업)·베러웨이시스템즈(거래종료)·강천FNT(거래종료 예정·26.4Q) 수동 반영. 자동 신규 협력사 비교는 임시 기준선(5월 명단)을 제거하고 다음 달 `archive_csv.ps1` 스냅샷부터 정식 계산되도록 초기화. 협력사 목록 드릴다운을 모달→인라인 확장으로 전환, 월별 매입금액/MoM 스트립·발주내역 테이블 추가 |
+| **v15** | (병합 후 로컬→PC 배포) | 같은 시점 별도 세션에서 진행되던 작업(로컬, 848958e 기준)과 위 v14 추가분(원격)이 서로 모르는 채 갈라져 있던 것을 `git merge`로 병합(겹치는 `nav()`/`refreshAll()` 자동 병합, 충돌 없음). 세션측 신규: 외주생산파트 핵심 화면(종합현황·발주·매입·이슈·고객인지이슈)의 기간 필터를 **주별/월별/분기별/기간지정 4탭**으로 통합(`PERIOD_UNIT`/`SEL_DATE_RANGE`, §4-25) — MoM/YoY 배지가 WoW/MoM/QoQ/YoY로 단위별 자동 전환, 매입금액은 세금계산서 원본이 월단위라 항상 월 스냅 유지, 아직 세부 로직 미지원인 13개 화면은 동일 UI에 월 외 탭만 비활성 처리("추후 반영" 툴팁). 월간 공지사항(§4-24)을 SEL_MONTH 단일 비교 → SEL_DATE_RANGE 정확 날짜/다중월 합산으로 개선(§4-26, 기간지정으로 5~7월을 잡아도 6월 거래종료 협력사가 보이도록 수정 — 팀원 리포트로 발견). |
 
 ### 파일 구조
 ```
 SCMDASHBOARD/
-├── index.html                       ← 운영 원본 (GitHub Pages 직접 서빙 · v14 · 약 6,008줄)
-├── scm_dashboard_v14.html           ← 현행 버전 스냅샷 (index.html 복사본)
-├── archive/                         ← 이전 버전 스냅샷 (v3~v13)
+├── index.html                       ← 운영 원본 (GitHub Pages 직접 서빙 · v15 · 약 6,483줄)
+├── scm_dashboard_v15.html           ← 현행 버전 스냅샷 (index.html 복사본)
+├── archive/                         ← 이전 버전 스냅샷 (v3~v14)
 ├── CSV/                             ← 자동 로드 대상 CSV
 │   ├── order.csv · issue.csv · sup.csv · ci.csv
 │   ├── stockout_list.csv · inv_weekly.csv · sales_monthly.csv
 │   ├── dashboard_period_summary.csv · dashboard_group_summary.csv · dashboard_sku_snapshot.csv  ← v10 신규
 │   ├── parts.csv                    ← v11 신규(코스트베이스, 수동 업로드 기본)
+│   ├── goods_master.csv             ← v14 신규(굿즈마스터, 월간 공지사항 졸업/출시 제품용, §4-24)
 │   ├── progress_연도_W주차.csv · project_연도_W주차.csv  ← v13 신규(발주 진행현황·주간 매출결산)
 │   ├── _manifest.json               ← key→파일명 매핑 (HTML 수정 없이 파일명 변경)
 │   └── (한글 원본 CSV — 보존용)
+├── CSV_BANK/                        ← v14 신규 — archive_csv.ps1이 매달 저장하는 sup.csv 월간 스냅샷(§4-24 diff 대상)
 ├── data/                            ← 영구 임베딩 JSON
 │   ├── parts_master.json · data_2025.json · cost_db.json
 │   └── progress_notes.json · ci_overrides.json  ← v13 신규(GitHub 연동 자동 커밋 대상)
 ├── docs/
-│   ├── SCM_DASHBOARD_ARCHITECTURE.md       ← 이 파일 (v14 갱신)
-│   ├── CHANGELOG_v14.md                    ← 버전별 변경 내역 (v14 신규, 팀 공유용)
+│   ├── SCM_DASHBOARD_ARCHITECTURE.md       ← 이 파일 (v15 갱신)
+│   ├── CHANGELOG_v15.md                    ← 버전별 변경 내역 (팀 공유용)
 │   ├── purchase_dashboard_migration_strategy.md  ← 구매파트 Apps Script 이식 전략 (v10 반영 현황 기준, v11 이후는 범위 밖)
-│   ├── SCM_DASHBOARD_로직설명_v14.html  ← 로직 설명서 (v14 갱신)
-│   ├── SCM_DASHBOARD_사용자가이드_v14.html  ← 사용자 가이드 (v14 갱신)
+│   ├── SCM_DASHBOARD_로직설명_v15.html  ← 로직 설명서 (v15 갱신)
+│   ├── SCM_DASHBOARD_사용자가이드_v15.html  ← 사용자 가이드 (v15 갱신)
 │   ├── SCM_KPI_리포트_2026Q2.xlsx
-│   └── archive/                     ← 구버전 (v13 이하 로직설명/사용자가이드/CHANGELOG, V4_로직설명_v7.html 등)
-├── deploy_v14.ps1                   ← 배포 스크립트 (git 자가복구 + 버전 정리 + 안전 동기화 + 문서/구파일 정리)
+│   └── archive/                     ← 구버전 (v14 이하 로직설명/사용자가이드/CHANGELOG, V4_로직설명_v7.html 등)
+├── deploy_v15.ps1                   ← 배포 스크립트 (git 자가복구 + 버전 정리 + 안전 동기화 + 문서/구파일 정리)
 ├── archive_csv.ps1                  ← v13 신규 — 주간 CSV(progress_/project_)는 최신 1개만 유지 후 CSV_BANK로 이동
 ├── .nojekyll                        ← Pages Jekyll 비활성화 (빌드 실패 방지)
 └── .claude/                         ← Claude 설정
 ```
 > `_merge_staging/`(v10 3-way 병합 1회성 산출물), `deploy_v10.ps1`, `merge_resolve_v10.ps1`은 v12 배포 시 정리(archive 이동 또는 삭제) 완료.
+> **v15 협업 이슈:** 로컬 `feature/period-filter` 브랜치가 원격에 직접 푸시된 v14 추가분(4개 커밋)을 모르는 채 갈라져 있었음 — 작업 시작 전 `git fetch origin && git log HEAD..origin/main`으로 뒤처짐 여부를 먼저 확인하는 습관 권장.
 
 ### 버전 규칙 (v7~)
 - **운영 원본은 `index.html`** — 수정 작업은 index.html에 직접, 로컬 확인은 수동 업로드 모드
-- **배포는 `deploy_v{N}.ps1`(현재 `deploy_v14.ps1`)** — 실행 시 자동으로:
+- **배포는 `deploy_v{N}.ps1`(현재 `deploy_v15.ps1`)** — 실행 시 자동으로:
   1. git 저장소 자가진단/복구 (index 손상, 잔류 lock)
   2. 한글 원본 CSV → 고정 영문명 복사
   3. index.html이 바뀐 경우에만 `scm_dashboard_v{N+1}.html` 스냅샷 생성 (버전 자동 카운트, 이전 버전 archive 이동)
   4. 커밋 → 원격이 앞서 있으면 rebase (구버전이 원격 최신을 덮어쓰는 사고 방지) → 푸시
 - `-Verify` 스위치: 푸시 90초 후 배포 페이지에 `autoLoadRaw` 포함 여부 자동 검증
-- **여러 담당자가 각자 브랜치에서 수정할 경우(v10, v14처럼) rebase 자동화가 실패할 수 있음** — 겹치는 함수를 수동 3-way 병합한 뒤(v10처럼 1회용 스크립트를 쓰거나, v14처럼 `git merge --no-commit`으로 충돌 지점을 직접 해소) 병합 커밋을 얹는 방식 사용. v14는 `scm_dashboard_v13.html`(스냅샷)이 항상 `index.html`과 바이트 동일하다는 성질을 이용해, index.html 충돌만 해소한 뒤 그 결과를 스냅샷에 그대로 복사하는 방식으로 중복 해소 작업을 줄였다.
+- **여러 담당자가 각자 브랜치에서 수정할 경우(v10, v14, v15처럼) rebase 자동화가 실패할 수 있음** — 겹치는 함수를 수동 3-way 병합한 뒤(v10처럼 1회용 스크립트를 쓰거나, v14/v15처럼 `git stash`+fast-forward+`git stash pop` 또는 `git merge --no-commit`으로 충돌 지점을 직접 해소) 병합 커밋을 얹는 방식 사용. v14는 `scm_dashboard_v13.html`(스냅샷)이 항상 `index.html`과 바이트 동일하다는 성질을 이용해, index.html 충돌만 해소한 뒤 그 결과를 스냅샷에 그대로 복사하는 방식으로 중복 해소 작업을 줄였다. v15는 로컬 미커밋 변경분을 `git stash`로 빼고 원격 4개 커밋을 fast-forward로 받은 뒤 `git stash pop`으로 재적용 — `nav()`/`refreshAll()` 겹치는 지점이 자동 3-way 병합으로 충돌 없이 해소됨.
 - **대시보드 버전 업 시 docs/ 문서(아키텍처 md, 로직설명, 사용자가이드, 이식전략 md)도 같은 커밋에서 갱신**
 - **v14부터**: 변경 시 `docs/CHANGELOG_v{N}.md`에 변경 내역을 1줄씩 기록해 팀 공유. 원본 Airtable/GSheets CSV의 **헤더(컬럼명)가 추가·변경되면 반드시 변경 내역에 명시**(예: issue.csv `입고물품` 컬럼 추가) — 다른 파트 CSV 갱신 담당자가 컬럼 의존 로직이 깨졌는지 확인할 수 있어야 한다.
+- **v15부터**: 여러 명이 같은 날 각자 세션/브랜치에서 작업할 수 있으니, 작업 시작 전 `git fetch origin && git log HEAD..origin/main`으로 원격에 아직 못 받은 커밋이 있는지 먼저 확인한다.
 
 ---
 
-## 9. 주간 업데이트 절차 (v14 · 자동 로드 기준)
+## 9. 주간 업데이트 절차 (v15 · 자동 로드 기준)
 
 ### 데이터 담당자 — 외주생산파트 (주 1회)
 | 단계 | 작업 | 비고 |
 |---|---|---|
-| 1 | Airtable에서 CSV Export | 발주_RAW, 이슈_RAW, 공급망_RAW, 고객인지이슈_RAW, 분기별평가, (v13) 진행현황·매출결산 |
+| 1 | Airtable에서 CSV Export | 발주_RAW, 이슈_RAW, 공급망_RAW, 고객인지이슈_RAW, 분기별평가, (v13) 진행현황·매출결산, (v14) 굿즈마스터 |
 | 2 | 프로젝트 폴더 `CSV/`에 저장 | 한글 원본명 그대로 저장해도 됨. 대용량 CSV는 채팅 붙여넣기보다 로컬 파일 직접 저장 권장(문자 손상 위험, v14) |
-| 3 | `deploy_v14.ps1` 실행 | 고정명 복사 + 커밋 + 푸시 자동. 또는 GitHub 웹에서 고정명 파일 직접 덮어쓰기 |
+| 3 | `deploy_v15.ps1` 실행 | 고정명 복사 + 커밋 + 푸시 자동. 또는 GitHub 웹에서 고정명 파일 직접 덮어쓰기 |
 | 4 | 1~3분 후 배포 확인 | `-Verify` 스위치 또는 브라우저 Ctrl+F5 |
 | 5 (v14) | 원본 CSV 헤더(컬럼명) 변경 시 `docs/CHANGELOG_v{N}.md`에 기록 후 팀 공유 | 예: issue.csv 입고물품 컬럼 추가 |
 
@@ -696,7 +749,7 @@ SCMDASHBOARD/
 | 단계 | 작업 | 비고 |
 |---|---|---|
 | 1 | GSheets S&OP Apps Script에서 `dashboard_period_summary`/`dashboard_group_summary`/`dashboard_sku_snapshot` 3종 생성·Export | 3종 모두 있어야 Agg 경로 작동. 하나라도 없으면 재고 화면이 레거시(inv_weekly 직접계산)로 폴백해 v10 이전 숫자와 달라질 수 있음 |
-| 2 | `CSV/`에 저장 후 `deploy_v14.ps1` 실행 | 외주생산파트와 동일 배포 경로 공유 |
+| 2 | `CSV/`에 저장 후 `deploy_v15.ps1` 실행 | 외주생산파트와 동일 배포 경로 공유 |
 | 3 | 배포 후 재고운영/품절상세/졸업검토 화면에서 도넛차트 3종·회전율 숫자 확인 | 기존 GSheets 화면과 동일 기준일로 1:1 대조 권장 |
 
 ### 접속자 (팀원)
@@ -720,5 +773,5 @@ SCMDASHBOARD/
 
 ---
 
-*문서 기준: index.html (scm_dashboard_v14.html) v14 (2026-07-14) · 약 6,008줄 — 원격 v13(파트장님) + 세션 검색필터/CI매칭 수정 병합*  
+*문서 기준: index.html (scm_dashboard_v15.html) v15 (2026-07-15) · 약 6,483줄 — 원격 v14 추가분(난영님, 월간 공지사항·협력사 드릴다운) + 세션 기간선택 통합(주별/월별/분기별/기간지정) 병합*  
 *대시보드 변경 시 이 문서도 함께 업데이트 바랍니다. 원본 CSV 헤더 변경 시 §8 버전 규칙에 따라 CHANGELOG에도 기록 바랍니다.*
