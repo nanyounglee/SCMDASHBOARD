@@ -2120,9 +2120,9 @@ function updatePurchaseTabs() {
 function issueRowCost(r){return getReworkCostForProject(r['project_name']);}
 function issueResponse(r){return r['품질등급의견판단사유_SCM']||'';}
 function updateIssueTabs() {
-  if (!D.issue||!SEL_MONTH) return;
+  if (!D.issue||!SEL_DATE_RANGE) return;
   const q=getSearchQuery();
-  const f=D.issue.filter(r=>pIssueMonth(r)===SEL_MONTH&&(!q||matchesSearch(r,q)));
+  const f=D.issue.filter(r=>issueInPeriod(r)&&(!q||matchesSearch(r,q)));
   const allHTML=f.map((r,i)=>{const rw=issueRowCost(r);const resp=issueResponse(r);return `<tr><td class="rank">${i+1}</td><td>${r['실제입하일']||r['입하예정일']||'—'}</td><td style="font-size:11px">${esc(r['project_name']||'')}</td><td style="font-size:11px">${esc(crop(r['입고물품']||r['item (통합) (from order)']||'',30))}</td><td>${r['프로젝트_발주자']||'—'}</td><td>${catTags(r['이슈카테고리']||'')}</td><td style="font-size:11px">${esc(crop(r['품질이슈내용']||r['수량이슈내용']||r['운영이슈내용(by물류)']||'',40))}</td><td style="font-size:11px;color:var(--text2);max-width:150px">${resp?esc(crop(resp,40)):'—'}</td><td class="num" style="${rw>0?'color:var(--red);font-weight:600':''}">${rw>0?faFull(rw):'0'}</td></tr>`;}).join('');
   setTbody('tb-iss-all',allHTML||emptyRow(9));
   const qHTML=f.filter(r=>(r['이슈카테고리']||'').includes('품질')).map((r,i)=>{const rw=issueRowCost(r);const resp=issueResponse(r);return `<tr><td class="rank">${i+1}</td><td>${r['실제입하일']||'—'}</td><td style="font-size:11px">${esc(r['project_name']||'')}</td><td style="font-size:11px">${esc(crop(r['입고물품']||r['item (통합) (from order)']||'',30))}</td><td>${r['프로젝트_발주자']||'—'}</td><td>${r['품질등급최초판정']||r['품질등급의견_SCM']||'—'}</td><td style="font-size:11px">${esc(crop(r['품질이슈내용']||'',40))}</td><td style="font-size:11px;color:var(--text2);max-width:150px">${resp?esc(crop(resp,40)):'—'}</td><td class="num" style="${rw>0?'color:var(--red);font-weight:600':''}">${rw>0?faFull(rw):'0'}</td></tr>`;}).join('');
