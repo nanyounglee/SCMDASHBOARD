@@ -121,7 +121,7 @@
 <table>
   <tr><th>구분</th><th>Key</th><th>파일명</th><th>출처</th><th>주기</th><th>필수 컬럼</th></tr>
   <tr><td rowspan="7"><span class="badge b-purple">외주생산</span></td><td>order</td><td>발주_RAW</td><td>Airtable SCM KPI → task-SCMKPI_Raw 뷰</td><td>주 1회</td><td>과업지시일자, 발주번호, 산출물, 공급가액, 수주처, 발주지시수량, 입하예정일, 입하확정일, 실제입하일, 취득원가, R) 판매가(최종), task_id, sync_itemdb, project</td></tr>
-  <tr><td>issue</td><td>이슈_RAW</td><td>Airtable SCM KPI → KPI_이슈_RAW 뷰</td><td>주 1회</td><td>이슈카테고리, 실제입하일, project_name, item (통합) (from order), <span class="badge b-red">v14</span> <code>입고물품</code>, 품질등급의견판단사유_SCM</td></tr>
+  <tr><td>issue</td><td>이슈_RAW</td><td>Airtable SCM KPI → KPI_이슈_RAW 뷰</td><td>주 1회</td><td>이슈카테고리, 실제입하일, project_name, item (통합) (from order), <span class="badge b-red">v14</span> <code>입고물품</code>, 품질등급의견판단사유_SCM, <span class="badge b-green">v15.1</span> <code>품질이슈내용업데이트</code>, <code>운영이슈내용 업데이트</code></td></tr>
   <tr><td>sup</td><td>공급망_RAW</td><td>Airtable 공급망 관리 → 공급망_RAW 뷰</td><td>월 1회</td><td>협력사 이름, 1. 제조유형, 업태, 하도급계약 대상여부 · <span class="badge b-amber">v14</span> 월간 공지사항 신규/거래종료 협력사 판정용 월간 스냅샷 비교(§3-19b)</td></tr>
   <tr><td>ci</td><td>고객인지이슈_RAW</td><td>Airtable SCM KPI → 고객인지이슈_RAW 뷰</td><td>주 1회</td><td>등록일자, 이슈내용, 프로젝트명, 관련제품</td></tr>
   <tr><td>quarter_eval</td><td>분기별평가</td><td>GSheets 공급망 KPI → 공급망_분기별평가(2026)</td><td>분기 1회</td><td>협력사, 1Q_TASK 점수, 1Q_공급망관리등급, 2Q_공급망관리등급, 예외사항 점수, 대체가능 점수</td></tr>
@@ -212,7 +212,28 @@ FILE_SIGNATURES = {
   AND 미입하 (실제입하일 비어있음)
   AND 경과일 >= 90일</div>
 
-<h3>3-4. 원가 자동 산출 (파츠마스터 + 공정DB · 원가분석 화면용)</h3>
+<h3>3-4. 이슈 집계 기준일 <span class="badge b-green">v15.1 변경</span></h3>
+<p>이슈 카테고리별로 집계 기준일이 다릅니다. 공통 헬퍼 함수 <code>getIssueDateStr(r)</code>로 분기합니다.</p>
+<div class="code">function getIssueDateStr(r):
+  카테고리 = r['이슈카테고리']
+  if 카테고리.includes('품질'):
+    return r['품질이슈내용업데이트'] || r['실제입하일'] || r['입하예정일']
+  if 카테고리.includes('운영'):
+    return r['운영이슈내용 업데이트'] || r['실제입하일'] || r['입하예정일']
+  // 수량이슈 및 기타
+  return r['실제입하일'] || r['입하예정일']
+
+// 위 함수를 호출하는 파생 함수
+pIssueMonth(r)     → 월 집계 키 반환 (차트·트렌드)
+issueInPeriod(r)   → 선택 기간 내 포함 여부 (카드 필터)
+issueDateStr(r)    → 날짜 문자열 반환 (테이블 표시·SEL_DATE_RANGE 비교)</div>
+<div class="note">
+  <b>변경 이유:</b> 실제입하일 기준이면 지난주 입하건의 이슈 내용이 이번 주에 업데이트되어도 이번 주 주간 집계에 포함되지 않는 문제가 있었음.<br>
+  <b>폴백:</b> <code>품질이슈내용업데이트</code> / <code>운영이슈내용 업데이트</code> 필드가 비어있으면 <code>실제입하일</code>로 자동 폴백 — 구 CSV(해당 컬럼 없음)와 호환 유지됨.<br>
+  <b>수량이슈:</b> Airtable에 수량이슈 업데이트 날짜 필드가 없으므로 기존 <code>실제입하일</code> 유지.
+</div>
+
+<h3>3-5. 원가 자동 산출 (파츠마스터 + 공정DB · 원가분석 화면용)</h3>
 <div class="code">1. sync_itemdb 필드에서 파츠코드 추출 (정규식: [A-Z]{4}_PT\d+)
 2. 파츠코드 → parts_master.json에서 수량별 단가 조회
 3. 공정DB → 굿즈코드별 공정 구성 + 표준단가 조회

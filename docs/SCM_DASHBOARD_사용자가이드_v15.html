@@ -60,7 +60,7 @@
   <table>
     <tr><th>파트</th><th>파일</th><th>고정 파일명</th><th>용도</th></tr>
     <tr><td rowspan="7"><span class="badge b-purple">외주생산</span></td><td>발주 RAW</td><td><code>order.csv</code></td><td>발주, 매입, 납기, 비용 KPI, 제품별 발주수량 추이</td></tr>
-    <tr><td>이슈 RAW</td><td><code>issue.csv</code></td><td>이슈, 품질, 재작업 KPI, 제품×협력사 이슈율 <span class="badge b-red">v14</span> 입고물품 컬럼 포함</td></tr>
+    <tr><td>이슈 RAW</td><td><code>issue.csv</code></td><td>이슈, 품질, 재작업 KPI, 제품×협력사 이슈율 <span class="badge b-red">v14</span> 입고물품 컬럼 포함 · <span class="badge b-green">v15.1</span> <code>품질이슈내용업데이트</code>, <code>운영이슈내용 업데이트</code> 컬럼 추가</td></tr>
     <tr><td>공급망 RAW</td><td><code>sup.csv</code></td><td>협력사, 하도급법 위험, <span class="badge b-amber">v14</span> 월간 공지사항의 신규/거래종료 협력사 판정(월별 스냅샷 비교)</td></tr>
     <tr><td>고객인지 이슈 RAW</td><td><code>ci.csv</code></td><td>고객인지 이슈 KPI, <span class="badge b-red">v14</span> 협력사 검색 매칭</td></tr>
     <tr><td>분기별평가</td><td>(수동 업로드)</td><td>공급망 포트폴리오 Tier/등급(§6)</td></tr>
@@ -121,7 +121,7 @@
   </ul>
   <div class="tip"><b>GitHub 연동(⚙):</b> 설정 모달에서 개인 토큰을 등록하면 비고·고객인지이슈 대응내용 입력이 저장 즉시 자동으로 배포되어 팀 전체가 1~2분 내로 볼 수 있습니다. 토큰 발급 방법은 설정 모달 안내를 따라 하면 됩니다(Fine-grained PAT, Contents Read/Write 권한만 필요).</div>
 
-  <h2>6. 이슈 관리 <span class="badge b-red">v13 3단 구성 · v14 검색 필터 수정</span></h2>
+  <h2>6. 이슈 관리 <span class="badge b-red">v13 3단 구성 · v14 검색 필터 수정</span> <span class="badge b-green">v15.1 집계 기준일 변경</span></h2>
   <table>
     <tr><th>구성</th><th>내용</th></tr>
     <tr><td>이슈 추이 차트</td><td>전체 기간 월별 품질/수량/운영 건수 추이(전체 기간 기준, 검색과 무관하게 항상 전체 추세를 보여줍니다)</td></tr>
@@ -129,6 +129,7 @@
     <tr><td>전체 / 품질 / 수량 / 운영 탭</td><td>이슈 상세 + 대응 + 실패비용. <span class="badge b-red">v14</span> 이전에는 "전체" 탭에서만 검색 결과가 유지되고 품질/수량/운영 탭으로 전환하면 검색이 풀렸는데, 이제 탭을 바꿔도 검색이 유지됩니다.</td></tr>
   </table>
   <div class="tip"><b><span class="badge b-red">v14</span> 제품명 표시 개선:</b> 이슈 목록에 표시되는 제품명이 issue.csv의 "입고물품" 컬럼을 우선 사용하도록 바뀌어 더 정확한 제품명이 보입니다(예: "톤앤톤쿨러백, 톤앤톤쿨러백, 지퍼, 실크, 실크" → "톤앤톤쿨러백").</div>
+  <div class="tip"><b><span class="badge b-green">v15.1</span> 이슈 집계 기준일 변경:</b> 품질이슈는 <code>품질이슈내용업데이트</code>, 운영이슈는 <code>운영이슈내용 업데이트</code> 날짜 기준으로 집계됩니다. 수량이슈는 기존과 동일하게 <code>실제입하일</code> 기준. 이로 인해 지난주에 입하되었더라도 이번 주에 이슈 내용이 업데이트된 건은 이번 주 집계에 포함됩니다. <b>Airtable에서 내보낼 때 이 두 컬럼이 포함된 뷰를 사용하세요.</b> 컬럼이 없는 구버전 CSV는 자동으로 <code>실제입하일</code>로 폴백됩니다.</div>
 
   <h2>7. 공급망 포트폴리오 <span class="badge b-blue">v12 Tier 도입 · v13 평가기준 단일화 · 월 단위 고정(§2)</span></h2>
   <p>협력사를 <b>QCD(품질·원가·납기 대응력) × 관계(협조성·대체가능성)</b> 두 축으로 4분면 Tier를 매깁니다.</p>
