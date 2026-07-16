@@ -1,6 +1,6 @@
 # SCM 통합운영 대시보드 — 프로젝트 설계 아키텍처
 
-> 버전: v16 | 갱신일: 2026-07-16 | 작성: 이난영 / Claude AI  
+> 버전: v17 | 갱신일: 2026-07-16 | 작성: 이난영 / Claude AI  
 > 대상: 구매전략파트 · 외주생산파트 팀원 공유, 유지보수, 버그 대응
 
 ---
@@ -20,12 +20,13 @@
 - **localStorage** — 업로드 일시, 매입검토 편집, 시즌계획 확정수량, JSON 캐시 저장
 - **Chart.js 4.4.1** — CDN 로드, 오프라인 시 차트만 미표시
 - **html2pdf.js 0.10.1 (v16)** — 협력사 PDF 내보내기 버튼 최초 클릭 시에만 CDN lazy-load, 오프라인 시 안내 후 중단
+- **scm_vendor_change bank 연동 (v17)** — 별도 저장소의 GitHub API·bank/ JSON을 실시간 fetch(동일 origin, CORS 무관), 세션당 1회 캐시
 
 ### 배포 위치
 | 파일 | 위치 |
 |---|---|
 | 운영 원본 | `index.html` (GitHub Pages가 직접 서빙) |
-| 버전 스냅샷 | `scm_dashboard_v16.html` (index.html 복사본, 이전 버전은 `archive/`) |
+| 버전 스냅샷 | `scm_dashboard_v17.html` (index.html 복사본, 이전 버전은 `archive/`) |
 | GitHub Pages | https://nanyounglee.github.io/SCMDASHBOARD/ |
 | 레포지토리 | https://github.com/nanyounglee/SCMDASHBOARD |
 
@@ -586,6 +587,26 @@ exportKPI()   // 'KPI 요약 CSV': 발주 RAW 행 대신 computeKPIs()×KPI_DEFS
               //   (영역·지표·단위·목표·선택월 값·달성여부·산식) 요약 CSV로 교체
 ```
 
+### 4-27b. 협력사 변경 검토 진행 현황 — scm_vendor_change bank 연동 (v17)
+```javascript
+// 협력사 현황(supplier) 화면, 협력사 목록 위에 카드 신규. nav()에서 id==='supplier' 최초 진입 시
+// loadVendorChangeStatus() 지연 호출(세션당 1회, 캐시 재사용) — refreshAll() 잦은 재실행에도 재조회 안 함.
+// 두 사이트 모두 nanyounglee.github.io 아래 다른 경로라 fetch가 동일 origin — CORS 제약 없음.
+loadVendorChangeStatus(force):
+  1. GET api.github.com/repos/nanyounglee/scm_vendor_change/contents/bank → 파일 목록(download_url)
+  2. .json 파일들을 Promise.all 병렬 fetch(실패분은 빈 배열 폴백)
+  3. id 기준 병합 → renderVendorChangeStatus()가 단계별 건수 + 최근 완료 변경 표 렌더, 카드 클릭 시 새 탭 이동
+
+// 병합: 같은 id가 팀원별 bank 파일에 다른 진행 상태로 중복 등장 —
+// "마지막 파일 우선"은 파일 처리 순서(알파벳순)에 따라 오래된 사본이 최신 사본을 덮어쓸 위험이 있어 채택 안 함
+vcStatusRank(status) = 완료:3, 확정:2, 전환검토중:1, 그외:0
+merge: workflowStatus = 랭크 최댓값 사본 · completedDate/confirmedDate = 사본 중 최댓값(ISO 날짜 문자열 비교)
+       · 기타 필드는 랭크 최댓값 사본을 기준으로 채택
+```
+> 검증: bank/ 8개 JSON(검토 40건·고유 10건)으로 전환검토중 3/확정 1/완료 6 — scm_vendor_change 라이브 페이지와
+> 일치 확인, 파일 처리 순서 무관성 확인. 오프라인/fetch 실패 시 에러 상태로 폴백(카드는 계속 클릭 가능).
+> 한계: 팀원이 로컬에서 상태를 바꿨지만 bank로 아직 내보내지 않았으면 반영 안 됨(그 도구의 구조적 제약).
+
 ---
 
 ## 5. UI 섹션 구조 (22개 페이지)
@@ -719,12 +740,13 @@ const FILE_SIGNATURES = {
 | **v15** | (병합 후 로컬→PC 배포) | 같은 시점 별도 세션에서 진행되던 작업(로컬, 848958e 기준)과 위 v14 추가분(원격)이 서로 모르는 채 갈라져 있던 것을 `git merge`로 병합(겹치는 `nav()`/`refreshAll()` 자동 병합, 충돌 없음). 세션측 신규: 외주생산파트 핵심 화면(종합현황·발주·매입·이슈·고객인지이슈)의 기간 필터를 **주별/월별/분기별/기간지정 4탭**으로 통합(`PERIOD_UNIT`/`SEL_DATE_RANGE`, §4-25) — MoM/YoY 배지가 WoW/MoM/QoQ/YoY로 단위별 자동 전환, 매입금액은 세금계산서 원본이 월단위라 항상 월 스냅 유지, 아직 세부 로직 미지원인 13개 화면은 동일 UI에 월 외 탭만 비활성 처리("추후 반영" 툴팁). 월간 공지사항(§4-24)을 SEL_MONTH 단일 비교 → SEL_DATE_RANGE 정확 날짜/다중월 합산으로 개선(§4-26, 기간지정으로 5~7월을 잡아도 6월 거래종료 협력사가 보이도록 수정 — 팀원 리포트로 발견). |
 | **v15.x** | `9f39b04`~`2d1611e` (원격, seungmi.yook 외) | v15 배포 후 원격에서 이어진 작업. **YoY를 2025 원본 행 기준 정확 비교로 업그레이드**(`9f39b04`): `CSV/order_2025.csv`·`issue_2025.csv` 고정 파일명 추가, `load2025RawData()`→`D.order2025`/`D.issue2025`, `updateKPIs()`·`renderOrdTopTable()` YoY를 `getYoyDateRange()` 정확 일자 비교로 교체(원본 없으면 월 근사 폴백). **이슈현황 탭 기간 필터 버그 수정**(`e9482f1`): 다중 월·분기·주간·기간지정 시 마지막 달만 표시되던 것을 `issueInPeriod()`로 교체. **이슈 집계 기준일 변경**: 품질→`품질이슈내용업데이트`, 운영→`운영이슈내용 업데이트`(없으면 실제입하일 폴백)로 KPI·탭 통일. W29 CSV(order/issue/ci) 갱신. |
 | **v16** | (로컬→PC 배포) | 협력사 현황 드릴다운에 PDF 내보내기 2종 신규 — ① 상세 스냅샷(`exportSupplierPdf`, §4-27): 드릴다운 DOM 복제 후 Chart.js 캔버스를 `toBase64Image()` PNG로 치환·스크롤 펼침·조작 요소 제거해 A4 저장. ② 분석 리포트(`exportSupplierAnalysisReport`, §4-27): 전년(2025) RAW를 `loadPrevYearRaw()`로 1회 fetch·캐시하고 완결월(전월까지) YoY 성장률로 잔여 월을 예상 채워, 연간요약·YoY·SVG 추세선(`_repLineChart`)·월별표·Top5·재발이슈·핵심요약 2줄을 A4 2p로 생성. html2pdf.js 0.10.1은 최초 클릭 시에만 CDN lazy-load(`loadHtml2Pdf`). 리포트/내보내기 버그 수정(§4-28): 주간 보고(`genWeekly`) 긴급 발주(서울디지털 제외)·월 매입금액(재고생산 포함)을 KPI 카드 기준과 일치, `exportKPI`를 발주 RAW 행 대신 `computeKPIs()`×`KPI_DEFS` 실측 KPI 요약으로 교체. index.html 버전 라벨 v14→v16 정정(v15 배포 시 미갱신분). **배포 전 원격 v15.x(11커밋)를 fast-forward로 받아 그 위에 통합 — 코드 영역이 겹치지 않아 충돌 없음.** index.html 약 6,842줄. |
+| **v17** | (로컬→PC 배포) | 협력사 현황에 **협력사 변경 검토 진행 현황** 카드 신규(§4-27b) — 별도 저장소 scm_vendor_change의 `bank/` 폴더(팀 공유 백업)를 GitHub API로 실시간 fetch(동일 origin, CORS 무관)해 전환검토중/확정/완료 건수와 최근 완료 협력사 변경 목록을 표시, 카드 클릭 시 해당 대시보드로 새 탭 이동(`loadVendorChangeStatus`). 같은 검토 건이 팀원별 백업 파일에 다른 상태로 중복 등장하는 문제를 상태-랭크(완료>확정>전환검토중) + 최신 날짜 채택 방식으로 병합해 파일 처리 순서와 무관하게 안정적인 결과를 보장. index.html 약 6,921줄. |
 
 ### 파일 구조
 ```
 SCMDASHBOARD/
-├── index.html                       ← 운영 원본 (GitHub Pages 직접 서빙 · v16 · 약 6,842줄)
-├── scm_dashboard_v16.html           ← 현행 버전 스냅샷 (index.html 복사본)
+├── index.html                       ← 운영 원본 (GitHub Pages 직접 서빙 · v17 · 약 6,921줄)
+├── scm_dashboard_v17.html           ← 현행 버전 스냅샷 (index.html 복사본)
 ├── archive/                         ← 이전 버전 스냅샷 (v3~v15)
 ├── CSV/                             ← 자동 로드 대상 CSV
 │   ├── order.csv · issue.csv · sup.csv · ci.csv
@@ -740,14 +762,14 @@ SCMDASHBOARD/
 │   ├── parts_master.json · data_2025.json · cost_db.json
 │   └── progress_notes.json · ci_overrides.json  ← v13 신규(GitHub 연동 자동 커밋 대상)
 ├── docs/
-│   ├── SCM_DASHBOARD_ARCHITECTURE.md       ← 이 파일 (v16 갱신)
-│   ├── CHANGELOG_v16.md                    ← 버전별 변경 내역 (팀 공유용)
+│   ├── SCM_DASHBOARD_ARCHITECTURE.md       ← 이 파일 (v17 갱신)
+│   ├── CHANGELOG_v17.md                    ← 버전별 변경 내역 (팀 공유용)
 │   ├── purchase_dashboard_migration_strategy.md  ← 구매파트 Apps Script 이식 전략 (v10 반영 현황 기준, v11 이후는 범위 밖)
-│   ├── SCM_DASHBOARD_로직설명_v16.html  ← 로직 설명서 (v16 갱신)
-│   ├── SCM_DASHBOARD_사용자가이드_v16.html  ← 사용자 가이드 (v16 갱신)
+│   ├── SCM_DASHBOARD_로직설명_v17.html  ← 로직 설명서 (v17 갱신)
+│   ├── SCM_DASHBOARD_사용자가이드_v17.html  ← 사용자 가이드 (v17 갱신)
 │   ├── SCM_KPI_리포트_2026Q2.xlsx
-│   └── archive/                     ← 구버전 (v15 이하 로직설명/사용자가이드/CHANGELOG, V4_로직설명_v7.html 등)
-├── deploy_v16.ps1                   ← 배포 스크립트 (git 자가복구 + 버전 정리 + 안전 동기화 + 문서/구파일 정리)
+│   └── archive/                     ← 구버전 (v16 이하 로직설명/사용자가이드/CHANGELOG, V4_로직설명_v7.html 등)
+├── deploy_v17.ps1                   ← 배포 스크립트 (git 자가복구 + 버전 정리 + 안전 동기화 + 문서/구파일 정리)
 ├── archive_csv.ps1                  ← v13 신규 — 주간 CSV(progress_/project_)는 최신 1개만 유지 후 CSV_BANK로 이동, v14 확장 — sup.csv 교체 직전 CSV_BANK/sup_YYYY_MM.csv로 월간 스냅샷 저장
 ├── .nojekyll                        ← Pages Jekyll 비활성화 (빌드 실패 방지)
 └── .claude/                         ← Claude 설정
@@ -757,7 +779,7 @@ SCMDASHBOARD/
 
 ### 버전 규칙 (v7~)
 - **운영 원본은 `index.html`** — 수정 작업은 index.html에 직접, 로컬 확인은 수동 업로드 모드
-- **배포는 `deploy_v{N}.ps1`(현재 `deploy_v16.ps1`)** — 실행 시 자동으로:
+- **배포는 `deploy_v{N}.ps1`(현재 `deploy_v17.ps1`)** — 실행 시 자동으로:
   1. git 저장소 자가진단/복구 (index 손상, 잔류 lock)
   2. 한글 원본 CSV → 고정 영문명 복사
   3. index.html이 바뀐 경우에만 `scm_dashboard_v{N+1}.html` 스냅샷 생성 (버전 자동 카운트, 이전 버전 archive 이동)
@@ -770,14 +792,14 @@ SCMDASHBOARD/
 
 ---
 
-## 9. 주간 업데이트 절차 (v16 · 자동 로드 기준)
+## 9. 주간 업데이트 절차 (v17 · 자동 로드 기준)
 
 ### 데이터 담당자 — 외주생산파트 (주 1회)
 | 단계 | 작업 | 비고 |
 |---|---|---|
 | 1 | Airtable에서 CSV Export | 발주_RAW, 이슈_RAW, 공급망_RAW, 고객인지이슈_RAW, 분기별평가, (v13) 진행현황·매출결산, (v14) 굿즈마스터 |
 | 2 | 프로젝트 폴더 `CSV/`에 저장 | 한글 원본명 그대로 저장해도 됨. 대용량 CSV는 채팅 붙여넣기보다 로컬 파일 직접 저장 권장(문자 손상 위험, v14) |
-| 3 | `deploy_v16.ps1` 실행 | 고정명 복사 + 커밋 + 푸시 자동. 또는 GitHub 웹에서 고정명 파일 직접 덮어쓰기 |
+| 3 | `deploy_v17.ps1` 실행 | 고정명 복사 + 커밋 + 푸시 자동. 또는 GitHub 웹에서 고정명 파일 직접 덮어쓰기 |
 | 4 | 1~3분 후 배포 확인 | `-Verify` 스위치 또는 브라우저 Ctrl+F5 |
 | 5 (v14) | 원본 CSV 헤더(컬럼명) 변경 시 `docs/CHANGELOG_v{N}.md`에 기록 후 팀 공유 | 예: issue.csv 입고물품 컬럼 추가 |
 
@@ -785,7 +807,7 @@ SCMDASHBOARD/
 | 단계 | 작업 | 비고 |
 |---|---|---|
 | 1 | GSheets S&OP Apps Script에서 `dashboard_period_summary`/`dashboard_group_summary`/`dashboard_sku_snapshot` 3종 생성·Export | 3종 모두 있어야 Agg 경로 작동. 하나라도 없으면 재고 화면이 레거시(inv_weekly 직접계산)로 폴백해 v10 이전 숫자와 달라질 수 있음 |
-| 2 | `CSV/`에 저장 후 `deploy_v16.ps1` 실행 | 외주생산파트와 동일 배포 경로 공유 |
+| 2 | `CSV/`에 저장 후 `deploy_v17.ps1` 실행 | 외주생산파트와 동일 배포 경로 공유 |
 | 3 | 배포 후 재고운영/품절상세/졸업검토 화면에서 도넛차트 3종·회전율 숫자 확인 | 기존 GSheets 화면과 동일 기준일로 1:1 대조 권장 |
 
 ### 접속자 (팀원)
@@ -809,5 +831,5 @@ SCMDASHBOARD/
 
 ---
 
-*문서 기준: index.html (scm_dashboard_v16.html) v16 (2026-07-16) · 약 6,842줄 — 협력사 PDF 내보내기 2종(상세 스냅샷·분석 리포트, §4-27) 신규 + 주간 보고·KPI 요약 CSV 집계 버그 수정(§4-28) · 원격 v15.x(2025 원본 YoY·이슈현황 탭 필터/집계 기준일 수정) 통합 기반*  
+*문서 기준: index.html (scm_dashboard_v17.html) v17 (2026-07-16) · 약 6,921줄 — 협력사 변경 검토 진행 현황 카드(scm_vendor_change bank 연동, §4-27b) 신규 · v16(협력사 PDF 내보내기 2종 §4-27, 주간 보고·KPI 요약 CSV 집계 버그 수정 §4-28) · 원격 v15.x(2025 원본 YoY·이슈현황 탭 필터/집계 기준일 수정) 통합 기반*  
 *대시보드 변경 시 이 문서도 함께 업데이트 바랍니다. 원본 CSV 헤더 변경 시 §8 버전 규칙에 따라 CHANGELOG에도 기록 바랍니다.*
