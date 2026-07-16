@@ -1,6 +1,6 @@
 # SCM 통합운영 대시보드 — 프로젝트 설계 아키텍처
 
-> 버전: v15 | 갱신일: 2026-07-15 | 작성: 이난영 / Claude AI  
+> 버전: v16 | 갱신일: 2026-07-16 | 작성: 이난영 / Claude AI  
 > 대상: 구매전략파트 · 외주생산파트 팀원 공유, 유지보수, 버그 대응
 
 ---
@@ -19,12 +19,13 @@
 - **파싱은 브라우저 JS** — 모든 집계·필터·차트 렌더링이 브라우저에서 실행(재고운영 사전집계 3종 제외). v7부터 멀티라인 셀 안전 상태머신 파서.
 - **localStorage** — 업로드 일시, 매입검토 편집, 시즌계획 확정수량, JSON 캐시 저장
 - **Chart.js 4.4.1** — CDN 로드, 오프라인 시 차트만 미표시
+- **html2pdf.js 0.10.1 (v16)** — 협력사 PDF 내보내기 버튼 최초 클릭 시에만 CDN lazy-load, 오프라인 시 안내 후 중단
 
 ### 배포 위치
 | 파일 | 위치 |
 |---|---|
 | 운영 원본 | `index.html` (GitHub Pages가 직접 서빙) |
-| 버전 스냅샷 | `scm_dashboard_v15.html` (index.html 복사본, 이전 버전은 `archive/`) |
+| 버전 스냅샷 | `scm_dashboard_v16.html` (index.html 복사본, 이전 버전은 `archive/`) |
 | GitHub Pages | https://nanyounglee.github.io/SCMDASHBOARD/ |
 | 레포지토리 | https://github.com/nanyounglee/SCMDASHBOARD |
 
@@ -552,6 +553,39 @@ function inSelDateRange(dateStr) {
 > MANUAL_VENDOR_TERM_MONTH='2026.6' 같은 특정월 하드코딩 예외가 5~7월처럼 6월을 포함하는
 > 임의 구간에서 보이지 않는 문제가 있었음 — 팀원 리포트로 발견.
 
+### 4-27. 협력사 PDF 내보내기 — 상세 스냅샷 + 분석 리포트 (v16 신규)
+```javascript
+// 협력사 현황 드릴다운(buildSupplierDetail) 헤더에 버튼 2종 추가. html2pdf.js는 최초 클릭 시 CDN lazy-load.
+loadHtml2Pdf()           // <script> 주입 + Promise 캐시(_html2pdfLoading), onerror 시 리셋해 재시도 허용
+
+exportSupplierPdf(btn, supName)          // ① 상세 스냅샷
+//   드릴다운 DOM cloneNode → 라이브 캔버스의 Chart 인스턴스(Chart.getChart||CHARTS)를
+//   toBase64Image() PNG <img>로 치환(차트 미생성 시 영역 제거) → max-height/overflow 펼침 →
+//   select·button·id 제거 → detached wrap에 머리말 삽입 → html2pdf A4 저장
+//   ※ wrap을 body에 append하면 오버레이 복제 시 높이 0 붕괴(빈 PDF) — 반드시 detached로 전달
+
+exportSupplierAnalysisReport(btn, supName)  // ② 분석 리포트 (A4 2p, 데이터에서 직접 조립)
+//   loadPrevYearRaw(2025): CSV/SCM_발주_RAW(2025)·SCM_이슈_RAW(2025) 1회 fetch·캐시(PREV_RAW_CACHE)
+//   _repMonthly: 수주처×과업지시월 tasks/qty/amt 집계
+//   예상: baseTo=curM-1(완결월), f[k]=Σ올해(1~baseTo)/Σ전년(1~baseTo), proj=전년동월×f[k]
+//         canProj = hasPrev && baseTo>=1 (전년無/1월이면 예상 생략)
+//   _repSupIssues: 프로젝트 접두어 조인(§4-12 패턴)으로 이슈 귀속, 제품×유형 2건↑ 재발 집계
+//   _repTopProds: 발주수량 Top5,  _repLineChart: 외부 라이브러리 없이 SVG 추세선(실선 실적/점선 예상)
+//   → 연간요약·YoY·추세선·월별표·Top5·재발이슈·핵심요약 2줄
+//   ※ 원격의 load2025RawData()/D.order2025(order_2025.csv, KPI 카드 YoY용)와는 별도 로더·별도 파일명 — 2025 데이터가 두 경로로 중복 로드됨(추후 통일 여지)
+```
+> 검증: 발주 5,924행·이슈 344행 + 2025 RAW 13,529행으로 save()를 stub해 생성물 캡처 —
+> 5개 섹션·SVG 2개·표 7개가 에러 없이 렌더, 예상 산식·파일명 확인. 제약: 이슈 귀속은 접두어 추정 조인(§4-12 한계 공유),
+> YoY·예상은 전년 RAW 보유 전제, 두 버튼 모두 html2pdf CDN 접근 필요.
+
+### 4-28. 리포트/KPI 내보내기 버그 수정 (v16)
+```javascript
+genWeekly()   // 주간 업무 보고: 긴급 발주에 URGENT_EXCLUDE_SUP(서울디지털인쇄) 제외 적용,
+              //   월 매입금액 !isStock 필터 제거(재고생산 포함) → §4-1 KPI 카드와 기준 일치, 재고생산 TASK 별도 병기
+exportKPI()   // 'KPI 요약 CSV': 발주 RAW 행 대신 computeKPIs()×KPI_DEFS 실측
+              //   (영역·지표·단위·목표·선택월 값·달성여부·산식) 요약 CSV로 교체
+```
+
 ---
 
 ## 5. UI 섹션 구조 (22개 페이지)
@@ -683,13 +717,15 @@ const FILE_SIGNATURES = {
 | **v14** | `0cd0407` (병합 커밋) | 같은 날 별도 세션에서 진행되던 작업과 v13(원격 force-push)이 서로 모르는 채 분기 — 병합으로 통합. 세션측 변경: 검색 필터 누락 지점 전수 수정(발주TASK 상세·매입추이 월클릭 상세·이슈 서브탭·이슈유형도넛·월별이슈추이, §4-22), 고객인지이슈 프로젝트범위 매칭 신규(§4-20), issue.csv `입고물품` 컬럼 반영(§4-21), 필터 적용 CSV 다운로드 신규(§4-23), ci.csv 인코딩 CP949→UTF-8 수정. 겹치는 함수(발주TASK 모달·이슈 서브탭 등)는 v13의 `inSelPeriod()`/3단 구성 로직에 세션측 `matchesSearch()` 검색 필터를 결합하는 방식으로 수동 병합. |
 | **v14 (추가분, 난영님)** | `d64630e`~`0ee26eb` (원격 직접 푸시) | 위 v14 병합과 별도로 원격(origin/main)에 직접 반영된 작업. 종합 현황(overview)에 **월간 공지사항** 카드 신규 — 졸업 제품(goods_master `졸업일`), 출시 제품(goods_master `출시일`), 품절 제품(stockout_list `판매상태`+`변경일`, "PT번호-제품명"만 표시)을 선택 월 기준 자동 집계(§4-24). 신규 CSV 슬롯 `goods_master`(Airtable Sincerely DB "1. goods" 뷰: Goods Name/Goods Code/굿즈 Status/출시일/졸업일) 추가. 협력사 거래종료는 Airtable에 상태변경일 필드가 없어 "이번 달 신규"를 가려낼 수 없었으나, `archive_csv.ps1`이 매달 아카이브 시점의 `sup.csv`를 `CSV_BANK/sup_YYYY_MM.csv`로 스냅샷 저장하도록 확장하고 대시보드가 이번 달 명단(라이브 `sup.csv` 또는 해당 월 스냅샷) vs 직전 스냅샷을 **협력사 이름 기준으로 diff**하여 신규/거래종료 협력사를 공지사항에 표시하도록 후속 반영(상태변경일 필드 없이도 명단 증감으로 판별). 스냅샷 diff로 잡히지 않는 예외를 위해 `MANUAL_VENDOR_TERMINATIONS`/`MANUAL_STOCKOUT` 하드코딩 리스트 신규 — 거래종료 협력사 6곳(베러웨이시스템즈·포텍·유경·파워·아이큐아이·모아산업)은 6월(26.2Q 마지막 달) 귀속으로 게이팅, 강천FNT는 아직 거래종료 확정 전이라 목록에서 제외. 자동 신규 협력사 비교는 임시 기준선(5월 명단)을 제거하고 다음 달 `archive_csv.ps1` 스냅샷부터 정식 계산되도록 초기화. 협력사 목록 드릴다운을 모달→인라인 확장으로 전환(검색 결과 1건이면 자동 확장, `buildSupplierDetail()` 공용 빌더), 월별 매입금액/MoM 스트립·발주내역 테이블·월별 필터 추가, "발주 제품 전체"는 발주 이력 있는 제품만(발주 수량 병기) 표시, 월간공지·발주진행현황 글씨 크기 확대 |
 | **v15** | (병합 후 로컬→PC 배포) | 같은 시점 별도 세션에서 진행되던 작업(로컬, 848958e 기준)과 위 v14 추가분(원격)이 서로 모르는 채 갈라져 있던 것을 `git merge`로 병합(겹치는 `nav()`/`refreshAll()` 자동 병합, 충돌 없음). 세션측 신규: 외주생산파트 핵심 화면(종합현황·발주·매입·이슈·고객인지이슈)의 기간 필터를 **주별/월별/분기별/기간지정 4탭**으로 통합(`PERIOD_UNIT`/`SEL_DATE_RANGE`, §4-25) — MoM/YoY 배지가 WoW/MoM/QoQ/YoY로 단위별 자동 전환, 매입금액은 세금계산서 원본이 월단위라 항상 월 스냅 유지, 아직 세부 로직 미지원인 13개 화면은 동일 UI에 월 외 탭만 비활성 처리("추후 반영" 툴팁). 월간 공지사항(§4-24)을 SEL_MONTH 단일 비교 → SEL_DATE_RANGE 정확 날짜/다중월 합산으로 개선(§4-26, 기간지정으로 5~7월을 잡아도 6월 거래종료 협력사가 보이도록 수정 — 팀원 리포트로 발견). |
+| **v15.x** | `9f39b04`~`2d1611e` (원격, seungmi.yook 외) | v15 배포 후 원격에서 이어진 작업. **YoY를 2025 원본 행 기준 정확 비교로 업그레이드**(`9f39b04`): `CSV/order_2025.csv`·`issue_2025.csv` 고정 파일명 추가, `load2025RawData()`→`D.order2025`/`D.issue2025`, `updateKPIs()`·`renderOrdTopTable()` YoY를 `getYoyDateRange()` 정확 일자 비교로 교체(원본 없으면 월 근사 폴백). **이슈현황 탭 기간 필터 버그 수정**(`e9482f1`): 다중 월·분기·주간·기간지정 시 마지막 달만 표시되던 것을 `issueInPeriod()`로 교체. **이슈 집계 기준일 변경**: 품질→`품질이슈내용업데이트`, 운영→`운영이슈내용 업데이트`(없으면 실제입하일 폴백)로 KPI·탭 통일. W29 CSV(order/issue/ci) 갱신. |
+| **v16** | (로컬→PC 배포) | 협력사 현황 드릴다운에 PDF 내보내기 2종 신규 — ① 상세 스냅샷(`exportSupplierPdf`, §4-27): 드릴다운 DOM 복제 후 Chart.js 캔버스를 `toBase64Image()` PNG로 치환·스크롤 펼침·조작 요소 제거해 A4 저장. ② 분석 리포트(`exportSupplierAnalysisReport`, §4-27): 전년(2025) RAW를 `loadPrevYearRaw()`로 1회 fetch·캐시하고 완결월(전월까지) YoY 성장률로 잔여 월을 예상 채워, 연간요약·YoY·SVG 추세선(`_repLineChart`)·월별표·Top5·재발이슈·핵심요약 2줄을 A4 2p로 생성. html2pdf.js 0.10.1은 최초 클릭 시에만 CDN lazy-load(`loadHtml2Pdf`). 리포트/내보내기 버그 수정(§4-28): 주간 보고(`genWeekly`) 긴급 발주(서울디지털 제외)·월 매입금액(재고생산 포함)을 KPI 카드 기준과 일치, `exportKPI`를 발주 RAW 행 대신 `computeKPIs()`×`KPI_DEFS` 실측 KPI 요약으로 교체. index.html 버전 라벨 v14→v16 정정(v15 배포 시 미갱신분). **배포 전 원격 v15.x(11커밋)를 fast-forward로 받아 그 위에 통합 — 코드 영역이 겹치지 않아 충돌 없음.** index.html 약 6,842줄. |
 
 ### 파일 구조
 ```
 SCMDASHBOARD/
-├── index.html                       ← 운영 원본 (GitHub Pages 직접 서빙 · v15 · 약 6,483줄)
-├── scm_dashboard_v15.html           ← 현행 버전 스냅샷 (index.html 복사본)
-├── archive/                         ← 이전 버전 스냅샷 (v3~v14)
+├── index.html                       ← 운영 원본 (GitHub Pages 직접 서빙 · v16 · 약 6,842줄)
+├── scm_dashboard_v16.html           ← 현행 버전 스냅샷 (index.html 복사본)
+├── archive/                         ← 이전 버전 스냅샷 (v3~v15)
 ├── CSV/                             ← 자동 로드 대상 CSV
 │   ├── order.csv · issue.csv · sup.csv · ci.csv
 │   ├── stockout_list.csv · inv_weekly.csv · sales_monthly.csv
@@ -704,14 +740,14 @@ SCMDASHBOARD/
 │   ├── parts_master.json · data_2025.json · cost_db.json
 │   └── progress_notes.json · ci_overrides.json  ← v13 신규(GitHub 연동 자동 커밋 대상)
 ├── docs/
-│   ├── SCM_DASHBOARD_ARCHITECTURE.md       ← 이 파일 (v15 갱신)
-│   ├── CHANGELOG_v15.md                    ← 버전별 변경 내역 (팀 공유용)
+│   ├── SCM_DASHBOARD_ARCHITECTURE.md       ← 이 파일 (v16 갱신)
+│   ├── CHANGELOG_v16.md                    ← 버전별 변경 내역 (팀 공유용)
 │   ├── purchase_dashboard_migration_strategy.md  ← 구매파트 Apps Script 이식 전략 (v10 반영 현황 기준, v11 이후는 범위 밖)
-│   ├── SCM_DASHBOARD_로직설명_v15.html  ← 로직 설명서 (v15 갱신)
-│   ├── SCM_DASHBOARD_사용자가이드_v15.html  ← 사용자 가이드 (v15 갱신)
+│   ├── SCM_DASHBOARD_로직설명_v16.html  ← 로직 설명서 (v16 갱신)
+│   ├── SCM_DASHBOARD_사용자가이드_v16.html  ← 사용자 가이드 (v16 갱신)
 │   ├── SCM_KPI_리포트_2026Q2.xlsx
-│   └── archive/                     ← 구버전 (v14 이하 로직설명/사용자가이드/CHANGELOG, V4_로직설명_v7.html 등)
-├── deploy_v15.ps1                   ← 배포 스크립트 (git 자가복구 + 버전 정리 + 안전 동기화 + 문서/구파일 정리)
+│   └── archive/                     ← 구버전 (v15 이하 로직설명/사용자가이드/CHANGELOG, V4_로직설명_v7.html 등)
+├── deploy_v16.ps1                   ← 배포 스크립트 (git 자가복구 + 버전 정리 + 안전 동기화 + 문서/구파일 정리)
 ├── archive_csv.ps1                  ← v13 신규 — 주간 CSV(progress_/project_)는 최신 1개만 유지 후 CSV_BANK로 이동, v14 확장 — sup.csv 교체 직전 CSV_BANK/sup_YYYY_MM.csv로 월간 스냅샷 저장
 ├── .nojekyll                        ← Pages Jekyll 비활성화 (빌드 실패 방지)
 └── .claude/                         ← Claude 설정
@@ -721,7 +757,7 @@ SCMDASHBOARD/
 
 ### 버전 규칙 (v7~)
 - **운영 원본은 `index.html`** — 수정 작업은 index.html에 직접, 로컬 확인은 수동 업로드 모드
-- **배포는 `deploy_v{N}.ps1`(현재 `deploy_v15.ps1`)** — 실행 시 자동으로:
+- **배포는 `deploy_v{N}.ps1`(현재 `deploy_v16.ps1`)** — 실행 시 자동으로:
   1. git 저장소 자가진단/복구 (index 손상, 잔류 lock)
   2. 한글 원본 CSV → 고정 영문명 복사
   3. index.html이 바뀐 경우에만 `scm_dashboard_v{N+1}.html` 스냅샷 생성 (버전 자동 카운트, 이전 버전 archive 이동)
@@ -734,14 +770,14 @@ SCMDASHBOARD/
 
 ---
 
-## 9. 주간 업데이트 절차 (v15 · 자동 로드 기준)
+## 9. 주간 업데이트 절차 (v16 · 자동 로드 기준)
 
 ### 데이터 담당자 — 외주생산파트 (주 1회)
 | 단계 | 작업 | 비고 |
 |---|---|---|
 | 1 | Airtable에서 CSV Export | 발주_RAW, 이슈_RAW, 공급망_RAW, 고객인지이슈_RAW, 분기별평가, (v13) 진행현황·매출결산, (v14) 굿즈마스터 |
 | 2 | 프로젝트 폴더 `CSV/`에 저장 | 한글 원본명 그대로 저장해도 됨. 대용량 CSV는 채팅 붙여넣기보다 로컬 파일 직접 저장 권장(문자 손상 위험, v14) |
-| 3 | `deploy_v15.ps1` 실행 | 고정명 복사 + 커밋 + 푸시 자동. 또는 GitHub 웹에서 고정명 파일 직접 덮어쓰기 |
+| 3 | `deploy_v16.ps1` 실행 | 고정명 복사 + 커밋 + 푸시 자동. 또는 GitHub 웹에서 고정명 파일 직접 덮어쓰기 |
 | 4 | 1~3분 후 배포 확인 | `-Verify` 스위치 또는 브라우저 Ctrl+F5 |
 | 5 (v14) | 원본 CSV 헤더(컬럼명) 변경 시 `docs/CHANGELOG_v{N}.md`에 기록 후 팀 공유 | 예: issue.csv 입고물품 컬럼 추가 |
 
@@ -749,7 +785,7 @@ SCMDASHBOARD/
 | 단계 | 작업 | 비고 |
 |---|---|---|
 | 1 | GSheets S&OP Apps Script에서 `dashboard_period_summary`/`dashboard_group_summary`/`dashboard_sku_snapshot` 3종 생성·Export | 3종 모두 있어야 Agg 경로 작동. 하나라도 없으면 재고 화면이 레거시(inv_weekly 직접계산)로 폴백해 v10 이전 숫자와 달라질 수 있음 |
-| 2 | `CSV/`에 저장 후 `deploy_v15.ps1` 실행 | 외주생산파트와 동일 배포 경로 공유 |
+| 2 | `CSV/`에 저장 후 `deploy_v16.ps1` 실행 | 외주생산파트와 동일 배포 경로 공유 |
 | 3 | 배포 후 재고운영/품절상세/졸업검토 화면에서 도넛차트 3종·회전율 숫자 확인 | 기존 GSheets 화면과 동일 기준일로 1:1 대조 권장 |
 
 ### 접속자 (팀원)
@@ -773,5 +809,5 @@ SCMDASHBOARD/
 
 ---
 
-*문서 기준: index.html (scm_dashboard_v15.html) v15 (2026-07-15) · 약 6,483줄 — 원격 v14 추가분(난영님, 월간 공지사항·협력사 드릴다운) + 세션 기간선택 통합(주별/월별/분기별/기간지정) 병합*  
+*문서 기준: index.html (scm_dashboard_v16.html) v16 (2026-07-16) · 약 6,842줄 — 협력사 PDF 내보내기 2종(상세 스냅샷·분석 리포트, §4-27) 신규 + 주간 보고·KPI 요약 CSV 집계 버그 수정(§4-28) · 원격 v15.x(2025 원본 YoY·이슈현황 탭 필터/집계 기준일 수정) 통합 기반*  
 *대시보드 변경 시 이 문서도 함께 업데이트 바랍니다. 원본 CSV 헤더 변경 시 §8 버전 규칙에 따라 CHANGELOG에도 기록 바랍니다.*
