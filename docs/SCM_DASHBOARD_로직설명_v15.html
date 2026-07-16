@@ -33,13 +33,15 @@
 </head>
 <body>
 <div style='max-width:900px;margin:20px auto;padding:18px 24px;border:2px solid #1d4ed8;border-radius:8px;background:#eff6ff;font-family:sans-serif'>
-  <div style='font-size:15px;font-weight:800;color:#1d4ed8;margin-bottom:10px'>🆕 v15 변경 내역 (2026.07.15)</div>
+  <div style='font-size:15px;font-weight:800;color:#1d4ed8;margin-bottom:10px'>🆕 v15 변경 내역 (2026.07.15 · 버그수정 2026.07.16)</div>
   <ul style='font-size:12.5px;line-height:1.9;color:#334155;margin:0;padding-left:18px'>
     <li><b>기간선택 통합 신규</b>: 외주생산파트 핵심 화면(종합현황·발주·매입·이슈·고객인지이슈)의 기간 필터를 주별/월별/분기별/기간지정(달력) 4탭으로 통일 — 임의의 날짜 구간을 직접 지정 가능(§3-20)</li>
     <li><b>비교 라벨 자동 전환</b>: 선택 단위에 맞춰 MoM/YoY 배지가 WoW/MoM/QoQ/YoY로 자동 전환. 매입금액은 세금계산서 원본이 월 단위라 항상 월 스냅 유지</li>
     <li><b>월간 공지사항 정확도 개선</b>: 졸업/출시/품절/거래종료 협력사 공지를 SEL_MONTH 단일월 비교에서 정확한 날짜 범위·다중월 합산 방식으로 교체(§3-21) — 기간지정으로 5~7월을 선택해도 6월 거래종료 협력사가 누락되지 않음</li>
     <li><b>13개 화면은 아직 월 단위만 지원</b>: 세부 필터 로직 업그레이드 전인 화면은 동일 UI에서 월 외 탭만 비활성화("추후 반영" 툴팁) — 다음 버전 과제</li>
     <li><b>난영님 작업(v14 추가분) 병합</b>: 월간 공지사항 카드 신규(§3-19b), 협력사 거래종료 수동 반영, 협력사 드릴다운 인라인 전환 등이 이번 버전에 포함됨 — 상세는 아래 "v10 → v15 변경 이력" 참고</li>
+    <li><b>[버그수정 2026.07.16] 이슈현황 탭 기간 필터 수정</b>: 다중 월·분기·주간·기간지정 선택 시 전체/품질/수량/운영 탭이 범위 마지막 달 데이터만 표시하던 버그 수정 — <code>issueInPeriod(r)</code>으로 교체, 집계 기준일(§3-4 getIssueDateStr)도 KPI와 동일하게 적용(§4-3)</li>
+    <li><b>[버그수정 2026.07.16] 이슈 집계 기준일 변경</b>: 품질이슈 → <code>품질이슈내용업데이트</code>, 운영이슈 → <code>운영이슈내용 업데이트</code> 날짜 기준으로 종합현황 KPI와 탭 모두 통일(§3-4)</li>
   </ul>
 </div>
 <div class="container">
@@ -225,7 +227,9 @@ FILE_SIGNATURES = {
 
 // 위 함수를 호출하는 파생 함수
 pIssueMonth(r)     → 월 집계 키 반환 (차트·트렌드)
-issueInPeriod(r)   → 선택 기간 내 포함 여부 (카드 필터)
+issueInPeriod(r)   → 선택 기간 내 포함 여부 (KPI 카드 필터 + 이슈 탭 필터)
+                     주간·기간지정: SEL_DATE_RANGE 정확 일자 비교
+                     월별·분기:    SEL_RANGE 범위 월 비교
 issueDateStr(r)    → 날짜 문자열 반환 (테이블 표시·SEL_DATE_RANGE 비교)</div>
 <div class="note">
   <b>변경 이유:</b> 실제입하일 기준이면 지난주 입하건의 이슈 내용이 이번 주에 업데이트되어도 이번 주 주간 집계에 포함되지 않는 문제가 있었음.<br>
@@ -504,10 +508,10 @@ periodUnitAdjacentLabel() — 배지 라벨을 단위별로 전환: 주별→WoW
   <tr><td>비고(특이사항)</td><td>저장 시 최초 내용·수정 내용을 일시와 함께 병기, 수정 이력 보존. GitHub 연동 시 즉시 자동 커밋(§3-19)</td></tr>
 </table>
 
-<h3>4-3. 이슈 현황 (issue) <span class="badge b-red">v13 3단 구성 · v14 검색 필터 수정</span></h3>
+<h3>4-3. 이슈 현황 (issue) <span class="badge b-red">v13 3단 구성 · v14 검색 필터 수정 · v15.2 기간 필터 버그 수정</span></h3>
 <table>
   <tr><th>탭</th><th>소스</th><th>로직</th></tr>
-  <tr><td>전체/품질/수량/운영</td><td>D.issue</td><td>이슈카테고리 필터 + 실패비용(getReworkCostForProject+ciExtraCost) + <span class="badge b-red">v14</span> 검색 필터가 "전체" 탭에서만 적용되고 하위 탭 전환 시 풀리던 문제 수정</td></tr>
+  <tr><td>전체/품질/수량/운영</td><td>D.issue</td><td>이슈카테고리 필터 + 실패비용(getReworkCostForProject+ciExtraCost) + <span class="badge b-red">v14</span> 검색 필터가 "전체" 탭에서만 적용되고 하위 탭 전환 시 풀리던 문제 수정 + <span class="badge b-green">v15.2</span> 기간 필터를 <code>pIssueMonth(r)===SEL_MONTH</code>에서 <code>issueInPeriod(r)</code>로 교체 — 다중 월·분기·주간·기간지정 선택 시 범위 전체가 올바르게 반영됨(이전에는 SEL_MONTH가 항상 마지막 달이어서 1~3월 선택해도 3월만 표시되는 버그 있었음). 집계 기준일도 종합현황 KPI와 동일(§3-4 getIssueDateStr) 적용됨</td></tr>
   <tr><td>제품×협력사 이슈율</td><td>D.order + D.issue</td><td>§3-14 — 발주건수 대비 이슈건수 비율, 행 클릭 시 상세</td></tr>
   <tr><td>이슈 추이 차트(모달 내)</td><td>D.issue</td><td>§3-14 renderIssueModalTrendChart() — 전체 기간 기준(검색·기간 필터 미적용, 추세 파악 목적)</td></tr>
 </table>
