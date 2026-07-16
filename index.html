@@ -2923,12 +2923,14 @@ function openModal(type,extra) {
         <div class="ch" style="height:180px"><canvas id="ch-issuemodal-trend"></canvas></div>
       </div>
       <div style="margin-bottom:20px">
+        <div style="font-size:13px;font-weight:600;margin-bottom:8px">유형별 이슈 개별 내역</div>
+        <div id="issuemodal-list-body"></div>
+      </div>
+      <div style="margin-bottom:20px">
         <div style="font-size:13px;font-weight:600;margin-bottom:2px">제품별·협력사별 이슈 상세</div>
         <div style="font-size:11px;color:var(--text3);margin-bottom:8px">이슈율 = 이슈건수 ÷ 발주건수 × 100 · 행 클릭 시 유형·내용·대응 상세 펼쳐보기 · 전체 기간 누적 · 선택한 유형 탭에 연동</div>
         <div class="tbl-wrap"><table class="tbl"><thead><tr><th class="rank">#</th><th>제품</th><th>협력사</th><th class="num">발주건수</th><th class="num">이슈건수</th><th class="num">이슈율</th></tr></thead><tbody id="tb-issuemodal-px"></tbody></table></div>
-      </div>
-      <div style="font-size:13px;font-weight:600;margin-bottom:8px">유형별 이슈 개별 내역</div>
-      <div id="issuemodal-list-body"></div>`;
+      </div>`;
     renderIssueModalTrendChart();
     renderIssueModalMatrix('all');
     renderIssueModalBody(f,'all');

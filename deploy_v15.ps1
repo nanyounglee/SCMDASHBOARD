@@ -3,7 +3,7 @@
 # Run: powershell -ExecutionPolicy Bypass -File .\deploy_v15.ps1
 # =============================================================
 $ErrorActionPreference = "Stop"
-Set-Location "C:\Users\user\Documents\Claude\Projects\SCMNEST\SCMDASHBOARD"
+Set-Location "C:\Users\seung\Desktop\SCMDASHBOARD-main\SCMDASHBOARD"
 
 function Assert-Git { if ($LASTEXITCODE -ne 0) { throw "git command failed - check the previous step" } }
 
