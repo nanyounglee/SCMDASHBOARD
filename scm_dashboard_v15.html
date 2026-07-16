@@ -877,6 +877,19 @@ function get2025Month(mo) {
 function get2025Issue(mo) {
   return DATA_2025.issue[mo]||null;
 }
+// v15: 2025 원본(행 단위) RAW 확보 시 YoY를 월 근사가 아닌 정확한 일자 기준으로 계산
+function load2025RawData(){
+  fetch('CSV/order_2025.csv').then(r=>r.ok?r.text():null).catch(()=>null).then(txt=>{
+    if(!txt) return;
+    D.order2025=parseCSV(txt);
+    if(typeof SEL_MONTH!=='undefined'&&SEL_MONTH) refreshAll();
+  });
+  fetch('CSV/issue_2025.csv').then(r=>r.ok?r.text():null).catch(()=>null).then(txt=>{
+    if(!txt) return;
+    D.issue2025=parseCSV(txt);
+    if(typeof SEL_MONTH!=='undefined'&&SEL_MONTH) refreshAll();
+  });
+}
 
 // ===== COST DB (공정DB + 단가DB, loaded from cost_db.json) =====
 let COST_DB={process:[],price:[]};
@@ -1819,10 +1832,11 @@ function updateKPIs() {
   const label=selPeriodLabel();
   const q=getSearchQuery();
   const adjRange=getAdjacentDateRange(); // WoW/MoM/QoQ 비교 대상 (기간지정이면 null)
-  // YoY 비교: 2025 원본 row 데이터(D.order2025 등)가 준비되면 일자 그대로 비교하고, 그 전까지는 월 집계(data_2025.json)로 근사
-  const pyApprox=PERIOD_UNIT==='week'||PERIOD_UNIT==='custom'; // 월/분기 경계와 안 맞아 근사치임을 표시해야 하는 경우
+  const yoyRange=getYoyDateRange();
+  // YoY 비교: 2025 원본 row 데이터(D.order2025/D.issue2025)가 있으면 정확한 일자로 비교, 없으면 월 집계(data_2025.json)로 근사
   const pyMonths=selPeriodMonths().map(getPrevYearMonth);
-  const pyNote=pyApprox?' <span style="color:var(--text3)">(월 근사)</span>':'';
+  const pyApprox=(hasRaw)=>!hasRaw&&(PERIOD_UNIT==='week'||PERIOD_UNIT==='custom'); // 월/분기 경계와 안 맞는데 근사만 가능한 경우
+  const pyNote=(hasRaw)=>pyApprox(hasRaw)?' <span style="color:var(--text3)">(월 근사)</span>':'';
   if (D.order) {
     const allMo=getFilteredAllOrders().filter(r=>inSelDateRange(r['과업지시일자']));
     const projOrders=allMo.filter(r=>!isStock(r));
@@ -1833,13 +1847,23 @@ function updateKPIs() {
     const pmAllOrders=adjRange?getFilteredAllOrders().filter(r=>inDateRange(r['과업지시일자'],adjRange)):[];
     const pmTasks=adjRange?pmAllOrders.length:null;
     const pmUrg=adjRange?pmAllOrders.filter(r=>r['긴급여부']==='긴급'&&r['수주처']!==URGENT_EXCLUDE_SUP).length:null;
-    // YoY: from pre-aggregated 2025 data (선택 구간이 걸치는 월들의 합)
+    // YoY: 2025 원본 row(D.order2025)가 있으면 정확한 일자로 비교(§4-25 참고), 없으면 사전집계 월 합산으로 근사
+    const hasRawOrder2025=!!D.order2025;
     let pyTasks=null,pyUrg=null,pyPur=null;
-    pyMonths.forEach(pm=>{ const d=get2025Month(pm); if(d){ pyTasks=(pyTasks||0)+(d.tasks||0); pyUrg=(pyUrg||0)+(d.urgent||0); pyPur=(pyPur||0)+(d.purchase||0); } });
+    if(hasRawOrder2025&&yoyRange){
+      const pyBase=q?D.order2025.filter(r=>matchesSearch(r,q)):D.order2025;
+      const pyOrders=pyBase.filter(r=>inDateRange(r['과업지시일자'],yoyRange));
+      pyTasks=pyOrders.length;
+      pyUrg=pyOrders.filter(r=>r['긴급여부']==='긴급'&&r['수주처']!==URGENT_EXCLUDE_SUP).length;
+      pyPur=0;
+      pyBase.forEach(r=>{ const byM=purchaseByMonth(r); Object.entries(byM).forEach(([m,a])=>{ if(pyMonths.includes(m)) pyPur+=a; }); });
+    } else {
+      pyMonths.forEach(pm=>{ const d=get2025Month(pm); if(d){ pyTasks=(pyTasks||0)+(d.tasks||0); pyUrg=(pyUrg||0)+(d.urgent||0); pyPur=(pyPur||0)+(d.purchase||0); } });
+    }
     setValue('k-order',allMo.length.toLocaleString());
-    document.getElementById('k-order-sub').innerHTML=`프로젝트 ${f.length} + 재고생산 ${stockOrders.length} · 긴급 ${urg}${momBadge(allMo.length,pmTasks)}${yoyBadge(allMo.length,pyTasks)}${pyNote}<br><span style="font-size:10px;color:var(--text3)">${pmTasks?'전기 '+pmTasks+'건':''}${pmTasks&&pyTasks!==null?' · ':''}${pyTasks!==null?'전년 동기 '+pyTasks+'건':''}</span>`;
+    document.getElementById('k-order-sub').innerHTML=`프로젝트 ${f.length} + 재고생산 ${stockOrders.length} · 긴급 ${urg}${momBadge(allMo.length,pmTasks)}${yoyBadge(allMo.length,pyTasks)}${pyNote(hasRawOrder2025)}<br><span style="font-size:10px;color:var(--text3)">${pmTasks?'전기 '+pmTasks+'건':''}${pmTasks&&pyTasks!==null?' · ':''}${pyTasks!==null?'전년 동기 '+pyTasks+'건':''}</span>`;
     setValue('k-urgent',urg);
-    document.getElementById('k-urgent-sub').innerHTML=`긴급률 ${allMo.length?(urg/allMo.length*100).toFixed(1):0}% (전체 발주 대비)${momBadge(urg,pmUrg)}${yoyBadge(urg,pyUrg)}${pyNote}${q?' <span style="color:var(--text3)">(필터)</span>':''}`;
+    document.getElementById('k-urgent-sub').innerHTML=`긴급률 ${allMo.length?(urg/allMo.length*100).toFixed(1):0}% (전체 발주 대비)${momBadge(urg,pmUrg)}${yoyBadge(urg,pyUrg)}${pyNote(hasRawOrder2025)}${q?' <span style="color:var(--text3)">(필터)</span>':''}`;
     document.getElementById('mgr-month').textContent=label+(q?' (필터)':'');
     document.getElementById('mfg-month').textContent=label;
     document.getElementById('sup-pur-month').textContent=label+' (세금계산서 기준 · 재고제외)';
@@ -1870,19 +1894,27 @@ function updateKPIs() {
     if(q) pmFi=pmFi.filter(r=>matchesSearch(r,q));
     let qi=0,ni=0,oi=0;
     fi.forEach(r=>{ const c=r['이슈카테고리']||''; if(c.includes('품질'))qi++; if(c.includes('수량'))ni++; if(c.includes('운영'))oi++; });
+    const hasRawIssue2025=!!D.issue2025;
     let pyIssTotal=null;
-    pyMonths.forEach(pm=>{ const d=get2025Issue(pm); if(d) pyIssTotal=(pyIssTotal||0)+(d.total||0); });
+    if(hasRawIssue2025&&yoyRange){
+      let pyIss=D.issue2025.filter(r=>inDateRange(issueDateStr(r),yoyRange));
+      if(q) pyIss=pyIss.filter(r=>matchesSearch(r,q));
+      pyIssTotal=pyIss.length;
+    } else {
+      pyMonths.forEach(pm=>{ const d=get2025Issue(pm); if(d) pyIssTotal=(pyIssTotal||0)+(d.total||0); });
+    }
     setValue('k-issue',fi.length);
-    document.getElementById('k-issue-sub').innerHTML=`품질 ${qi} / 수량 ${ni} / 운영 ${oi}${momBadge(fi.length,adjRange?pmFi.length:null)}${yoyBadge(fi.length,pyIssTotal)}${pyNote}${q?' <span style="color:var(--text3)">(필터)</span>':''}`;
+    document.getElementById('k-issue-sub').innerHTML=`품질 ${qi} / 수량 ${ni} / 운영 ${oi}${momBadge(fi.length,adjRange?pmFi.length:null)}${yoyBadge(fi.length,pyIssTotal)}${pyNote(hasRawIssue2025)}${q?' <span style="color:var(--text3)">(필터)</span>':''}`;
     document.getElementById('issue-chart-period').textContent=label+' 기준';
   }
   if (D.ci) {
+    // 고객인지이슈(ci.csv)는 여러 연도 원본이 한 파일에 이미 함께 들어있어, YoY도 항상 정확한 일자 비교(근사 불필요)
     let fc=D.ci.filter(r=>inSelDateRange(ciDateStr(r)));
-    let pyFc=D.ci.filter(r=>{ const dm=r['등록일자']||''; const mm=dm.match(/(\d+)\.(\d+)\./); const key=mm?`${mm[1]}.${parseInt(mm[2])}`:null; return key&&pyMonths.includes(key); });
+    let pyFc=yoyRange?D.ci.filter(r=>inDateRange(ciDateStr(r),yoyRange)):[];
     let pmFc=adjRange?D.ci.filter(r=>inDateRange(ciDateStr(r),adjRange)):[];
     if(q) { fc=fc.filter(r=>matchesSearch(r,q)); pyFc=pyFc.filter(r=>matchesSearch(r,q)); pmFc=pmFc.filter(r=>matchesSearch(r,q)); }
     setValue('k-ci',fc.length);
-    document.getElementById('k-ci-sub').innerHTML=`${label} 등록${momBadge(fc.length,adjRange?pmFc.length:null)}${yoyBadge(fc.length,pyFc.length)}${pyNote}${q?' <span style="color:var(--text3)">(필터)</span>':''}`;
+    document.getElementById('k-ci-sub').innerHTML=`${label} 등록${momBadge(fc.length,adjRange?pmFc.length:null)}${yoyBadge(fc.length,pyFc.length)}${q?' <span style="color:var(--text3)">(필터)</span>':''}`;
   }
 }
 function setValue(id,v) { const el=document.getElementById(id); if(el) el.textContent=v; }
@@ -1919,10 +1951,10 @@ function renderOrdTopTable() {
   const adjRange=getAdjacentDateRange();
   const prevByProd={};
   if(adjRange) D.order.filter(r=>inDateRange(r['과업지시일자'],adjRange)&&!isStock(r)).forEach(r=>{prevByProd[prodKey(r)]=(prevByProd[prodKey(r)]||0)+pa(r['발주지시수량']);});
-  // 전년 동기(YoY) 제품별 발주수량 — 2025 원본 row가 D.order에 없으면(현재 상태) 항상 빈 값
+  // 전년 동기(YoY) 제품별 발주수량 — 2025 원본 row(D.order2025)가 있으면 정확한 일자로 집계
   const yoyRange=getYoyDateRange();
   const yoyByProd={};
-  if(yoyRange) D.order.filter(r=>inDateRange(r['과업지시일자'],yoyRange)&&!isStock(r)).forEach(r=>{yoyByProd[prodKey(r)]=(yoyByProd[prodKey(r)]||0)+pa(r['발주지시수량']);});
+  if(yoyRange&&D.order2025) D.order2025.filter(r=>inDateRange(r['과업지시일자'],yoyRange)&&!isStock(r)).forEach(r=>{yoyByProd[prodKey(r)]=(yoyByProd[prodKey(r)]||0)+pa(r['발주지시수량']);});
   const adjTh=document.getElementById('th-ord-adjacent'), yoyTh=document.getElementById('th-ord-yoy');
   if(adjTh) adjTh.textContent=periodUnitAdjacentLabel()||'전기대비';
   if(yoyTh) yoyTh.textContent='YoY';
@@ -2076,7 +2108,8 @@ function issueRowCost(r){return getReworkCostForProject(r['project_name']);}
 function issueResponse(r){return r['품질등급의견판단사유_SCM']||'';}
 function updateIssueTabs() {
   if (!D.issue||!SEL_MONTH) return;
-  const f=D.issue.filter(r=>pIssueMonth(r)===SEL_MONTH);
+  const q=getSearchQuery();
+  const f=D.issue.filter(r=>pIssueMonth(r)===SEL_MONTH&&(!q||matchesSearch(r,q)));
   const allHTML=f.map((r,i)=>{const rw=issueRowCost(r);const resp=issueResponse(r);return `<tr><td class="rank">${i+1}</td><td>${r['실제입하일']||r['입하예정일']||'—'}</td><td style="font-size:11px">${esc(r['project_name']||'')}</td><td style="font-size:11px">${esc(crop(r['입고물품']||r['item (통합) (from order)']||'',30))}</td><td>${r['프로젝트_발주자']||'—'}</td><td>${catTags(r['이슈카테고리']||'')}</td><td style="font-size:11px">${esc(crop(r['품질이슈내용']||r['수량이슈내용']||r['운영이슈내용(by물류)']||'',40))}</td><td style="font-size:11px;color:var(--text2);max-width:150px">${resp?esc(crop(resp,40)):'—'}</td><td class="num" style="${rw>0?'color:var(--red);font-weight:600':''}">${rw>0?faFull(rw):'0'}</td></tr>`;}).join('');
   setTbody('tb-iss-all',allHTML||emptyRow(9));
   const qHTML=f.filter(r=>(r['이슈카테고리']||'').includes('품질')).map((r,i)=>{const rw=issueRowCost(r);const resp=issueResponse(r);return `<tr><td class="rank">${i+1}</td><td>${r['실제입하일']||'—'}</td><td style="font-size:11px">${esc(r['project_name']||'')}</td><td style="font-size:11px">${esc(crop(r['입고물품']||r['item (통합) (from order)']||'',30))}</td><td>${r['프로젝트_발주자']||'—'}</td><td>${r['품질등급최초판정']||r['품질등급의견_SCM']||'—'}</td><td style="font-size:11px">${esc(crop(r['품질이슈내용']||'',40))}</td><td style="font-size:11px;color:var(--text2);max-width:150px">${resp?esc(crop(resp,40)):'—'}</td><td class="num" style="${rw>0?'color:var(--red);font-weight:600':''}">${rw>0?faFull(rw):'0'}</td></tr>`;}).join('');
@@ -2345,7 +2378,7 @@ function renderMonthlyNotice() {
   if (!D.goods_master) {
     gradHtml=noticeEmptyBox('졸업 제품','goods_master.csv 업로드 필요');
   } else {
-    const rows=D.goods_master.filter(r=>inSelDateRange(r['졸업일']));
+    const rows=D.goods_master.filter(r=>inSelDateRange(r['졸업일'])).sort((a,b)=>{const da=parseAnyDate(a['졸업일']),db=parseAnyDate(b['졸업일']);return (da&&db)?db-da:0;});
     gradHtml=noticeBox('🎓 졸업 제품',rows.length,rows.map(r=>`${esc(r['Goods Name']||'')} <span style="color:var(--text3)">(${esc(r['Goods Code']||'')})</span> · ${esc(r['졸업일']||'')}`));
   }
   // 2) 출시 제품 — goods_master.csv 출시일이 선택 기간 안에 있는지 정확한 날짜로 판정
@@ -2353,7 +2386,7 @@ function renderMonthlyNotice() {
   if (!D.goods_master) {
     launchHtml=noticeEmptyBox('출시 제품','goods_master.csv 업로드 필요');
   } else {
-    const rows=D.goods_master.filter(r=>inSelDateRange(r['출시일']));
+    const rows=D.goods_master.filter(r=>inSelDateRange(r['출시일'])).sort((a,b)=>{const da=parseAnyDate(a['출시일']),db=parseAnyDate(b['출시일']);return (da&&db)?db-da:0;});
     launchHtml=noticeBox('🚀 출시 제품',rows.length,rows.map(r=>`${esc(r['Goods Name']||'')} <span style="color:var(--text3)">(${esc(r['Goods Code']||'')})</span> · ${esc(r['출시일']||'')}`));
   }
   // 3) 품절 제품 — stockout_list.csv 판매상태+변경일 기준 (졸업 성격 제외) + 수동입력 보강
@@ -2366,7 +2399,7 @@ function renderMonthlyNotice() {
       if(!STOCKOUT_STATUSES.includes(st)) return false;
       const chgDate=r['변경일']||r['변경일(인터페이스용)']||'';
       return inSelDateRange(chgDate);
-    });
+    }).sort((a,b)=>{const da=parseAnyDate(a['변경일']||a['변경일(인터페이스용)']||''),db=parseAnyDate(b['변경일']||b['변경일(인터페이스용)']||'');return (da&&db)?db-da:0;});
     const already=new Set(rows.map(r=>r['파츠명']));
     const manualStock=months.includes(MANUAL_STOCKOUT_MONTH)?MANUAL_STOCKOUT.filter(m=>!already.has(m.parts)):[];
     const items=rows.map(r=>esc(r['파츠명']||'')).concat(manualStock.map(m=>esc(m.parts)));
@@ -6468,6 +6501,7 @@ function projectRevenueCardHTML(){
 window.addEventListener('load',()=>{
   buildUploadZones();
   load2025Data();
+  load2025RawData();
   loadCostDB();
   loadPartsMaster();
   loadCIOverrides();

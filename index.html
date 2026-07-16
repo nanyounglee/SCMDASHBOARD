@@ -2108,7 +2108,8 @@ function issueRowCost(r){return getReworkCostForProject(r['project_name']);}
 function issueResponse(r){return r['품질등급의견판단사유_SCM']||'';}
 function updateIssueTabs() {
   if (!D.issue||!SEL_MONTH) return;
-  const f=D.issue.filter(r=>pIssueMonth(r)===SEL_MONTH);
+  const q=getSearchQuery();
+  const f=D.issue.filter(r=>pIssueMonth(r)===SEL_MONTH&&(!q||matchesSearch(r,q)));
   const allHTML=f.map((r,i)=>{const rw=issueRowCost(r);const resp=issueResponse(r);return `<tr><td class="rank">${i+1}</td><td>${r['실제입하일']||r['입하예정일']||'—'}</td><td style="font-size:11px">${esc(r['project_name']||'')}</td><td style="font-size:11px">${esc(crop(r['입고물품']||r['item (통합) (from order)']||'',30))}</td><td>${r['프로젝트_발주자']||'—'}</td><td>${catTags(r['이슈카테고리']||'')}</td><td style="font-size:11px">${esc(crop(r['품질이슈내용']||r['수량이슈내용']||r['운영이슈내용(by물류)']||'',40))}</td><td style="font-size:11px;color:var(--text2);max-width:150px">${resp?esc(crop(resp,40)):'—'}</td><td class="num" style="${rw>0?'color:var(--red);font-weight:600':''}">${rw>0?faFull(rw):'0'}</td></tr>`;}).join('');
   setTbody('tb-iss-all',allHTML||emptyRow(9));
   const qHTML=f.filter(r=>(r['이슈카테고리']||'').includes('품질')).map((r,i)=>{const rw=issueRowCost(r);const resp=issueResponse(r);return `<tr><td class="rank">${i+1}</td><td>${r['실제입하일']||'—'}</td><td style="font-size:11px">${esc(r['project_name']||'')}</td><td style="font-size:11px">${esc(crop(r['입고물품']||r['item (통합) (from order)']||'',30))}</td><td>${r['프로젝트_발주자']||'—'}</td><td>${r['품질등급최초판정']||r['품질등급의견_SCM']||'—'}</td><td style="font-size:11px">${esc(crop(r['품질이슈내용']||'',40))}</td><td style="font-size:11px;color:var(--text2);max-width:150px">${resp?esc(crop(resp,40)):'—'}</td><td class="num" style="${rw>0?'color:var(--red);font-weight:600':''}">${rw>0?faFull(rw):'0'}</td></tr>`;}).join('');
@@ -2377,7 +2378,7 @@ function renderMonthlyNotice() {
   if (!D.goods_master) {
     gradHtml=noticeEmptyBox('졸업 제품','goods_master.csv 업로드 필요');
   } else {
-    const rows=D.goods_master.filter(r=>inSelDateRange(r['졸업일']));
+    const rows=D.goods_master.filter(r=>inSelDateRange(r['졸업일'])).sort((a,b)=>{const da=parseAnyDate(a['졸업일']),db=parseAnyDate(b['졸업일']);return (da&&db)?db-da:0;});
     gradHtml=noticeBox('🎓 졸업 제품',rows.length,rows.map(r=>`${esc(r['Goods Name']||'')} <span style="color:var(--text3)">(${esc(r['Goods Code']||'')})</span> · ${esc(r['졸업일']||'')}`));
   }
   // 2) 출시 제품 — goods_master.csv 출시일이 선택 기간 안에 있는지 정확한 날짜로 판정
@@ -2385,7 +2386,7 @@ function renderMonthlyNotice() {
   if (!D.goods_master) {
     launchHtml=noticeEmptyBox('출시 제품','goods_master.csv 업로드 필요');
   } else {
-    const rows=D.goods_master.filter(r=>inSelDateRange(r['출시일']));
+    const rows=D.goods_master.filter(r=>inSelDateRange(r['출시일'])).sort((a,b)=>{const da=parseAnyDate(a['출시일']),db=parseAnyDate(b['출시일']);return (da&&db)?db-da:0;});
     launchHtml=noticeBox('🚀 출시 제품',rows.length,rows.map(r=>`${esc(r['Goods Name']||'')} <span style="color:var(--text3)">(${esc(r['Goods Code']||'')})</span> · ${esc(r['출시일']||'')}`));
   }
   // 3) 품절 제품 — stockout_list.csv 판매상태+변경일 기준 (졸업 성격 제외) + 수동입력 보강
@@ -2398,7 +2399,7 @@ function renderMonthlyNotice() {
       if(!STOCKOUT_STATUSES.includes(st)) return false;
       const chgDate=r['변경일']||r['변경일(인터페이스용)']||'';
       return inSelDateRange(chgDate);
-    });
+    }).sort((a,b)=>{const da=parseAnyDate(a['변경일']||a['변경일(인터페이스용)']||''),db=parseAnyDate(b['변경일']||b['변경일(인터페이스용)']||'');return (da&&db)?db-da:0;});
     const already=new Set(rows.map(r=>r['파츠명']));
     const manualStock=months.includes(MANUAL_STOCKOUT_MONTH)?MANUAL_STOCKOUT.filter(m=>!already.has(m.parts)):[];
     const items=rows.map(r=>esc(r['파츠명']||'')).concat(manualStock.map(m=>esc(m.parts)));
