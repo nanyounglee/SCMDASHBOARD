@@ -1066,8 +1066,15 @@ function pSplitAmounts(s) {
   if (!s) return [];
   return s.split(',').map(p=>pa(p.trim()));
 }
+// 카테고리별 집계 기준일: 품질/운영은 내용업데이트일, 수량은 실제입하일
+function getIssueDateStr(r) {
+  const cat=(r['이슈카테고리']||'').trim();
+  if(cat.includes('품질')) return r['품질이슈내용업데이트']||r['실제입하일']||r['입하예정일']||'';
+  if(cat.includes('운영')) return r['운영이슈내용 업데이트']||r['실제입하일']||r['입하예정일']||'';
+  return r['실제입하일']||r['입하예정일']||'';
+}
 function pIssueMonth(r) {
-  const d=(r['실제입하일']||r['입하예정일']||'');
+  const d=getIssueDateStr(r);
   const m=d.match(/(\d{4})\.(\d{1,2})/);
   return m ? `${m[1]}.${parseInt(m[2])}` : null;
 }
@@ -1466,6 +1473,12 @@ function inSelPeriod(mo) {
   if(SEL_RANGE){ const p=String(mo).split('.').map(Number); return p[0]===SEL_RANGE.y&&p[1]>=SEL_RANGE.from&&p[1]<=SEL_RANGE.to; }
   return mo===SEL_MONTH;
 }
+// 이슈 레코드 기간 필터 — 주간/커스텀은 실제 날짜로 정확히, 월/분기는 월 단위로 비교
+function issueInPeriod(r) {
+  const ds=getIssueDateStr(r);
+  if(SEL_DATE_RANGE){const d=parseAnyDate(ds);if(d) return d>=SEL_DATE_RANGE.from&&d<=SEL_DATE_RANGE.to;}
+  return inSelPeriod(pIssueMonth(r));
+}
 // 실제 일자(과업지시일자·입하일·등록일자 등)를 SEL_DATE_RANGE와 정확히 비교 — 주별/기간지정도 정확하게 동작
 function inSelDateRange(dateStr) {
   if(!SEL_DATE_RANGE||!dateStr) return false;
@@ -1557,7 +1570,7 @@ function latestAvailableDate(){
   let max=null;
   const consider=(s)=>{ const d=parseAnyDate(s); if(d&&(!max||d>max)) max=d; };
   if(D.order) D.order.forEach(r=>consider(r['과업지시일자']));
-  if(D.issue) D.issue.forEach(r=>{consider(r['실제입하일']);consider(r['입하예정일']);});
+  if(D.issue) D.issue.forEach(r=>{consider(getIssueDateStr(r));consider(r['입하예정일']);});
   return max||new Date(BASE_YEAR,0,1);
 }
 function buildRecentWeeks(){
@@ -1815,7 +1828,7 @@ function yoyText(cur,prev,label) {
   if(prev===null||prev===undefined) return '';
   return `전년 ${label||''} ${typeof prev==='number'?prev.toLocaleString():prev}`;
 }
-function issueDateStr(r) { return r['실제입하일']||r['입하예정일']||''; }
+function issueDateStr(r) { return getIssueDateStr(r); }
 function ciDateStr(r) { return r['등록일자']||''; }
 // 어댑턴트 기간(직전 동일 길이)이 걸치는 월 목록 — 매입금액처럼 월 단위로만 존재하는 값을 근사할 때 사용
 function monthsTouchedBy(range) {
@@ -2906,7 +2919,7 @@ function openModal(type,extra) {
     ISSUEMODAL_PX_EXPANDED.clear();
     MODAL_ISSUE_FILTER='all';
     const iq=getSearchQuery();
-    let f=SEL_MONTH?D.issue.filter(r=>inSelPeriod(pIssueMonth(r))):D.issue;
+    let f=SEL_MONTH?D.issue.filter(r=>issueInPeriod(r)):D.issue;
     if(iq) f=f.filter(r=>matchesSearch(r,iq));
     tabsEl.innerHTML=`
       <div style="display:flex;gap:0;border-bottom:1px solid var(--border);padding:0 8px">
@@ -3237,7 +3250,7 @@ function filterIssueModal(cat,el) {
   MODAL_ISSUE_FILTER=cat;
   el.closest('[style]').querySelectorAll('.tab').forEach(t=>t.classList.remove('active'));
   el.classList.add('active');
-  let f=SEL_MONTH?D.issue.filter(r=>pIssueMonth(r)===SEL_MONTH):D.issue;
+  let f=SEL_MONTH?D.issue.filter(r=>issueInPeriod(r)):D.issue;
   const iq=getSearchQuery();
   if(iq) f=f.filter(r=>matchesSearch(r,iq));
   renderIssueModalMatrix(cat);
@@ -3268,7 +3281,8 @@ function renderIssueModalMatrix(cat) {
     orderMap[k].orderCount++;
   });
   const issueMap={};
-  D.issue.filter(r=>cat==='all'||(r['이슈카테고리']||'').includes(cat)).forEach(r=>{
+  const issuePeriodFiltered=SEL_MONTH?D.issue.filter(r=>issueInPeriod(r)):D.issue;
+  issuePeriodFiltered.filter(r=>cat==='all'||(r['이슈카테고리']||'').includes(cat)).forEach(r=>{
     const prod=(r['item (통합) (from order)']||'').trim(); if(!prod) return;
     const key=(r['project_name']||'').split('-')[0];
     const sup=key?(projMap[key]||''):'';
