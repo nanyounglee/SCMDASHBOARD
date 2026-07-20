@@ -5949,7 +5949,7 @@ function renderPortfolio() {
   el.innerHTML = `
     <div class="kpi-row-4" style="margin-bottom:20px">
       ${['Core','Performer','Developing','General'].map(q => `
-        <div class="kpi-card" style="border-left:4px solid ${quadColors[q]}">
+        <div class="kpi-card" style="border-left:4px solid ${quadColors[q]};cursor:pointer;transition:box-shadow .15s" onclick="clickPortfolioKpi('${q}')" onmouseenter="this.style.boxShadow='0 2px 8px rgba(0,0,0,.1)'" onmouseleave="this.style.boxShadow=''" title="클릭하면 아래 협력사별 상세 표가 ${q}로 필터링됩니다">
           <div class="kpi-label">${q}</div>
           <div class="kpi-val">${quadCounts[q]}<span style="font-size:13px;color:var(--text3);font-weight:400">사</span></div>
           <div class="kpi-sub">${quadDesc[q]} · ${total?((quadCounts[q]/total*100).toFixed(1)):'0'}%</div>
@@ -6018,8 +6018,8 @@ function renderPortfolio() {
           <input type="checkbox" id="portfolio-active-only" onchange="togglePortfolioActive(this.checked)"> ${SEL_MONTH?fmtMonth(SEL_MONTH):'이번달'} 발주실적 있는 협력사만
         </label>
         <div style="display:flex;gap:6px;margin-left:auto" id="portfolio-quad-filter">
-          <span class="m-chip active" onclick="filterPortfolioQuad(this,'all')">전체</span>
-          ${['Core','Performer','Developing','General'].map(q=>`<span class="m-chip" onclick="filterPortfolioQuad(this,'${q}')" style="border-color:${quadColors[q]}">${q} (${quadCounts[q]})</span>`).join('')}
+          <span class="m-chip active" data-quad="all" onclick="filterPortfolioQuad(this,'all')">전체</span>
+          ${['Core','Performer','Developing','General'].map(q=>`<span class="m-chip" data-quad="${q}" onclick="filterPortfolioQuad(this,'${q}')" style="border-color:${quadColors[q]}">${q} (${quadCounts[q]})</span>`).join('')}
         </div>
       </div>
       <div style="max-height:500px;overflow-y:auto;margin-top:10px">
@@ -6097,7 +6097,7 @@ function renderPortfolioDots(vendors, quadColors) {
     const y = 95 - (v._rel / 6) * 90;
     const color = quadColors[v._quad];
     const size = Math.max(6, Math.min(14, 6 + v._taskScore * 2));
-    return `<div style="position:absolute;left:${x}%;top:${y}%;width:${size}px;height:${size}px;border-radius:50%;background:${color};opacity:.7;cursor:pointer;transform:translate(-50%,-50%);transition:all .15s;border:1.5px solid rgba(255,255,255,.8)" title="${v.name}\nQCD:${v._qcd}/9 관계:${v._rel}/6 | 등급:${v._grade}(총점${v._total})\nTASK:${v._taskScore} 매입:${v._amtScore} 이슈:${v._issueScore} 예외:${v._exceptScore} 대체:${v._replaceScore}" onmouseenter="this.style.opacity='1';this.style.transform='translate(-50%,-50%) scale(1.5)';this.style.zIndex='10'" onmouseleave="this.style.opacity='.7';this.style.transform='translate(-50%,-50%) scale(1)';this.style.zIndex=''"></div>`;
+    return `<div style="position:absolute;left:${x}%;top:${y}%;width:${size}px;height:${size}px;border-radius:50%;background:${color};opacity:.7;cursor:pointer;transform:translate(-50%,-50%);transition:all .15s;border:1.5px solid rgba(255,255,255,.8)" title="${v.name}\nQCD:${v._qcd}/9 관계:${v._rel}/6 | 등급:${v._grade}(총점${v._total})\nTASK:${v._taskScore} 매입:${v._amtScore} 이슈:${v._issueScore} 예외:${v._exceptScore} 대체:${v._replaceScore}\n(클릭하면 협력사 상세로 이동)" onclick="openSupplierDetailModal('${esc(v.name).replace(/'/g,"\\'")}')" onmouseenter="this.style.opacity='1';this.style.transform='translate(-50%,-50%) scale(1.5)';this.style.zIndex='10'" onmouseleave="this.style.opacity='.7';this.style.transform='translate(-50%,-50%) scale(1)';this.style.zIndex=''"></div>`;
   }).join('');
 }
 
@@ -6131,6 +6131,12 @@ function renderPortfolioTable(vendors, quadColors, filter) {
   </tr>`).join('') || `<tr><td colspan="13" style="text-align:center;color:var(--text3);padding:20px">해당 조건의 협력사가 없습니다.</td></tr>`;
 }
 
+function clickPortfolioKpi(quad) {
+  const chip = document.querySelector('#portfolio-quad-filter .m-chip[data-quad="'+quad+'"]');
+  if (chip) filterPortfolioQuad(chip, quad);
+  const table = document.getElementById('portfolio-table');
+  if (table) table.scrollIntoView({behavior:'smooth', block:'center'});
+}
 function filterPortfolioQuad(chipEl, quad) {
   const container = document.getElementById('portfolio-quad-filter');
   container.querySelectorAll('.m-chip').forEach(c => c.classList.remove('active'));
