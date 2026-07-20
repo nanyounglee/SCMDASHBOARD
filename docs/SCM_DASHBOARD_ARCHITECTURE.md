@@ -1,6 +1,6 @@
 # SCM 통합운영 대시보드 — 프로젝트 설계 아키텍처
 
-> 버전: v19 | 갱신일: 2026-07-20 | 작성: 이난영 / Claude AI  
+> 버전: v20 | 갱신일: 2026-07-24 | 작성: 이난영 / Claude AI  
 > 대상: 구매전략파트 · 외주생산파트 팀원 공유, 유지보수, 버그 대응
 
 ---
@@ -26,7 +26,7 @@
 | 파일 | 위치 |
 |---|---|
 | 운영 원본 | `index.html` (GitHub Pages가 직접 서빙) |
-| 버전 스냅샷 | `scm_dashboard_v19.html` (index.html 복사본, 이전 버전은 `archive/`) |
+| 버전 스냅샷 | `scm_dashboard_v20.html` (index.html 복사본, 이전 버전은 `archive/`) |
 | GitHub Pages | https://nanyounglee.github.io/SCMDASHBOARD/ |
 | 레포지토리 | https://github.com/nanyounglee/SCMDASHBOARD |
 
@@ -741,16 +741,16 @@ const FILE_SIGNATURES = {
 | **v15.x** | `9f39b04`~`2d1611e` (원격, seungmi.yook 외) | v15 배포 후 원격에서 이어진 작업. **YoY를 2025 원본 행 기준 정확 비교로 업그레이드**(`9f39b04`): `CSV/order_2025.csv`·`issue_2025.csv` 고정 파일명 추가, `load2025RawData()`→`D.order2025`/`D.issue2025`, `updateKPIs()`·`renderOrdTopTable()` YoY를 `getYoyDateRange()` 정확 일자 비교로 교체(원본 없으면 월 근사 폴백). **이슈현황 탭 기간 필터 버그 수정**(`e9482f1`): 다중 월·분기·주간·기간지정 시 마지막 달만 표시되던 것을 `issueInPeriod()`로 교체. **이슈 집계 기준일 변경**: 품질→`품질이슈내용업데이트`, 운영→`운영이슈내용 업데이트`(없으면 실제입하일 폴백)로 KPI·탭 통일. W29 CSV(order/issue/ci) 갱신. |
 | **v16** | (로컬→PC 배포) | 협력사 현황 드릴다운에 PDF 내보내기 2종 신규 — ① 상세 스냅샷(`exportSupplierPdf`, §4-27): 드릴다운 DOM 복제 후 Chart.js 캔버스를 `toBase64Image()` PNG로 치환·스크롤 펼침·조작 요소 제거해 A4 저장. ② 분석 리포트(`exportSupplierAnalysisReport`, §4-27): 전년(2025) RAW를 `loadPrevYearRaw()`로 1회 fetch·캐시하고 완결월(전월까지) YoY 성장률로 잔여 월을 예상 채워, 연간요약·YoY·SVG 추세선(`_repLineChart`)·월별표·Top5·재발이슈·핵심요약 2줄을 A4 2p로 생성. html2pdf.js 0.10.1은 최초 클릭 시에만 CDN lazy-load(`loadHtml2Pdf`). 리포트/내보내기 버그 수정(§4-28): 주간 보고(`genWeekly`) 긴급 발주(서울디지털 제외)·월 매입금액(재고생산 포함)을 KPI 카드 기준과 일치, `exportKPI`를 발주 RAW 행 대신 `computeKPIs()`×`KPI_DEFS` 실측 KPI 요약으로 교체. index.html 버전 라벨 v14→v16 정정(v15 배포 시 미갱신분). **배포 전 원격 v15.x(11커밋)를 fast-forward로 받아 그 위에 통합 — 코드 영역이 겹치지 않아 충돌 없음.** index.html 약 6,842줄. |
 | **v17** | (로컬→PC 배포) | 협력사 현황에 **협력사 변경 검토 진행 현황** 카드 신규(§4-27b) — 별도 저장소 scm_vendor_change의 `bank/` 폴더(팀 공유 백업)를 GitHub API로 실시간 fetch(동일 origin, CORS 무관)해 전환검토중/확정/완료 건수와 최근 완료 협력사 변경 목록을 표시, 카드 클릭 시 해당 대시보드로 새 탭 이동(`loadVendorChangeStatus`). 같은 검토 건이 팀원별 백업 파일에 다른 상태로 중복 등장하는 문제를 상태-랭크(완료>확정>전환검토중) + 최신 날짜 채택 방식으로 병합해 파일 처리 순서와 무관하게 안정적인 결과를 보장. index.html 약 6,921줄. |
-| **v17** | (로컬→PC 배포) | 협력사 현황에 **협력사 변경 검토 진행 현황** 카드 신규(§4-27b) — 별도 저장소 scm_vendor_change의 `bank/` 폴더(팀 공유 백업)를 GitHub API로 실시간 fetch(동일 origin, CORS 무관)해 전환검토중/확정/완료 건수와 최근 완료 협력사 변경 목록을 표시, 카드 클릭 시 해당 대시보드로 새 탭 이동(`loadVendorChangeStatus`). 같은 검토 건이 팀원별 백업 파일에 다른 상태로 중복 등장하는 문제를 상태-랭크(완료>확정>전환검토중) + 최신 날짜 채택 방식으로 병합해 파일 처리 순서와 무관하게 안정적인 결과를 보장. index.html 약 6,921줄. |
 | **v17.1** | (로컬→PC 배포) | 협력사 PDF 내보내기 2종(§4-27)의 잘림/백지 버그 수정 — ① html2pdf 컨테이너가 A4 내부 폭 194mm(≈733px) 고정인데 wrap이 1000px 고정 폭이라 우측 잘림 → 폭 자동(컨테이너 상속)으로 변경. ② 페이지 스크롤 상태에서 html2canvas가 스크롤 오프셋만큼 내용을 밀어 백지 캡처 → `scrollX/Y:0` 강제, 클론 문서 폭을 왜곡하던 `windowWidth` 옵션 제거. ③ 분석 리포트 SVG 추세선이 html2canvas에서 깨짐 → `_svgsToPng()`(SVG→Image→canvas, 브라우저 네이티브)로 PNG 치환 후 전달. ④ Chart.js 캔버스 비트맵이 비워진 채 캡처되는 경우 → `chart.update('none')+draw()` 동기 리렌더 강제. 실데이터 픽셀 검증(사방 여백·차트 렌더·페이지 분리) 완료. index.html 약 6,968줄. |
 | **v18** | (로컬→PC 배포) | 팀 피드백 5건 반영 — ① 이슈 상세 모달의 제품×협력사 매트릭스를 **협력사 단위 통합**으로 재편(`renderIssueModalMatrix`): 동일 협력사 이슈를 제품 구분 없이 합산, 주요 이슈 제품 Top3 병기, 펼침 상세에 제품 컬럼 추가. ② **isStock에 굿즈코드 STCK 판별 추가**: `sync_itemdb`에 STCK 포함 시 재고생산 — 재고 구분 전 화면 일괄 적용. ③ **재고생산(별도) KPI 카드 제거**(KPI 6→5장): 재고생산액·전체 매입 대비 %를 월 매입금액 비고로 통합, 매입금액 모달에 협력사별 프로젝트/재고생산 컬럼, 발주 TASK 모달 발주현황Top을 프로젝트/재고생산 두 섹션으로 분리. ④ **졸업 검토 권장조치 필터**(`GRAD_ACTION_FILTER`): 운영종료 검토/졸업 검토/모니터링 칩, 사전집계·레거시 경로 모두. ⑤ **발주 현황 단일 화면화**: Top20/Bottom20/프로젝트별매입/발주Task 탭과 `renderOrdBotTable`/`renderOrdProjTable`/`updateTaskTabs` 삭제, 숫자 셀 nowrap으로 줄밀림 정리. index.html 약 6,853줄. |
 | **v19** | (로컬→PC 배포) | ① **이슈 분석 모듈**(`renderIssueAnalytics`) — 이슈 현황 상단에 기간 이슈/TASK/이슈율(전년 동기 %p 비교) KPI 3장 + 월별 이슈 추이 라인차트(품질/수량/운영) + **이슈율 2025 vs 2026 동기 비교 차트**(자동 로드되는 `D.order2025/D.issue2025` 원본 RAW로 월별 이슈÷TASK×100 산출). ② **발주 진행현황 주차 경고** — 표시 중인 progress 파일의 ISO 주차 < 현재 주차면 경고 배너(필요 파일명 안내); 주간 CSV는 자동 커밋 워크플로가 없어 수동 커밋 필요함을 명시. ③ **제품별 판매량 추이 검색 연동**(`renderProductTrend`에 matchesSearch 적용 + refreshAll 재렌더) + 제품별 발주 요약에서 주 제작처가 서울디지털인쇄협동조합인 제품 제외·제작 협력사 컬럼 추가. index.html 약 6,944줄. |
+| **v20** | (로컬→PC 배포) | ① **Airtable 자동 갱신 스케줄 변경**: `weekly-airtable.yml` cron을 월요일 09:00→**목요일 13:00 KST**(`0 4 * * 4`)로 변경. ② **"지금 새로고침" 버튼**(`refreshAirtableNow`) — 업로드 바에 추가, GitHub Actions `workflow_dispatch` REST API로 `weekly-airtable.yml`을 즉시 트리거하고 `pollAirtableRefresh`로 최대 10분간 15초 간격 폴링해 완료 시 `autoLoadRaw()` 자동 재실행. Contents 권한 토큰에 Actions:write 권한 추가 필요(GitHub 연동 설정 안내 갱신). ③ **변경 이력 시스템 신규**(`data/change_log.json`, §9) — 졸업/출시 제품(goods_master 날짜 그대로)·협력사 신규/거래종료(주간 `CSV_BANK/<연도>_W<주차>/sup.csv` 스냅샷 비교로 정밀화, 기존 월단위 비교보다 정밀)를 감지해 영구 기록. 월간 공지사항의 이 4개 섹션을 "선택 기간" → "오늘 기준 최근 30일 롤링"으로 전환(품절만 기존 유지), "전체 변경 이력 보기" 토글 추가. 토큰 없으면 로컬에만 쌓이고 토큰 보유자가 열람 시 병합·커밋(비고/CI 수기입력과 동일 패턴). 로드-감지 순서 경쟁 상태(데이터 로드 전에 이력 로드가 먼저 끝나는 경우) 발견·수정 — `CHANGE_LOG_DETECTED` 플래그로 재렌더마다 재시도. 더 이상 쓰이지 않는 월단위 협력사 비교 코드(`SUP_ROSTER_CACHE`/`loadSupRosterDiff`/`walkSupSnapshot` 등) 제거. index.html 약 7,081줄. |
 
 ### 파일 구조
 ```
 SCMDASHBOARD/
-├── index.html                       ← 운영 원본 (GitHub Pages 직접 서빙 · v19 · 약 6,944줄)
-├── scm_dashboard_v19.html           ← 현행 버전 스냅샷 (index.html 복사본)
+├── index.html                       ← 운영 원본 (GitHub Pages 직접 서빙 · v20 · 약 7,081줄)
+├── scm_dashboard_v20.html           ← 현행 버전 스냅샷 (index.html 복사본)
 ├── archive/                         ← 이전 버전 스냅샷 (v3~v15)
 ├── CSV/                             ← 자동 로드 대상 CSV
 │   ├── order.csv · issue.csv · sup.csv · ci.csv
@@ -766,14 +766,14 @@ SCMDASHBOARD/
 │   ├── parts_master.json · data_2025.json · cost_db.json
 │   └── progress_notes.json · ci_overrides.json  ← v13 신규(GitHub 연동 자동 커밋 대상)
 ├── docs/
-│   ├── SCM_DASHBOARD_ARCHITECTURE.md       ← 이 파일 (v19 갱신)
-│   ├── CHANGELOG_v19.md                    ← 버전별 변경 내역 (팀 공유용)
+│   ├── SCM_DASHBOARD_ARCHITECTURE.md       ← 이 파일 (v20 갱신)
+│   ├── CHANGELOG_v20.md                    ← 버전별 변경 내역 (팀 공유용)
 │   ├── purchase_dashboard_migration_strategy.md  ← 구매파트 Apps Script 이식 전략 (v10 반영 현황 기준, v11 이후는 범위 밖)
-│   ├── SCM_DASHBOARD_로직설명_v19.html  ← 로직 설명서 (v19 갱신)
-│   ├── SCM_DASHBOARD_사용자가이드_v19.html  ← 사용자 가이드 (v19 갱신)
+│   ├── SCM_DASHBOARD_로직설명_v20.html  ← 로직 설명서 (v20 갱신)
+│   ├── SCM_DASHBOARD_사용자가이드_v20.html  ← 사용자 가이드 (v20 갱신)
 │   ├── SCM_KPI_리포트_2026Q2.xlsx
 │   └── archive/                     ← 구버전 (v16 이하 로직설명/사용자가이드/CHANGELOG, V4_로직설명_v7.html 등)
-├── deploy_v19.ps1                   ← 배포 스크립트 (git 자가복구 + 버전 정리 + 안전 동기화 + 문서/구파일 정리)
+├── deploy_v20.ps1                   ← 배포 스크립트 (git 자가복구 + 버전 정리 + 안전 동기화 + 문서/구파일 정리)
 ├── archive_csv.ps1                  ← v13 신규 — 주간 CSV(progress_/project_)는 최신 1개만 유지 후 CSV_BANK로 이동, v14 확장 — sup.csv 교체 직전 CSV_BANK/sup_YYYY_MM.csv로 월간 스냅샷 저장
 ├── .nojekyll                        ← Pages Jekyll 비활성화 (빌드 실패 방지)
 └── .claude/                         ← Claude 설정
@@ -783,7 +783,7 @@ SCMDASHBOARD/
 
 ### 버전 규칙 (v7~)
 - **운영 원본은 `index.html`** — 수정 작업은 index.html에 직접, 로컬 확인은 수동 업로드 모드
-- **배포는 `deploy_v{N}.ps1`(현재 `deploy_v19.ps1`)** — 실행 시 자동으로:
+- **배포는 `deploy_v{N}.ps1`(현재 `deploy_v20.ps1`)** — 실행 시 자동으로:
   1. git 저장소 자가진단/복구 (index 손상, 잔류 lock)
   2. 한글 원본 CSV → 고정 영문명 복사
   3. index.html이 바뀐 경우에만 `scm_dashboard_v{N+1}.html` 스냅샷 생성 (버전 자동 카운트, 이전 버전 archive 이동)
@@ -796,10 +796,10 @@ SCMDASHBOARD/
 
 ---
 
-## 9. 주간 업데이트 절차 (v19 · 자동 로드 기준)
+## 9. 주간 업데이트 절차 (v20 · 자동 로드 기준)
 
-### Airtable 소스 CSV 자동 커밋 (v19 신규, 확장)
-`.github/workflows/weekly-airtable.yml`이 **매주 월요일 09:00 KST**에 Airtable 원본 CSV를 자동으로 갱신·커밋한다. 두 스크립트가 순서대로 실행된다:
+### Airtable 소스 CSV 자동 커밋 (v19 신규, v20 확장)
+`.github/workflows/weekly-airtable.yml`이 **매주 목요일 13:00 KST**(v20에서 월요일 09:00→변경, cron `0 4 * * 4`)에 Airtable 원본 CSV를 자동으로 갱신·커밋한다. 두 스크립트가 순서대로 실행된다:
 
 1. **`scripts/fetch_airtable_weekly.mjs`** — 진행현황·매출결산처럼 **파일명에 주차가 붙는** 소스(`CSV/progress_YYYY_WNN.csv`, `CSV/project_YYYY_WNN.csv`). 지난 주차 파일은 `CSV_BANK/연도_W주차/`로 자동 아카이브(대시보드가 전주 파일과 비교하므로 보존 필요).
 2. **`scripts/fetch_airtable_sources.mjs`** — `order`/`issue`/`sup`/`ci`/`stockout_list`/`parts`/`goods_master`처럼 **대시보드가 고정 파일명으로 자동 로드**하는 소스(`CSV/_manifest.json` 대상, §3-0). `AIRTABLE_SOURCES` 변수(JSON 배열)에 등록된 항목만 처리하며, 덮어쓰기 전 `archive_csv.ps1`과 동일한 두 보존 규칙을 재현한다 — ① 이전 버전을 `CSV_BANK/연도_W주차/파일명`으로 아카이브(주차는 그 파일의 최근 git 커밋일 기준), ② `sup.csv`는 추가로 `CSV_BANK/sup_YYYY_MM.csv` 월간 스냅샷(신규/거래종료 협력사 diff의 원본, §4-24)을 매달 1회 보존. 이전 내용과 완전히 동일하면 아무 것도 건드리지 않는다(불필요한 아카이브 방지).
@@ -828,6 +828,16 @@ SCMDASHBOARD/
 
 미설정/실패 시엔 기존처럼 수동 커밋으로 대체 가능 — 대시보드는 진행현황 CSV가 이번 주 파일이 아니면 경고 배너(§v19)로 알려준다.
 
+**"지금 새로고침" 버튼 (v20 신규)** — 매주 목요일을 기다리지 않고 필요할 때 바로 Airtable을 재수집하고 싶을 때 쓴다. 업로드 바의 🔄 지금 새로고침 클릭 → `refreshAirtableNow()`가 GitHub Actions REST API로 `weekly-airtable.yml`에 `workflow_dispatch`를 보내고, `pollAirtableRefresh()`가 15초 간격(최대 10분)으로 실행 상태를 폴링하다가 완료되면 `autoLoadRaw()`를 다시 호출해 최신 CSV를 화면에 반영한다. 이 버튼을 쓰려면 GitHub 연동 토큰(§비고 자동 커밋과 동일 토큰)에 기존 `Contents: Read and write`에 더해 **`Actions: Read and write`** 권한이 추가로 필요하다 — 없으면 401/403/404로 실패하고 화면에 원인 안내가 뜬다.
+
+**협력사·졸업/출시 변경 이력 (v20 신규)** — `data/change_log.json`에 아래 4종 변경을 영구 기록한다:
+- 졸업 제품(`product_graduated`)·출시 제품(`product_launched`) — goods_master.csv의 졸업일/출시일을 그대로 사용(정확한 날짜가 원본에 있음). `backfillProductChangeLog()`가 오늘로부터 35일 이내 날짜만 최초 적재 대상으로 삼는다(그보다 오래된 과거 이력은 어차피 30일 노출 창을 벗어나므로 배포 시점에 한꺼번에 쌓지 않음).
+- 신규 협력사(`sup_added`)·거래종료 협력사(`sup_terminated`) — 원본에 정확한 상태변경일 필드가 없어, 위 자동 커밋이 매주 남기는 `CSV_BANK/<연도>_W<주차>/sup.csv` 스냅샷을 체인으로 이어 비교(`detectSupplierChanges()`, 최근 6주치). 날짜는 그 주의 월요일로 근사. **v20 배포 시점엔 CSV_BANK가 비어 있어 처음 몇 주는 결과가 없는 게 정상** — 자동 커밋이 누적되면서부터 실제 감지가 시작된다. 그 전까지는 기존 `MANUAL_VENDOR_TERMINATIONS` 수동 리스트가 계속 보강한다.
+- 저장 방식은 비고/CI 수기입력(`progress_notes.json`/`ci_overrides.json`)과 동일한 패턴: `localStorage`에 항상 쌓이고, GitHub 토큰이 있는 사람이 열람할 때 `data/change_log.json`과 병합해 자동 커밋. 토큰 없는 사람이 봐도 그 브라우저 안에서는 정상 동작하되 팀 공유는 안 됨.
+- 종합 현황 월간 공지사항에서 이 4종은 더 이상 "선택 기간"이 아니라 **오늘 기준 최근 30일 롤링**으로 노출(품절 제품만 기존처럼 선택 기간 유지). 카드 하단 "전체 변경 이력 보기" 토글로 누적된 전체 이력(윈도 밖 포함)을 날짜 내림차순으로 볼 수 있다.
+- 로드 순서 경쟁 상태 주의: `data/change_log.json` fetch가 CSV 자동로드보다 먼저 끝나 감지 시점에 `D.goods_master`/`D.sup`가 아직 없을 수 있다 — `CHANGE_LOG_DETECTED` 플래그를 감지 성공 시에만 세워, 실패 시 다음 `renderMonthlyNotice()` 호출(데이터 로드 완료 후 refreshAll 경유)에서 재시도하도록 했다.
+- v20에서 대체된 구 방식(월단위 `sup_YYYY_MM.csv` 2개 비교, `SUP_ROSTER_CACHE`/`loadSupRosterDiff`/`walkSupSnapshot`)은 제거했다 — 실사용 중 한 번도 이전 스냅샷을 찾지 못해(리포지토리에 `CSV_BANK`가 아예 없었음) 항상 "비교할 스냅샷 없음"이었던 것으로 확인됨.
+
 **Airtable API가 아닌 소스(자동화 방식이 다름)**: `quarter_eval`(분기별평가)·`inv_weekly`·`sales_monthly`·`dashboard_period_summary`·`dashboard_group_summary`·`dashboard_sku_snapshot`·`purchase_review`·`season_plan`은 **GSheets(구매전략파트 S&OP Apps Script)** 원본이라 Airtable REST API로는 가져올 수 없다 — Google Sheets API(서비스 계정 자격증명 필요) 또는 GSheets Apps Script가 직접 GitHub Contents API로 push하는 방식이 필요하며, 별도 결정·구축이 필요하다. `sales`(GSheets SUPER BASE)도 마찬가지로 별도 소스.
 
 ### 데이터 담당자 — 외주생산파트 (주 1회)
@@ -835,7 +845,7 @@ SCMDASHBOARD/
 |---|---|---|
 | 1 | Airtable에서 CSV Export | 발주_RAW·이슈_RAW·공급망_RAW·고객인지이슈_RAW·품절리스트·파츠·굿즈마스터·진행현황·매출결산(→모두 `AIRTABLE_SOURCES`/진행현황 변수 설정 시 자동 커밋 가능, 위 참고). 분기별평가는 GSheets 소스라 이 자동화 대상 아님(구매전략파트 절차 참고) |
 | 2 | 프로젝트 폴더 `CSV/`에 저장 | 한글 원본명 그대로 저장해도 됨. 대용량 CSV는 채팅 붙여넣기보다 로컬 파일 직접 저장 권장(문자 손상 위험, v14) |
-| 3 | `deploy_v19.ps1` 실행 | 고정명 복사 + 커밋 + 푸시 자동. 또는 GitHub 웹에서 고정명 파일 직접 덮어쓰기 |
+| 3 | `deploy_v20.ps1` 실행 | 고정명 복사 + 커밋 + 푸시 자동. 또는 GitHub 웹에서 고정명 파일 직접 덮어쓰기 |
 | 4 | 1~3분 후 배포 확인 | `-Verify` 스위치 또는 브라우저 Ctrl+F5 |
 | 5 (v14) | 원본 CSV 헤더(컬럼명) 변경 시 `docs/CHANGELOG_v{N}.md`에 기록 후 팀 공유 | 예: issue.csv 입고물품 컬럼 추가 |
 
@@ -843,7 +853,7 @@ SCMDASHBOARD/
 | 단계 | 작업 | 비고 |
 |---|---|---|
 | 1 | GSheets S&OP Apps Script에서 `dashboard_period_summary`/`dashboard_group_summary`/`dashboard_sku_snapshot` 3종 생성·Export | 3종 모두 있어야 Agg 경로 작동. 하나라도 없으면 재고 화면이 레거시(inv_weekly 직접계산)로 폴백해 v10 이전 숫자와 달라질 수 있음 |
-| 2 | `CSV/`에 저장 후 `deploy_v19.ps1` 실행 | 외주생산파트와 동일 배포 경로 공유 |
+| 2 | `CSV/`에 저장 후 `deploy_v20.ps1` 실행 | 외주생산파트와 동일 배포 경로 공유 |
 | 3 | 배포 후 재고운영/품절상세/졸업검토 화면에서 도넛차트 3종·회전율 숫자 확인 | 기존 GSheets 화면과 동일 기준일로 1:1 대조 권장 |
 
 ### 접속자 (팀원)
@@ -867,5 +877,5 @@ SCMDASHBOARD/
 
 ---
 
-*문서 기준: index.html (scm_dashboard_v19.html) v19 (2026-07-20) · 약 6,944줄 — 이슈 분석 모듈(추이·2025/2026 동기 이슈율 비교)·진행현황 주차 경고·제품 추이 검색 연동/서울디지털 제외 · v18(이슈 모달 협력사 통합·STCK 재고·재고생산 카드 통합·졸업 필터·발주 단일 화면) · v17/v17.1·v16 기반*  
+*문서 기준: index.html (scm_dashboard_v20.html) v20 (2026-07-24) · 약 7,081줄 — Airtable 자동 갱신 목요일 13:00 전환·지금 새로고침 버튼·협력사·졸업/출시 변경 이력 시스템 · v19(이슈 분석 모듈·진행현황 주차 경고·제품 추이 검색 연동) · v18·v17/v17.1·v16 기반*  
 *대시보드 변경 시 이 문서도 함께 업데이트 바랍니다. 원본 CSV 헤더 변경 시 §8 버전 규칙에 따라 CHANGELOG에도 기록 바랍니다.*

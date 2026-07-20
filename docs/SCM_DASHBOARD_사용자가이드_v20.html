@@ -1,0 +1,260 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<title>SCM 통합운영 대시보드 사용자 가이드 v20</title>
+<style>
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{font-family:-apple-system,BlinkMacSystemFont,'Apple SD Gothic Neo','Noto Sans KR',sans-serif;font-size:13px;color:#1a1a1a;background:#fff;padding:36px 44px;line-height:1.7}
+  .container{max-width:860px;margin:0 auto}
+  h1{font-size:22px;font-weight:700;margin-bottom:4px}
+  h2{font-size:16px;font-weight:700;margin:26px 0 10px;padding:6px 12px;background:#f5f5f3;border-radius:6px;color:#111}
+  h3{font-size:13px;font-weight:700;margin:14px 0 6px;color:#333}
+  p{margin:4px 0 8px;color:#444}
+  .meta{font-size:12px;color:#888;margin-bottom:20px}
+  table{width:100%;border-collapse:collapse;font-size:12px;margin:6px 0 14px}
+  th{background:#f8f8f5;padding:7px 10px;text-align:left;font-weight:600;color:#444;border:1px solid #e0e0dc}
+  td{padding:7px 10px;border:1px solid #e8e8e4;vertical-align:top;color:#333}
+  code{font-family:ui-monospace,SFMono-Regular,Consolas,monospace;background:#f5f5f3;padding:1px 4px;border-radius:4px}
+  .badge{display:inline-block;font-size:10px;font-weight:600;padding:2px 7px;border-radius:4px}
+  .b-blue{background:#e8f0fd;color:#1a56c7}
+  .b-purple{background:#f0e8fd;color:#6b21a8}
+  .b-green{background:#e0f5ec;color:#0a6e45}
+  .b-red{background:#fde8e8;color:#c72222}
+  .b-amber{background:#fef3dc;color:#92400e}
+  .tip{background:#eff6ff;border-left:3px solid #3b82f6;border-radius:0 6px 6px 0;padding:8px 14px;font-size:12px;color:#1d4ed8;margin:8px 0 14px}
+  .warn{background:#fef3dc;border-left:3px solid #d97706;border-radius:0 6px 6px 0;padding:8px 14px;font-size:12px;color:#92400e;margin:8px 0 14px}
+  ul{padding-left:18px;margin:4px 0 10px}
+  li{margin-bottom:3px}
+  .page-break{page-break-before:always;margin-top:30px}
+  @media print{body{padding:20px 24px}h2{page-break-after:avoid}.page-break{page-break-before:always}}
+</style>
+</head>
+<body>
+<div style='max-width:900px;margin:20px auto;padding:18px 24px;border:2px solid #1d4ed8;border-radius:8px;background:#eff6ff;font-family:sans-serif'>
+  <div style='font-size:15px;font-weight:800;color:#1d4ed8;margin-bottom:10px'>🆕 v20 변경 내역 (2026.07.24)</div>
+  <ul style='font-size:12.5px;line-height:1.9;color:#334155;margin:0;padding-left:18px'>
+    <li><b>Airtable 자동 갱신을 목요일 13:00로 변경</b>: 매주 월요일 09:00에 갱신되던 것을 목요일 13:00(한국 시간)로 옮겼습니다(§1-2).</li>
+    <li><b>🔄 지금 새로고침 버튼 신규</b>: 자동 갱신을 기다리지 않고 원할 때 바로 Airtable 최신 데이터를 반영할 수 있습니다(§1-2).</li>
+    <li><b>협력사·졸업/출시 변경 이력 신규</b>: 월간 공지사항의 졸업/출시 제품·신규/거래종료 협력사가 선택 기간이 아니라 <b>오늘 기준 최근 30일</b> 기준으로 표시되고, "전체 변경 이력 보기"로 누적된 전체 이력을 확인할 수 있습니다(§1-1).</li>
+    <li><span class="badge b-blue">참고</span> 이슈 현황 분석 모듈(§6)은 v19, 협력사 변경 검토 카드(§8-1)는 v17에서 도입되어 이번 버전에도 그대로 포함됩니다.</li>
+  </ul>
+  <div style='font-size:13px;font-weight:800;color:#64748b;margin:14px 0 6px'>v19 변경 내역 (2026.07.20)</div>
+  <ul style='font-size:12.5px;line-height:1.9;color:#334155;margin:0;padding-left:18px'>
+    <li><b>이슈 현황 분석 모듈 신규</b>: 이슈 현황 상단에 <b>기간 이슈 건수 · 발주 TASK · 이슈율(전년 동기 %p 비교)</b> KPI와 <b>월별 이슈 추이 차트</b>, <b>이슈율 2025 vs 2026 동기 비교 차트</b>가 생겼습니다(§6). 기존 유형별 탭은 그대로입니다.</li>
+    <li><b>발주 진행현황 주차 경고</b>: 이번 주 진행현황 CSV가 아직 커밋되지 않으면 노란 경고 배너로 알려줍니다(필요 파일명 안내 포함). 주간 CSV는 자동 커밋이 아니라 <b>매주 수동 커밋</b>이 필요합니다(§5).</li>
+    <li><b>제품별 판매량 추이 검색 연동</b>: 상단 검색창(제품명/협력사명/굿즈코드)이 이 화면에도 반영됩니다. <b>제품별 발주 요약</b>은 서울디지털인쇄협동조합 제작 제품을 제외하고 제작 협력사 컬럼을 표시합니다(§9).</li>
+  </ul>
+  <div style='font-size:13px;font-weight:800;color:#64748b;margin:14px 0 6px'>v18 변경 내역 (2026.07.20)</div>
+  <ul style='font-size:12.5px;line-height:1.9;color:#334155;margin:0;padding-left:18px'>
+    <li><b>이슈 상세 모달 — 협력사 단위 통합</b>: "제품별·협력사별 이슈 상세"가 <b>협력사별 이슈 상세</b>로 바뀌어 같은 협력사의 이슈가 제품 구분 없이 한 행으로 합쳐집니다. 행 클릭 시 제품 컬럼이 포함된 개별 이슈 목록이 펼쳐집니다(§6).</li>
+    <li><b>재고 분류에 굿즈코드 STCK 추가</b>: 굿즈코드에 STCK가 포함된 발주는 전부 재고생산으로 분류됩니다 — 월 매입금액의 재고제외 집계 등 재고 구분을 쓰는 모든 화면에 적용.</li>
+    <li><b>재고생산(별도) 카드 제거</b>: 종합 현황 KPI가 5장으로 줄고, 재고생산 매입액과 <b>전체 매입의 %</b>가 월 매입금액 카드 비고에 표시됩니다. 매입금액 모달에는 협력사별 <b>프로젝트/재고생산 컬럼</b>이, 발주 TASK 모달에는 <b>프로젝트/재고생산 섹션 구분</b>이 추가됐습니다(§4-1).</li>
+    <li><b>졸업 검토 권장조치 필터</b>: 목록 상단 칩(전체/운영종료 검토/졸업 검토/모니터링)으로 조치 유형별로 갈라 볼 수 있습니다(§3).</li>
+    <li><b>발주 현황 단일 화면</b>: 발주량 Top20/Bottom20/프로젝트별 매입/발주 Task 탭을 없애고 <b>전체 제품 발주량</b>만 표시합니다. 숫자 컬럼 줄밀림도 정리했습니다(§4).</li>
+    <li><span class="badge b-blue">참고</span> 협력사 변경 검토 카드(§8-1)는 v17, PDF 저장·분석 리포트(§8-2)와 잘림 수정은 v16/v17.1, 기간선택 통합(§2)·월간 공지사항(§1-1)은 v15에서 도입되어 이번 버전에도 그대로 포함됩니다.</li>
+  </ul>
+</div>
+<div class="container">
+  <h1>SCM 통합운영 대시보드</h1>
+  <p style="font-size:15px;font-weight:600;color:#555">사용자 가이드</p>
+  <div class="meta">
+    v20 | 2026-07-24 | SCM실 구매전략파트 · 외주생산파트<br>
+    배포: https://nanyounglee.github.io/SCMDASHBOARD/
+  </div>
+
+  <div class="tip"><b>v10→v20 변경 요약:</b> 외주생산파트 화면 위주로 갱신됐다. v11(발주 3-tab)·v12(포트폴리오 Tier, 제품×협력사 이슈율, 협력사 상세 확장)·v13(발주 진행현황 탭, 기간 통합 선택, 이슈 3단 구성, GitHub 자동 커밋)·v14(검색 필터 전수 수정, 고객인지이슈 검색 매칭, 월간 공지사항 신규)·v15(기간 필터 4탭 통합, 월간 공지사항 정확 날짜화)·v16(협력사 PDF 내보내기 2종, 주간 보고·KPI 요약 CSV 집계 버그 수정)·v17(협력사 변경 검토 진행 현황 카드, §8-1)·v18(이슈 모달 협력사 통합·재고 STCK 분류·재고생산 카드 통합·졸업 검토 필터·발주 현황 단일 화면)·v19(이슈 현황 분석 모듈, 진행현황 주차 경고, 제품별 판매량 추이 검색 연동·서울디지털 제외)를 거쳐, v20에서는 Airtable 자동 갱신을 목요일 13:00로 옮기고 지금 새로고침 버튼과 협력사·졸업/출시 변경 이력 시스템을 추가했다. 구매전략파트(재고운영) 화면은 v10과 동일하다.</div>
+
+  <h2>1. 접속과 데이터 로드</h2>
+  <p>브라우저에서 대시보드 URL에 접속하면 <code>CSV/</code> 폴더의 고정 파일을 자동으로 읽어 KPI와 차트를 채웁니다. 임시 검증이 필요할 때만 상단 업로드 영역에 CSV를 직접 올리면 됩니다.</p>
+  <div class="tip"><b>핵심:</b> 구매 재고 화면은 원천 RAW인 <code>inventory_weekly</code>를 직접 계산하기보다, 구글스프레드시트에서 미리 집계한 대시보드용 CSV 3종을 우선 사용합니다. 발주 상세분석의 DB원가비교 탭은 <b>코스트베이스(파츠리스트) CSV</b>가 있어야 채워집니다 — 없어도 다른 화면에는 영향이 없습니다.</div>
+
+  <h3>자동 로드 파일</h3>
+  <table>
+    <tr><th>파트</th><th>파일</th><th>고정 파일명</th><th>용도</th></tr>
+    <tr><td rowspan="7"><span class="badge b-purple">외주생산</span></td><td>발주 RAW</td><td><code>order.csv</code></td><td>발주, 매입, 납기, 비용 KPI, 제품별 발주수량 추이</td></tr>
+    <tr><td>이슈 RAW</td><td><code>issue.csv</code></td><td>이슈, 품질, 재작업 KPI, 제품×협력사 이슈율 <span class="badge b-red">v14</span> 입고물품 컬럼 포함 · <span class="badge b-green">v15.1</span> <code>품질이슈내용업데이트</code>, <code>운영이슈내용 업데이트</code> 컬럼 추가</td></tr>
+    <tr><td>공급망 RAW</td><td><code>sup.csv</code></td><td>협력사, 하도급법 위험, <span class="badge b-amber">v14</span> 월간 공지사항의 신규/거래종료 협력사 판정 — <span class="badge b-green">v20</span> 주간 스냅샷 비교로 정밀화(§1-1)</td></tr>
+    <tr><td>고객인지 이슈 RAW</td><td><code>ci.csv</code></td><td>고객인지 이슈 KPI, <span class="badge b-red">v14</span> 협력사 검색 매칭</td></tr>
+    <tr><td>분기별평가</td><td>(수동 업로드)</td><td>공급망 포트폴리오 Tier/등급(§6)</td></tr>
+    <tr><td><span class="badge b-blue">v11</span> 코스트베이스(파츠리스트)</td><td><code>parts.csv</code></td><td>발주 상세분석의 DB원가비교 탭(§4)</td></tr>
+    <tr><td><span class="badge b-amber">v14</span> 굿즈마스터</td><td><code>goods_master.csv</code></td><td>월간 공지사항의 졸업/출시 제품(§1-1). Airtable Sincerely DB "1. goods" 뷰 Export</td></tr>
+    <tr><td rowspan="2"><span class="badge b-red">v13</span></td><td>발주 진행현황</td><td><code>progress_연도_W주차.csv</code></td><td>담당자별 진행현황(§5)</td></tr>
+    <tr><td>주간 매출결산</td><td><code>project_연도_W주차.csv</code></td><td>원가 분석 PNA별 매출×원가</td></tr>
+    <tr><td rowspan="5"><span class="badge b-blue">구매전략</span></td><td>재고 KPI 요약</td><td><code>dashboard_period_summary.csv</code></td><td>재고자산, 회전율, 품절율, 운영밴드</td></tr>
+    <tr><td>재고 그룹 요약</td><td><code>dashboard_group_summary.csv</code></td><td>생산유형, 소싱유형, 카테고리별 재고 구조</td></tr>
+    <tr><td>재고 SKU 스냅샷</td><td><code>dashboard_sku_snapshot.csv</code></td><td>SKU 상세, 품절 상세, 장기미회전 후보</td></tr>
+    <tr><td>품절 리스트</td><td><code>stockout_list.csv</code></td><td>기존 품절 상세 백업 데이터 + <span class="badge b-amber">v14</span> 월간 공지사항의 품절 제품</td></tr>
+    <tr><td>S&OP 원천 RAW</td><td><code>inv_weekly.csv</code>, <code>sales_monthly.csv</code></td><td>집계 CSV가 없을 때의 백업 계산용</td></tr>
+  </table>
+
+  <h3 style="margin-top:16px">1-1. 월간 공지사항 <span class="badge b-amber">v14 신규 · v15 정확도 개선</span> <span class="badge b-green">v20 최근 30일 롤링 + 변경 이력</span></h3>
+  <p>종합 현황 화면 상단에 <b>졸업 제품 · 출시 제품 · 품절 제품 · 신규/거래종료 협력사</b>를 자동으로 요약해 보여주는 카드입니다.</p>
+  <ul>
+    <li><b><span class="badge b-green">v20</span> 졸업/출시 제품 · 신규/거래종료 협력사</b> — 이제 상단에서 고른 기간과 무관하게 <b>오늘부터 최근 30일 안에 생긴 변경만</b> 항상 보여줍니다. 다른 달을 조회 중이어도 최근 변경사항을 놓치지 않도록 하기 위한 변경입니다. 졸업/출시는 <code>goods_master.csv</code>의 졸업일·출시일을 그대로 사용하고, 협력사 신규/거래종료는 매주 자동 갱신되는 협력사 명단 스냅샷을 비교해 감지합니다.</li>
+    <li><b>품절 제품</b>은 기존과 동일하게 상단에서 선택한 기간 기준입니다(변경 없음) — <code>stockout_list.csv</code>의 변경일이 선택 기간 안에 있고 판매상태가 품절 계열(품절예정/일시품절/의도적 품절/비의도적품절)인 건을 표시합니다.</li>
+    <li><b><span class="badge b-green">v20</span> 전체 변경 이력 보기</b> — 카드 맨 아래 "▸ 전체 변경 이력 보기"를 누르면 최근 30일보다 오래된 것을 포함해 지금까지 감지된 모든 변경을 날짜순 표로 볼 수 있습니다. 감지된 변경은 <code>data/change_log.json</code>에 계속 쌓입니다.</li>
+    <li>스냅샷 비교로 못 잡는 예외 건(협력사 거래종료 일부)은 담당자가 코드에 직접 등록한 수동 리스트로 계속 보강됩니다.</li>
+  </ul>
+  <div class="warn"><b>협력사 신규/거래종료 감지는 당분간 비어 있을 수 있습니다:</b> 이 감지는 매주 자동 갱신될 때 남는 협력사 명단 스냅샷을 비교하는 방식이라, v20 배포 직후에는 비교할 과거 스냅샷이 아직 없습니다. 자동 갱신(§5, 매주 목요일 13:00)이 몇 주 쌓이면서부터 정상적으로 감지가 시작됩니다 — 그 전까지 이미 알고 있는 거래종료 건은 수동 리스트로 표시됩니다.</div>
+  <div class="warn"><b>참고:</b> <code>goods_master.csv</code>·<code>sup.csv</code> 스냅샷 비교는 <code>CSV_BANK/</code> 파일을 <code>fetch</code>로 불러오므로, 로컬 파일을 <code>file://</code>로 직접 열면 정상 동작하지 않습니다 — GitHub Pages 배포 주소로 접속해서 확인하세요(§12).</div>
+
+  <h3 style="margin-top:16px">1-2. Airtable 자동 갱신 · 지금 새로고침 <span class="badge b-green">v20 신규</span></h3>
+  <p>발주_RAW·이슈_RAW·공급망_RAW·고객인지이슈_RAW·품절리스트·파츠·굿즈마스터·진행현황·매출결산처럼 Airtable이 원본인 CSV는 <b>매주 목요일 13:00(한국 시간)에 자동으로 갱신</b>됩니다(v20에서 월요일 09:00 → 목요일 13:00로 변경). 직접 CSV를 내려받아 올릴 필요가 없습니다.</p>
+  <ul>
+    <li><b>🔄 지금 새로고침</b> — 화면 상단 "데이터 업로드" 바에 있는 버튼입니다. 목요일을 기다리지 않고 지금 바로 Airtable 최신 데이터를 반영하고 싶을 때 누릅니다. 요청 후 1~3분 정도 걸리며, 완료되면 자동으로 화면이 최신 데이터로 갱신됩니다(별도 새로고침 불필요).</li>
+    <li>이 버튼은 <b>GitHub 연동 토큰</b>(비고 자동 저장에 쓰는 것과 같은 토큰)이 있어야 동작합니다. 토큰이 없으면 설정 팝업으로 안내됩니다 — 기존 토큰을 갖고 계신 분은 <b>Actions 실행 권한</b>을 추가로 부여해야 합니다(팝업 안내 참고).</li>
+    <li>재고주간·매출월간·재고 KPI 3종(구매전략파트, 구글시트 소스)은 이 버튼의 대상이 <b>아닙니다</b> — 해당 데이터는 계속 기존 방식대로 갱신됩니다.</li>
+  </ul>
+
+  <h2>2. 기간선택 — 주별 · 월별 · 분기별 · 기간지정 <span class="badge b-red">v15 신규 통합</span></h2>
+  <p>종합현황·발주·매입·이슈·고객인지이슈 화면 상단의 "기간 단위" 탭에서 4가지 방식 중 하나를 골라 기간을 지정할 수 있습니다.</p>
+  <table>
+    <tr><th>탭</th><th>동작</th></tr>
+    <tr><td>주별</td><td>월요일~일요일 기준 주 단위 드롭다운에서 선택. 데이터가 있는 최근 주까지만 목록에 나옵니다.</td></tr>
+    <tr><td>월별</td><td>기존과 동일하게 2026년 1~12월 중 CSV가 업로드된 달만 선택 가능(나머지는 회색 비활성 + "미업로드" 표기).</td></tr>
+    <tr><td>분기별</td><td>연도 드롭다운(2025년 데이터가 있으면 함께 표시) + 1~4분기 선택.</td></tr>
+    <tr><td>기간지정</td><td>달력으로 시작일~종료일을 직접 지정합니다. "지난 주 / 지난 달 / 이번 주 / 이번 달" 빠른 선택 버튼도 제공됩니다.</td></tr>
+  </table>
+  <div class="tip"><b>비교 라벨 자동 전환:</b> 선택한 단위에 따라 KPI 카드·발주현황 Top20 테이블의 증감 배지가 자동으로 바뀝니다 — 주별→<b>WoW</b>(전주 대비), 월별→<b>MoM</b>(전월 대비), 분기별→<b>QoQ</b>(전분기 대비), 기간지정→<b>YoY</b>(전년 동기)만 표시됩니다. 기간지정은 임의 구간이라 "바로 전 기간"이 무엇인지 애매하므로 전기 비교 대신 작년 같은 구간과의 비교만 제공합니다.</div>
+  <div class="warn"><b>매입금액은 항상 월 단위:</b> 매입금액·매출 원본 데이터(세금계산서작성월)가 월 단위로만 존재해서, 주별·기간지정을 선택해도 매입금액 관련 수치는 선택 구간이 걸치는 달들을 기준으로 월 단위로 집계됩니다. 화면에 "(월 단위 집계)" 안내가 함께 표시됩니다.</div>
+  <div class="warn"><b>13개 화면은 아직 월 단위만 지원:</b> 발주 진행현황·원가 분석·제품별 발주수량 추이·협력사 현황·협력사유형별 제품군·품질 현황·하도급법 위험·견적계산기·AI 어시스턴트·리포트 생성·재고 현황·공급망 포트폴리오·KPI 목표·트래킹 화면은 동일한 선택기가 보이지만 주별/분기별/기간지정 탭에 마우스를 올리면 "월 단위만 지원 (추후 반영)" 툴팁이 뜨고 클릭되지 않습니다. 세부 필터 로직은 다음 버전에서 순차 반영될 예정이며, 그 전까지는 월별 탭만 사용하면 됩니다.</div>
+  <div class="tip"><b>YoY 정확도:</b> 전년(2025년) 비교는 현재 월 단위로 사전집계된 데이터를 사용해 근사치로 계산됩니다. 2025년 원본(행 단위) CSV가 확보되면 정확한 날짜 기준으로 자동 업그레이드될 예정입니다.</div>
+
+  <h2>3. 구매 재고 화면 (변경 없음)</h2>
+  <p>재고운영 현황, 품절 상세, 장기미회전/졸업 검토는 v10과 동일하게 동작합니다. 매입검토·시즌재고계획은 계속 통합 범위에서 제외되며 화면만 유지됩니다. 자체 기간 선택기(주별/월별/분기별 + 조회기간)를 이미 갖고 있어 §2의 통합 선택기와는 별개로 동작합니다.</p>
+
+  <h2 class="page-break">4. 외주생산 화면 — 발주 상세분석 <span class="badge b-blue">v11</span></h2>
+  <p>발주 현황에서 발주 TASK 숫자를 클릭하면 뜨는 모달이 3개 탭으로 나뉩니다.</p>
+  <table>
+    <tr><th>탭</th><th>보는 법</th></tr>
+    <tr><td>발주현황 Top</td><td>전체 굿즈를 발주량 내림차순으로 확인 — <b>v18:</b> 프로젝트 발주 / 재고생산 발주(굿즈코드 STCK 포함) 두 섹션으로 분리 표시</td></tr>
+    <tr><td>미발주현황</td><td>과거에 발주 이력이 있는 품목 중 이번 달(또는 선택 기간) 발주가 없는 품목을 모아서 보여줍니다. 신제품·비스포크는 대상에서 빠집니다.</td></tr>
+    <tr><td>DB원가비교</td><td>발주수량 기준으로 코스트베이스(파츠 구성 단가)를 합산한 "DB원가"와 실제 매입금액을 비교해 절감율을 보여줍니다. 코스트베이스 CSV가 없으면 이 탭만 비어 있습니다.</td></tr>
+  </table>
+  <div class="tip"><b>DB원가란:</b> 굿즈(제품) 하나를 구성하는 모든 파츠(본품/패키지/인쇄)의 표준 단가를 발주수량 구간에 맞춰 합산한 뒤 수량을 곱한 값입니다. 예를 들어 200개를 발주하면 100개 구간의 단가가 적용됩니다(발주수량 이하로 가장 큰 구간을 씀).</div>
+
+  <h2 class="page-break">5. 발주 진행현황 <span class="badge b-red">v13 신규 탭 · 월 단위 고정(§2)</span></h2>
+  <p>매주 월요일 오전, 에어테이블에서 내려받은 <code>progress_연도_W주차.csv</code>를 <code>CSV/</code> 폴더에 저장하면 전주 파일과 자동 비교됩니다.</p>
+  <ul>
+    <li><b>담당자별 진행중/신규/완료</b> — 요약 버튼을 클릭하면 해당 TASK만 필터되어 보입니다.</li>
+    <li><b>TASK별 진행률</b> — 입하예정일 기준으로 계산되며, 예정일이 지났는데 미입하면 "지연 n일"로 강조 표시됩니다.</li>
+    <li><b>비고(특이사항)</b> — 저장하면 최초 작성 내용과 이후 수정 내용이 일시와 함께 모두 남습니다.</li>
+  </ul>
+  <div class="tip"><b>GitHub 연동(⚙):</b> 설정 모달에서 개인 토큰을 등록하면 비고·고객인지이슈 대응내용 입력이 저장 즉시 자동으로 배포되어 팀 전체가 1~2분 내로 볼 수 있습니다. 토큰 발급 방법은 설정 모달 안내를 따라 하면 됩니다(Fine-grained PAT, Contents Read/Write 권한만 필요).</div>
+
+  <h2>6. 이슈 관리 <span class="badge b-red">v13 3단 구성 · v14 검색 필터 수정</span> <span class="badge b-green">v15.1 집계 기준일 변경 · v15.2 기간 필터 수정</span></h2>
+  <table>
+    <tr><th>구성</th><th>내용</th></tr>
+    <tr><td>이슈 추이 차트</td><td>전체 기간 월별 품질/수량/운영 건수 추이(전체 기간 기준, 검색과 무관하게 항상 전체 추세를 보여줍니다)</td></tr>
+    <tr><td>제품×협력사 이슈율 매트릭스</td><td>제품과 협력사 조합별로 "발주 건수 대비 이슈가 얼마나 자주 발생했는지"를 비율로 보여줍니다. 행을 클릭하면 해당 조합의 이슈 상세가 펼쳐집니다.</td></tr>
+    <tr><td>전체 / 품질 / 수량 / 운영 탭</td><td>이슈 상세 + 대응 + 실패비용. <span class="badge b-red">v14</span> 이전에는 "전체" 탭에서만 검색 결과가 유지되고 품질/수량/운영 탭으로 전환하면 검색이 풀렸는데, 이제 탭을 바꿔도 검색이 유지됩니다. <span class="badge b-green">v15.2</span> 분기·다중 월·주간·기간지정 선택 시 선택 범위 전체가 정확히 표시됩니다(이전에는 마지막 달만 나오던 버그 수정).</td></tr>
+  </table>
+  <div class="tip"><b><span class="badge b-red">v14</span> 제품명 표시 개선:</b> 이슈 목록에 표시되는 제품명이 issue.csv의 "입고물품" 컬럼을 우선 사용하도록 바뀌어 더 정확한 제품명이 보입니다(예: "톤앤톤쿨러백, 톤앤톤쿨러백, 지퍼, 실크, 실크" → "톤앤톤쿨러백").</div>
+  <div class="tip"><b><span class="badge b-green">v15.1</span> 이슈 집계 기준일 변경:</b> 품질이슈는 <code>품질이슈내용업데이트</code>, 운영이슈는 <code>운영이슈내용 업데이트</code> 날짜 기준으로 집계됩니다. 수량이슈는 기존과 동일하게 <code>실제입하일</code> 기준. 이로 인해 지난주에 입하되었더라도 이번 주에 이슈 내용이 업데이트된 건은 이번 주 집계에 포함됩니다. <b>Airtable에서 내보낼 때 이 두 컬럼이 포함된 뷰를 사용하세요.</b> 컬럼이 없는 구버전 CSV는 자동으로 <code>실제입하일</code>로 폴백됩니다.</div>
+  <div class="tip"><b><span class="badge b-green">v15.2</span> 이슈현황 탭·KPI 집계 기준 통일:</b> 이슈현황 탭(전체/품질/수량/운영)과 종합현황 KPI 카드가 이제 동일한 날짜 기준으로 집계됩니다. 1분기(1~3월)를 선택하면 KPI 카드와 탭 목록 모두 해당 3개월 이슈 전체를 보여줍니다.</div>
+
+  <h2>7. 공급망 포트폴리오 <span class="badge b-blue">v12 Tier 도입 · v13 평가기준 단일화 · 월 단위 고정(§2)</span></h2>
+  <p>협력사를 <b>QCD(품질·원가·납기 대응력) × 관계(협조성·대체가능성)</b> 두 축으로 4분면 Tier를 매깁니다.</p>
+  <table>
+    <tr><th>Tier</th><th>기준</th><th>의미</th></tr>
+    <tr><td>Tier1 · Core</td><td>QCD 높음 + 관계 좋음</td><td>핵심 협력사 — 우선 유지·확대</td></tr>
+    <tr><td>Tier2 · Performer</td><td>QCD 높음 + 관계 보통</td><td>성과는 좋으나 협조성 관리 필요</td></tr>
+    <tr><td>Tier3 · Developing</td><td>QCD 낮음 + 관계 좋음</td><td>관계는 좋으나 QCD 개선 지원 필요</td></tr>
+    <tr><td>Tier4 · General</td><td>QCD 낮음 + 관계 보통</td><td>일반 관리 대상</td></tr>
+  </table>
+  <p>기존 A/B/C/D 등급은 그대로 함께 표시됩니다. <span class="badge b-red">v13</span> 평가 기준이 월간리포트 정식 기준(2026.07)으로 통일되어, 반기 누적 실적으로 계산하고 예외·대체 항목이 비어있으면 1점, 반기 발주가 0건이면 D등급으로 고정됩니다.</p>
+  <div class="tip"><b>기능:</b> "이번 달 발주실적 있는 협력사만 보기" 체크박스로 비활성 협력사를 걸러낼 수 있고, C/D등급 협력사는 화면 하단 "변경검토 리스트"에 사유와 함께 별도로 정리됩니다.</div>
+
+  <h2>8. 협력사 현황 <span class="badge b-blue">v12 상세모달 확장 · v13 개월수 표기 · v14 드릴다운 인라인 전환 · 월 단위 고정(§2)</span> <span class="badge b-green">v17 변경 검토 진행 현황</span></h2>
+  <p>협력사명을 클릭하면 목록이 인라인으로 확장되며 아래가 표시됩니다.</p>
+  <ul>
+    <li><b>연도별 매입추이</b> — 25년/26년 등 연도별 매입금액을 선 그래프로 비교</li>
+    <li><b>이슈 상세</b> — 해당 협력사와 관련된 이슈를 최대 30건까지 표로 표시</li>
+    <li><b><span class="badge b-red">v13</span> 발주 거래 개월수</b> — 26년 기준 몇 개월 거래했는지(예: 7월 기준 7/7), 2개월 이상이면 "활성" 표기. 활성 카드 클릭 시 필터도 가능합니다.</li>
+    <li><span class="badge b-amber">v14</span> <b>월별 매입금액/MoM 스트립 · 발주내역 테이블</b> — 협력사별로 월별 매입 추이와 MoM 증감을 한눈에 보고, 아래에서 발주내역 테이블을 월별로 필터해 볼 수 있습니다.</li>
+  </ul>
+  <p>"가장 빈번한 발주 제품 Top 3" 드릴다운은 변경되지 않았습니다.</p>
+  <div class="warn"><b>참고:</b> 이슈 상세는 이슈 데이터에 협력사명이 직접 기록돼 있지 않아 프로젝트 코드로 추정 매칭한 결과입니다. 드물게 코드 표기가 다른 건은 상세에서 누락될 수 있습니다.</div>
+
+  <h3 style="margin-top:18px">8-1. 협력사 변경 검토 진행 현황 <span class="badge b-green">v17 신규</span></h3>
+  <p>협력사 목록 위에 <b>협력사 변경 검토 진행 현황</b> 카드가 표시됩니다. 별도 도구인 <a href="https://nanyounglee.github.io/scm_vendor_change/" target="_blank">협력사 변경 검토 대시보드(scm_vendor_change)</a>에서 팀원들이 작성한 검토 보고서 현황을 이 화면에서도 바로 확인할 수 있습니다.</p>
+  <ul>
+    <li><b>진행 단계 건수</b> — 전환 검토중 / 확정 / 완료 단계별 건수를 큰 숫자로 표시합니다.</li>
+    <li><b>최근 완료 협력사 변경 목록</b> — 완료월·제품·변경 전 협력사·변경 후 협력사·확정일·완료일을 표로 최근 순 정렬해 보여줍니다.</li>
+    <li><b>카드 클릭 시 대시보드로 이동</b> — 카드 어디를 클릭해도 새 탭에서 scm_vendor_change 대시보드가 열립니다. 더 자세한 검토 배경·단가 비교·이슈 현황은 그 대시보드에서 확인하세요.</li>
+  </ul>
+  <div class="tip"><b>데이터 출처:</b> scm_vendor_change 저장소의 <code>bank/</code> 폴더(팀원들이 각자 내보낸 보고서를 공유하는 곳)를 실시간으로 읽어옵니다. 별도 CSV 업로드가 필요 없으며, scm_vendor_change 쪽에서 새 보고서가 bank에 올라오면 이 카드도 자동으로 최신 상태를 반영합니다.</div>
+  <div class="warn"><b>참고:</b> 팀원이 협력사 변경 검토 대시보드에서 작업한 내용을 아직 bank 폴더로 내보내지 않았다면(그 대시보드의 "📤 내보내기 + bank 업로드" 절차 미완료), 그 변경 사항은 이 카드에 아직 반영되지 않습니다. 오프라인이거나 GitHub 접속이 안 되는 경우 "데이터를 불러오지 못했습니다" 안내가 표시되며, 이때도 카드 클릭으로 대시보드 이동은 가능합니다.</div>
+
+  <h3 style="margin-top:18px">8-2. 협력사 PDF 내보내기 <span class="badge b-red">v16 신규</span></h3>
+  <p>협력사를 펼치면(드릴다운) 상단 "월별 필터" 오른쪽에 버튼 두 개가 나타납니다. 협력사와의 미팅 자료·내부 공유용 문서를 클릭 한 번으로 만들 수 있습니다.</p>
+  <table>
+    <tr><th>버튼</th><th>결과물</th><th>내용</th></tr>
+    <tr><td><b>📄 PDF 저장</b></td><td><code>협력사상세_협력사명_날짜.pdf</code></td><td>지금 보고 있는 협력사 상세 화면을 <b>그대로</b> A4 PDF로 저장합니다. 화면에서 스크롤로 잘려 보이던 발주내역 표도 전부 펼쳐서 출력되고, 월별 필터·버튼 같은 조작용 요소는 빠지며 선택한 월이 상단 머리말에 표기됩니다.</td></tr>
+    <tr><td><b>📊 분석 리포트</b></td><td><code>협력사분석리포트_협력사명_연월.pdf</code></td><td>전년(2025) 대비 올해 실적을 비교·전망하는 A4 2페이지 분석 리포트를 자동 생성합니다(아래 구성 참고).</td></tr>
+  </table>
+  <h3 style="margin-top:12px">📊 분석 리포트 구성</h3>
+  <ul>
+    <li><b>① 연간 요약 · YoY</b> — 전년 연간 실적, 올해 누적 실적, 올해 <b>연간 예상</b>을 발주 TASK·수량·매입액·이슈율로 나란히 비교합니다.</li>
+    <li><b>② 월별 발주 추이(추세선)</b> — 전년/올해 월별 발주수량을 선 그래프로 그립니다. <b>실선은 실적, 점선(흰 마커)은 예상치</b>입니다. 아래에 월별 상세 표(TASK·수량·금액·이슈)가 붙습니다.</li>
+    <li><b>③ 발주 상위 순위</b> — 전년/올해 각각 발주수량 기준 Top 5 제품.</li>
+    <li><b>④ 이슈 재발 케이스</b> — 같은 제품에서 같은 유형 이슈가 2건 이상 반복된 항목을 재발 건수·대표 사례와 함께 정리합니다.</li>
+    <li><b>⑤ 핵심 요약</b> — 발주 규모 전망과 이슈 추이를 2줄로 자동 요약합니다.</li>
+  </ul>
+  <div class="tip"><b>예상치는 어떻게 나오나:</b> 클릭한 달의 <b>전월까지</b>를 "이미 끝난 실적"으로 보고, 그 구간의 전년 대비 성장률(TASK·수량·금액 각각)을 전년도 같은 달 실적에 곱해 남은 달을 채웁니다. 계절성(월별 기복)은 전년 패턴을 그대로 따릅니다. 리포트에서 <b>파란 숫자가 예상치</b>입니다.</div>
+  <div class="warn"><b>필요 조건:</b> 분석 리포트는 전년 원본 CSV(<code>SCM_발주_RAW(2025).csv</code>, <code>SCM_이슈_RAW(2025).csv</code>)를 읽어 계산합니다. 전년 데이터가 없거나 1월에 열면 YoY·예상을 생략하고 올해 실적만 표기합니다. 또한 두 PDF 버튼은 처음 누를 때 PDF 변환 라이브러리를 인터넷에서 한 번 내려받으므로, 사내망 차단 등으로 인터넷이 막혀 있으면 안내 후 중단됩니다.</div>
+  <div class="warn"><b>이슈 귀속 한계:</b> 리포트의 이슈 건수·재발 케이스는 이슈 데이터에 협력사명이 없어 프로젝트 코드로 추정 매칭한 결과입니다(§8 참고). 코드 표기가 다른 일부 이슈는 누락될 수 있습니다.</div>
+
+  <h2>9. 매출 분석 — 제품별 발주수량 추이 <span class="badge b-blue">v12</span></h2>
+  <p>기존 "제품별 판매량 추이" 화면이 항상 비어 보였던 것은, 사용하지 않는 판매 데이터(sales_monthly)에 의존했던 설계 문제였습니다. <b>발주_RAW의 발주수량</b>을 기준으로 계산해 매주 올리는 데이터만으로 화면이 항상 채워집니다.</p>
+
+  <h2>10. 검색으로 데이터 찾기 <span class="badge b-red">v14 개선</span></h2>
+  <p>상단 검색창에 협력사명이나 제품명을 입력하면 대시보드 전체(KPI·차트·표)가 실시간으로 필터됩니다.</p>
+  <ul>
+    <li><b>이제는 어디를 클릭해도 검색이 유지됩니다</b> — 발주 TASK 상세, 매입추이 월클릭 상세, 이슈 상세의 품질/수량/운영 탭 전환까지 모두 검색 결과 그대로 이어집니다.</li>
+    <li><b>고객인지이슈도 협력사로 검색됩니다</b> — 고객인지이슈 데이터 자체에는 협력사 정보가 없지만, 프로젝트명·관련제품을 발주 데이터와 연결해 검색이 가능해졌습니다.</li>
+  </ul>
+
+  <h2>11. 현재 화면 CSV 다운로드 <span class="badge b-red">v14 신규</span></h2>
+  <p>상단바의 다운로드(⬇) 버튼을 누르면, 지금 화면에 보이는 표를 검색·기간 필터가 반영된 그대로 CSV 파일로 받을 수 있습니다. 화면을 바꾸거나 검색어를 바꾼 뒤에 눌러도 항상 현재 보이는 내용 기준입니다.</p>
+
+  <h3 style="margin-top:16px">11-1. 리포트 생성 페이지 — 주간 보고 · KPI 요약 CSV <span class="badge b-red">v16 수정</span></h3>
+  <p>리포트 생성 화면의 두 내보내기가 종합현황 KPI 카드와 어긋나던 문제를 바로잡았습니다.</p>
+  <ul>
+    <li><b>주간 업무 보고</b> — 발주 현황 요약의 두 수치를 KPI 카드와 일치시켰습니다: <b>긴급 발주 건수</b>는 서울디지털인쇄협동조합을 제외해 세고(이전에는 카드보다 많게 집계), <b>월 매입금액</b>은 재고생산분을 포함합니다(이전에는 재고생산을 빼서 카드보다 적게 집계). 재고생산 TASK 건수도 별도로 함께 표시됩니다.</li>
+    <li><b>KPI 요약 CSV 내보내기</b> — 버튼 설명("KPI 집계 데이터")과 달리 발주 원본 행을 그대로 내보내던 것을, 진짜 KPI 요약으로 교체했습니다. 이제 13개 지표를 <b>영역·지표·단위·목표·선택월 값·달성여부·산식</b> 열로 정리해 내려받습니다.</li>
+  </ul>
+
+  <h2>12. CSV 저장 규칙</h2>
+  <ul>
+    <li>구글스프레드시트/Airtable에서 <b>쉼표로 구분된 값 CSV</b>로 내려받습니다.</li>
+    <li>파일명은 접두어 없이 고정 영문명(<code>order.csv</code>, <code>parts.csv</code>, <code>goods_master.csv</code> 등)으로 저장합니다.</li>
+    <li>저장 위치는 저장소의 <code>CSV/</code> 폴더입니다.</li>
+    <li>구매전략파트 CSV 3종(재고 사전집계)은 <b>항상 함께</b> 갱신해야 합니다.</li>
+    <li>코스트베이스(<code>parts.csv</code>)는 파츠 단가가 바뀔 때만 갱신하면 되며, 매주 갱신하지 않아도 다른 화면에는 영향이 없습니다.</li>
+    <li><span class="badge b-red">v14</span> 큰 CSV 파일은 채팅으로 붙여넣기보다 로컬 <code>CSV/</code> 폴더에 직접 저장하는 것을 권장합니다 — 대용량 텍스트를 채팅으로 옮기면 일부 문자가 손상될 위험이 있습니다.</li>
+    <li><span class="badge b-red">v14</span> 원본 CSV의 컬럼(헤더)명이 추가/변경되면 <code>docs/CHANGELOG_v{N}.md</code>에 남겨서 팀에 공유합니다.</li>
+  </ul>
+
+  <h2>13. 문제 확인</h2>
+  <table>
+    <tr><th>상황</th><th>확인할 것</th></tr>
+    <tr><td>DB원가비교 탭이 비어 있음</td><td><code>parts.csv</code>(코스트베이스)가 <code>CSV/</code> 폴더에 있는지 확인합니다.</td></tr>
+    <tr><td>발주 진행현황이 전주 대비 비교가 안 됨</td><td>전주치 <code>progress_연도_W주차.csv</code>가 <code>CSV/</code>에 남아있는지 확인합니다(archive_csv.ps1이 주 1회 아카이브로 이동시킴).</td></tr>
+    <tr><td>포트폴리오 Tier가 이상함</td><td>분기별평가 CSV의 예외사항/대체가능 점수 컬럼이 최신인지 확인합니다.</td></tr>
+    <tr><td>협력사 이슈 상세에 일부 건이 안 보임</td><td>프로젝트 코드 접두어 추정 매칭의 한계입니다 — 발주 코드와 이슈 코드 표기가 다른 경우입니다.</td></tr>
+    <tr><td>제품별 발주수량 추이가 비어 있음</td><td>해당 기간 발주_RAW(order.csv)에 산출물(제품명)이 채워진 행이 있는지 확인합니다.</td></tr>
+    <tr><td>구매 재고 화면이 비어 있음</td><td>재고 사전집계 CSV 3종이 <code>CSV/</code> 폴더에 있는지, 파일명이 정확한지 확인합니다.</td></tr>
+    <tr><td>로컬 파일로 열면 자동 로드·월간 공지사항이 안 됨</td><td>브라우저 보안 정책 때문에 <code>file://</code>에서는 CSV 자동 로드와 협력사 스냅샷(<code>CSV_BANK/</code>) 비교가 막힙니다. GitHub Pages URL에서 확인하거나 직접 업로드합니다.</td></tr>
+    <tr><td>고객인지이슈가 협력사 검색에 안 잡힘</td><td>ci.csv의 프로젝트명이 order.csv의 project 값과 일치하는지, 관련제품 표기가 산출물명과 충분히 유사한지 확인합니다(§10).</td></tr>
+    <tr><td><span class="badge b-red">v15</span> 기간지정으로 봤는데 예상한 공지·데이터가 안 보임</td><td>기간지정 기본값은 "최근 7일"입니다. 원하는 달이 선택 구간에 실제로 포함돼 있는지 상단 라벨(예: "2026년 5월 ~ 2026년 7월 기준")을 확인하세요.</td></tr>
+    <tr><td><span class="badge b-red">v15</span> 13개 화면(협력사·포트폴리오·QMS 등)에서 주별/분기별/기간지정 탭이 안 눌림</td><td>정상입니다 — 해당 화면은 아직 월 단위 필터 로직만 지원합니다(§2 참고). 월별 탭을 사용하세요.</td></tr>
+  </table>
+
+  <div class="meta" style="margin-top:24px;padding-top:10px;border-top:1px solid #e0e0dc">
+    문서 기준: index.html (scm_dashboard_v20.html) v20 (2026-07-24) · Airtable 목요일 13:00 자동 갱신·지금 새로고침 버튼·협력사·졸업/출시 변경 이력(§1-2, §1-1) · v19(이슈 분석 모듈 §6·진행현황 주차 경고 §5·제품 추이 검색 연동) · v18·v17/v17.1·v16 기반
+  </div>
+</div>
+</body>
+</html>
