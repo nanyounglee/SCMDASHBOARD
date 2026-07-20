@@ -1,0 +1,49 @@
+name: weekly-airtable-progress
+
+# 매주 월요일 09:00 KST (= 00:00 UTC) 에어테이블 진행현황 뷰를
+# CSV/progress_YYYY_WNN.csv 로 커밋. 수동 실행(workflow_dispatch)도 가능.
+on:
+  schedule:
+    - cron: '0 0 * * 1'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: weekly-airtable
+  cancel-in-progress: false
+
+jobs:
+  fetch-and-commit:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Fetch Airtable views → weekly CSV
+        env:
+          AIRTABLE_TOKEN: ${{ secrets.AIRTABLE_TOKEN }}
+          AIRTABLE_BASE_ID: ${{ vars.AIRTABLE_BASE_ID }}
+          PROGRESS_TABLE: ${{ vars.PROGRESS_TABLE }}
+          PROGRESS_VIEW: ${{ vars.PROGRESS_VIEW }}
+          PROJECT_TABLE: ${{ vars.PROJECT_TABLE }}
+          PROJECT_VIEW: ${{ vars.PROJECT_VIEW }}
+        run: node scripts/fetch_airtable_weekly.mjs
+
+      - name: Commit & push if changed
+        run: |
+          git config user.name "airtable-bot"
+          git config user.email "actions@github.com"
+          git add CSV/ CSV_BANK/
+          if git diff --cached --quiet; then
+            echo "변경 없음 — 커밋 생략"
+          else
+            WK=$(TZ=Asia/Seoul date +%G-W%V)
+            git commit -m "chore: 주간 진행현황 CSV 자동 커밋 ($WK)"
+            git pull --rebase origin main
+            git push origin main
+          fi
