@@ -559,8 +559,14 @@ a{color:var(--blue);text-decoration:none}
         </div>
       </div>
       <div class="card" style="margin-bottom:16px">
-        <div class="card-header"><div><div class="card-title">미입하율 추이표</div><div class="card-sub">미입하율 = 미입하건수 ÷ 전체 발주 TASK × 100 (월별) · 2026 목표 1.56% 이하</div></div></div>
-        <div class="tbl-wrap"><table class="tbl"><thead><tr><th>월</th><th class="num">전체TASK</th><th class="num">미입하건수</th><th class="num">미입하율</th><th class="num">전년동월</th><th class="num">YoY</th></tr></thead><tbody id="tb-iss-noarrival"></tbody></table></div>
+        <div class="card-header"><div><div class="card-title">미입하율 추이</div><div class="card-sub">미입하율 = 미입하건수 ÷ 전체 발주 TASK × 100 (월별) · 2026 목표 1.56% 이하 · <b>차트의 월 지점 클릭 시 MoM·YoY 상세 표시</b></div></div></div>
+        <div class="grid-2">
+          <div>
+            <div class="ch" style="height:210px"><canvas id="ch-iss-noarrival"></canvas></div>
+            <div id="iss-noa-info" style="font-size:12px;color:var(--text2);margin-top:8px;padding:8px 10px;background:var(--surface2);border-radius:var(--r-sm)">차트의 월 지점을 클릭하면 해당 월 미입하율의 MoM·YoY 비교가 여기에 표시됩니다.</div>
+          </div>
+          <div class="tbl-wrap"><table class="tbl"><thead><tr><th>월</th><th class="num">전체TASK</th><th class="num">미입하건수</th><th class="num">미입하율</th><th class="num">전년동월</th><th class="num">YoY</th></tr></thead><tbody id="tb-iss-noarrival"></tbody></table></div>
+        </div>
       </div>
       <!-- v22: 실패비용 현황 — 고객인지이슈 탭 통합 시 이슈현황 본문으로 이동 (서브탭과 무관하게 항상 표시) -->
       <div class="card" style="margin-bottom:16px">
@@ -2272,6 +2278,22 @@ function renderIssueAnalytics(){
     {label:prevY+'년',data:ratePrev.map(v=>v),borderColor:'#94a3b8',borderDash:[5,3],borderWidth:2,tension:.3,pointRadius:3,spanGaps:true},
     {label:curY+'년',data:rateCur.map(v=>v),borderColor:'#1d4ed8',borderWidth:2,tension:.3,pointRadius:3,spanGaps:true}
   ]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{position:'bottom',labels:{font:{size:10},boxWidth:10}},tooltip:{callbacks:{label:c=>c.dataset.label+': '+(c.parsed.y===null?'—':c.parsed.y.toFixed(1)+'%')}}},scales:{y:{beginAtZero:true,ticks:{font:{size:10},callback:v=>v+'%'}}}}});
+  // ---- 차트 3: 미입하율 추이 (당해 vs 전년 + 목표선 1.56%) — 지점 클릭 시 MoM/YoY 상세 ----
+  const noaRateCur=[null], noaRatePrev=[null];
+  for(let m=1;m<=12;m++){
+    noaRateCur.push(taskCur[m]?+(noaCur[m]/taskCur[m]*100).toFixed(2):null);
+    noaRatePrev.push(taskPrev[m]?+(noaPrev[m]/taskPrev[m]*100).toFixed(2):null);
+  }
+  ISS_NOA={curY,prevY,rateCur:noaRateCur,ratePrev:noaRatePrev,taskCur:[...taskCur],noaCur:[...noaCur]};
+  dc('ch-iss-noarrival'); const ctx3=getCtx('ch-iss-noarrival');
+  if(ctx3) CHARTS['ch-iss-noarrival']=new Chart(ctx3,{type:'line',data:{labels,datasets:[
+    {label:prevY+'년',data:noaRatePrev.slice(1),borderColor:'#94a3b8',borderDash:[5,3],borderWidth:2,tension:.3,pointRadius:3,spanGaps:true},
+    {label:curY+'년',data:noaRateCur.slice(1),borderColor:'#dc2626',backgroundColor:'#dc2626',borderWidth:2,tension:.3,pointRadius:4,pointHoverRadius:6,spanGaps:true},
+    {label:'목표 1.56%',data:Array(12).fill(1.56),borderColor:'#059669',borderDash:[2,2],borderWidth:1,pointRadius:0,pointHitRadius:0}
+  ]},options:{responsive:true,maintainAspectRatio:false,
+    onClick:(e)=>issNoaChartClick(e),
+    plugins:{legend:{position:'bottom',labels:{font:{size:10},boxWidth:10}},tooltip:{callbacks:{label:c=>c.dataset.label+': '+(c.parsed.y===null?'—':c.parsed.y.toFixed(2)+'%')}}},
+    scales:{y:{beginAtZero:true,ticks:{font:{size:10},callback:v=>v+'%'}}}}});
   // ---- 표: 미입하율 월별 추이 (전년동월 비교) ----
   const noaHTML=Array.from({length:12},(_,i)=>i+1).filter(m=>taskCur[m]>0||taskPrev[m]>0).map(m=>{
     const rate=taskCur[m]?(noaCur[m]/taskCur[m]*100):null;
@@ -2281,6 +2303,37 @@ function renderIssueAnalytics(){
     return `<tr><td>${m}월</td><td class="num">${taskCur[m]||0}</td><td class="num">${noaCur[m]||0}</td><td class="num" style="font-weight:600">${rate!==null?rate.toFixed(2)+'%':'—'}</td><td class="num" style="color:var(--text3)">${rateP!==null?rateP.toFixed(2)+'%':'—'}</td><td class="num" style="color:${yoyColor};font-weight:600">${yoy!==null?(yoy>=0?'+':'')+yoy.toFixed(2)+'%p':'—'}</td></tr>`;
   }).join('');
   setTbody('tb-iss-noarrival',noaHTML||emptyRow(6));
+}
+
+// v21.3: 미입하율 추이 차트 지점 클릭 → MoM/YoY 상세 패널. 상태는 renderIssueAnalytics가 채움.
+// 1월의 MoM은 전년 12월과 비교(getPrevMonth의 연도 경계 규칙과 동일).
+let ISS_NOA=null;
+function issNoaChartClick(evt){
+  const chart=CHARTS['ch-iss-noarrival']; if(!chart||!ISS_NOA) return;
+  // 1순위: 요소 히트 테스트, 2순위: ChartEvent 상대좌표(evt.x)로 x축 스케일에서 가장 가까운 월 산출
+  // (오프셋 좌표가 없는 이벤트에서도 클릭 위치의 월을 안정적으로 얻기 위한 폴백)
+  let idx=null;
+  const pts=chart.getElementsAtEventForMode(evt.native||evt,'index',{intersect:false},true);
+  if(pts.length) idx=pts[0].index;
+  else if(typeof evt.x==='number'&&chart.scales&&chart.scales.x){
+    const v=chart.scales.x.getValueForPixel(evt.x);
+    if(typeof v==='number'&&isFinite(v)) idx=Math.min(11,Math.max(0,Math.round(v)));
+  }
+  if(idx===null) return;
+  const m=idx+1;
+  const el=document.getElementById('iss-noa-info'); if(!el) return;
+  const cur=ISS_NOA.rateCur[m];
+  if(cur===null){ el.innerHTML=`<b>${m}월</b> — ${ISS_NOA.curY}년 발주 TASK 데이터 없음`; return; }
+  const prevM=m>1?ISS_NOA.rateCur[m-1]:ISS_NOA.ratePrev[12];
+  const prevLabel=m>1?`${m-1}월`:`${ISS_NOA.prevY}년 12월`;
+  const mom=prevM!==null?cur-prevM:null;
+  const py=ISS_NOA.ratePrev[m];
+  const yoy=py!==null?cur-py:null;
+  const fmt=v=>v===null?'—':(v>=0?'+':'')+v.toFixed(2)+'%p';
+  const col=v=>v===null?'var(--text3)':v>0?'var(--red)':v<0?'var(--green)':'var(--text3)'; // 미입하율은 상승=악화(빨강)
+  el.innerHTML=`<b>${ISS_NOA.curY}년 ${m}월 미입하율 ${cur.toFixed(2)}%</b> <span style="color:var(--text3)">(미입하 ${ISS_NOA.noaCur[m]||0}건 / TASK ${ISS_NOA.taskCur[m]||0}건 · 목표 1.56%)</span><br>
+    MoM <span style="color:${col(mom)};font-weight:600">${fmt(mom)}</span> <span style="color:var(--text3)">${prevM!==null?`(${prevLabel} ${prevM.toFixed(2)}%)`:'(전월 데이터 없음)'}</span> ·
+    YoY <span style="color:${col(yoy)};font-weight:600">${fmt(yoy)}</span> <span style="color:var(--text3)">${py!==null?`(${ISS_NOA.prevY}년 ${m}월 ${py.toFixed(2)}%)`:'(전년 데이터 없음)'}</span>`;
 }
 
 // ===== CI TABS =====
@@ -4566,7 +4619,7 @@ function nav(el,id) {
     order:'<b>확인 가능 지표:</b> 전체 제품 발주량(발주수량·월간발주빈도·연간발주량합, 헤더 클릭 정렬) + MoM(전월대비) + YoY(전년대비) 증감률 · 검색창 연동 · 재고생산(굿즈코드 STCK 포함) 제외 | <b>여분(버퍼) 발주수량 추천:</b> 제품별 이슈 이력(수량부족률·품질불량률·미입하율) 기반 권장 버퍼%·여분수량 · 예방비용 vs 실패비용(재제작) 차액 비교 · 행 클릭 시 버퍼% 시나리오별 비교 | <b>CSV:</b> 발주_RAW + 이슈_RAW',
     progress:'<b>확인 가능 지표:</b> 담당자별 진행중/신규/완료(전주 대비) TASK 요약 · TASK별 진행률(입하예정일 기준 %) · 지연 표시 | <b>비고:</b> 특이사항·협력사 입하현황 수기 입력 — 저장/수정 시 이력 병기, GitHub 연동(⚙) 시 자동 커밋·배포 | <b>CSV:</b> 매주 월요일 09:00 에어테이블 진행현황 뷰 → CSV/progress_연도_W주차.csv 커밋 (전주 파일과 자동 비교, 지난 파일은 CSV_BANK 아카이브)',
     'cost-analysis':'<b>월별 요약:</b> 매출/원가 추이 바차트 · 원가율 추이 라인차트 · 월별 매출/원가/원가율/마진 테이블 | <b>프로젝트별 상세:</b> 프로젝트 선택 → 매출/투입원가/원가율 KPI · TASK별 실제단가 vs 공정DB 표준단가 비교(표준대비%) · Movement 재고투입 · 공정DB 참조 테이블 | <b>CSV:</b> 발주_RAW + (선택)원가/Movement | <b>임베딩:</b> cost_db.json 공정DB',
-    issue:'<b>확인 가능 지표:</b> 기간 이슈 건수 · 기간 발주 TASK · <b>이슈율(이슈÷TASK×100, 전년 동기 %p 비교)</b> · <b>미입하율 추이표</b> · <b>실패비용 현황</b>(재제작 자동집계+수기입력, YoY·월별 추이) | <b>차트:</b> 월별 이슈 추이(품질/수량/운영) · <b>이슈율 2025 vs 2026 동기 비교</b>(2025 원본 RAW 기준) | <b>탭:</b> 전체 · 품질이슈(등급+내용) · 수량이슈(내용+대응) · 운영이슈(내용+개선) · <b>고객인지이슈(검수유출률·연도별/작성자별 차트·대응/실패비용 수기입력)</b> · 제품×협력사 이슈율 · 재발 이슈 | <b>컬럼:</b> 입하일 · 프로젝트 · 제품 · 담당자 · 유형 · 내용 · <b>대응</b>(품질등급의견판단사유_SCM) · <b>실패비용</b>(재제작 취득원가) | <b>CSV:</b> 이슈_RAW + 발주_RAW + 고객인지이슈_RAW + 2025 RAW(비교선)',
+    issue:'<b>확인 가능 지표:</b> 기간 이슈 건수 · 기간 발주 TASK · <b>이슈율(이슈÷TASK×100, 전년 동기 %p 비교)</b> · <b>미입하율 추이 차트+표</b>(당해 vs 전년 vs 목표선 · 지점 클릭 시 MoM/YoY 상세) · <b>실패비용 현황</b>(재제작 자동집계+수기입력, YoY·월별 추이) | <b>차트:</b> 월별 이슈 추이(품질/수량/운영) · <b>이슈율 2025 vs 2026 동기 비교</b>(2025 원본 RAW 기준) | <b>탭:</b> 전체 · 품질이슈(등급+내용) · 수량이슈(내용+대응) · 운영이슈(내용+개선) · <b>고객인지이슈(검수유출률·연도별/작성자별 차트·대응/실패비용 수기입력)</b> · 제품×협력사 이슈율 · 재발 이슈 | <b>컬럼:</b> 입하일 · 프로젝트 · 제품 · 담당자 · 유형 · 내용 · <b>대응</b>(품질등급의견판단사유_SCM) · <b>실패비용</b>(재제작 취득원가) | <b>CSV:</b> 이슈_RAW + 발주_RAW + 고객인지이슈_RAW + 2025 RAW(비교선)',
     sales:'<b>확인 가능 지표:</b> 월매출 · 평균마진율 · 총주문수량 | <b>차트:</b> 월별매출추이(바) · 제품별매출비중(도넛) | <b>테이블:</b> 제품명 · 주문수량 · 판매단가 · 소계 · 원가율(공정DB 기반) · 추정마진율 | <b>CSV:</b> 판매주문 | <b>임베딩:</b> cost_db.json',
     'product-trend':'<b>확인 가능 지표:</b> 제품별 월간 발주수량 추이 Top10 멀티라인차트(발주지시수량 기준·재고생산 제외) | <b>테이블:</b> 제품명 · 누적발주수량 · 월평균 · 최근6개월 월별 수치 | <b>CSV:</b> 발주_RAW',
     supplier:'<b>탭:</b> 매입 현황 · 협력사 목록 (v22 통합) | <b>[매입 현황]</b> 협력사별 매입금액 Top10 · 제조유형 분포 · 업태별/인쇄유형별 매입금액 · 협력사별 매입상세 Top20(비중 프로그레스바) | <b>[협력사 목록]</b> 등록 협력사 · 활성 협력사(2개월↑ 발주 거래, 카드 클릭 시 필터) · 턴키제작/단순구매 수 · <b>협력사 변경 검토 진행 현황</b>(scm_vendor_change bank 실시간 연동, 카드 클릭 시 상세 대시보드) · 협력사명(클릭 시 월별 매입추이) · 업태 · 제조유형 · 인쇄유형 · 담당발주자 · 결제조건 · 발주 거래 개월수 · 협력사명 실시간 검색 | <b>CSV:</b> 공급망_RAW + 발주_RAW',
@@ -4587,8 +4640,9 @@ function nav(el,id) {
   if (id==='overview') { renderIssueLegend(); renderMonthlyNotice(); }
   if (id==='progress') renderProgressSection();
   if (id==='supplier') { updatePurchaseTabs(); loadVendorChangeStatus(); } // v22: 매입현황 서브탭 통합 — 진입 시 차트 재렌더(숨김 상태 0크기 방지)
-  // v22: CI 탭이 활성인 채 다른 섹션에서 refreshAll이 돌면 차트가 0크기로 재생성됨 — 재진입 시 재렌더
-  if (id==='issue') { const p=document.getElementById('tab-iss-ci'); if(p&&p.style.display!=='none') renderCICharts(); }
+  // v22: 숨김 상태에서 refreshAll이 그린 차트는 0크기 — 이슈 섹션 진입 시 분석 차트(추이/이슈율/미입하율) 재렌더,
+  // CI 탭이 활성인 채였다면 CI 차트도 재렌더
+  if (id==='issue') { renderIssueAnalytics(); const p=document.getElementById('tab-iss-ci'); if(p&&p.style.display!=='none') renderCICharts(); }
   if (id==='stock') { updateStockSection(); }
   if (id==='sales') { buildSalesMonthChips(); updateSalesSection(); renderSalesCharts(); }
   if (id==='subcontract') updateSubcontractSection();

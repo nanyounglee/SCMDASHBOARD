@@ -651,6 +651,19 @@ computeBufferRows():
 // 재호출로 숨김 캔버스 0크기 문제 해소. updatePurchaseTabs/updateSupTab 로직은 무수정.
 ```
 
+### 4-31. 미입하율 추이 차트 + 지점 클릭 MoM/YoY (v21.3)
+```javascript
+// 미입하율 추이표 카드를 grid-2로 재구성: 좌 차트(#ch-iss-noarrival)+클릭 상세 패널(#iss-noa-info), 우 기존 표.
+// renderIssueAnalytics()가 월별 taskCur/noaCur(당해)·taskPrev/noaPrev(전년)에서 rate 배열을 만들어
+// 라인차트 3계열(당해/전년 점선/목표 1.56% 상수선) 렌더 + ISS_NOA 모듈 상태에 저장.
+// options.onClick → issNoaChartClick(evt):
+//   1순위 getElementsAtEventForMode(evt.native,'index',{intersect:false}) 히트 테스트,
+//   2순위 ChartEvent 상대좌표 evt.x를 x스케일 getValueForPixel로 월 인덱스 산출(오프셋 없는 이벤트 폴백)
+//   → #iss-noa-info에 해당 월 미입하율·미입하/TASK건수·MoM(1월은 전년 12월과 비교)·YoY(%p, 색상 = 상승 빨강) 표시.
+// nav issue 진입 시 renderIssueAnalytics() 재호출 — 숨김 상태에서 refreshAll이 그린 이슈 분석 차트
+// 3종의 0크기 문제를 CI 차트(§4-30)와 동일 패턴으로 해소.
+```
+
 ---
 
 ## 5. UI 섹션 구조 (20개 페이지 · v21.2: 고객인지이슈→이슈 현황 서브탭, 매입 현황→협력사 현황 서브탭 통합)
