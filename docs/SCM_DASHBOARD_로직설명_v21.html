@@ -33,7 +33,16 @@
 </head>
 <body>
 <div style='max-width:900px;margin:20px auto;padding:18px 24px;border:2px solid #1d4ed8;border-radius:8px;background:#eff6ff;font-family:sans-serif'>
-  <div style='font-size:15px;font-weight:800;color:#1d4ed8;margin-bottom:10px'>🆕 v20 변경 내역 (2026.07.24)</div>
+  <div style='font-size:15px;font-weight:800;color:#1d4ed8;margin-bottom:10px'>🆕 v21 변경 내역 (2026.07.20)</div>
+  <ul style='font-size:12.5px;line-height:1.9;color:#334155;margin:0;padding-left:18px'>
+    <li><b>연도별 아카이빙 체계 신규(§3-27)</b>: 전년도 발주/이슈 원본을 <code>CSV_BANK/archive/{연도}/order_{연도}.csv</code>로 고정 보존. <code>load2025RawData()</code>(연도 하드코딩) → <code>loadPriorYearArchive()</code>(매년 <code>getFullYear()-1</code> 자동 계산)로 교체, <code>D.order2025/issue2025</code> → <code>D.orderPrevYear/issuePrevYear</code> 리네이밍. PDF 분석 리포트의 <code>loadPrevYearRaw()</code>도 같은 경로로 통합(중복 fetch 제거), 완전 중복이던 <code>SCM_발주_RAW(2025).csv</code> 등 삭제. <code>data_2025.json</code> 월집계는 원본 미로드 시 폴백으로 유지</li>
+    <li><b>연말 자동 아카이빙 CI 신규(§3-27)</b>: <code>yearly-archive.yml</code> — 매년 1/2 00:10 KST <code>scripts/archive_year_end.mjs</code> 실행, order.csv 과업지시일자 연도 비율 ≥50% 검증 통과 시에만 아카이브(주간 갱신이 새해 데이터로 먼저 덮어쓴 경우 거부), 기존 아카이브 덮어쓰기 방지, 연도 지정 수동 실행 가능</li>
+    <li><b>협력사 상세 전년 동기 비교 신규(§3-28)</b>: 상세 모달·드릴다운에 YTD(1~당해 최신월 누적) 발주건수·발주수량·매입금액·이슈건수·이슈율 전년 비교표+YoY 뱃지+전년 연간 참고치. 연도별 매입추이 차트에 전년 12개월 라인 오버레이. 전년 이슈 귀속은 전년도 발주 RAW로 project 코드→협력사 맵 별도 구성. 전년 이력 없으면 블록 미표시</li>
+    <li><b>분기별평가 실데이터 반영(v20.x)</b>: <code>CSV/quarter_eval.csv</code>(GSheets 공급망_분기별평가 정리본) 자동 로드 추가 — Tier 관계 점수가 기본값(2점) 고정에서 실데이터 산출로 전환, Core 6·Performer 4로 월간 리포트와 일치(§3-19 참고)</li>
+    <li><b>포트폴리오 클릭 인터랙션(v20.x)</b>: Tier 카드 클릭→협력사별 상세 필터(<code>clickPortfolioKpi</code>), 4분면 매트릭스 점 클릭→협력사 상세 모달</li>
+    <li><b>이슈현황 탭 버그 수정 + 미입하율 추이표(v20.x)</b>: <code>swTab()</code>이 <code>.tab-panel.active</code> 클래스를 토글하지 않아 전체 탭 외 모든 탭이 빈 화면이던 버그 수정. 월별 미입하율 추이표(전체TASK·미입하건수·미입하율·전년동월·YoY, <code>hasNoReceipt()</code> 기준) 신규(§4-3)</li>
+  </ul>
+  <div style='font-size:13px;font-weight:800;color:#64748b;margin:14px 0 6px'>v20 변경 내역 (2026.07.24)</div>
   <ul style='font-size:12.5px;line-height:1.9;color:#334155;margin:0;padding-left:18px'>
     <li><b>Airtable 자동 갱신 목요일 13:00 전환</b>: <code>weekly-airtable.yml</code> cron을 <code>0 0 * * 1</code>(월 09:00)→<code>0 4 * * 4</code>(목 13:00 KST)로 변경(§6)</li>
     <li><b>"지금 새로고침" 버튼 신규</b>: <code>refreshAirtableNow()</code> — GitHub Actions <code>workflow_dispatch</code> REST API로 즉시 트리거, <code>pollAirtableRefresh()</code>가 15초 간격(최대 10분) 폴링 후 완료 시 <code>autoLoadRaw()</code> 재호출. Contents 권한 토큰에 Actions:write 추가 필요(§6)</li>
@@ -42,7 +51,7 @@
   </ul>
   <div style='font-size:13px;font-weight:800;color:#64748b;margin:14px 0 6px'>v19 변경 내역 (2026.07.20)</div>
   <ul style='font-size:12.5px;line-height:1.9;color:#334155;margin:0;padding-left:18px'>
-    <li><b>이슈 분석 모듈 신규</b>: <code>renderIssueAnalytics()</code> — 이슈 현황 상단에 기간 이슈/TASK/이슈율(전년 동기 %p 비교) KPI 3장 + 월별 이슈 추이 라인차트(품질/수량/운영) + <b>이슈율 2025 vs 2026 동기 비교</b> 차트. 2025 선은 자동 로드되는 <code>D.order2025/D.issue2025</code> 원본 RAW로 월별 이슈÷TASK×100 산출(§4-3)</li>
+    <li><b>이슈 분석 모듈 신규</b>: <code>renderIssueAnalytics()</code> — 이슈 현황 상단에 기간 이슈/TASK/이슈율(전년 동기 %p 비교) KPI 3장 + 월별 이슈 추이 라인차트(품질/수량/운영) + <b>이슈율 2025 vs 2026 동기 비교</b> 차트. 2025 선은 자동 로드되는 전년 원본 RAW(현 <code>D.orderPrevYear/issuePrevYear</code>, §3-27)로 월별 이슈÷TASK×100 산출(§4-3)</li>
     <li><b>발주 진행현황 주차 경고</b>: 표시 중인 progress 파일의 ISO 주차가 현재 주차보다 과거면 경고 배너 표시(필요 파일명 안내 포함) — 이 저장소에는 주간 자동 커밋 워크플로가 없어 수동 커밋 필요함을 명시(§4-2b)</li>
     <li><b>제품별 판매량 추이 검색 연동</b>: <code>renderProductTrend()</code>에 전역 검색(matchesSearch) 적용 + refreshAll에서 현재 화면일 때 재렌더. 제품별 발주 요약 테이블은 주 제작처(최다 발주 기준)가 서울디지털인쇄협동조합인 제품 제외, 제작 협력사 컬럼 추가(§3-15)</li>
   </ul>
@@ -58,10 +67,10 @@
 </div>
 <div class="container">
 
-<h1>SCM 통합운영 대시보드 v20</h1>
+<h1>SCM 통합운영 대시보드 v21</h1>
 <p style="font-size:15px;font-weight:600;color:#555">데이터 로직 설명서</p>
 <div class="meta">
-  버전: v20 | 갱신일: 2026-07-24 | 작성: SCM실 · Claude AI<br>
+  버전: v21 | 갱신일: 2026-07-20 | 작성: SCM실 · Claude AI<br>
   대상: 구매전략파트 · 외주생산파트 팀원 공유, 유지보수, 데이터 매핑 참조
 </div>
 
@@ -680,6 +689,53 @@ persistChangeLog(): localStorage엔 항상 병합 저장. ghToken() 있으면 CH
   반환해왔던 것으로 확인됨. v20의 주간 자동 커밋(§6)이 앞으로 CSV_BANK를 실제로 채우기 시작한다.
 </div>
 
+<h3>3-27. 연도별 데이터 아카이빙 — CSV_BANK/archive + 연말 자동 아카이빙 <span class="badge b-green">v21 신규</span></h3>
+<p>당해년도 데이터는 기존 로직 그대로 운영하고, 지난해 데이터는 <code>CSV_BANK/archive/{연도}/</code>에서
+연도 하드코딩 없이 자동으로 불러와 YoY 비교에 쓰는 구조. <b>내년·후년에도 코드 수정이 필요 없다.</b></p>
+<div class="code">priorArchiveYear(): new Date().getFullYear() - 1   // "실행 시점의 작년"을 매번 계산
+
+loadPriorYearArchive():   // 초기화 시 1회 호출 (구 load2025RawData 대체)
+  fetch CSV_BANK/archive/{작년}/order_{작년}.csv → D.orderPrevYear   (구 D.order2025)
+  fetch CSV_BANK/archive/{작년}/issue_{작년}.csv → D.issuePrevYear   (구 D.issue2025)
+  로드 완료 시 refreshAll() — KPI 카드 YoY·발주 Top YoY열·이슈 분석 차트·미입하율표가 이 데이터를 사용
+
+loadPrevYearRaw(prevY):   // PDF 분석 리포트용 — v21부터 같은 아카이브 경로로 통합
+  prevY가 priorArchiveYear()와 같고 D.orderPrevYear가 이미 있으면 그대로 재사용(중복 fetch 없음)
+  아니면 CSV_BANK/archive/{prevY}/에서 fetch (PREV_RAW_CACHE 1회 캐시)</div>
+<div class="code">연말 자동 아카이빙 — .github/workflows/yearly-archive.yml (매년 1/2 00:10 KST, cron 10 15 1 1 *)
+  scripts/archive_year_end.mjs:
+    대상 연도 = 실행 시점(UTC) 작년 (workflow_dispatch로 연도 강제 지정 가능)
+    ① 연도 검증: CSV/order.csv의 과업지시일자 중 대상 연도 비율 ≥ 50%일 때만 진행
+       — 1월 첫 목요일의 주간 Airtable 갱신이 order.csv를 새해 데이터로 먼저 덮어쓴 경우
+         잘못된 스냅샷을 만들지 않고 전체 중단 (order 검증이 issue까지 게이트 — 같은 시점 스냅샷이므로)
+    ② 멱등성: CSV_BANK/archive/{연도}/가 이미 있으면 덮어쓰지 않음 (재실행 무해)
+    ③ 통과 시 order.csv/issue.csv를 order_{연도}.csv/issue_{연도}.csv로 복사 커밋</div>
+<div class="note">
+  <b>v21에서 통합·삭제:</b> 전년도 원본이 세 경로로 중복 관리되던 것을 하나로 정리했다 —
+  ① <code>CSV/order_2025.csv</code>·<code>issue_2025.csv</code>(KPI YoY용)는 <code>CSV_BANK/archive/2025/</code>로 이동,
+  ② 완전 동일 파일이던 <code>CSV/SCM_발주_RAW(2025).csv</code>·<code>SCM_이슈_RAW(2025).csv</code>(PDF 리포트용)는 삭제,
+  ③ <code>data/data_2025.json</code>(월별 사전집계)만 아카이브 원본 미로드 시 폴백으로 유지(새로 만들 필요 없음).
+  놓친 연말 아카이빙을 뒤늦게 수동 실행했는데 연도 검증이 거부하면, <code>CSV_BANK/{연도}_W##/</code> 주간
+  아카이브의 마지막 주차 order/issue를 수동 복사한다.
+</div>
+
+<h3>3-28. 협력사 상세 — 전년 동기(YTD) 비교 <span class="badge b-green">v21 신규</span></h3>
+<p><code>buildSupplierDetail()</code>(상세 모달·협력사 현황 드릴다운 공용)에 §3-27의
+<code>D.orderPrevYear/issuePrevYear</code>를 연동해 협력사 단위 YoY 비교를 추가했다.</p>
+<div class="code">비교 기준 = YTD(1월 ~ 당해 데이터의 최신 월) 누적 — 진행 중인 해와 전년을 같은 구간으로 비교
+  ytdMax = 당해 주문의 과업지시일자 최대 월 (당해 발주 없으면 현재 달로 폴백)
+  지표 5종: 발주건수 / 발주수량(발주지시수량 합) / 매입금액(purchaseByMonth, 세금계산서작성월 기준)
+           / 이슈건수 / 이슈율(이슈÷발주건수×100)
+  YoY 뱃지: 증가=빨강·감소=초록 (이슈율은 %p 차이)
+  표 하단에 전년 연간 전체(발주·매입·이슈 총계) 참고 병기
+
+전년 이슈 귀속: 당해 getProjKeySupplierMap()은 당해 발주 RAW로만 만들어져 전년 프로젝트 코드가 없음
+  → D.orderPrevYear로 전년 project 코드→협력사 맵을 별도 구성해 D.issuePrevYear를 매칭 (§4-12 추정 조인과 동일 한계)
+
+연도별 매입추이 차트: byMPrev(전년 월별 매입)를 당해 byM과 병합해 chartData로 전달
+  — 전년 12개월 라인이 겹쳐 그려져 계절성 비교 가능 (월 스트립·월별 필터는 당해 데이터만 유지)
+전년 발주 이력이 없는 협력사는 비교 블록 자체를 표시하지 않음</div>
+
 <!-- ============================================================ -->
 <h2 class="page-break"><span class="section-num">4.</span> 페이지별 데이터 흐름</h2>
 
@@ -803,7 +859,7 @@ persistChangeLog(): localStorage엔 항상 병합 저장. ghToken() 있으면 CH
 상세 내역은 <code>docs/archive/</code>의 v10 이하 로직설명서 참고.</p>
 
 <div class="meta" style="margin-top:30px;padding-top:10px;border-top:1px solid #e0e0dc">
-  문서 기준: index.html (scm_dashboard_v20.html) v20 (2026-07-24) — Airtable 목요일 13:00 자동 갱신·지금 새로고침 버튼(§3-25)·협력사·졸업/출시 변경 이력 시스템(§3-26) · v19(이슈 분석 모듈·진행현황 주차 경고·제품 추이 검색 연동) · v18·v17/v17.1·v16 기반<br>
+  문서 기준: index.html (scm_dashboard_v21.html) v21 (2026-07-20) — 연도별 아카이빙 체계(§3-27)·협력사 상세 전년 동기 비교(§3-28) · v20.x(분기별평가 실데이터·포트폴리오 클릭·이슈탭 수정·미입하율표) · v20(목요일 자동 갱신·지금 새로고침·변경 이력 시스템 §3-25/§3-26) 기반<br>
   변경 시 이 문서도 함께 업데이트 바랍니다.
 </div>
 

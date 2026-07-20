@@ -1,6 +1,6 @@
 # SCM 통합운영 대시보드 — 프로젝트 설계 아키텍처
 
-> 버전: v20 | 갱신일: 2026-07-24 | 작성: 이난영 / Claude AI  
+> 버전: v21 | 갱신일: 2026-07-20 | 작성: 이난영 / Claude AI  
 > 대상: 구매전략파트 · 외주생산파트 팀원 공유, 유지보수, 버그 대응
 
 ---
@@ -244,7 +244,7 @@ GSheets S&OP Apps Script가 `inventory_weekly`/`sales_monthly` 원본을 기간(
 | 파일 | 크기 | 내용 | 갱신 |
 |---|---|---|---|
 | `data/parts_master.json` | 834KB | 파츠 마스터 2,749개 (코드/파츠명/카테고리/협력사/수량별 원가/MOQ/리드타임 등 18필드) | "파츠 마스터 갱신" 버튼 |
-| `data/data_2025.json` | 45KB | 2025년 월별 사전집계 (발주/매입/이슈 YoY 비교용) | 연 1회 재생성 |
+| `data/data_2025.json` | 45KB | 2025년 월별 사전집계 (YoY 폴백 — v21부터 원본은 `CSV_BANK/archive/{연도}/`에서 로드, 이 파일은 원본 미로드 시에만 사용) | 연 1회 재생성 |
 | `data/cost_db.json` | 1.3MB | 공정DB 1,623개 + 단가DB 3,549개 (수량별 표준단가 10구간) | 공정/단가 변경 시 |
 
 ---
@@ -566,14 +566,16 @@ exportSupplierPdf(btn, supName)          // ① 상세 스냅샷
 //   ※ wrap을 body에 append하면 오버레이 복제 시 높이 0 붕괴(빈 PDF) — 반드시 detached로 전달
 
 exportSupplierAnalysisReport(btn, supName)  // ② 분석 리포트 (A4 2p, 데이터에서 직접 조립)
-//   loadPrevYearRaw(2025): CSV/SCM_발주_RAW(2025)·SCM_이슈_RAW(2025) 1회 fetch·캐시(PREV_RAW_CACHE)
+//   loadPrevYearRaw(prevY): v21부터 loadPriorYearArchive()가 이미 로드한 D.orderPrevYear를 재사용,
+//   없으면 CSV_BANK/archive/{연도}/order_{연도}.csv 1회 fetch·캐시(PREV_RAW_CACHE)
 //   _repMonthly: 수주처×과업지시월 tasks/qty/amt 집계
 //   예상: baseTo=curM-1(완결월), f[k]=Σ올해(1~baseTo)/Σ전년(1~baseTo), proj=전년동월×f[k]
 //         canProj = hasPrev && baseTo>=1 (전년無/1월이면 예상 생략)
 //   _repSupIssues: 프로젝트 접두어 조인(§4-12 패턴)으로 이슈 귀속, 제품×유형 2건↑ 재발 집계
 //   _repTopProds: 발주수량 Top5,  _repLineChart: 외부 라이브러리 없이 SVG 추세선(실선 실적/점선 예상)
 //   → 연간요약·YoY·추세선·월별표·Top5·재발이슈·핵심요약 2줄
-//   ※ 원격의 load2025RawData()/D.order2025(order_2025.csv, KPI 카드 YoY용)와는 별도 로더·별도 파일명 — 2025 데이터가 두 경로로 중복 로드됨(추후 통일 여지)
+//   ※ v20까지 별도 로더·별도 파일명으로 2025 데이터가 두 경로로 중복 로드되던 것을 v21에서
+//     CSV_BANK/archive/{연도}/ 단일 경로로 통일 완료 (SCM_발주_RAW(2025).csv 등 중복 파일 삭제)
 ```
 > 검증: 발주 5,924행·이슈 344행 + 2025 RAW 13,529행으로 save()를 stub해 생성물 캡처 —
 > 5개 섹션·SVG 2개·표 7개가 에러 없이 렌더, 예상 산식·파일명 확인. 제약: 이슈 귀속은 접두어 추정 조인(§4-12 한계 공유),
@@ -745,12 +747,14 @@ const FILE_SIGNATURES = {
 | **v18** | (로컬→PC 배포) | 팀 피드백 5건 반영 — ① 이슈 상세 모달의 제품×협력사 매트릭스를 **협력사 단위 통합**으로 재편(`renderIssueModalMatrix`): 동일 협력사 이슈를 제품 구분 없이 합산, 주요 이슈 제품 Top3 병기, 펼침 상세에 제품 컬럼 추가. ② **isStock에 굿즈코드 STCK 판별 추가**: `sync_itemdb`에 STCK 포함 시 재고생산 — 재고 구분 전 화면 일괄 적용. ③ **재고생산(별도) KPI 카드 제거**(KPI 6→5장): 재고생산액·전체 매입 대비 %를 월 매입금액 비고로 통합, 매입금액 모달에 협력사별 프로젝트/재고생산 컬럼, 발주 TASK 모달 발주현황Top을 프로젝트/재고생산 두 섹션으로 분리. ④ **졸업 검토 권장조치 필터**(`GRAD_ACTION_FILTER`): 운영종료 검토/졸업 검토/모니터링 칩, 사전집계·레거시 경로 모두. ⑤ **발주 현황 단일 화면화**: Top20/Bottom20/프로젝트별매입/발주Task 탭과 `renderOrdBotTable`/`renderOrdProjTable`/`updateTaskTabs` 삭제, 숫자 셀 nowrap으로 줄밀림 정리. index.html 약 6,853줄. |
 | **v19** | (로컬→PC 배포) | ① **이슈 분석 모듈**(`renderIssueAnalytics`) — 이슈 현황 상단에 기간 이슈/TASK/이슈율(전년 동기 %p 비교) KPI 3장 + 월별 이슈 추이 라인차트(품질/수량/운영) + **이슈율 2025 vs 2026 동기 비교 차트**(자동 로드되는 `D.order2025/D.issue2025` 원본 RAW로 월별 이슈÷TASK×100 산출). ② **발주 진행현황 주차 경고** — 표시 중인 progress 파일의 ISO 주차 < 현재 주차면 경고 배너(필요 파일명 안내); 주간 CSV는 자동 커밋 워크플로가 없어 수동 커밋 필요함을 명시. ③ **제품별 판매량 추이 검색 연동**(`renderProductTrend`에 matchesSearch 적용 + refreshAll 재렌더) + 제품별 발주 요약에서 주 제작처가 서울디지털인쇄협동조합인 제품 제외·제작 협력사 컬럼 추가. index.html 약 6,944줄. |
 | **v20** | (로컬→PC 배포) | ① **Airtable 자동 갱신 스케줄 변경**: `weekly-airtable.yml` cron을 월요일 09:00→**목요일 13:00 KST**(`0 4 * * 4`)로 변경. ② **"지금 새로고침" 버튼**(`refreshAirtableNow`) — 업로드 바에 추가, GitHub Actions `workflow_dispatch` REST API로 `weekly-airtable.yml`을 즉시 트리거하고 `pollAirtableRefresh`로 최대 10분간 15초 간격 폴링해 완료 시 `autoLoadRaw()` 자동 재실행. Contents 권한 토큰에 Actions:write 권한 추가 필요(GitHub 연동 설정 안내 갱신). ③ **변경 이력 시스템 신규**(`data/change_log.json`, §9) — 졸업/출시 제품(goods_master 날짜 그대로)·협력사 신규/거래종료(주간 `CSV_BANK/<연도>_W<주차>/sup.csv` 스냅샷 비교로 정밀화, 기존 월단위 비교보다 정밀)를 감지해 영구 기록. 월간 공지사항의 이 4개 섹션을 "선택 기간" → "오늘 기준 최근 30일 롤링"으로 전환(품절만 기존 유지), "전체 변경 이력 보기" 토글 추가. 토큰 없으면 로컬에만 쌓이고 토큰 보유자가 열람 시 병합·커밋(비고/CI 수기입력과 동일 패턴). 로드-감지 순서 경쟁 상태(데이터 로드 전에 이력 로드가 먼저 끝나는 경우) 발견·수정 — `CHANGE_LOG_DETECTED` 플래그로 재렌더마다 재시도. 더 이상 쓰이지 않는 월단위 협력사 비교 코드(`SUP_ROSTER_CACHE`/`loadSupRosterDiff`/`walkSupSnapshot` 등) 제거. index.html 약 7,081줄. |
+| **v20.x** | `3e9adbd`~`2ff8539` (원격 직접 푸시) | v20 배포 후 수정분. ① **prevYM() 복원**(`3e9adbd`): v20 정리 때 실수로 삭제되어 협력사 상세 모달·드릴다운이 전부 ReferenceError로 깨졌던 함수 복원 + 전체 제품 발주량 테이블 지표 가운데 정렬. ② **분기별평가 실데이터 반영**(`e38f828`): 사용자 제공 GSheets CSV를 정리해 `CSV/quarter_eval.csv` 생성·`AUTO_CSV_DEFAULT` 등록 — 관계 점수가 전 협력사 기본값(2점) 고정이던 것이 실데이터로 산출되어 Tier가 Core 6·Performer 4로 월간 리포트와 일치(Tier3/4 잔차는 협력사 모수 168 vs 136 범위 차이). ③ **포트폴리오 클릭 인터랙션**(`5335ff4`): Tier 카드 클릭→협력사별 상세 필터링(`clickPortfolioKpi`), 4분면 매트릭스 점 클릭→협력사 상세 모달. ④ **이슈현황 탭 버그 수정 + 미입하율 추이표**(`2ff8539`): `swTab()`이 인라인 display만 바꾸고 CSS `.tab-panel.active` 클래스를 토글하지 않아 전체 탭 외 모든 탭이 빈 화면이던 버그 수정, 월별 미입하율 추이표(전체TASK·미입하건수·미입하율·전년동월·YoY) 신규. |
+| **v21** | (로컬→PC 배포) | **연도별 데이터 아카이빙 체계 + 협력사 YoY 비교.** ① **범용 아카이브 로더**(`bbd073d`): `CSV/order_2025.csv`·`issue_2025.csv`를 `CSV_BANK/archive/2025/`로 이동, `load2025RawData()`→`loadPriorYearArchive()`(매년 `getFullYear()-1`을 자동 계산해 `CSV_BANK/archive/{연도}/order_{연도}.csv` 조회 — 연도 하드코딩 제거), `D.order2025/issue2025`→`D.orderPrevYear/issuePrevYear` 전면 리네이밍(9개 참조). PDF 분석 리포트의 `loadPrevYearRaw()`도 같은 경로로 통합(가능하면 `D.orderPrevYear` 재사용, 중복 fetch 제거) — 이로써 완전 중복이던 `CSV/SCM_발주_RAW(2025).csv`·`SCM_이슈_RAW(2025).csv` 삭제, 전년도 원본 3중 관리 해소(`data_2025.json` 월집계는 원본 미로드 시 폴백으로 유지). ② **연말 자동 아카이빙 CI**(`525cdd1`): `.github/workflows/yearly-archive.yml` — 매년 1/2 00:10 KST에 `scripts/archive_year_end.mjs`가 직전 연도 order/issue CSV를 `CSV_BANK/archive/{연도}/`로 복사 커밋. order.csv 과업지시일자 연도 비율 50% 이상일 때만 실행(1월 첫 목요일 주간 갱신이 새해 데이터로 덮어쓴 뒤 뒤늦게 돌면 거부, order 검증이 issue까지 게이트), 기존 아카이브 덮어쓰기 방지, `workflow_dispatch`로 연도 지정 수동 실행 가능. ③ **협력사 상세 전년 동기 비교**(`7085a41`): 상세 모달·드릴다운에 YTD(1~당해 최신월) 기준 발주건수·발주수량·매입금액·이슈건수·이슈율 전년 비교표 + YoY 뱃지 + 전년 연간 전체 참고치, 연도별 매입추이 차트에 전년 12개월 라인 오버레이. 전년 이슈 귀속은 전년도 발주 RAW로 project 코드→협력사 맵 별도 구성(당해 맵엔 전년 코드 없음). 전년 이력 없는 협력사는 블록 미표시. index.html 약 7,153줄. |
 
 ### 파일 구조
 ```
 SCMDASHBOARD/
-├── index.html                       ← 운영 원본 (GitHub Pages 직접 서빙 · v20 · 약 7,081줄)
-├── scm_dashboard_v20.html           ← 현행 버전 스냅샷 (index.html 복사본)
+├── index.html                       ← 운영 원본 (GitHub Pages 직접 서빙 · v21 · 약 7,153줄)
+├── scm_dashboard_v21.html           ← 현행 버전 스냅샷 (index.html 복사본)
 ├── archive/                         ← 이전 버전 스냅샷 (v3~v15)
 ├── CSV/                             ← 자동 로드 대상 CSV
 │   ├── order.csv · issue.csv · sup.csv · ci.csv
@@ -762,18 +766,19 @@ SCMDASHBOARD/
 │   ├── _manifest.json               ← key→파일명 매핑 (HTML 수정 없이 파일명 변경)
 │   └── (한글 원본 CSV — 보존용)
 ├── CSV_BANK/                        ← v13 신규(주간 progress/project 아카이브) · v14 확장 — archive_csv.ps1이 매달 저장하는 sup.csv 월간 스냅샷(§4-24 diff 대상)
+│   └── archive/{연도}/              ← v21 신규 — 전년도 order_{연도}.csv·issue_{연도}.csv 고정 보존 (loadPriorYearArchive()·yearly-archive.yml 대상)
 ├── data/                            ← 영구 임베딩 JSON
 │   ├── parts_master.json · data_2025.json · cost_db.json
 │   └── progress_notes.json · ci_overrides.json  ← v13 신규(GitHub 연동 자동 커밋 대상)
 ├── docs/
-│   ├── SCM_DASHBOARD_ARCHITECTURE.md       ← 이 파일 (v20 갱신)
-│   ├── CHANGELOG_v20.md                    ← 버전별 변경 내역 (팀 공유용)
+│   ├── SCM_DASHBOARD_ARCHITECTURE.md       ← 이 파일 (v21 갱신)
+│   ├── CHANGELOG_v21.md                    ← 버전별 변경 내역 (팀 공유용)
 │   ├── purchase_dashboard_migration_strategy.md  ← 구매파트 Apps Script 이식 전략 (v10 반영 현황 기준, v11 이후는 범위 밖)
-│   ├── SCM_DASHBOARD_로직설명_v20.html  ← 로직 설명서 (v20 갱신)
-│   ├── SCM_DASHBOARD_사용자가이드_v20.html  ← 사용자 가이드 (v20 갱신)
+│   ├── SCM_DASHBOARD_로직설명_v21.html  ← 로직 설명서 (v21 갱신)
+│   ├── SCM_DASHBOARD_사용자가이드_v21.html  ← 사용자 가이드 (v21 갱신)
 │   ├── SCM_KPI_리포트_2026Q2.xlsx
 │   └── archive/                     ← 구버전 (v16 이하 로직설명/사용자가이드/CHANGELOG, V4_로직설명_v7.html 등)
-├── deploy_v20.ps1                   ← 배포 스크립트 (git 자가복구 + 버전 정리 + 안전 동기화 + 문서/구파일 정리)
+├── deploy_v21.ps1                   ← 배포 스크립트 (git 자가복구 + 버전 정리 + 안전 동기화 + 문서/구파일 정리)
 ├── archive_csv.ps1                  ← v13 신규 — 주간 CSV(progress_/project_)는 최신 1개만 유지 후 CSV_BANK로 이동, v14 확장 — sup.csv 교체 직전 CSV_BANK/sup_YYYY_MM.csv로 월간 스냅샷 저장
 ├── .nojekyll                        ← Pages Jekyll 비활성화 (빌드 실패 방지)
 └── .claude/                         ← Claude 설정
@@ -783,7 +788,7 @@ SCMDASHBOARD/
 
 ### 버전 규칙 (v7~)
 - **운영 원본은 `index.html`** — 수정 작업은 index.html에 직접, 로컬 확인은 수동 업로드 모드
-- **배포는 `deploy_v{N}.ps1`(현재 `deploy_v20.ps1`)** — 실행 시 자동으로:
+- **배포는 `deploy_v{N}.ps1`(현재 `deploy_v21.ps1`)** — 실행 시 자동으로:
   1. git 저장소 자가진단/복구 (index 손상, 잔류 lock)
   2. 한글 원본 CSV → 고정 영문명 복사
   3. index.html이 바뀐 경우에만 `scm_dashboard_v{N+1}.html` 스냅샷 생성 (버전 자동 카운트, 이전 버전 archive 이동)
@@ -796,7 +801,7 @@ SCMDASHBOARD/
 
 ---
 
-## 9. 주간 업데이트 절차 (v20 · 자동 로드 기준)
+## 9. 주간 업데이트 절차 (v21 · 자동 로드 기준)
 
 ### Airtable 소스 CSV 자동 커밋 (v19 신규, v20 확장)
 `.github/workflows/weekly-airtable.yml`이 **매주 목요일 13:00 KST**(v20에서 월요일 09:00→변경, cron `0 4 * * 4`)에 Airtable 원본 CSV를 자동으로 갱신·커밋한다. 두 스크립트가 순서대로 실행된다:
@@ -838,7 +843,9 @@ SCMDASHBOARD/
 - 로드 순서 경쟁 상태 주의: `data/change_log.json` fetch가 CSV 자동로드보다 먼저 끝나 감지 시점에 `D.goods_master`/`D.sup`가 아직 없을 수 있다 — `CHANGE_LOG_DETECTED` 플래그를 감지 성공 시에만 세워, 실패 시 다음 `renderMonthlyNotice()` 호출(데이터 로드 완료 후 refreshAll 경유)에서 재시도하도록 했다.
 - v20에서 대체된 구 방식(월단위 `sup_YYYY_MM.csv` 2개 비교, `SUP_ROSTER_CACHE`/`loadSupRosterDiff`/`walkSupSnapshot`)은 제거했다 — 실사용 중 한 번도 이전 스냅샷을 찾지 못해(리포지토리에 `CSV_BANK`가 아예 없었음) 항상 "비교할 스냅샷 없음"이었던 것으로 확인됨.
 
-**Airtable API가 아닌 소스(자동화 방식이 다름)**: `quarter_eval`(분기별평가)·`inv_weekly`·`sales_monthly`·`dashboard_period_summary`·`dashboard_group_summary`·`dashboard_sku_snapshot`·`purchase_review`·`season_plan`은 **GSheets(구매전략파트 S&OP Apps Script)** 원본이라 Airtable REST API로는 가져올 수 없다 — Google Sheets API(서비스 계정 자격증명 필요) 또는 GSheets Apps Script가 직접 GitHub Contents API로 push하는 방식이 필요하며, 별도 결정·구축이 필요하다. `sales`(GSheets SUPER BASE)도 마찬가지로 별도 소스.
+**연말 자동 아카이빙 (v21 신규)** — `.github/workflows/yearly-archive.yml`이 **매년 1월 2일 00:10 KST**(cron `10 15 1 1 *`)에 `scripts/archive_year_end.mjs`를 실행해, 직전 연도의 `CSV/order.csv`·`issue.csv`를 `CSV_BANK/archive/{연도}/order_{연도}.csv`·`issue_{연도}.csv`로 복사 커밋한다. 대시보드의 `loadPriorYearArchive()`가 매년 "실행 시점의 작년"을 자동 계산해 이 경로를 조회하므로(`D.orderPrevYear`/`D.issuePrevYear`), **이 워크플로만 정상 실행되면 코드 수정 없이 YoY 비교가 다음 해로 넘어간다**. 안전장치: ① order.csv의 과업지시일자에서 대상 연도 비율이 50% 이상일 때만 실행 — 1월 첫 목요일의 주간 Airtable 갱신이 order.csv를 새해 데이터로 덮어쓴 *뒤에* 뒤늦게 돌면 잘못된 스냅샷을 만들지 않고 거부한다(order 검증 결과가 issue까지 게이트 — 둘은 같은 시점 스냅샷). ② 해당 연도 아카이브가 이미 있으면 덮어쓰지 않음(재실행 무해). ③ 놓친 경우 Actions 탭 → `yearly-archive` → Run workflow(연도 지정 가능)로 수동 실행하되, 이미 거부되는 상황이면 `CSV_BANK/{연도}_W##/`의 마지막 주차 아카이브에서 수동 복사한다. 참고: `data/data_2025.json`(월별 사전집계)은 아카이브 원본 미로드 시의 폴백으로만 유지 — 새로 만들 필요 없음.
+
+**Airtable API가 아닌 소스(자동화 방식이 다름)**: `quarter_eval`(분기별평가)·`inv_weekly`·`sales_monthly`·`dashboard_period_summary`·`dashboard_group_summary`·`dashboard_sku_snapshot`·`purchase_review`·`season_plan`은 **GSheets(구매전략파트 S&OP Apps Script)** 원본이라 Airtable REST API로는 가져올 수 없다 — Google Sheets API(서비스 계정 자격증명 필요) 또는 GSheets Apps Script가 직접 GitHub Contents API로 push하는 방식이 필요하며, 별도 결정·구축이 필요하다. `sales`(GSheets SUPER BASE)도 마찬가지로 별도 소스. `quarter_eval.csv`는 v20.x에서 수동 정리본을 자동 로드에 추가(변경 시 수동 갱신 필요).
 
 ### 데이터 담당자 — 외주생산파트 (주 1회)
 | 단계 | 작업 | 비고 |
@@ -877,5 +884,5 @@ SCMDASHBOARD/
 
 ---
 
-*문서 기준: index.html (scm_dashboard_v20.html) v20 (2026-07-24) · 약 7,081줄 — Airtable 자동 갱신 목요일 13:00 전환·지금 새로고침 버튼·협력사·졸업/출시 변경 이력 시스템 · v19(이슈 분석 모듈·진행현황 주차 경고·제품 추이 검색 연동) · v18·v17/v17.1·v16 기반*  
+*문서 기준: index.html (scm_dashboard_v21.html) v21 (2026-07-20) · 약 7,153줄 — 연도별 아카이빙 체계(CSV_BANK/archive·yearly-archive.yml·loadPriorYearArchive)·협력사 상세 전년 동기 비교 · v20.x(분기별평가 실데이터·포트폴리오 클릭·이슈탭 수정·미입하율표) · v20(Airtable 목요일 자동 갱신·지금 새로고침·변경 이력 시스템) 기반*  
 *대시보드 변경 시 이 문서도 함께 업데이트 바랍니다. 원본 CSV 헤더 변경 시 §8 버전 규칙에 따라 CHANGELOG에도 기록 바랍니다.*

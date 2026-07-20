@@ -1,6 +1,6 @@
 # =============================================================
-# SCM Dashboard deploy script v20 (run on PC)
-# Run: powershell -ExecutionPolicy Bypass -File .\deploy_v20.ps1
+# SCM Dashboard deploy script v21 (run on PC)
+# Run: powershell -ExecutionPolicy Bypass -File .\deploy_v21.ps1
 # =============================================================
 $ErrorActionPreference = "Stop"
 # Resolve to the repo root (this script's own folder) so it works on any machine
@@ -29,13 +29,13 @@ if ($LASTEXITCODE -ne 0) {
 
 # 1) Version snapshot housekeeping
 New-Item -ItemType Directory -Force -Path "archive" | Out-Null
-# Move any older version snapshots in root to archive (keep only v20)
-Get-ChildItem "." -Filter "scm_dashboard_v*.html" -File | Where-Object { $_.Name -ne "scm_dashboard_v20.html" } | ForEach-Object {
+# Move any older version snapshots in root to archive (keep only v21)
+Get-ChildItem "." -Filter "scm_dashboard_v*.html" -File | Where-Object { $_.Name -ne "scm_dashboard_v21.html" } | ForEach-Object {
   Move-Item $_.FullName "archive\" -Force
   Write-Host "Archived: $($_.Name) -> archive" -ForegroundColor Yellow
 }
-Copy-Item "index.html" "scm_dashboard_v20.html" -Force
-Write-Host "Snapshot created: scm_dashboard_v20.html" -ForegroundColor Cyan
+Copy-Item "index.html" "scm_dashboard_v21.html" -Force
+Write-Host "Snapshot created: scm_dashboard_v21.html" -ForegroundColor Cyan
 
 # 1b) Archive superseded v19 docs
 New-Item -ItemType Directory -Force -Path "docs\archive" | Out-Null
@@ -58,7 +58,7 @@ if (Test-Path "deploy_v19.ps1") {
 git add -A; Assert-Git
 git diff --cached --quiet
 if ($LASTEXITCODE -ne 0) {
-  $msg = "v20 update $(Get-Date -Format 'yyyy-MM-dd HH:mm')"
+  $msg = "v21 update $(Get-Date -Format 'yyyy-MM-dd HH:mm')"
   git commit -m $msg; Assert-Git
   Write-Host "Committed: $msg"
 } else {
@@ -90,4 +90,4 @@ git push origin main; Assert-Git
 # 4) Confirm
 Write-Host ""
 Write-Host "Done. In 1-3 minutes: https://nanyounglee.github.io/SCMDASHBOARD/" -ForegroundColor Green
-Write-Host "Check: sidebar should show 'SCM.. v20'. Verify: (1) upload bar has a working 'Refresh now' button that triggers weekly-airtable.yml via workflow_dispatch and reloads CSVs on completion, (2) 종합현황 월간 공지사항 shows 졸업/출시/신규협력사/거래종료협력사 based on a rolling last-30-days window (not the selected period) plus a '전체 변경 이력 보기' toggle, (3) weekly-airtable.yml now runs Thursdays 13:00 KST." -ForegroundColor Green
+Write-Host "Check: sidebar should show 'SCM.. v21'. Verify: (1) supplier detail modal/drilldown shows a 전년 동기 비교 table with YoY badges and the yearly purchase chart has a prior-year line, (2) portfolio Tier cards and matrix dots are clickable, (3) issue tabs (품질/수량/운영/제품×협력사) render content and the 미입하율 추이표 is populated, (4) CSV_BANK/archive/2025/ loads as D.orderPrevYear (13,529 rows)." -ForegroundColor Green
