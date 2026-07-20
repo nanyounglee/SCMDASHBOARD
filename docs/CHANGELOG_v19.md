@@ -13,6 +13,11 @@
 - **이번 주 진행현황 CSV가 아직 커밋되지 않으면 노란 경고 배너**가 표시됩니다 (예: "이번 주(2026-W30) CSV 미업로드 — 2026-W29 기준 표시 중")
 - 원인 확인: 이 저장소에는 매주 자동 커밋하는 워크플로가 **없습니다** — W29 파일도 7/14에 수동 커밋된 것입니다. 매주 월요일 에어테이블 진행현황 뷰에서 CSV를 내려받아 `CSV/progress_연도_W주차.csv`로 커밋해야 합니다(경고 배너에 파일명 안내 포함)
 
+## Airtable → GitHub 주간 자동 커밋 (신규 인프라)
+- **매주 월요일 09:00 KST에 에어테이블 진행현황 뷰를 자동으로 CSV 커밋**하는 GitHub Actions 워크플로를 추가했습니다 (`.github/workflows/weekly-airtable.yml` + `scripts/fetch_airtable_weekly.mjs`)
+- Airtable API를 `cellFormat=string · timeZone=Asia/Seoul`로 호출해 화면 표시 형식 그대로(날짜 `2026.7.14` 등) 받고, 기존 CSV 헤더 순서를 재사용해 대시보드와 컬럼 호환을 유지합니다. 지난 주차 파일은 `CSV_BANK/연도_W주차/`로 자동 아카이브됩니다
+- **활성화하려면 저장소 설정이 필요합니다**: Settings → Secrets에 `AIRTABLE_TOKEN`(data.records:read 스코프 PAT), Variables에 `AIRTABLE_BASE_ID`·`PROGRESS_TABLE`·`PROGRESS_VIEW` 등록 후 Actions 탭에서 `weekly-airtable-progress`를 수동 실행(Run workflow)해 1회 검증. `PROJECT_TABLE`/`PROJECT_VIEW`를 추가 등록하면 매출결산(project_) 주간 파일도 함께 자동화됩니다
+
 ## 제품별 판매량 추이 — 검색 연동 + 서울디지털 제외
 - 상단 검색창(제품명/협력사명/굿즈코드)이 이 화면에도 **실시간 반영**됩니다 — 이전에는 이 화면만 검색에 무반응이었습니다
 - **제품별 발주 요약 테이블에서 주 제작처(최다 발주 기준)가 서울디지털인쇄협동조합인 제품을 제외**하고, 제작 협력사 컬럼을 추가했습니다 (상단 Top10 추이 차트는 전체 기준 유지)

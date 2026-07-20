@@ -798,10 +798,16 @@ SCMDASHBOARD/
 
 ## 9. 주간 업데이트 절차 (v19 · 자동 로드 기준)
 
+### 진행현황·매출결산 주간 CSV — Airtable 자동 커밋 (v19 신규)
+`.github/workflows/weekly-airtable.yml`이 **매주 월요일 09:00 KST**에 `scripts/fetch_airtable_weekly.mjs`를 실행해 진행현황 뷰를 `CSV/progress_YYYY_WNN.csv`로 자동 커밋한다(지난 주차는 `CSV_BANK/연도_W주차/`로 아카이브).
+- Airtable API를 `cellFormat=string`+`timeZone=Asia/Seoul`로 호출해 UI 표시 형식 그대로 수신, 기존 최신 파일의 헤더 순서를 재사용해 대시보드 컬럼 호환 유지.
+- **1회 설정 필요**: 저장소 Settings → Secrets `AIRTABLE_TOKEN`(data.records:read PAT) · Variables `AIRTABLE_BASE_ID`/`PROGRESS_TABLE`/`PROGRESS_VIEW`(+선택 `PROJECT_TABLE`/`PROJECT_VIEW` — 설정 시 매출결산 project_ 파일도 자동화). 설정 후 Actions 탭 → weekly-airtable-progress → Run workflow로 수동 1회 검증.
+- 미설정/실패 시엔 기존처럼 수동 커밋으로 대체 가능 — 대시보드는 이번 주 파일이 없으면 경고 배너(§v19)로 알려준다.
+
 ### 데이터 담당자 — 외주생산파트 (주 1회)
 | 단계 | 작업 | 비고 |
 |---|---|---|
-| 1 | Airtable에서 CSV Export | 발주_RAW, 이슈_RAW, 공급망_RAW, 고객인지이슈_RAW, 분기별평가, (v13) 진행현황·매출결산, (v14) 굿즈마스터 |
+| 1 | Airtable에서 CSV Export | 발주_RAW, 이슈_RAW, 공급망_RAW, 고객인지이슈_RAW, 분기별평가, (v13) 진행현황·매출결산(→v19부터 자동 커밋 가능, 위 참고), (v14) 굿즈마스터 |
 | 2 | 프로젝트 폴더 `CSV/`에 저장 | 한글 원본명 그대로 저장해도 됨. 대용량 CSV는 채팅 붙여넣기보다 로컬 파일 직접 저장 권장(문자 손상 위험, v14) |
 | 3 | `deploy_v19.ps1` 실행 | 고정명 복사 + 커밋 + 푸시 자동. 또는 GitHub 웹에서 고정명 파일 직접 덮어쓰기 |
 | 4 | 1~3분 후 배포 확인 | `-Verify` 스위치 또는 브라우저 Ctrl+F5 |
