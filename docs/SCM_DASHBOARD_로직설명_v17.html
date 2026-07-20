@@ -59,6 +59,7 @@
   <b>v15</b> — v14 추가분(원격)과 같은 시점 별도 세션에서 진행되던 기간선택 통합 작업을 병합. 주별/월별/분기별/기간지정 4탭 통합 선택기 신규(§3-20), 월간 공지사항을 정확한 날짜·다중월 합산 방식으로 개선(§3-21). <b>v15.x(2026.07.16, 다른 세션)</b>: 이슈 집계 기준일을 품질이슈내용업데이트/운영이슈내용 업데이트로 변경(§3-4), 이슈현황 탭 기간 필터를 issueInPeriod()로 교체해 범위 전체가 표시되도록 수정(§4-3).<br>
   <b>v16</b> — 협력사 현황 드릴다운에 PDF 내보내기 2종 신규: 상세 스냅샷(<code>exportSupplierPdf</code>)과 분석 리포트(<code>exportSupplierAnalysisReport</code>, 전년 RAW YoY 예상·SVG 추세선·재발이슈), html2pdf.js lazy-load(§3-22). 리포트/내보내기 버그 수정 — 주간 보고(genWeekly) 긴급·매입 집계를 KPI 카드와 일치, exportKPI를 실측 KPI 요약으로 교체(§3-23). index.html 버전 라벨 v14→v16 정정.<br>
   <b>v17(이번 버전)</b> — 협력사 현황에 협력사 변경 검토 진행 현황 카드 신규. scm_vendor_change 저장소의 <code>bank/</code> 폴더를 GitHub API로 실시간 fetch해 전환검토중/확정/완료 건수와 최근 완료 변경 목록을 표시, 카드 클릭 시 해당 대시보드로 이동(§3-24). 같은 id의 중복 보고서를 상태-랭크·최신 날짜 기준으로 병합해 bank 파일 처리 순서에 무관하게 안정적인 결과를 보장.<br>
+  <b>v17.1</b> — 협력사 PDF 내보내기 2종의 잘림/백지 버그 수정(§3-22 상단 경고 박스 참고): wrap 고정 폭 제거(html2pdf 194mm 컨테이너 잘림), <code>scrollX/Y:0</code>·<code>windowWidth</code> 제거(스크롤 오프셋 백지), SVG→PNG 치환(<code>_svgsToPng</code>), Chart.js 동기 리렌더(<code>update('none')+draw()</code>).<br>
   <span style="color:#888">v7~v10 변경 이력(CSV 파서 상태머신化·사전집계 3종 연동·반기환산 등)은 본 문서 하단 "부록"에 요약. 상세 내역은 <code>docs/archive/</code>의 구버전 문서 참고.</span>
 </div>
 
@@ -474,7 +475,8 @@ periodUnitAdjacentLabel() — 배지 라벨을 단위별로 전환: 주별→WoW
   <b>발견 경위:</b> 기간지정(custom)의 기본값이 "최근 7일"이라 SEL_MONTH가 항상 최신월로 근사되고, 그 결과 <code>MANUAL_VENDOR_TERM_MONTH='2026.6'</code> 같은 특정월 하드코딩 예외가 5~7월처럼 6월을 포함하는 임의 구간에서는 보이지 않는 문제가 있었다 — 팀원이 "거래종료 협력사가 주별로 봤을 땐 나오는데 기간지정하면 안 나온다"고 리포트해 발견·수정했다.
 </div>
 
-<h3>3-22. 협력사 PDF 내보내기 — 상세 스냅샷 + 분석 리포트 <span class="badge b-red">v16 신규</span></h3>
+<h3>3-22. 협력사 PDF 내보내기 — 상세 스냅샷 + 분석 리포트 <span class="badge b-red">v16 신규</span> <span class="badge b-green">v17.1 잘림 수정</span></h3>
+<div class="warn"><b>v17.1 버그 수정(잘림/백지):</b> v16 최초 구현이 실사용에서 잘리거나 백지로 저장되는 문제가 발견되어 다음을 수정했다. ① html2pdf는 렌더링 컨테이너를 <b>A4 내부 폭 194mm(≈733px)로 강제</b>하므로 wrap의 1000px 고정 폭이 우측 잘림을 유발 → 폭 미지정(컨테이너 상속)으로 변경. ② 페이지가 스크롤된 상태에서 html2canvas가 스크롤 오프셋만큼 내용을 밀어 캡처 → <code>scrollX:0, scrollY:0</code> 강제, 클론 문서를 실제 창과 다른 폭으로 재배치시키던 <code>windowWidth</code> 옵션 제거. ③ 분석 리포트의 SVG 추세선을 html2canvas가 렌더하지 못함 → <code>_svgsToPng()</code>가 브라우저 네이티브 렌더링(SVG data URL→Image→canvas)으로 PNG <code>&lt;img&gt;</code> 치환 후 전달. ④ 탭 전환 등으로 Chart.js 캔버스 비트맵이 비워진 채 <code>toBase64Image()</code>가 투명 PNG를 반환하는 경우 → 캡처 직전 <code>chart.update('none'); chart.draw()</code>로 동기 리렌더. 실데이터 픽셀 프로파일(사방 여백·차트 픽셀·페이지 수)로 검증 완료.</div>
 <p>협력사 현황 드릴다운(<code>buildSupplierDetail()</code>)의 헤더에 버튼 두 개를 추가했다. 둘 다 <b>html2pdf.js</b>(html2canvas+jsPDF 번들)로 클라이언트에서 PDF를 만들며, 라이브러리는 <b>최초 클릭 시에만</b> CDN에서 lazy-load한다(평상시 페이지 로드 무영향).</p>
 <div class="code">let _html2pdfLoading=null;
 function loadHtml2Pdf():
@@ -492,11 +494,13 @@ function loadHtml2Pdf():
    → 화면에서 잘린 발주내역 행까지 PDF에는 전부 출력
 5. 조작 요소 제거: clone 내부 select·button 모두 remove (선택 월은 머리말에 표기)
 6. id 제거: #modal-body 등 CSS id 규칙·중복 id 부작용 방지(캔버스 치환 후라 안전)
-7. detached wrap(div, width:1000px)에 머리말(협력사명·기간·생성일)+clone 삽입
+7. detached wrap(div, 폭 미지정 — v17.1)에 머리말(협력사명·기간·생성일)+clone 삽입
+   ※ 폭을 고정하면 html2pdf의 194mm 컨테이너에서 우측이 잘린다(v17.1 수정)
    ※ wrap을 body에 append하지 않고 detached로 html2pdf에 넘긴다 —
      position:fixed/absolute로 body에 붙이면 내부 오버레이 복제 시 높이가 0으로
      붕괴되어 빈 PDF가 나오는 문제가 있었기 때문(캔버스 h=0). detached면 정상.
-8. html2pdf().set({a4 portrait, scale:2, jpeg .95, pagebreak css+legacy}).from(wrap).save()
+8. html2pdf().set({a4 portrait, scale:2, jpeg .95, scrollX/Y:0(v17.1),
+   pagebreak css+legacy}).from(wrap).save()
    파일명: 협력사상세_{supName}_{YYYY-MM-DD}.pdf (파일명 특수문자는 _로 치환)</div>
 <h3 style="margin-top:14px">② 분석 리포트 — exportSupplierAnalysisReport(btn, supName)</h3>
 <p>전년(2025) 대비 올해 실적을 비교·전망하는 A4 2페이지 리포트를 <b>새로 조립</b>한다(화면 복제가 아니라 데이터에서 직접 생성). 클릭한 달을 기준월로 삼는다.</p>

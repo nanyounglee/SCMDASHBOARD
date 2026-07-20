@@ -3614,9 +3614,14 @@ async function exportSupplierPdf(btn,supName) {
       const chart=(window.Chart&&live?Chart.getChart(live):null)||CHARTS[cv.id];
       const box=cv.closest('.ch')||cv.parentNode;
       if (chart) {
+        // 탭 전환/리사이즈 후 캔버스 비트맵이 비워진 채 남아 toBase64Image가 투명 PNG를
+        // 반환하는 경우가 있어(v17.1 실측 — PDF에 차트 자리가 백지로 나감) 동기 리렌더 강제.
+        // update('none')만으로는 실제 페인트가 rAF 큐에 남을 수 있어 draw()로 즉시 그린다.
+        try { chart.update('none'); chart.draw(); } catch(e) {}
         const img=document.createElement('img');
         img.src=chart.toBase64Image('image/png',1);
-        img.style.cssText='width:100%;height:200px;object-fit:contain';
+        // object-fit은 html2canvas 미지원 — 원본 비율 유지되도록 height:auto 사용
+        img.style.cssText='width:100%;height:auto;display:block';
         box.parentNode.replaceChild(img,box);
       } else {
         // 차트 미생성(매입추이 데이터 없음 등) — 빈 캔버스 대신 영역 자체를 제거
@@ -3634,23 +3639,29 @@ async function exportSupplierPdf(btn,supName) {
     const selMonth=SUP_DRILL_MONTH[supName]||'all';
     const now=new Date();
     const dateStr=now.getFullYear()+'-'+String(now.getMonth()+1).padStart(2,'0')+'-'+String(now.getDate()).padStart(2,'0');
-    // 주의: wrap은 DOM에 붙이지 않고 detached 상태로 html2pdf에 넘긴다.
-    // position:fixed/absolute로 body에 붙이면 html2pdf 내부 오버레이 복제 시 높이가 0으로
-    // 붕괴되어 빈 PDF가 나온다(캔버스 h=0 확인). detached면 자체 컨테이너에 정상 삽입됨.
+    // 주의 1: wrap에 고정 px 폭을 주면 안 된다 — html2pdf는 렌더링 컨테이너 폭을 A4 내부 폭
+    //   194mm(≈733px)로 강제하므로, 1000px 고정 폭이면 오른쪽이 잘린 PDF가 나온다(v17.1에서 실측).
+    //   폭을 지정하지 않으면 블록 요소로서 컨테이너 폭을 그대로 채워 잘림이 없다.
+    // 주의 2: wrap은 DOM에 붙이지 않고 detached 상태로 html2pdf에 넘긴다.
+    //   position:fixed/absolute로 body에 붙이면 html2pdf 오버레이 복제 시 높이가 0으로 붕괴.
     const wrap=document.createElement('div');
-    wrap.style.cssText='width:1000px;background:#fff;padding:24px';
+    wrap.style.cssText='background:#fff;padding:16px';
     wrap.innerHTML=`<style>tr,img{page-break-inside:avoid}</style>
       <div style="display:flex;justify-content:space-between;align-items:baseline;border-bottom:2px solid #1d4ed8;padding-bottom:10px;margin-bottom:16px">
         <div style="font-size:20px;font-weight:700">협력사 상세 — ${esc(supName)}</div>
         <div style="font-size:11px;color:#64748b">기간: ${selMonth==='all'?'전체':esc(selMonth)} · 생성일 ${dateStr} · SCM 통합운영 대시보드</div>
       </div>`;
     wrap.appendChild(clone);
+    await _svgsToPng(wrap); // 혹시 남은 인라인 SVG도 PNG로 (html2canvas의 SVG 렌더 불안정 회피)
     const fname='협력사상세_'+String(supName).replace(/[\\/:*?"<>|]/g,'_')+'_'+dateStr+'.pdf';
     await html2pdf().set({
       margin:[8,8,10,8],
       filename:fname,
       image:{type:'jpeg',quality:0.95},
-      html2canvas:{scale:2,useCORS:true,backgroundColor:'#ffffff',windowWidth:1048},
+      // scrollX/Y:0 필수 — 페이지가 스크롤된 상태에서 캡처하면 html2canvas가 스크롤 오프셋만큼
+      // 내용을 밀어 대부분 백지인 PDF가 나온다. windowWidth 지정도 같은 이유로 금지(클론 문서가
+      // 실제 창과 다른 폭으로 재배치되어 잘라내는 좌표가 어긋남) — v17.1에서 실측으로 확인.
+      html2canvas:{scale:2,useCORS:true,backgroundColor:'#ffffff',scrollX:0,scrollY:0},
       jsPDF:{unit:'mm',format:'a4',orientation:'portrait'},
       pagebreak:{mode:['css','legacy']}
     }).from(wrap).save();
@@ -3660,6 +3671,39 @@ async function exportSupplierPdf(btn,supName) {
   } finally {
     btn.disabled=false; btn.textContent=orig;
   }
+}
+// 인라인 SVG → PNG <img> 치환 — html2canvas(html2pdf 번들)가 viewBox 스케일 SVG를 제대로
+// 래스터화하지 못해 차트가 깨진 채 PDF에 실리는 문제 회피(v17.1). 브라우저 네이티브 렌더링
+// (SVG data URL → Image → canvas)을 사용하므로 화면과 동일한 결과가 보장된다.
+async function _svgsToPng(root) {
+  const svgs=[...root.querySelectorAll('svg')];
+  await Promise.all(svgs.map(svg=>new Promise(res=>{
+    try {
+      const vb=svg.viewBox&&svg.viewBox.baseVal;
+      const w=(vb&&vb.width)||330, h=(vb&&vb.height)||200;
+      const cl=svg.cloneNode(true);
+      cl.setAttribute('xmlns','http://www.w3.org/2000/svg');
+      cl.setAttribute('width',w); cl.setAttribute('height',h);
+      cl.removeAttribute('style'); // width:100% 등은 Image 래스터화 시 크기를 왜곡
+      const img=new Image();
+      img.onload=()=>{
+        try {
+          const cv=document.createElement('canvas');
+          cv.width=w*3; cv.height=h*3; // 인쇄 선명도용 3배
+          const cx=cv.getContext('2d');
+          cx.fillStyle='#fff'; cx.fillRect(0,0,cv.width,cv.height);
+          cx.drawImage(img,0,0,cv.width,cv.height);
+          const rep=document.createElement('img');
+          rep.src=cv.toDataURL('image/png');
+          rep.style.cssText='width:100%;height:auto;display:block';
+          svg.parentNode.replaceChild(rep,svg);
+        } catch(e){}
+        res();
+      };
+      img.onerror=()=>res(); // 실패 시 SVG 원본 유지(차트만 깨질 뿐 리포트 생성은 계속)
+      img.src='data:image/svg+xml;charset=utf-8,'+encodeURIComponent(new XMLSerializer().serializeToString(cl));
+    } catch(e){ res(); }
+  })));
 }
 // ===== 협력사 분석 리포트 PDF (연간 요약·YoY·추세선·상위순위·재발이슈·핵심요약, A4 2페이지) =====
 // 클릭한 달 기준: 완결월(전월까지)로 YoY 성장률을 산출해 잔여 월을 예상치로 채운다.
@@ -3800,7 +3844,7 @@ async function exportSupplierAnalysisReport(btn,supName) {
       let out='';
       for(let m=1;m<=12;m++){
         const isP=isProjSide&&canProj&&m>=curM;
-        const cell=(act,prj,fmt)=>isP?(m===curM?fmt(act)+'<span style="color:#5b78a8;font-size:8px">+'+fmt(Math.max(prj-act,0))+'</span>':'<span style="color:#5b78a8">'+fmt(prj)+'</span>'):fmt(act);
+        const cell=(act,prj,fmt)=>isP?(m===curM?fmt(act)+'<span style="display:block;color:#5b78a8;font-size:8px;line-height:1.2">+'+fmt(Math.max(prj-act,0))+' 예상</span>':'<span style="color:#5b78a8">'+fmt(prj)+'</span>'):fmt(act);
         const issCell=isProjSide?(isP&&m>curM?'<span style="color:#5b78a8">—</span>':isCur.m[m]):isPrev.m[m];
         out+='<tr><td>'+m+'월</td><td class="rnum">'+cell(mo.tasks[m],pj?pj.tasks[m]:0,v=>String(v))+'</td><td class="rnum">'+cell(mo.qty[m],pj?pj.qty[m]:0,N)+'</td><td class="rnum">'+cell(mo.amt[m],pj?pj.amt[m]:0,MM)+'</td><td class="rnum">'+issCell+'</td></tr>';
       }
@@ -3820,7 +3864,8 @@ async function exportSupplierAnalysisReport(btn,supName) {
       +(recur.length?' · 재발이슈 최다 「'+esc(recur[0].p)+'」('+recur[0].cnt+'건) 시정조치 관리 필요.':' · 2건 이상 재발이슈 없음.');
     const mLabel=curY+'.'+curM;
     const wrap=document.createElement('div');
-    wrap.style.cssText='width:1000px;background:#fff;padding:24px;font-family:\'Malgun Gothic\',sans-serif;color:#0b0b0b;font-size:12px;line-height:1.5';
+    // 고정 px 폭 금지 — html2pdf 컨테이너는 A4 내부 폭 194mm(≈733px) 고정이라 1000px이면 우측 잘림(v17.1)
+    wrap.style.cssText='background:#fff;padding:16px;font-family:\'Malgun Gothic\',sans-serif;color:#0b0b0b;font-size:12px;line-height:1.5';
     wrap.innerHTML=
       '<style>.rept{width:100%;border-collapse:collapse;margin:4px 0 8px}.rept th{background:#f0f4fa;border:1px solid #d8dee8;padding:3px 5px;font-size:10px;text-align:center}.rept td{border:1px solid #e1e0d9;padding:2.5px 5px;font-size:10.5px}.rept td.rnum{text-align:right}.rept tr.tot td{background:#f7f9fc;font-weight:700}tr{page-break-inside:avoid}.rh2{font-size:14px;font-weight:700;margin:14px 0 6px;padding-bottom:3px;border-bottom:2px solid #2a78d6}.rnote{font-size:9.5px;color:#52514e;background:#f7f7f4;border:1px solid #e1e0d9;border-radius:5px;padding:6px 8px;margin-top:5px}</style>'
       +'<div style="font-size:20px;font-weight:700">협력사 발주 분석 리포트 — '+esc(supName)+'</div>'
@@ -3864,12 +3909,14 @@ async function exportSupplierAnalysisReport(btn,supName) {
       +'<div class="rnote">※ 이슈→협력사 귀속은 프로젝트 코드 접두어 매칭(추정 조인)으로 일부 누락 가능. 이슈 월 기준=실제입하일(없으면 입하예정일). 제품명은 이슈 RAW 표기 기준.</div>'
       +'<div class="rh2">5. 핵심 요약</div>'
       +'<div style="background:#eef4fd;border:1.5px solid #2a78d6;border-radius:6px;padding:9px 13px;font-size:11.5px;line-height:1.7">'+line1+'<br>'+line2+'</div>';
+    await _svgsToPng(wrap); // 추세선 SVG를 PNG로 치환 — html2canvas의 SVG 렌더 깨짐 회피(v17.1)
     const fname='협력사분석리포트_'+String(supName).replace(/[\\/:*?"<>|]/g,'_')+'_'+curY+'-'+String(curM).padStart(2,'0')+'.pdf';
     await html2pdf().set({
       margin:[8,8,10,8],
       filename:fname,
       image:{type:'jpeg',quality:0.95},
-      html2canvas:{scale:2,useCORS:true,backgroundColor:'#ffffff',windowWidth:1048},
+      // scrollX/Y:0 필수 + windowWidth 금지 — 스크롤 오프셋/클론 폭 불일치로 인한 백지·잘림 방지(v17.1 실측)
+      html2canvas:{scale:2,useCORS:true,backgroundColor:'#ffffff',scrollX:0,scrollY:0},
       jsPDF:{unit:'mm',format:'a4',orientation:'portrait'},
       pagebreak:{mode:['css','legacy']}
     }).from(wrap).save();
