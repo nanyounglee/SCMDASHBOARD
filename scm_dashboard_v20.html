@@ -149,7 +149,9 @@ a{color:var(--blue);text-decoration:none}
 .tbl td.num{text-align:right;font-variant-numeric:tabular-nums;font-weight:500;color:var(--text)}
 .tbl td.rank{width:30px;text-align:center;color:var(--text3);font-size:11px}
 /* v18: 전체 제품 발주량 — 숫자 셀 줄바꿈 금지로 행 밀림(다단 줄바꿈) 방지 */
-.tbl-ord-top td.num{white-space:nowrap}
+/* v20.1: 전체 제품 발주량 — 지표(발주수량/MoM/YoY/월간발주빈도/연간발주량합/공급가액) 헤더와
+   값을 모두 가운데 정렬로 맞춤(기존엔 헤더는 left, 값은 right라 서로 어긋나 보였음) */
+.tbl-ord-top th.num,.tbl-ord-top td.num{text-align:center;white-space:nowrap}
 .th-sort{cursor:pointer;user-select:none}
 .th-sort:hover{color:var(--text)}
 .th-sort.sort-active{color:var(--blue)}
@@ -2589,6 +2591,9 @@ const MANUAL_STOCKOUT=[
   {parts:'PT4476-스탠리슬림보틀_폴라화이트',status:'일시품절',manager:'김민정'},
   {parts:'PT4478-스탠리슬림보틀_매트블랙',status:'일시품절',manager:'김민정'}
 ];
+// v20 정리 때 실수로 함께 삭제됐던 함수 — buildSupplierDetail()의 월별 매입추이 MoM% 계산(momOf)에
+// 여전히 쓰이고 있어 협력사 상세 모달·드릴다운이 전부 ReferenceError로 깨지고 있었다. 복원.
+function prevYM(y,m){ return m>1?{y,m:m-1}:{y:y-1,m:12}; }
 function diffSupNames(prevRows,curRows){
   const prevNames=new Set(prevRows.map(r=>(r['협력사 이름']||'').trim()).filter(Boolean));
   const curNames=new Set(curRows.map(r=>(r['협력사 이름']||'').trim()).filter(Boolean));
