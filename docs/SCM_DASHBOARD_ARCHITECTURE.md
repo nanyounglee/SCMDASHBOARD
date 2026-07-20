@@ -763,8 +763,10 @@ SCMDASHBOARD/
 │   ├── parts.csv                    ← v11 신규(코스트베이스, 수동 업로드 기본)
 │   ├── goods_master.csv             ← v14 신규(굿즈마스터, 월간 공지사항 졸업/출시 제품용, §4-24)
 │   ├── progress_연도_W주차.csv · project_연도_W주차.csv  ← v13 신규(발주 진행현황·주간 매출결산)
-│   ├── _manifest.json               ← key→파일명 매핑 (HTML 수정 없이 파일명 변경)
-│   └── (한글 원본 CSV — 보존용)
+│   └── _manifest.json               ← key→파일명 매핑 (HTML 수정 없이 파일명 변경)
+│       ※ 한글 원본 CSV(SCM_발주_RAW(2026).csv 등)·S&OP 원본·RAW_CSV.zip은 v21에서 정리 —
+│         주간 자동 커밋이 고정 영문명 CSV를 직접 갱신하게 되면서 수동 복사용 원본이 불필요해짐
+│         (과거 버전은 git 이력·CSV_BANK 주간 아카이브로 보존)
 ├── CSV_BANK/                        ← v13 신규(주간 progress/project 아카이브) · v14 확장 — archive_csv.ps1이 매달 저장하는 sup.csv 월간 스냅샷(§4-24 diff 대상)
 │   └── archive/{연도}/              ← v21 신규 — 전년도 order_{연도}.csv·issue_{연도}.csv 고정 보존 (loadPriorYearArchive()·yearly-archive.yml 대상)
 ├── data/                            ← 영구 임베딩 JSON
