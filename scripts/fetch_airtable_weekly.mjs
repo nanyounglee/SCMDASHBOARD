@@ -21,7 +21,7 @@ import path from 'node:path';
 
 const TOKEN = process.env.AIRTABLE_TOKEN;
 const BASE = process.env.AIRTABLE_BASE_ID;
-if (!TOKEN || !BASE) { console.error('AIRTABLE_TOKEN / AIRTABLE_BASE_ID 환경변수가 필요합니다.'); process.exit(1); }
+if (!TOKEN || !BASE) { console.log('AIRTABLE_TOKEN / AIRTABLE_BASE_ID 미설정 — 진행현황 자동화를 건너뜁니다.'); process.exit(0); }
 
 // ---- Asia/Seoul 기준 오늘 날짜의 ISO 주차 ----
 function seoulToday() {
