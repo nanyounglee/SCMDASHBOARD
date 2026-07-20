@@ -522,6 +522,22 @@ a{color:var(--blue);text-decoration:none}
         </tr></thead><tbody id="tb-ord-buffer"></tbody></table></div>
         <div style="font-size:10px;color:var(--text3);margin-top:8px">※ <b>권장여분/회</b> = 과거 부족 발생 건들의 <b>평균 부족수량 올림(개)</b> — 부족수량은 수량이슈내용 텍스트("N개 발주/M개 입하"·"발주수량 N…입하수량 M"·"N개 부족")와 이동수량 컬럼에서 추출, 괄호 %는 평균 1회 발주수량 대비 참고 비율 · <b>부족발생</b> = 부족수량이 확인된 이슈 건수 · <b>부족률</b> = Σ부족 ÷ Σ발주(부족 발생 건 기준) · <b>불량률(참고)</b> = 샘플링검수 불량수량÷검수수량 — 보수·B급 입고로 종결되는 경우가 많아 <b>여분 산정에서 제외</b>(불량이 부족으로 이어진 건은 수량이슈에 이미 반영) · <b>예방비용</b> = 권장여분 × 단가(공급가액÷발주수량, 파츠리스트 CSV 시 DB원가 우선) × 발주건수(이력 전체 적용 가정) · <b>실패비용</b> = 재제작 TASK 취득원가 합계(재제작 행은 발주건수·단가 집계에서 제외) · <b>차액>0</b>이면 여분 도입이 재제작보다 경제적 · ⚠ 예방 단가와 실패비용은 원가 기준(공급가액 vs 취득원가)이 달라 근사 비교</div>
       </div>
+      <!-- v21.6: 초도 발주 감지 (FAI 후보) — 사상 최초 제품×협력사 조합·신규 협력사 첫 발주 자동 추출 -->
+      <div class="card" style="margin-top:16px">
+        <div class="card-header">
+          <div><div class="card-title">초도 발주 감지 <span style="font-weight:400;font-size:11px;color:var(--text3)">(FAI 후보 — 초도품 승인 대상 자동 추출)</span></div>
+          <div class="card-sub">2025 아카이브+2026 전체 이력에서 <b>사상 처음 발주된 제품×협력사 조합</b>과 <b>신규 협력사의 첫 발주</b>를 최초 발주일 기준으로 추출 · 승인 상태 기록은 추후 인라인 입력으로 확장 예정</div></div>
+          <div style="display:flex;gap:6px;align-items:center" id="fai-filter">
+            <span class="m-chip active" onclick="setFaiFilter(this,'recent')">최근 90일</span>
+            <span class="m-chip" onclick="setFaiFilter(this,'all')">2026 전체</span>
+            <span class="m-chip" onclick="setFaiFilter(this,'newsup')">신규 협력사만</span>
+          </div>
+        </div>
+        <div class="tbl-wrap" style="max-height:420px;overflow-y:auto"><table class="tbl"><thead><tr>
+          <th class="rank">#</th><th>최초 발주일</th><th>제품(산출물)</th><th>협력사</th><th class="num">첫 발주수량</th><th>담당자</th><th>구분</th>
+        </tr></thead><tbody id="tb-ord-fai"></tbody></table></div>
+        <div style="font-size:10px;color:var(--text3);margin-top:8px">※ 초도 = (산출물, 수주처) 조합의 최초 과업지시일자가 2026년(재고생산·산출물 미기재 비스포크 제외) · <b>신규 협력사</b> = 2025년 발주 이력이 전혀 없는 수주처의 첫 발주 — 초도품 승인(FAI)·공정 검증 대상 선별용. 인쇄물은 교정시트·샘플 발주 이력과 교차 확인 권장</div>
+      </div>
     </div>
 
     <!-- PROGRESS (v13: 발주 진행현황 — 주간 CSV 비교) -->
@@ -2013,6 +2029,51 @@ function updateOrderTabs() {
   if (!D.order||!SEL_MONTH) return;
   renderOrdTopTable();
   renderOrderBuffer();
+  renderOrderFai();
+}
+// ===== v21.6: 초도 발주 감지 (FAI 후보) — 사상 최초 제품×협력사 조합 · 신규 협력사 첫 발주 =====
+let FAI_FILTER='recent';
+function setFaiFilter(chipEl,mode) {
+  document.querySelectorAll('#fai-filter .m-chip').forEach(c=>c.classList.remove('active'));
+  chipEl.classList.add('active');
+  FAI_FILTER=mode;
+  renderOrderFai();
+}
+function renderOrderFai() {
+  const tbody=document.getElementById('tb-ord-fai'); if(!tbody) return;
+  if(!D.order) { tbody.innerHTML=emptyRow(7,'발주_RAW 업로드 필요'); return; }
+  // 전년(및 그 이전 이력이 없으므로 2025 아카이브)의 기존 조합·협력사 집합
+  const prevCombos=new Set(), prevSups=new Set();
+  (D.orderPrevYear||[]).forEach(r=>{
+    const sup=(r['수주처']||'').trim(); if(!sup) return;
+    prevSups.add(sup);
+    const prod=(r['산출물']||'').trim(); if(prod) prevCombos.add(prod+'||'+sup);
+  });
+  // 당해 조합별 최초 발주 행 찾기 (재고생산·산출물 미기재 제외)
+  const firstByCombo={};
+  D.order.forEach(r=>{
+    if(isStock(r)) return;
+    const prod=(r['산출물']||'').trim(); const sup=(r['수주처']||'').trim();
+    if(!prod||!sup) return;
+    const k=prod+'||'+sup;
+    if(prevCombos.has(k)) return; // 전년에 이미 발주된 조합 — 초도 아님
+    const d=parseAnyDate(r['과업지시일자']);
+    if(!firstByCombo[k]||(d&&firstByCombo[k].d&&d<firstByCombo[k].d)||(d&&!firstByCombo[k].d)) firstByCombo[k]={r,d,prod,sup};
+  });
+  let rows=Object.values(firstByCombo).map(x=>({...x,isNewSup:!prevSups.has(x.sup)}));
+  if(FAI_FILTER==='recent') { const cutoff=new Date(); cutoff.setDate(cutoff.getDate()-90); rows=rows.filter(x=>x.d&&x.d>=cutoff); }
+  if(FAI_FILTER==='newsup') rows=rows.filter(x=>x.isNewSup);
+  rows.sort((a,b)=>(b.d?b.d.getTime():0)-(a.d?a.d.getTime():0));
+  if(!rows.length) { tbody.innerHTML=emptyRow(7,FAI_FILTER==='recent'?'최근 90일 내 초도 발주 없음':'해당 조건의 초도 발주 없음'); return; }
+  tbody.innerHTML=rows.map((x,i)=>`<tr>
+    <td class="rank">${i+1}</td>
+    <td style="font-size:12px">${esc(x.r['과업지시일자']||'—')}</td>
+    <td style="font-size:12px">${esc(crop(x.prod,35))}</td>
+    <td style="font-size:12px;color:var(--blue);cursor:pointer" onclick="openSupplierDetailModal('${esc(x.sup).replace(/'/g,"\\'")}')">${esc(x.sup)}</td>
+    <td class="num">${fmtN(pa(x.r['발주지시수량']))}개</td>
+    <td style="font-size:12px">${esc(x.r['과업담당자_이름']||'—')}</td>
+    <td>${x.isNewSup?'<span class="tag tag-danger" title="2025년 발주 이력이 전혀 없는 협력사의 첫 발주">신규 협력사</span>':'<span class="tag tag-gray">신규 조합</span>'}</td>
+  </tr>`).join('');
 }
 
 // ===== v22: 여분(버퍼) 발주수량 추천 — 이슈 이력 기반 예방원가 분석 =====
@@ -3724,10 +3785,10 @@ function renderIssueModalMatrix(cat) {
     orderMap[sup]=(orderMap[sup]||0)+1;
   });
   const issueMap={};
+  const mvMap=getMovementSupplierMap(); // v21.6: movement 정확 조인 우선, 접두어 폴백
   const issuePeriodFiltered=SEL_MONTH?D.issue.filter(r=>issueInPeriod(r)):D.issue;
   issuePeriodFiltered.filter(r=>cat==='all'||(r['이슈카테고리']||'').includes(cat)).forEach(r=>{
-    const key=(r['project_name']||'').split('-')[0];
-    const sup=key?(projMap[key]||''):'';
+    const sup=issueSupplierOf(r,projMap,mvMap);
     if(!sup) return;
     if(!issueMap[sup]) issueMap[sup]={sup,issueCount:0,rows:[],prods:{}};
     issueMap[sup].issueCount++; issueMap[sup].rows.push(r);
@@ -3821,13 +3882,37 @@ function getProjKeySupplierMap() {
   }
   return PROJKEY_SUP_MAP;
 }
+// v21.6: 이슈→협력사 정확 귀속 — issue.movement_id ↔ order.movement_산출이동 조인.
+// 실측(2026): 344건 중 297건(86.3%) 정확 매칭·충돌 0. 기존 접두어 추정 조인은 한 프로젝트에
+// 협력사가 여럿이면 첫 협력사로 몰아줘서 정확 조인과 판정이 다른 건이 48%에 달했음.
+// 미매칭분(전년 발주의 movement 등)은 전년 발주 RAW로 보강 후 접두어 조인으로 폴백.
+// ※ 공급망 포트폴리오 Tier 점수(computeFromRaw)의 이슈대응 산식은 월간 리포트와의 정합을 위해
+//   기존 접두어 방식을 유지 — 산식 전환은 리포트 기준 합의 후 (docs/AIRTABLE_품질필드_추가명세 §①).
+let MV_SUP_MAP=null, MV_SUP_SRC=null, MV_SUP_SRC_PREV=null;
+function getMovementSupplierMap() {
+  if (MV_SUP_SRC!==D.order||MV_SUP_SRC_PREV!==(D.orderPrevYear||null)) {
+    MV_SUP_MAP={};
+    [D.order,D.orderPrevYear].forEach(list=>(list||[]).forEach(r=>{
+      const sup=(r['수주처']||'').trim(); if(!sup) return;
+      String(r['movement_산출이동']||'').split(',').map(s=>s.trim()).filter(Boolean).forEach(tok=>{ MV_SUP_MAP[tok]=sup; });
+    }));
+    MV_SUP_SRC=D.order; MV_SUP_SRC_PREV=D.orderPrevYear||null;
+  }
+  return MV_SUP_MAP;
+}
+// 이슈 행 1건의 귀속 협력사 — movement 정확 조인 우선, 없으면 접두어 추정 폴백 (prevProjMap 선택 전달)
+function issueSupplierOf(r, projMap, mvMap, prevProjMap) {
+  const mv=(r['movement_id']||'').trim();
+  if(mv&&mvMap[mv]) return mvMap[mv];
+  const key=(r['project_name']||'').split('-')[0];
+  if(!key) return '';
+  return projMap[key]||(prevProjMap?prevProjMap[key]:'')||'';
+}
 function getIssuesForSupplier(supName) {
   if(!D.issue) return [];
-  const map=getProjKeySupplierMap();
-  return D.issue.filter(r=>{
-    const key=(r['project_name']||'').split('-')[0];
-    return key && map[key]===supName;
-  });
+  const projMap=getProjKeySupplierMap();
+  const mvMap=getMovementSupplierMap();
+  return D.issue.filter(r=>issueSupplierOf(r,projMap,mvMap)===supName);
 }
 function openSupplierDetailModal(supName) {
   const ov=document.getElementById('modal-overlay');
@@ -4711,13 +4796,13 @@ function renderRecurringIssues() {
   const tbody=document.getElementById('tb-iss-re'); if(!tbody) return;
   if(!D.issue||!D.order) { tbody.innerHTML=emptyRow(8,'발주_RAW + 이슈_RAW 업로드 필요'); return; }
   const projMap=getProjKeySupplierMap();
+  const mvMap=getMovementSupplierMap(); // v21.6: movement 정확 조인 우선 (전년 포함), 접두어는 폴백
   const prevProjMap={};
   (D.orderPrevYear||[]).forEach(r=>{ const proj=r['project']||''; const sup=(r['수주처']||'').trim(); if(!proj||!sup)return; const key=proj.split('-')[0]; if(key&&!prevProjMap[key]) prevProjMap[key]=sup; });
   const groups={};
   const add=(r,isPrev)=>{
     const prod=(r['item (통합) (from order)']||'').trim(); if(!prod) return;
-    const key=(r['project_name']||'').split('-')[0];
-    const sup=key?((isPrev?prevProjMap[key]:projMap[key])||prevProjMap[key]||projMap[key]||''):'';
+    const sup=issueSupplierOf(r,isPrev?prevProjMap:projMap,mvMap,isPrev?projMap:prevProjMap);
     if(!sup) return;
     const k=prod+'||'+sup;
     if(!groups[k]) groups[k]={prod,sup,cur:0,prev:0,rows:[],types:{},last:null};
@@ -4778,12 +4863,12 @@ function renderIssueRateMatrix() {
     if(!orderMap[k]) orderMap[k]={prod,sup,orderCount:0};
     orderMap[k].orderCount++;
   });
-  // 이슈건수: item(통합, from order) × projKey→협력사
+  // 이슈건수: item(통합, from order) × 협력사 (v21.6: movement 정확 조인 우선, 접두어 폴백)
+  const mvMap=getMovementSupplierMap();
   const issueMap={};
   D.issue.forEach(r=>{
     const prod=(r['item (통합) (from order)']||'').trim(); if(!prod) return;
-    const key=(r['project_name']||'').split('-')[0];
-    const sup=key?(projMap[key]||''):'';
+    const sup=issueSupplierOf(r,projMap,mvMap);
     if(!sup) return;
     const k=prod+'||'+sup;
     if(!issueMap[k]) issueMap[k]={prod,sup,issueCount:0,rows:[]};
