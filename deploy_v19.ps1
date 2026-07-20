@@ -1,6 +1,6 @@
 # =============================================================
-# SCM Dashboard deploy script v18 (run on PC)
-# Run: powershell -ExecutionPolicy Bypass -File .\deploy_v18.ps1
+# SCM Dashboard deploy script v19 (run on PC)
+# Run: powershell -ExecutionPolicy Bypass -File .\deploy_v19.ps1
 # =============================================================
 $ErrorActionPreference = "Stop"
 # Resolve to the repo root (this script's own folder) so it works on any machine
@@ -29,36 +29,36 @@ if ($LASTEXITCODE -ne 0) {
 
 # 1) Version snapshot housekeeping
 New-Item -ItemType Directory -Force -Path "archive" | Out-Null
-# Move any older version snapshots in root to archive (keep only v18)
-Get-ChildItem "." -Filter "scm_dashboard_v*.html" -File | Where-Object { $_.Name -ne "scm_dashboard_v18.html" } | ForEach-Object {
+# Move any older version snapshots in root to archive (keep only v19)
+Get-ChildItem "." -Filter "scm_dashboard_v*.html" -File | Where-Object { $_.Name -ne "scm_dashboard_v19.html" } | ForEach-Object {
   Move-Item $_.FullName "archive\" -Force
   Write-Host "Archived: $($_.Name) -> archive" -ForegroundColor Yellow
 }
-Copy-Item "index.html" "scm_dashboard_v18.html" -Force
-Write-Host "Snapshot created: scm_dashboard_v18.html" -ForegroundColor Cyan
+Copy-Item "index.html" "scm_dashboard_v19.html" -Force
+Write-Host "Snapshot created: scm_dashboard_v19.html" -ForegroundColor Cyan
 
-# 1b) Archive superseded v17 docs
+# 1b) Archive superseded v18 docs
 New-Item -ItemType Directory -Force -Path "docs\archive" | Out-Null
-Get-ChildItem "docs" -Filter "*_v17.html" -File -ErrorAction SilentlyContinue | ForEach-Object {
+Get-ChildItem "docs" -Filter "*_v18.html" -File -ErrorAction SilentlyContinue | ForEach-Object {
   Move-Item $_.FullName "docs\archive\" -Force
   Write-Host "Archived: docs/$($_.Name) -> docs/archive" -ForegroundColor Yellow
 }
-if (Test-Path "docs\CHANGELOG_v17.md") {
-  Move-Item "docs\CHANGELOG_v17.md" "docs\archive\" -Force
-  Write-Host "Archived: docs/CHANGELOG_v17.md -> docs/archive" -ForegroundColor Yellow
+if (Test-Path "docs\CHANGELOG_v18.md") {
+  Move-Item "docs\CHANGELOG_v18.md" "docs\archive\" -Force
+  Write-Host "Archived: docs/CHANGELOG_v18.md -> docs/archive" -ForegroundColor Yellow
 }
 
 # 1c) Remove obsolete deploy script (superseded by this one)
-if (Test-Path "deploy_v17.ps1") {
-  Remove-Item "deploy_v17.ps1" -Force
-  Write-Host "Removed obsolete script: deploy_v17.ps1" -ForegroundColor Yellow
+if (Test-Path "deploy_v18.ps1") {
+  Remove-Item "deploy_v18.ps1" -Force
+  Write-Host "Removed obsolete script: deploy_v18.ps1" -ForegroundColor Yellow
 }
 
 # 2) Commit
 git add -A; Assert-Git
 git diff --cached --quiet
 if ($LASTEXITCODE -ne 0) {
-  $msg = "v18 update $(Get-Date -Format 'yyyy-MM-dd HH:mm')"
+  $msg = "v19 update $(Get-Date -Format 'yyyy-MM-dd HH:mm')"
   git commit -m $msg; Assert-Git
   Write-Host "Committed: $msg"
 } else {
@@ -90,4 +90,4 @@ git push origin main; Assert-Git
 # 4) Confirm
 Write-Host ""
 Write-Host "Done. In 1-3 minutes: https://nanyounglee.github.io/SCMDASHBOARD/" -ForegroundColor Green
-Write-Host "Check: sidebar should show 'SCM.. v18'. Verify: (1) 종합현황 KPI row has 5 cards (재고생산 별도 card removed, % now in 월 매입금액 sub), (2) 발주 TASK modal splits 프로젝트/재고생산 sections, (3) 매입금액 modal has 프로젝트/재고생산 columns, (4) 이슈 modal groups by 협력사, (5) 졸업 검토 has 권장조치 filter chips, (6) 발주 현황 shows only 전체 제품 발주량 (no tabs)." -ForegroundColor Green
+Write-Host "Check: sidebar should show 'SCM.. v19'. Verify: (1) 이슈 현황 top has 이슈율 KPI + 월별 추이 차트 + 2025 vs 2026 이슈율 비교 차트, (2) 발주 진행현황 shows a warning banner when this week's progress CSV is missing, (3) 제품별 판매량 추이 responds to the global search box and the 제품별 발주 요약 table excludes 서울디지털인쇄협동조합 products." -ForegroundColor Green
