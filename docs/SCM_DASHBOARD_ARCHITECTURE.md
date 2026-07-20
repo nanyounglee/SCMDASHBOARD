@@ -1,6 +1,6 @@
 # SCM 통합운영 대시보드 — 프로젝트 설계 아키텍처
 
-> 버전: v18 | 갱신일: 2026-07-20 | 작성: 이난영 / Claude AI  
+> 버전: v19 | 갱신일: 2026-07-20 | 작성: 이난영 / Claude AI  
 > 대상: 구매전략파트 · 외주생산파트 팀원 공유, 유지보수, 버그 대응
 
 ---
@@ -26,7 +26,7 @@
 | 파일 | 위치 |
 |---|---|
 | 운영 원본 | `index.html` (GitHub Pages가 직접 서빙) |
-| 버전 스냅샷 | `scm_dashboard_v18.html` (index.html 복사본, 이전 버전은 `archive/`) |
+| 버전 스냅샷 | `scm_dashboard_v19.html` (index.html 복사본, 이전 버전은 `archive/`) |
 | GitHub Pages | https://nanyounglee.github.io/SCMDASHBOARD/ |
 | 레포지토리 | https://github.com/nanyounglee/SCMDASHBOARD |
 
@@ -744,12 +744,13 @@ const FILE_SIGNATURES = {
 | **v17** | (로컬→PC 배포) | 협력사 현황에 **협력사 변경 검토 진행 현황** 카드 신규(§4-27b) — 별도 저장소 scm_vendor_change의 `bank/` 폴더(팀 공유 백업)를 GitHub API로 실시간 fetch(동일 origin, CORS 무관)해 전환검토중/확정/완료 건수와 최근 완료 협력사 변경 목록을 표시, 카드 클릭 시 해당 대시보드로 새 탭 이동(`loadVendorChangeStatus`). 같은 검토 건이 팀원별 백업 파일에 다른 상태로 중복 등장하는 문제를 상태-랭크(완료>확정>전환검토중) + 최신 날짜 채택 방식으로 병합해 파일 처리 순서와 무관하게 안정적인 결과를 보장. index.html 약 6,921줄. |
 | **v17.1** | (로컬→PC 배포) | 협력사 PDF 내보내기 2종(§4-27)의 잘림/백지 버그 수정 — ① html2pdf 컨테이너가 A4 내부 폭 194mm(≈733px) 고정인데 wrap이 1000px 고정 폭이라 우측 잘림 → 폭 자동(컨테이너 상속)으로 변경. ② 페이지 스크롤 상태에서 html2canvas가 스크롤 오프셋만큼 내용을 밀어 백지 캡처 → `scrollX/Y:0` 강제, 클론 문서 폭을 왜곡하던 `windowWidth` 옵션 제거. ③ 분석 리포트 SVG 추세선이 html2canvas에서 깨짐 → `_svgsToPng()`(SVG→Image→canvas, 브라우저 네이티브)로 PNG 치환 후 전달. ④ Chart.js 캔버스 비트맵이 비워진 채 캡처되는 경우 → `chart.update('none')+draw()` 동기 리렌더 강제. 실데이터 픽셀 검증(사방 여백·차트 렌더·페이지 분리) 완료. index.html 약 6,968줄. |
 | **v18** | (로컬→PC 배포) | 팀 피드백 5건 반영 — ① 이슈 상세 모달의 제품×협력사 매트릭스를 **협력사 단위 통합**으로 재편(`renderIssueModalMatrix`): 동일 협력사 이슈를 제품 구분 없이 합산, 주요 이슈 제품 Top3 병기, 펼침 상세에 제품 컬럼 추가. ② **isStock에 굿즈코드 STCK 판별 추가**: `sync_itemdb`에 STCK 포함 시 재고생산 — 재고 구분 전 화면 일괄 적용. ③ **재고생산(별도) KPI 카드 제거**(KPI 6→5장): 재고생산액·전체 매입 대비 %를 월 매입금액 비고로 통합, 매입금액 모달에 협력사별 프로젝트/재고생산 컬럼, 발주 TASK 모달 발주현황Top을 프로젝트/재고생산 두 섹션으로 분리. ④ **졸업 검토 권장조치 필터**(`GRAD_ACTION_FILTER`): 운영종료 검토/졸업 검토/모니터링 칩, 사전집계·레거시 경로 모두. ⑤ **발주 현황 단일 화면화**: Top20/Bottom20/프로젝트별매입/발주Task 탭과 `renderOrdBotTable`/`renderOrdProjTable`/`updateTaskTabs` 삭제, 숫자 셀 nowrap으로 줄밀림 정리. index.html 약 6,853줄. |
+| **v19** | (로컬→PC 배포) | ① **이슈 분석 모듈**(`renderIssueAnalytics`) — 이슈 현황 상단에 기간 이슈/TASK/이슈율(전년 동기 %p 비교) KPI 3장 + 월별 이슈 추이 라인차트(품질/수량/운영) + **이슈율 2025 vs 2026 동기 비교 차트**(자동 로드되는 `D.order2025/D.issue2025` 원본 RAW로 월별 이슈÷TASK×100 산출). ② **발주 진행현황 주차 경고** — 표시 중인 progress 파일의 ISO 주차 < 현재 주차면 경고 배너(필요 파일명 안내); 주간 CSV는 자동 커밋 워크플로가 없어 수동 커밋 필요함을 명시. ③ **제품별 판매량 추이 검색 연동**(`renderProductTrend`에 matchesSearch 적용 + refreshAll 재렌더) + 제품별 발주 요약에서 주 제작처가 서울디지털인쇄협동조합인 제품 제외·제작 협력사 컬럼 추가. index.html 약 6,944줄. |
 
 ### 파일 구조
 ```
 SCMDASHBOARD/
-├── index.html                       ← 운영 원본 (GitHub Pages 직접 서빙 · v18 · 약 6,853줄)
-├── scm_dashboard_v18.html           ← 현행 버전 스냅샷 (index.html 복사본)
+├── index.html                       ← 운영 원본 (GitHub Pages 직접 서빙 · v19 · 약 6,944줄)
+├── scm_dashboard_v19.html           ← 현행 버전 스냅샷 (index.html 복사본)
 ├── archive/                         ← 이전 버전 스냅샷 (v3~v15)
 ├── CSV/                             ← 자동 로드 대상 CSV
 │   ├── order.csv · issue.csv · sup.csv · ci.csv
@@ -765,14 +766,14 @@ SCMDASHBOARD/
 │   ├── parts_master.json · data_2025.json · cost_db.json
 │   └── progress_notes.json · ci_overrides.json  ← v13 신규(GitHub 연동 자동 커밋 대상)
 ├── docs/
-│   ├── SCM_DASHBOARD_ARCHITECTURE.md       ← 이 파일 (v18 갱신)
-│   ├── CHANGELOG_v18.md                    ← 버전별 변경 내역 (팀 공유용)
+│   ├── SCM_DASHBOARD_ARCHITECTURE.md       ← 이 파일 (v19 갱신)
+│   ├── CHANGELOG_v19.md                    ← 버전별 변경 내역 (팀 공유용)
 │   ├── purchase_dashboard_migration_strategy.md  ← 구매파트 Apps Script 이식 전략 (v10 반영 현황 기준, v11 이후는 범위 밖)
-│   ├── SCM_DASHBOARD_로직설명_v18.html  ← 로직 설명서 (v18 갱신)
-│   ├── SCM_DASHBOARD_사용자가이드_v18.html  ← 사용자 가이드 (v18 갱신)
+│   ├── SCM_DASHBOARD_로직설명_v19.html  ← 로직 설명서 (v19 갱신)
+│   ├── SCM_DASHBOARD_사용자가이드_v19.html  ← 사용자 가이드 (v19 갱신)
 │   ├── SCM_KPI_리포트_2026Q2.xlsx
 │   └── archive/                     ← 구버전 (v16 이하 로직설명/사용자가이드/CHANGELOG, V4_로직설명_v7.html 등)
-├── deploy_v18.ps1                   ← 배포 스크립트 (git 자가복구 + 버전 정리 + 안전 동기화 + 문서/구파일 정리)
+├── deploy_v19.ps1                   ← 배포 스크립트 (git 자가복구 + 버전 정리 + 안전 동기화 + 문서/구파일 정리)
 ├── archive_csv.ps1                  ← v13 신규 — 주간 CSV(progress_/project_)는 최신 1개만 유지 후 CSV_BANK로 이동, v14 확장 — sup.csv 교체 직전 CSV_BANK/sup_YYYY_MM.csv로 월간 스냅샷 저장
 ├── .nojekyll                        ← Pages Jekyll 비활성화 (빌드 실패 방지)
 └── .claude/                         ← Claude 설정
@@ -782,7 +783,7 @@ SCMDASHBOARD/
 
 ### 버전 규칙 (v7~)
 - **운영 원본은 `index.html`** — 수정 작업은 index.html에 직접, 로컬 확인은 수동 업로드 모드
-- **배포는 `deploy_v{N}.ps1`(현재 `deploy_v18.ps1`)** — 실행 시 자동으로:
+- **배포는 `deploy_v{N}.ps1`(현재 `deploy_v19.ps1`)** — 실행 시 자동으로:
   1. git 저장소 자가진단/복구 (index 손상, 잔류 lock)
   2. 한글 원본 CSV → 고정 영문명 복사
   3. index.html이 바뀐 경우에만 `scm_dashboard_v{N+1}.html` 스냅샷 생성 (버전 자동 카운트, 이전 버전 archive 이동)
@@ -795,14 +796,14 @@ SCMDASHBOARD/
 
 ---
 
-## 9. 주간 업데이트 절차 (v18 · 자동 로드 기준)
+## 9. 주간 업데이트 절차 (v19 · 자동 로드 기준)
 
 ### 데이터 담당자 — 외주생산파트 (주 1회)
 | 단계 | 작업 | 비고 |
 |---|---|---|
 | 1 | Airtable에서 CSV Export | 발주_RAW, 이슈_RAW, 공급망_RAW, 고객인지이슈_RAW, 분기별평가, (v13) 진행현황·매출결산, (v14) 굿즈마스터 |
 | 2 | 프로젝트 폴더 `CSV/`에 저장 | 한글 원본명 그대로 저장해도 됨. 대용량 CSV는 채팅 붙여넣기보다 로컬 파일 직접 저장 권장(문자 손상 위험, v14) |
-| 3 | `deploy_v18.ps1` 실행 | 고정명 복사 + 커밋 + 푸시 자동. 또는 GitHub 웹에서 고정명 파일 직접 덮어쓰기 |
+| 3 | `deploy_v19.ps1` 실행 | 고정명 복사 + 커밋 + 푸시 자동. 또는 GitHub 웹에서 고정명 파일 직접 덮어쓰기 |
 | 4 | 1~3분 후 배포 확인 | `-Verify` 스위치 또는 브라우저 Ctrl+F5 |
 | 5 (v14) | 원본 CSV 헤더(컬럼명) 변경 시 `docs/CHANGELOG_v{N}.md`에 기록 후 팀 공유 | 예: issue.csv 입고물품 컬럼 추가 |
 
@@ -810,7 +811,7 @@ SCMDASHBOARD/
 | 단계 | 작업 | 비고 |
 |---|---|---|
 | 1 | GSheets S&OP Apps Script에서 `dashboard_period_summary`/`dashboard_group_summary`/`dashboard_sku_snapshot` 3종 생성·Export | 3종 모두 있어야 Agg 경로 작동. 하나라도 없으면 재고 화면이 레거시(inv_weekly 직접계산)로 폴백해 v10 이전 숫자와 달라질 수 있음 |
-| 2 | `CSV/`에 저장 후 `deploy_v18.ps1` 실행 | 외주생산파트와 동일 배포 경로 공유 |
+| 2 | `CSV/`에 저장 후 `deploy_v19.ps1` 실행 | 외주생산파트와 동일 배포 경로 공유 |
 | 3 | 배포 후 재고운영/품절상세/졸업검토 화면에서 도넛차트 3종·회전율 숫자 확인 | 기존 GSheets 화면과 동일 기준일로 1:1 대조 권장 |
 
 ### 접속자 (팀원)
@@ -834,5 +835,5 @@ SCMDASHBOARD/
 
 ---
 
-*문서 기준: index.html (scm_dashboard_v18.html) v18 (2026-07-20) · 약 6,853줄 — 이슈 모달 협력사 통합·isStock STCK 확장·재고생산 카드 통합·졸업 검토 권장조치 필터·발주 현황 단일 화면 · v17/v17.1(협력사 변경 검토 카드 §4-27b, PDF 잘림 수정) · v16(협력사 PDF 내보내기 2종 §4-27, 리포트 집계 수정 §4-28) 기반*  
+*문서 기준: index.html (scm_dashboard_v19.html) v19 (2026-07-20) · 약 6,944줄 — 이슈 분석 모듈(추이·2025/2026 동기 이슈율 비교)·진행현황 주차 경고·제품 추이 검색 연동/서울디지털 제외 · v18(이슈 모달 협력사 통합·STCK 재고·재고생산 카드 통합·졸업 필터·발주 단일 화면) · v17/v17.1·v16 기반*  
 *대시보드 변경 시 이 문서도 함께 업데이트 바랍니다. 원본 CSV 헤더 변경 시 §8 버전 규칙에 따라 CHANGELOG에도 기록 바랍니다.*
