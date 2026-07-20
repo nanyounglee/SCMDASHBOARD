@@ -1,0 +1,96 @@
+name: Airtable CSV Sync
+
+on:
+  schedule:
+    - cron: '30 4 * * 4'  # 매주 목요일 13:30 KST (04:30 UTC)
+  workflow_dispatch:       # 수동 실행 (지금 새로고침)
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Fetch Airtable CSVs
+        env:
+          AIRTABLE_TOKEN: ${{ secrets.AIRTABLE_TOKEN }}
+        run: |
+          python3 << 'EOF'
+          import os, json, csv, urllib.request, time
+
+          TOKEN = os.environ['AIRTABLE_TOKEN']
+
+          def fetch_all(base_id, table_id, view_id):
+              headers = {'Authorization': f'Bearer {TOKEN}'}
+              records = []
+              offset = None
+              while True:
+                  url = f'https://api.airtable.com/v0/{base_id}/{table_id}?view={view_id}&pageSize=100'
+                  if offset:
+                      url += f'&offset={urllib.request.quote(offset)}'
+                  req = urllib.request.Request(url, headers=headers)
+                  with urllib.request.urlopen(req) as resp:
+                      data = json.loads(resp.read())
+                  records.extend(data.get('records', []))
+                  offset = data.get('offset')
+                  if not offset:
+                      break
+                  time.sleep(0.2)  # API rate limit 방지
+              return records
+
+          def flatten(val):
+              if isinstance(val, list):
+                  return ', '.join(str(v.get('name', v) if isinstance(v, dict) else v) for v in val)
+              if isinstance(val, dict):
+                  return val.get('name', str(val))
+              return val if val is not None else ''
+
+          def to_csv(records, path):
+              if not records:
+                  open(path, 'w').close()
+                  print(f'⚠ {path}: 0건')
+                  return
+              all_fields = []
+              seen = set()
+              for r in records:
+                  for k in r.get('fields', {}):
+                      if k not in seen:
+                          all_fields.append(k)
+                          seen.add(k)
+              with open(path, 'w', newline='', encoding='utf-8-sig') as f:
+                  writer = csv.DictWriter(f, fieldnames=['record_id'] + all_fields, extrasaction='ignore')
+                  writer.writeheader()
+                  for r in records:
+                      row = {'record_id': r['id']}
+                      for k, v in r.get('fields', {}).items():
+                          row[k] = flatten(v)
+                      writer.writerow(row)
+              print(f'✅ {path}: {len(records)}건')
+
+          # 발주 KPI
+          to_csv(
+              fetch_all('appkRWtF2j99XgBTq', 'tbllJFVBoFjmbQXLN', 'viwP9QeOw0ICYF8WE'),
+              'CSV/task-order.csv'
+          )
+
+          # 이슈 KPI
+          to_csv(
+              fetch_all('appkRWtF2j99XgBTq', 'tblsG3x3gCSZGPVB9', 'viw8fkkxAEjs0Jjjy'),
+              'CSV/movement-issue.csv'
+          )
+
+          # 고객인지이슈
+          to_csv(
+              fetch_all('appkbGFSIds8NMDOH', 'tblDMc8PuiJJkVe6H', 'shrsmOuhNUSSh1mTW'),
+              'CSV/airtable-ci.csv'
+          )
+          EOF
+
+      - name: Commit & Push
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email 'github-actions[bot]@users.noreply.github.com'
+          git add CSV/task-order.csv CSV/movement-issue.csv CSV/airtable-ci.csv
+          git diff --cached --quiet && echo "변경사항 없음" || \
+            git commit -m "chore: 에어테이블 CSV 자동 업데이트 $(TZ=Asia/Seoul date +'%Y-%m-%d %H:%M KST')" && git push
