@@ -664,6 +664,16 @@ computeBufferRows():
 // 3종의 0크기 문제를 CI 차트(§4-30)와 동일 패턴으로 해소.
 ```
 
+### 4-32. 제품별 추이 — Goods Category 검색 + 전체 월 표시 (v21.4)
+```javascript
+// renderProductTrend() 검색 확장: 기존 matchesSearch(발주 RAW 16필드) OR 카테고리 매칭.
+// getOrderRowCategoryStr(r): 산출물명 단위 캐시 — goodsCode(r)→COST_DB.process[].cat +
+//   extractPartsCodes(r)→PARTS_MAP[].goodsCat(콤마 분해)를 합쳐 소문자·공백제거로 정규화('drinkware|기타').
+// catTokenMatch(catStr,nq): 부분일치 우선, 6자 이상 질의는 Damerau-Levenshtein 거리 2 이하 퍼지 허용
+//   → "drink wear"(정규화 drinkwear)도 실제 값 "drinkware"에 매칭. 카테고리 어휘가 16종뿐이라 오탐 위험 낮음.
+// 요약 표: allMonths.slice(-6) → slice(-13) — 1월부터 연간 전체 월 컬럼 표시(26.1 누락 수정), tbl-wrap 가로 스크롤.
+```
+
 ---
 
 ## 5. UI 섹션 구조 (20개 페이지 · v21.2: 고객인지이슈→이슈 현황 서브탭, 매입 현황→협력사 현황 서브탭 통합)

@@ -4621,7 +4621,7 @@ function nav(el,id) {
     'cost-analysis':'<b>월별 요약:</b> 매출/원가 추이 바차트 · 원가율 추이 라인차트 · 월별 매출/원가/원가율/마진 테이블 | <b>프로젝트별 상세:</b> 프로젝트 선택 → 매출/투입원가/원가율 KPI · TASK별 실제단가 vs 공정DB 표준단가 비교(표준대비%) · Movement 재고투입 · 공정DB 참조 테이블 | <b>CSV:</b> 발주_RAW + (선택)원가/Movement | <b>임베딩:</b> cost_db.json 공정DB',
     issue:'<b>확인 가능 지표:</b> 기간 이슈 건수 · 기간 발주 TASK · <b>이슈율(이슈÷TASK×100, 전년 동기 %p 비교)</b> · <b>미입하율 추이 차트+표</b>(당해 vs 전년 vs 목표선 · 지점 클릭 시 MoM/YoY 상세) · <b>실패비용 현황</b>(재제작 자동집계+수기입력, YoY·월별 추이) | <b>차트:</b> 월별 이슈 추이(품질/수량/운영) · <b>이슈율 2025 vs 2026 동기 비교</b>(2025 원본 RAW 기준) | <b>탭:</b> 전체 · 품질이슈(등급+내용) · 수량이슈(내용+대응) · 운영이슈(내용+개선) · <b>고객인지이슈(검수유출률·연도별/작성자별 차트·대응/실패비용 수기입력)</b> · 제품×협력사 이슈율 · 재발 이슈 | <b>컬럼:</b> 입하일 · 프로젝트 · 제품 · 담당자 · 유형 · 내용 · <b>대응</b>(품질등급의견판단사유_SCM) · <b>실패비용</b>(재제작 취득원가) | <b>CSV:</b> 이슈_RAW + 발주_RAW + 고객인지이슈_RAW + 2025 RAW(비교선)',
     sales:'<b>확인 가능 지표:</b> 월매출 · 평균마진율 · 총주문수량 | <b>차트:</b> 월별매출추이(바) · 제품별매출비중(도넛) | <b>테이블:</b> 제품명 · 주문수량 · 판매단가 · 소계 · 원가율(공정DB 기반) · 추정마진율 | <b>CSV:</b> 판매주문 | <b>임베딩:</b> cost_db.json',
-    'product-trend':'<b>확인 가능 지표:</b> 제품별 월간 발주수량 추이 Top10 멀티라인차트(발주지시수량 기준·재고생산 제외) | <b>테이블:</b> 제품명 · 누적발주수량 · 월평균 · 최근6개월 월별 수치 | <b>CSV:</b> 발주_RAW',
+    'product-trend':'<b>확인 가능 지표:</b> 제품별 월간 발주수량 추이 Top10 멀티라인차트(발주지시수량 기준·재고생산 제외) | <b>검색:</b> 제품명/협력사/굿즈코드 + <b>Goods Category</b>(예: Drinkware 입력 시 보틀·컵·텀블러 등 카테고리 전체 제품 표시, 띄어쓰기 무관) | <b>테이블:</b> 제품명 · 누적발주수량 · 월평균 · 연간 전체 월별 수치(1월부터) | <b>CSV:</b> 발주_RAW + 임베딩(cost_db·parts_master 카테고리)',
     supplier:'<b>탭:</b> 매입 현황 · 협력사 목록 (v22 통합) | <b>[매입 현황]</b> 협력사별 매입금액 Top10 · 제조유형 분포 · 업태별/인쇄유형별 매입금액 · 협력사별 매입상세 Top20(비중 프로그레스바) | <b>[협력사 목록]</b> 등록 협력사 · 활성 협력사(2개월↑ 발주 거래, 카드 클릭 시 필터) · 턴키제작/단순구매 수 · <b>협력사 변경 검토 진행 현황</b>(scm_vendor_change bank 실시간 연동, 카드 클릭 시 상세 대시보드) · 협력사명(클릭 시 월별 매입추이) · 업태 · 제조유형 · 인쇄유형 · 담당발주자 · 결제조건 · 발주 거래 개월수 · 협력사명 실시간 검색 | <b>CSV:</b> 공급망_RAW + 발주_RAW',
     kpi:'<b>확인 가능 지표:</b> 납기준수율 · 리드타임 · 품질이슈율 · 검수합격률 · 긴급발주비율 · 재제작률 · 공급망A등급비율 · 가용협력사비율 · 재고회전율 · 품절률 | <b>구조:</b> 5개 영역(납기/품질/비용/공급망/재고) 12개 지표 · 목표 대비 달성률 게이지 · 월별 추이 · 전월 대비 | <b>CSV:</b> 발주_RAW + 이슈_RAW + 공급망_RAW + 고객인지이슈_RAW + S&OP 재고주간 + 품절리스트',
     portfolio:'<b>확인 가능 지표:</b> QCD×관계 4분면 Tier(Tier1·Core/Tier2·Performer/Tier3·Developing/Tier4·General) · 등급별(A/B/C/D) 협력사수·비중 | <b>차트:</b> QCD×관계 산점도 · 등급분포 도넛 | <b>테이블:</b> 협력사별 5축 점수·QCD·관계·등급·Tier·담당자 · 이달 발주실적 필터 · 변경검토리스트(C등급) | <b>CSV:</b> 분기별평가 + 발주_RAW',
@@ -5791,13 +5791,60 @@ function renderCostProjectDetail() {
 }
 
 // ===== 3-10. 제품별 발주수량 추이 (v12: 판매 CSV 대신 발주_RAW 발주지시수량 기준) =====
+// v21.4: 제품별 추이 — Goods Category 검색 지원. 산출물 → 카테고리 문자열(소문자·공백제거) 캐시.
+// 소스: goodsCode→COST_DB.process cat + sync_itemdb 파츠코드→PARTS_MAP goodsCat (둘 다 상시 로드 임베딩 JSON).
+// "drink wear"처럼 띄어 써도 "Drinkware"에 매칭되도록 공백 제거 후 부분일치 비교.
+let PRODCAT_CACHE={}, PRODCAT_SRC=null, GCCAT_MAP=null;
+function normCat(s){ return String(s||'').toLowerCase().replace(/\s+/g,''); }
+function getGcCatMap(){
+  if(GCCAT_MAP) return GCCAT_MAP;
+  GCCAT_MAP={};
+  if(typeof COST_DB==='object'&&COST_DB&&COST_DB.process) COST_DB.process.forEach(p=>{ if(p.gc&&p.cat){ if(!GCCAT_MAP[p.gc]) GCCAT_MAP[p.gc]=new Set(); GCCAT_MAP[p.gc].add(p.cat); } });
+  return GCCAT_MAP;
+}
+function getOrderRowCategoryStr(r){
+  const name=(r['산출물']||'').trim(); if(!name) return '';
+  if(PRODCAT_SRC!==D.order){ PRODCAT_CACHE={}; PRODCAT_SRC=D.order; }
+  if(PRODCAT_CACHE[name]!==undefined) return PRODCAT_CACHE[name];
+  const cats=new Set();
+  const gc=goodsCode(r), gm=getGcCatMap();
+  if(gc&&gm[gc]) gm[gc].forEach(c=>cats.add(c));
+  (extractPartsCodes(r)||[]).forEach(code=>{
+    const p=PARTS_MAP[code];
+    if(p&&p.goodsCat) String(p.goodsCat).split(',').forEach(x=>{ x=x.trim(); if(x) cats.add(x); });
+  });
+  const s=normCat([...cats].join('|'));
+  PRODCAT_CACHE[name]=s; return s;
+}
+// 철자 유사 매칭 — "drink wear"(공백 제거 시 drinkwear)처럼 실제 값 "drinkware"와 1~2자 다른
+// 입력도 허용. Damerau-Levenshtein 거리 2 이하(전치 포함), 6자 이상 질의에만 적용해 오탐 방지.
+function editDist(a,b){
+  const al=a.length,bl=b.length;
+  if(Math.abs(al-bl)>2) return 3;
+  const d=Array.from({length:al+1},(_,i)=>{const row=[i];for(let j=1;j<=bl;j++)row[j]=i===0?j:0;return row;});
+  for(let i=1;i<=al;i++) for(let j=1;j<=bl;j++){
+    const c=a[i-1]===b[j-1]?0:1;
+    let v=Math.min(d[i-1][j]+1,d[i][j-1]+1,d[i-1][j-1]+c);
+    if(i>1&&j>1&&a[i-1]===b[j-2]&&a[i-2]===b[j-1]) v=Math.min(v,d[i-2][j-2]+1);
+    d[i][j]=v;
+  }
+  return d[al][bl];
+}
+function catTokenMatch(catStr,nq){
+  if(!catStr||!nq) return false;
+  if(catStr.includes(nq)) return true;
+  if(nq.length>=6) return catStr.split('|').some(t=>t&&editDist(t,nq)<=2);
+  return false;
+}
 function renderProductTrend() {
   const el=document.getElementById('sec-product-trend');
   if(!D.order) { el.innerHTML='<div class="card empty">발주_RAW CSV를 업로드해주세요.</div>'; return; }
   // v19: 상단 검색창(제품명/협력사명/굿즈코드) 반영 — 이전에는 검색해도 이 화면만 무반응이었음
+  // v21.4: Goods Category(예: Drinkware) 검색 추가 — 카테고리 일치 시 기존 필드 미일치여도 포함
   const q=getSearchQuery();
+  const nq=q?normCat(q):'';
   const byProduct={};
-  D.order.filter(r=>!isStock(r)&&(!q||matchesSearch(r,q))).forEach(r=>{
+  D.order.filter(r=>!isStock(r)&&(!q||matchesSearch(r,q)||catTokenMatch(getOrderRowCategoryStr(r),nq))).forEach(r=>{
     const name=(r['산출물']||'').trim(); if(!name) return; // 비스포크(산출물 없음)는 반복성 없어 제외
     const mk=pOrderMonth(r['과업지시일자']); if(!mk) return;
     const qty=pa(r['발주지시수량']);
@@ -5814,14 +5861,16 @@ function renderProductTrend() {
   // v19: 제품별 발주 요약 — 주 제작처(최다 발주 기준)가 서울디지털인쇄협동조합인 제품 제외
   const summarySorted=sorted.filter(([,v])=>mainSup(v)!==URGENT_EXCLUDE_SUP);
 
+  // v21.4: 표에서 최근 6개월만 잘라 보여주던 것을 데이터 전체 월(최대 13개월)로 확대 — 26.1월 누락 문제 해결
+  const shownMonths=allMonths.slice(-13);
   el.innerHTML=`
-    <div class="card"><div class="card-header"><div class="card-title">제품별 월간 발주수량 추이 (Top 10)</div><div class="card-sub">총 ${sorted.length}개 제품 · 발주지시수량 기준 · 재고생산 제외${q?' · <b>검색 필터 적용</b>':''}</div></div>
+    <div class="card"><div class="card-header"><div class="card-title">제품별 월간 발주수량 추이 (Top 10)</div><div class="card-sub">총 ${sorted.length}개 제품 · 발주지시수량 기준 · 재고생산 제외 · 검색창에 <b>Goods Category</b>(예: Drinkware, Stationery)를 입력하면 해당 카테고리 제품 전체 표시${q?' · <b>검색 필터 적용</b>':''}</div></div>
     <div class="ch" style="height:320px"><canvas id="ch-prod-trend"></canvas></div></div>
     <div class="card" style="margin-top:12px"><div class="card-header"><div class="card-title">제품별 발주 요약 <span style="font-weight:400;font-size:11px;color:var(--text3)">(${URGENT_EXCLUDE_SUP} 제작 제품 제외${q?' · 검색 필터 적용':''})</span></div></div>
-    <div class="tbl-wrap"><table class="tbl"><thead><tr><th class="rank">#</th><th>제품명</th><th>제작 협력사</th><th class="num">누적 발주수량</th><th class="num">월평균</th>${allMonths.slice(-6).map(m=>`<th class="num" style="font-size:10px">${m}</th>`).join('')}</tr></thead><tbody>
+    <div class="tbl-wrap"><table class="tbl"><thead><tr><th class="rank">#</th><th>제품명</th><th>제작 협력사</th><th class="num">누적 발주수량</th><th class="num">월평균</th>${shownMonths.map(m=>`<th class="num" style="font-size:10px">${m}</th>`).join('')}</tr></thead><tbody>
     ${summarySorted.slice(0,20).map(([k,v],i)=>{
       const avg=allMonths.length>0?Math.round(v.total/allMonths.length):0;
-      return `<tr><td class="rank">${i+1}</td><td>${esc(v.name||k)}</td><td style="font-size:11px;color:var(--text3)">${esc(crop(mainSup(v),16))}</td><td class="num">${fmtN(v.total)}</td><td class="num">${fmtN(avg)}</td>${allMonths.slice(-6).map(m=>`<td class="num">${v.months[m]?fmtN(v.months[m]):'—'}</td>`).join('')}</tr>`;
+      return `<tr><td class="rank">${i+1}</td><td>${esc(v.name||k)}</td><td style="font-size:11px;color:var(--text3)">${esc(crop(mainSup(v),16))}</td><td class="num">${fmtN(v.total)}</td><td class="num">${fmtN(avg)}</td>${shownMonths.map(m=>`<td class="num">${v.months[m]?fmtN(v.months[m]):'—'}</td>`).join('')}</tr>`;
     }).join('')||emptyRow(5,q?'검색 결과 없음':'데이터 없음')}
     </tbody></table></div></div>`;
 
