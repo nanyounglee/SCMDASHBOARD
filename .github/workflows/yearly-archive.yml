@@ -1,0 +1,55 @@
+name: yearly-archive
+
+# 매년 1월 2일 00:10 KST (= 1월 1일 15:10 UTC), 방금 끝난 연도의 CSV/order.csv·
+# issue.csv를 CSV_BANK/archive/{연도}/ 로 고정 보존한다.
+# 대시보드의 loadPriorYearArchive()가 이 경로를 매년 자동 조회하므로,
+# 이 워크플로만 돌면 YoY 비교가 코드 수정 없이 다음 해로 넘어간다.
+#
+# 반드시 1월 첫 목요일(주간 Airtable 갱신이 order.csv를 새해 데이터로 덮어쓰는
+# 시점) 이전에 실행돼야 한다 — 1/2 실행이 그 조건을 항상 만족한다.
+# 놓친 경우 workflow_dispatch로 수동 실행하되, order.csv가 이미 새해 데이터로
+# 바뀌었으면 스크립트의 연도 검증이 아카이빙을 거부하므로 그때는
+# CSV_BANK/{연도}_W##/ 주간 아카이브에서 마지막 주차 파일을 수동 복사한다.
+on:
+  schedule:
+    - cron: '10 15 1 1 *'
+  workflow_dispatch:
+    inputs:
+      archive_year:
+        description: '아카이빙할 연도 (비우면 실행 시점 기준 작년)'
+        required: false
+
+permissions:
+  contents: write
+
+concurrency:
+  group: yearly-archive
+  cancel-in-progress: false
+
+jobs:
+  archive:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: 연말 아카이브 생성
+        env:
+          ARCHIVE_YEAR: ${{ inputs.archive_year }}
+        run: node scripts/archive_year_end.mjs
+
+      - name: Commit & push if changed
+        run: |
+          git config user.name "archive-bot"
+          git config user.email "actions@github.com"
+          git add CSV_BANK/archive/
+          if git diff --cached --quiet; then
+            echo "변경 없음 — 커밋 생략"
+          else
+            git commit -m "chore: 연말 데이터 아카이브 (CSV_BANK/archive)"
+            git pull --rebase origin main
+            git push origin main
+          fi
