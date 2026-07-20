@@ -3536,7 +3536,6 @@ function buildSupplierDetail(supName,canvasId,footerHtml) {
   orders.forEach(r=>{ const bm=purchaseByMonth(r); Object.entries(bm).forEach(([m,a])=>{byM[m]=(byM[m]||0)+a;}); });
   const allMonths=Object.keys(byM).sort(monthCmp);
   const years=[...new Set(allMonths.map(m=>m.split('.')[0]))].sort();
-  const monthNums=[...new Set(allMonths.map(m=>+m.split('.')[1]))].sort((a,b)=>a-b);
   const momOf=(mkey)=>{
     const p=mkey.split('.'); const prev=prevYM(+p[0],+p[1]); const pkey=prev.y+'.'+prev.m;
     const cur=byM[mkey]||0, pv=byM[pkey];
@@ -3560,6 +3559,50 @@ function buildSupplierDetail(supName,canvasId,footerHtml) {
   // 이슈 상세 (project_name↔project 코드 매칭)
   const issues=getIssuesForSupplier(supName);
   const issueRate=orders.length?(issues.length/orders.length*100):0;
+  // v21: 전년 동기(YTD) 비교 — CSV_BANK/archive의 전년도 RAW로 협력사별 발주·매입·이슈 YoY 산출
+  const prevOrdersAll=(D.orderPrevYear||[]).filter(r=>(r['수주처']||'').trim()===supName&&!isStock(r));
+  const byMPrev={};
+  let yoyBlockHtml='';
+  if(prevOrdersAll.length){
+    prevOrdersAll.forEach(r=>{ const bm=purchaseByMonth(r); Object.entries(bm).forEach(([m,a])=>{byMPrev[m]=(byMPrev[m]||0)+a;}); });
+    const curYearNum=years.length?+years[years.length-1]:new Date().getFullYear();
+    const prevYearNum=curYearNum-1;
+    const ytdMax=Math.max(0,...orders.map(r=>{const mo=pOrderMonth(r['과업지시일자']);if(!mo)return 0;const p=mo.split('.');return +p[0]===curYearNum?+p[1]:0;}))||(new Date().getMonth()+1);
+    const inYtd=(mo,y)=>{ if(!mo)return false; const p=mo.split('.'); return +p[0]===y&&+p[1]<=ytdMax; };
+    const curYtdOrders=orders.filter(r=>inYtd(pOrderMonth(r['과업지시일자']),curYearNum));
+    const prevYtdOrders=prevOrdersAll.filter(r=>inYtd(pOrderMonth(r['과업지시일자']),prevYearNum));
+    const sumQty=list=>list.reduce((s,r)=>s+pa(r['발주지시수량']),0);
+    const curQty=sumQty(curYtdOrders), prevQty=sumQty(prevYtdOrders);
+    const purYtd=(bm,y)=>Object.entries(bm).reduce((s,[m,a])=>{const p=m.split('.');return (+p[0]===y&&+p[1]<=ytdMax)?s+a:s;},0);
+    const curPur=purYtd(byM,curYearNum), prevPur=purYtd(byMPrev,prevYearNum);
+    // 전년 이슈 귀속 — 전년도 발주 RAW로 project 코드→협력사 맵을 따로 구성해 매칭 (현재 맵엔 전년 코드 없음)
+    const prevProjMap={};
+    (D.orderPrevYear||[]).forEach(r=>{ const proj=r['project']||''; const sup=(r['수주처']||'').trim(); if(!proj||!sup)return; const key=proj.split('-')[0]; if(key&&!prevProjMap[key]) prevProjMap[key]=sup; });
+    const prevIssuesAll=(D.issuePrevYear||[]).filter(r=>{const key=(r['project_name']||'').split('-')[0];return key&&prevProjMap[key]===supName;});
+    const prevYtdIssues=prevIssuesAll.filter(r=>inYtd(pIssueMonth(r),prevYearNum));
+    const curYtdIssues=issues.filter(r=>inYtd(pIssueMonth(r),curYearNum));
+    const curIssRate=curYtdOrders.length?curYtdIssues.length/curYtdOrders.length*100:null;
+    const prevIssRate=prevYtdOrders.length?prevYtdIssues.length/prevYtdOrders.length*100:null;
+    const yoyPct=(c,p)=>p?((c-p)/p*100):null;
+    const badge=v=>v===null?'<span style="color:var(--text3)">—</span>':`<span style="color:${v>=0?'var(--red)':'var(--green)'};font-weight:600">${v>=0?'+':''}${v.toFixed(1)}%</span>`;
+    const badgeP=(c,p)=>(c===null||p===null)?'<span style="color:var(--text3)">—</span>':`<span style="color:${c-p>=0?'var(--red)':'var(--green)'};font-weight:600">${c-p>=0?'+':''}${(c-p).toFixed(1)}%p</span>`;
+    const prevAllPur=Object.values(byMPrev).reduce((s,a)=>s+a,0);
+    yoyBlockHtml=`
+    <div style="font-size:14px;font-weight:600;margin:4px 0 8px">전년 동기 비교 (1~${ytdMax}월 누적)</div>
+    <table class="tbl" style="margin-bottom:6px"><thead><tr><th>지표</th><th class="num">${prevYearNum}</th><th class="num">${curYearNum}</th><th class="num">YoY</th></tr></thead><tbody>
+      <tr><td>발주건수</td><td class="num">${prevYtdOrders.length}건</td><td class="num">${curYtdOrders.length}건</td><td class="num">${badge(yoyPct(curYtdOrders.length,prevYtdOrders.length))}</td></tr>
+      <tr><td>발주수량</td><td class="num">${fmtN(prevQty)}개</td><td class="num">${fmtN(curQty)}개</td><td class="num">${badge(yoyPct(curQty,prevQty))}</td></tr>
+      <tr><td>매입금액</td><td class="num">${faFull(prevPur)}</td><td class="num">${faFull(curPur)}</td><td class="num">${badge(yoyPct(curPur,prevPur))}</td></tr>
+      <tr><td>이슈건수</td><td class="num">${prevYtdIssues.length}건</td><td class="num">${curYtdIssues.length}건</td><td class="num">${badge(yoyPct(curYtdIssues.length,prevYtdIssues.length))}</td></tr>
+      <tr><td>이슈율</td><td class="num">${prevIssRate===null?'—':prevIssRate.toFixed(1)+'%'}</td><td class="num">${curIssRate===null?'—':curIssRate.toFixed(1)+'%'}</td><td class="num">${badgeP(curIssRate,prevIssRate)}</td></tr>
+    </tbody></table>
+    <div style="font-size:10px;color:var(--text3);margin-bottom:12px">※ ${prevYearNum}년 연간 전체: 발주 ${prevOrdersAll.length}건 · 매입 ${faFull(prevAllPur)} · 이슈 ${prevIssuesAll.length}건 — 매입금액은 세금계산서작성월 기준, 전년 이슈는 전년도 RAW의 project 코드 매칭(추정)</div>`;
+  }
+  // 차트는 전년+당해 병합 데이터로 연도별 라인 오버레이 (월 스트립·필터는 당해 데이터 유지)
+  const chartByM=Object.assign({},byMPrev,byM);
+  const chartMonths=Object.keys(chartByM).sort(monthCmp);
+  const chartYears=[...new Set(chartMonths.map(m=>m.split('.')[0]))].sort();
+  const chartMonthNums=[...new Set(chartMonths.map(m=>+m.split('.')[1]))].sort((a,b)=>a-b);
   // 월별 필터 — 금액/이슈/발주내역 공통 적용
   const selMonth=SUP_DRILL_MONTH[supName]||'all';
   const nameArg=esc(supName).replace(/'/g,"\\'");
@@ -3586,7 +3629,8 @@ function buildSupplierDetail(supName,canvasId,footerHtml) {
         <button onclick="exportSupplierAnalysisReport(this,'${nameArg}')" style="font-size:11px;padding:5px 12px;border:1px solid var(--blue);color:var(--blue);border-radius:var(--r-sm);background:var(--surface);cursor:pointer;white-space:nowrap">📊 분석 리포트</button></span>
     </div>
     ${selMonthSummary}
-    <div style="font-size:14px;font-weight:600;margin-bottom:8px">연도별 매입추이 (${years.join(', ')||'데이터 없음'})</div>
+    ${yoyBlockHtml}
+    <div style="font-size:14px;font-weight:600;margin-bottom:8px">연도별 매입추이 (${chartYears.join(', ')||'데이터 없음'})</div>
     <div style="display:flex;gap:8px;overflow-x:auto;padding-bottom:6px;margin-bottom:8px">${monthStripHtml||'<span style="font-size:12px;color:var(--text3)">데이터 없음</span>'}</div>
     <div class="ch" style="height:200px;margin-bottom:8px"><canvas id="${canvasId}"></canvas></div>
     <div style="font-size:14px;font-weight:600;margin:16px 0 8px">발주 제품 전체 (발주 횟수 내림차순, ${allProds.length}개)</div>
@@ -3613,7 +3657,7 @@ function buildSupplierDetail(supName,canvasId,footerHtml) {
     ${filteredIssues.length>30?`<div style="font-size:10px;color:var(--text3);margin-top:4px">최근 30건만 표시 (전체 ${filteredIssues.length}건)</div>`:''}
     <div style="font-size:10px;color:var(--text3);margin-top:8px">※ 이슈 귀속 = 이슈_RAW project_name ↔ 발주_RAW project 코드 접두어 매칭(추정치, 프로젝트 코드 불일치 시 누락 가능) · 발주내역 월 필터 = 세금계산서작성월 기준</div>
     ${footerHtml||''}`;
-  return {html,chartData:{byM,years,monthNums}};
+  return {html,chartData:{byM:chartByM,years:chartYears,monthNums:chartMonthNums}};
 }
 function initSupplierDetailChart(canvasId,chartData) {
   const {byM,years,monthNums}=chartData;
