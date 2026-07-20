@@ -1,0 +1,25 @@
+name: airtable-discover
+
+# 읽기 전용 — 접근 가능한 Airtable Base/Table/View 이름과 ID를 워크플로 로그에
+# 출력한다. 아무 파일도 커밋하지 않는다. AIRTABLE_SOURCES 변수를 채우기 위해
+# 정확한 식별자가 필요할 때 Actions 탭에서 수동으로 실행(Run workflow)한다.
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  discover:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: List accessible bases/tables/views
+        env:
+          AIRTABLE_TOKEN: ${{ secrets.AIRTABLE_TOKEN }}
+        run: node scripts/list_airtable_schema.mjs

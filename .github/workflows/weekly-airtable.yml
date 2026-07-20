@@ -1,7 +1,12 @@
 name: weekly-airtable-progress
 
-# 매주 월요일 09:00 KST (= 00:00 UTC) 에어테이블 진행현황 뷰를
-# CSV/progress_YYYY_WNN.csv 로 커밋. 수동 실행(workflow_dispatch)도 가능.
+# 매주 월요일 09:00 KST (= 00:00 UTC) 에어테이블에서 두 종류의 CSV를 갱신한다:
+#   1. 진행현황·매출결산 — CSV/progress_YYYY_WNN.csv / project_YYYY_WNN.csv
+#      (주차별 신규 파일, fetch_airtable_weekly.mjs)
+#   2. 발주/이슈/협력사 등 고정 파일명 CSV — CSV/order.csv 등을 그 자리에서
+#      갱신(AIRTABLE_SOURCES 변수로 설정된 항목만, fetch_airtable_sources.mjs)
+#      — 덮어쓰기 전 이전 버전을 CSV_BANK로 자동 아카이브(협력사는 월간 스냅샷도)
+# 수동 실행(workflow_dispatch)도 가능.
 on:
   schedule:
     - cron: '0 0 * * 1'
@@ -24,7 +29,7 @@ jobs:
         with:
           node-version: '20'
 
-      - name: Fetch Airtable views → weekly CSV
+      - name: Fetch 진행현황/매출결산 (주차별 신규 파일)
         env:
           AIRTABLE_TOKEN: ${{ secrets.AIRTABLE_TOKEN }}
           AIRTABLE_BASE_ID: ${{ vars.AIRTABLE_BASE_ID }}
@@ -33,6 +38,12 @@ jobs:
           PROJECT_TABLE: ${{ vars.PROJECT_TABLE }}
           PROJECT_VIEW: ${{ vars.PROJECT_VIEW }}
         run: node scripts/fetch_airtable_weekly.mjs
+
+      - name: Fetch 발주/이슈/협력사 등 (고정 파일명 CSV)
+        env:
+          AIRTABLE_TOKEN: ${{ secrets.AIRTABLE_TOKEN }}
+          AIRTABLE_SOURCES: ${{ vars.AIRTABLE_SOURCES }}
+        run: node scripts/fetch_airtable_sources.mjs
 
       - name: Commit & push if changed
         run: |
@@ -43,7 +54,7 @@ jobs:
             echo "변경 없음 — 커밋 생략"
           else
             WK=$(TZ=Asia/Seoul date +%G-W%V)
-            git commit -m "chore: 주간 진행현황 CSV 자동 커밋 ($WK)"
+            git commit -m "chore: 주간 Airtable CSV 자동 커밋 ($WK)"
             git pull --rebase origin main
             git push origin main
           fi

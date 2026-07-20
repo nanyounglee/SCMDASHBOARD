@@ -798,16 +798,42 @@ SCMDASHBOARD/
 
 ## 9. 주간 업데이트 절차 (v19 · 자동 로드 기준)
 
-### 진행현황·매출결산 주간 CSV — Airtable 자동 커밋 (v19 신규)
-`.github/workflows/weekly-airtable.yml`이 **매주 월요일 09:00 KST**에 `scripts/fetch_airtable_weekly.mjs`를 실행해 진행현황 뷰를 `CSV/progress_YYYY_WNN.csv`로 자동 커밋한다(지난 주차는 `CSV_BANK/연도_W주차/`로 아카이브).
-- Airtable API를 `cellFormat=string`+`timeZone=Asia/Seoul`로 호출해 UI 표시 형식 그대로 수신, 기존 최신 파일의 헤더 순서를 재사용해 대시보드 컬럼 호환 유지.
-- **1회 설정 필요**: 저장소 Settings → Secrets `AIRTABLE_TOKEN`(data.records:read PAT) · Variables `AIRTABLE_BASE_ID`/`PROGRESS_TABLE`/`PROGRESS_VIEW`(+선택 `PROJECT_TABLE`/`PROJECT_VIEW` — 설정 시 매출결산 project_ 파일도 자동화). 설정 후 Actions 탭 → weekly-airtable-progress → Run workflow로 수동 1회 검증.
-- 미설정/실패 시엔 기존처럼 수동 커밋으로 대체 가능 — 대시보드는 이번 주 파일이 없으면 경고 배너(§v19)로 알려준다.
+### Airtable 소스 CSV 자동 커밋 (v19 신규, 확장)
+`.github/workflows/weekly-airtable.yml`이 **매주 월요일 09:00 KST**에 Airtable 원본 CSV를 자동으로 갱신·커밋한다. 두 스크립트가 순서대로 실행된다:
+
+1. **`scripts/fetch_airtable_weekly.mjs`** — 진행현황·매출결산처럼 **파일명에 주차가 붙는** 소스(`CSV/progress_YYYY_WNN.csv`, `CSV/project_YYYY_WNN.csv`). 지난 주차 파일은 `CSV_BANK/연도_W주차/`로 자동 아카이브(대시보드가 전주 파일과 비교하므로 보존 필요).
+2. **`scripts/fetch_airtable_sources.mjs`** — `order`/`issue`/`sup`/`ci`/`stockout_list`/`parts`/`goods_master`처럼 **대시보드가 고정 파일명으로 자동 로드**하는 소스(`CSV/_manifest.json` 대상, §3-0). `AIRTABLE_SOURCES` 변수(JSON 배열)에 등록된 항목만 처리하며, 덮어쓰기 전 `archive_csv.ps1`과 동일한 두 보존 규칙을 재현한다 — ① 이전 버전을 `CSV_BANK/연도_W주차/파일명`으로 아카이브(주차는 그 파일의 최근 git 커밋일 기준), ② `sup.csv`는 추가로 `CSV_BANK/sup_YYYY_MM.csv` 월간 스냅샷(신규/거래종료 협력사 diff의 원본, §4-24)을 매달 1회 보존. 이전 내용과 완전히 동일하면 아무 것도 건드리지 않는다(불필요한 아카이브 방지).
+
+공통: Airtable API를 `cellFormat=string`+`timeZone=Asia/Seoul`로 호출해 UI 표시 형식 그대로(예: 날짜 `2026.7.14`) 수신하고, 기존 CSV의 헤더 순서를 재사용해 대시보드 컬럼 호환을 유지한다.
+
+**1회 설정 필요**:
+1. 저장소 Settings → Secrets: `AIRTABLE_TOKEN`(PAT, **`data.records:read` + `schema.bases:read`** 스코프 — 후자는 아래 탐색 워크플로에 필요)
+2. **먼저 base/table/view 식별자를 확인**: Actions 탭 → `airtable-discover` → Run workflow. 접근 가능한 모든 Base/Table/View 이름과 ID가 로그에 출력된다(아무것도 커밋하지 않는 읽기 전용 워크플로). `scripts/list_airtable_schema.mjs` 참고.
+3. Variables 등록:
+   - `AIRTABLE_BASE_ID`/`PROGRESS_TABLE`/`PROGRESS_VIEW`(+선택 `PROJECT_TABLE`/`PROJECT_VIEW`) — 진행현황/매출결산용(기존)
+   - `AIRTABLE_SOURCES` — 고정 파일명 CSV용, JSON 배열. 1단계에서 확인한 값으로 아래 틀을 채운다(`table`/`view`는 이름 또는 `tbl…`/`viw…` ID 모두 가능 — ID를 쓰면 이름이 나중에 바뀌어도 안 깨짐):
+     ```json
+     [
+       {"key":"order","base":"appXXXXXXXXXXXXXX","table":"(SCM KPI 베이스의 발주 테이블)","view":"task-SCMKPI_Raw","file":"order.csv"},
+       {"key":"issue","base":"appXXXXXXXXXXXXXX","table":"(SCM KPI 베이스의 이슈 테이블)","view":"KPI_이슈_RAW","file":"issue.csv"},
+       {"key":"sup","base":"appYYYYYYYYYYYYYY","table":"(공급망 관리 베이스의 협력사 테이블)","view":"공급망_RAW","file":"sup.csv"},
+       {"key":"ci","base":"appXXXXXXXXXXXXXX","table":"(SCM KPI 베이스의 고객인지이슈 테이블)","view":"고객인지이슈_RAW","file":"ci.csv"},
+       {"key":"stockout_list","base":"appXXXXXXXXXXXXXX","table":"(sales_status_history 테이블)","view":"(뷰명)","file":"stockout_list.csv"},
+       {"key":"parts","base":"appXXXXXXXXXXXXXX","table":"(SCM KPI 베이스의 파츠 테이블)","view":"4. parts","file":"parts.csv"},
+       {"key":"goods_master","base":"appZZZZZZZZZZZZZZ","table":"(Sincerely DB 베이스의 goods 테이블)","view":"1. goods","file":"goods_master.csv"}
+     ]
+     ```
+     한 번에 다 채울 필요 없음 — 일부만 넣으면 그 항목만 자동화되고 나머지는 계속 수동. `base`/`table`/`view` 중 하나라도 비어있는 항목은 조용히 건너뛴다.
+4. Actions 탭 → `weekly-airtable-progress` → Run workflow로 수동 1회 검증(로그에서 각 소스별 처리 결과 확인).
+
+미설정/실패 시엔 기존처럼 수동 커밋으로 대체 가능 — 대시보드는 진행현황 CSV가 이번 주 파일이 아니면 경고 배너(§v19)로 알려준다.
+
+**Airtable API가 아닌 소스(자동화 방식이 다름)**: `quarter_eval`(분기별평가)·`inv_weekly`·`sales_monthly`·`dashboard_period_summary`·`dashboard_group_summary`·`dashboard_sku_snapshot`·`purchase_review`·`season_plan`은 **GSheets(구매전략파트 S&OP Apps Script)** 원본이라 Airtable REST API로는 가져올 수 없다 — Google Sheets API(서비스 계정 자격증명 필요) 또는 GSheets Apps Script가 직접 GitHub Contents API로 push하는 방식이 필요하며, 별도 결정·구축이 필요하다. `sales`(GSheets SUPER BASE)도 마찬가지로 별도 소스.
 
 ### 데이터 담당자 — 외주생산파트 (주 1회)
 | 단계 | 작업 | 비고 |
 |---|---|---|
-| 1 | Airtable에서 CSV Export | 발주_RAW, 이슈_RAW, 공급망_RAW, 고객인지이슈_RAW, 분기별평가, (v13) 진행현황·매출결산(→v19부터 자동 커밋 가능, 위 참고), (v14) 굿즈마스터 |
+| 1 | Airtable에서 CSV Export | 발주_RAW·이슈_RAW·공급망_RAW·고객인지이슈_RAW·품절리스트·파츠·굿즈마스터·진행현황·매출결산(→모두 `AIRTABLE_SOURCES`/진행현황 변수 설정 시 자동 커밋 가능, 위 참고). 분기별평가는 GSheets 소스라 이 자동화 대상 아님(구매전략파트 절차 참고) |
 | 2 | 프로젝트 폴더 `CSV/`에 저장 | 한글 원본명 그대로 저장해도 됨. 대용량 CSV는 채팅 붙여넣기보다 로컬 파일 직접 저장 권장(문자 손상 위험, v14) |
 | 3 | `deploy_v19.ps1` 실행 | 고정명 복사 + 커밋 + 푸시 자동. 또는 GitHub 웹에서 고정명 파일 직접 덮어쓰기 |
 | 4 | 1~3분 후 배포 확인 | `-Verify` 스위치 또는 브라우저 Ctrl+F5 |
