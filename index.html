@@ -581,6 +581,10 @@ a{color:var(--blue);text-decoration:none}
           <div class="ch" style="height:210px"><canvas id="ch-iss-rate-yoy"></canvas></div>
         </div>
       </div>
+      <div class="card" style="margin-bottom:16px">
+        <div class="card-header"><div><div class="card-title">미입하율 추이표</div><div class="card-sub">미입하율 = 미입하건수 ÷ 전체 발주 TASK × 100 (월별) · 2026 목표 1.56% 이하</div></div></div>
+        <div class="tbl-wrap"><table class="tbl"><thead><tr><th>월</th><th class="num">전체TASK</th><th class="num">미입하건수</th><th class="num">미입하율</th><th class="num">전년동월</th><th class="num">YoY</th></tr></thead><tbody id="tb-iss-noarrival"></tbody></table></div>
+      </div>
       <div class="tabs">
         <div class="tab active" onclick="swTab(this,'iss','tab-iss-all')">전체</div>
         <div class="tab" onclick="swTab(this,'iss','tab-iss-q')">품질이슈</div>
@@ -2041,9 +2045,10 @@ function renderIssueAnalytics(){
     if(c.includes('수량')) issCur.n[d.m]++;
     if(c.includes('운영')) issCur.o[d.m]++;
   });
-  D.order.forEach(r=>{ const mo=pOrderMonth(r['과업지시일자']); if(!mo) return; const p=mo.split('.'); if(+p[0]===curY) taskCur[+p[1]]++; });
+  const noaCur=Z(), noaPrev=Z();
+  D.order.forEach(r=>{ const mo=pOrderMonth(r['과업지시일자']); if(!mo) return; const p=mo.split('.'); if(+p[0]===curY) { taskCur[+p[1]]++; if(hasNoReceipt(r)) noaCur[+p[1]]++; } });
   (D.issue2025||[]).forEach(r=>{ const d=issueMonthNum(r); if(d&&d.y===prevY) issPrev[d.m]++; });
-  (D.order2025||[]).forEach(r=>{ const mo=pOrderMonth(r['과업지시일자']); if(!mo) return; const p=mo.split('.'); if(+p[0]===prevY) taskPrev[+p[1]]++; });
+  (D.order2025||[]).forEach(r=>{ const mo=pOrderMonth(r['과업지시일자']); if(!mo) return; const p=mo.split('.'); if(+p[0]===prevY) { taskPrev[+p[1]]++; if(hasNoReceipt(r)) noaPrev[+p[1]]++; } });
   const rate=(iss,task)=>{ const a=[]; for(let m=1;m<=12;m++) a.push(task[m]?+(iss[m]/task[m]*100).toFixed(2):null); return a; };
   const rateCur=rate(issCur.all,taskCur), ratePrev=rate(issPrev,taskPrev);
   // ---- KPI 스트립: 선택 기간 이슈 · TASK · 이슈율 (+ 전년 동기 비교) ----
@@ -2083,6 +2088,15 @@ function renderIssueAnalytics(){
     {label:prevY+'년',data:ratePrev.map(v=>v),borderColor:'#94a3b8',borderDash:[5,3],borderWidth:2,tension:.3,pointRadius:3,spanGaps:true},
     {label:curY+'년',data:rateCur.map(v=>v),borderColor:'#1d4ed8',borderWidth:2,tension:.3,pointRadius:3,spanGaps:true}
   ]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{position:'bottom',labels:{font:{size:10},boxWidth:10}},tooltip:{callbacks:{label:c=>c.dataset.label+': '+(c.parsed.y===null?'—':c.parsed.y.toFixed(1)+'%')}}},scales:{y:{beginAtZero:true,ticks:{font:{size:10},callback:v=>v+'%'}}}}});
+  // ---- 표: 미입하율 월별 추이 (전년동월 비교) ----
+  const noaHTML=Array.from({length:12},(_,i)=>i+1).filter(m=>taskCur[m]>0||taskPrev[m]>0).map(m=>{
+    const rate=taskCur[m]?(noaCur[m]/taskCur[m]*100):null;
+    const rateP=taskPrev[m]?(noaPrev[m]/taskPrev[m]*100):null;
+    const yoy=(rate!==null&&rateP!==null)?rate-rateP:null;
+    const yoyColor=yoy===null?'var(--text3)':(yoy>0?'var(--red)':yoy<0?'var(--green)':'var(--text3)');
+    return `<tr><td>${m}월</td><td class="num">${taskCur[m]||0}</td><td class="num">${noaCur[m]||0}</td><td class="num" style="font-weight:600">${rate!==null?rate.toFixed(2)+'%':'—'}</td><td class="num" style="color:var(--text3)">${rateP!==null?rateP.toFixed(2)+'%':'—'}</td><td class="num" style="color:${yoyColor};font-weight:600">${yoy!==null?(yoy>=0?'+':'')+yoy.toFixed(2)+'%p':'—'}</td></tr>`;
+  }).join('');
+  setTbody('tb-iss-noarrival',noaHTML||emptyRow(6));
 }
 
 // ===== CI TABS =====
@@ -4301,8 +4315,8 @@ function swTab(el,group,targetId) {
   parent.querySelectorAll('.tab').forEach(t=>t.classList.remove('active'));
   el.classList.add('active');
   const panels=parent.parentElement.querySelectorAll('.tab-panel');
-  panels.forEach(p=>p.style.display='none');
-  const t=document.getElementById(targetId); if(t) t.style.display='';
+  panels.forEach(p=>{p.style.display='none';p.classList.remove('active');});
+  const t=document.getElementById(targetId); if(t) {t.style.display='';t.classList.add('active');}
   if (targetId==='tab-ord-top') updateOrderTabs();
   if (targetId==='tab-iss-px') renderIssueRateMatrix();
 }
