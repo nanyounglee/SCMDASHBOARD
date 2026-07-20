@@ -6632,7 +6632,8 @@ const AUTO_CSV_DEFAULT={
   inv_weekly:'inv_weekly.csv',
   sales_monthly:'sales_monthly.csv',
   parts:'parts.csv',
-  goods_master:'goods_master.csv'
+  goods_master:'goods_master.csv',
+  quarter_eval:'quarter_eval.csv'
 };
 function autoLoadRaw(){
   fetch('CSV/_manifest.json').then(r=>r.ok?r.json():null).catch(()=>null).then(man=>{
