@@ -507,16 +507,20 @@ a{color:var(--blue);text-decoration:none}
         <div class="card-header"><div class="card-title">전체 제품 발주량 <span style="font-weight:400;font-size:11px;color:var(--text3)">(재고생산 제외 · 검색창 반영 · 헤더 클릭 시 해당 기준 내림차순)</span></div></div>
         <div class="tbl-wrap"><table class="tbl tbl-ord-top"><thead><tr><th class="rank">#</th><th>산출물</th><th class="num th-sort sort-active" data-sort="qty" onclick="sortOrdTop('qty')">발주수량 ▾</th><th class="num" id="th-ord-adjacent">MoM</th><th class="num" id="th-ord-yoy">YoY</th><th class="num th-sort" data-sort="freq" onclick="sortOrdTop('freq')">월간발주빈도 ▾</th><th class="num">연간발주량합</th><th class="num th-sort" data-sort="amt" onclick="sortOrdTop('amt')">공급가액 ▾</th><th>담당자</th></tr></thead><tbody id="tb-ord-top"></tbody></table></div>
       </div>
-      <!-- v22: 여분(버퍼) 발주수량 추천 — 이슈 이력 기반 예방원가 분석 -->
+      <!-- v22: 여분(버퍼) 발주수량 추천 — 이슈 이력 기반 예방원가 분석 (v21.5: 부족 이벤트 개수 기반 산식) -->
       <div class="card" style="margin-top:16px">
-        <div class="card-header"><div><div class="card-title">여분(버퍼) 발주수량 추천 — 이슈 이력 기반 예방원가 분석</div><div class="card-sub">당해+전년 아카이브 전체 이력 기준(상단 기간 필터 무관) · 검색창 반영 · 이슈가 매칭된 제품만 표시 · 행 클릭 시 여분수량 시나리오별 차액 비교</div></div></div>
+        <div class="card-header">
+          <div><div class="card-title">여분(버퍼) 발주수량 추천 — 실제 부족 이력 기반</div><div class="card-sub">당해+전년 아카이브 전체 이력 기준(상단 기간 필터 무관) · <b>권장여분 = 부족 발생 시 평균 부족수량(개)</b> · 부족 이력 있는 제품이 상단 정렬 · 행 클릭 시 여분수량 시나리오(1개/중앙값/평균/최대)별 커버리지·차액 비교</div></div>
+          <input id="buf-search" placeholder="제품명으로 바로 찾기..." oninput="BUF_FILTER=this.value.trim();renderOrderBuffer()" style="font-size:12px;padding:5px 10px;border:1px solid var(--border2);border-radius:var(--r-sm);width:200px">
+        </div>
         <div class="kpi-row-4" id="buf-kpi-row" style="margin-bottom:12px"></div>
         <div class="tbl-wrap"><table class="tbl"><thead><tr>
-          <th class="rank">#</th><th>제품</th><th class="num">발주건수</th><th class="num">총발주수량</th><th class="num">이슈 품/수</th>
-          <th class="num">미입하율</th><th class="num">수량부족률</th><th class="num">품질불량률</th>
-          <th class="num">권장버퍼</th><th class="num">권장여분/회</th><th class="num">예방비용(예상)</th><th class="num">실패비용(실제)</th><th class="num">차액(실패−예방)</th>
+          <th class="rank">#</th><th>제품</th><th class="num" style="color:var(--blue)">권장여분/회</th><th class="num">발주건수</th>
+          <th class="num">부족발생</th><th class="num">평균부족</th><th class="num">최대부족</th><th class="num">부족률</th>
+          <th class="num">미입하율</th><th class="num">불량률(참고)</th>
+          <th class="num">예방비용(예상)</th><th class="num">실패비용(실제)</th><th class="num">차액(실패−예방)</th>
         </tr></thead><tbody id="tb-ord-buffer"></tbody></table></div>
-        <div style="font-size:10px;color:var(--text3);margin-top:8px">※ <b>수량부족률</b> = Σ부족수량 ÷ Σ발주수량 (수량이슈내용 텍스트의 "N개 발주/M개 입하"·"N개 부족" 패턴 + 이동수량 컬럼 병행 집계) · <b>품질불량률</b> = Σ불량수량 ÷ Σ검수수량 (샘플링검수 기준) · <b>미입하율</b> = 미입하 발생 TASK ÷ 전체 TASK · <b>권장버퍼</b> = ceil(수량부족률+품질불량률), 1~10% 범위(정량 데이터 없으면 —) · <b>권장여분/회</b> = 평균 1회 발주수량 × 권장버퍼 올림 · <b>예방비용(예상)</b> = 권장여분 × 평균매입단가(공급가액÷발주수량, 파츠리스트 CSV 업로드 시 DB원가 우선) × 발주건수(같은 이력 기간에 버퍼를 적용했다고 가정) · <b>실패비용(실제)</b> = 같은 기간 재제작 TASK 취득원가 합계 (재제작 행은 발주건수·수량·평균단가 집계에서 제외 — 예방·실패 이중계상 방지) · <b>차액>0</b>이면 버퍼(예방) 도입이 재제작(실패)보다 경제적 · ⚠ 예방 단가(공급가액 기준)와 실패비용(취득원가 기준)은 원가 기준이 달라 근사 비교임</div>
+        <div style="font-size:10px;color:var(--text3);margin-top:8px">※ <b>권장여분/회</b> = 과거 부족 발생 건들의 <b>평균 부족수량 올림(개)</b> — 부족수량은 수량이슈내용 텍스트("N개 발주/M개 입하"·"발주수량 N…입하수량 M"·"N개 부족")와 이동수량 컬럼에서 추출, 괄호 %는 평균 1회 발주수량 대비 참고 비율 · <b>부족발생</b> = 부족수량이 확인된 이슈 건수 · <b>부족률</b> = Σ부족 ÷ Σ발주(부족 발생 건 기준) · <b>불량률(참고)</b> = 샘플링검수 불량수량÷검수수량 — 보수·B급 입고로 종결되는 경우가 많아 <b>여분 산정에서 제외</b>(불량이 부족으로 이어진 건은 수량이슈에 이미 반영) · <b>예방비용</b> = 권장여분 × 단가(공급가액÷발주수량, 파츠리스트 CSV 시 DB원가 우선) × 발주건수(이력 전체 적용 가정) · <b>실패비용</b> = 재제작 TASK 취득원가 합계(재제작 행은 발주건수·단가 집계에서 제외) · <b>차액>0</b>이면 여분 도입이 재제작보다 경제적 · ⚠ 예방 단가와 실패비용은 원가 기준(공급가액 vs 취득원가)이 달라 근사 비교</div>
       </div>
     </div>
 
@@ -2012,12 +2016,13 @@ function updateOrderTabs() {
 }
 
 // ===== v22: 여분(버퍼) 발주수량 추천 — 이슈 이력 기반 예방원가 분석 =====
-// 배경: 협력사 입하 시 수량 부족·품질 불량이 반복되는 제품은 발주 시점에 여분(버퍼)을 함께
-// 발주해 재제작(실패비용)을 예방하는 것이 경제적일 수 있다. 제품별로 이슈 이력에서
-// 부족률·불량률을 산출해 권장 버퍼%를 제안하고, 같은 이력 기간에 버퍼를 적용했다고
-// 가정한 예방비용과 실제 발생한 실패비용(재제작 취득원가)을 비교한다.
+// v21.5 산식 개편: %가 아니라 "실제 부족 이벤트(정상 수량 대비 몇 개 부족했는지)" 기반의 개수 권장.
+// 기존 ceil(부족률+불량률)% 방식은 샘플링 검수 불량률(보수·B급 입고로 끝나는 경우가 다수)까지
+// 합산되어 10% 같은 비현실적 권장이 나왔음. 이제 권장여분/회 = ceil(부족 발생 건들의 평균 부족수량),
+// 품질불량률은 참고 컬럼으로만 표시. 예방비용 = 권장여분 × 단가 × 발주건수(이력 전체 적용 가정) vs
+// 실패비용(재제작 취득원가) 비교는 유지.
 let BUFFER_EXPANDED=new Set();
-const BUFFER_SCENARIOS=[1,2,3,5,10]; // 시나리오 비교용 버퍼% 후보
+let BUF_FILTER=''; // 카드 내 제품명 필터(전역 검색과 별개)
 // 수량이슈내용 텍스트에서 부족 수량 추출 — 구조화 컬럼(이동수량_예정/입하수량)은 조정 후
 // 수치가 기록되는 경우가 많아 실제 부족분은 텍스트에만 남는다(예: "101개 발주 / 100개 입하",
 // "발주수량: 61 ... 입하 수량: 57", "48개 부족"). 과입고(입하>발주)는 부족이 아니므로 제외.
@@ -2047,7 +2052,7 @@ function computeBufferRows(){
   const prods={};
   orders.forEach(r=>{
     const p=(r['산출물']||'').trim(); if(!p) return;
-    if(!prods[p]) prods[p]={prod:p,taskCnt:0,qty:0,amt:0,noRecv:0,failCost:0,shortExp:0,shortMiss:0,inspQty:0,defQty:0,issQ:0,issN:0,issCnt:0};
+    if(!prods[p]) prods[p]={prod:p,taskCnt:0,qty:0,amt:0,noRecv:0,failCost:0,shortExp:0,shortMiss:0,shortEvents:[],inspQty:0,defQty:0,issQ:0,issN:0,issCnt:0};
     const g=prods[p];
     // 재제작 행은 실패비용에만 계상 — 버퍼 반사실 가정(버퍼가 있었다면 재제작 미발생)에서
     // 발주건수·수량·평균단가에 섞으면 같은 행이 예방·실패 양쪽에 이중계상된다(리뷰 지적 반영)
@@ -2064,19 +2069,19 @@ function computeBufferRows(){
     if(cat.includes('수량')) g.issN++;
     const sh=parseShortageFromText(r['수량이슈내용']);
     if(sh){
-      if(sh.ordered){ g.shortExp+=sh.ordered; g.shortMiss+=sh.short; }
+      if(sh.ordered){ g.shortExp+=sh.ordered; g.shortMiss+=sh.short; g.shortEvents.push({ordered:sh.ordered,short:sh.short}); }
       else if(sh.shortOnly){
         // 분모(발주수량)를 컬럼에서 확보할 수 있는 행만 집계 — 두 컬럼 모두 공란이면 그 행이
         // 부족률 100%로 왜곡되므로 제외. 분모는 항상 부족수량 이상으로 보정(100% 초과 방지)
         const colExp=pa(String(r['이동수량_예정']||'')), got=pa(String(r['입하수량']||''));
         if(colExp>0||got>0){
           const exp=Math.max(colExp,got+sh.shortOnly,sh.shortOnly);
-          g.shortExp+=exp; g.shortMiss+=sh.shortOnly;
+          g.shortExp+=exp; g.shortMiss+=sh.shortOnly; g.shortEvents.push({ordered:exp,short:sh.shortOnly});
         }
       }
     } else {
       const exp=pa(String(r['이동수량_예정']||'')), got=pa(String(r['입하수량']||''));
-      if(exp>0&&got>0&&got<exp){ g.shortExp+=exp; g.shortMiss+=exp-got; }
+      if(exp>0&&got>0&&got<exp){ g.shortExp+=exp; g.shortMiss+=exp-got; g.shortEvents.push({ordered:exp,short:exp-got}); }
     }
     const insp=pa(String(r['검수수량']||'')), def=pa(String(r['불량수량_샘플링검수']||''));
     if(insp>0&&def>0&&def<=insp){ g.inspQty+=insp; g.defQty+=def; }
@@ -2085,20 +2090,27 @@ function computeBufferRows(){
     const shortRate=g.shortExp>0?(g.shortMiss/g.shortExp*100):null;
     const defRate=g.inspQty>0?(g.defQty/g.inspQty*100):null;
     const noRecvRate=g.taskCnt>0?(g.noRecv/g.taskCnt*100):null;
-    const rateSum=(shortRate||0)+(defRate||0);
-    const bufPct=rateSum>0?Math.min(10,Math.max(1,Math.ceil(rateSum))):null;
     const avgQty=g.taskCnt>0?g.qty/g.taskCnt:0;
+    // v21.5: 권장여분 = 실제 부족 이벤트 통계 기반 "개수" — 부족이 발생했을 때 평균 몇 개
+    // 부족했는지를 그대로 여분으로 제안. 품질 샘플링 불량률은 산정에서 제외(참고 표시만).
+    const shorts=g.shortEvents.map(e=>e.short).sort((a,b)=>a-b);
+    const shortCnt=shorts.length;
+    const avgShort=shortCnt?shorts.reduce((s,v)=>s+v,0)/shortCnt:null;
+    const medShort=shortCnt?shorts[Math.floor((shortCnt-1)/2)]:null;
+    const maxShort=shortCnt?shorts[shortCnt-1]:null;
+    const bufQty=shortCnt?Math.ceil(avgShort):null;
+    const bufPctRef=(bufQty&&avgQty>0)?(bufQty/avgQty*100):null; // 평균 발주수량 대비 참고 %
     // 단가: 파츠리스트 CSV(D.parts) 업로드 시 DB원가(BOM 합산) 우선, 없으면 평균 매입단가(공급가액÷수량)
     let unit=null, unitSrc='';
     const db=(typeof computeGoodsDbCostForOrder==='function'&&D.parts)?computeGoodsDbCostForOrder(g.prod,Math.max(1,Math.round(avgQty))):null;
     if(db&&db.unitCost>0){ unit=db.unitCost; unitSrc='DB원가'; }
     else if(g.qty>0&&g.amt>0){ unit=g.amt/g.qty; unitSrc='평균매입단가'; }
-    const bufQty=(bufPct&&avgQty>0)?Math.ceil(avgQty*bufPct/100):null;
     const prevCost=(bufQty&&unit)?bufQty*unit*g.taskCnt:null;
     const gap=(prevCost!==null)?g.failCost-prevCost:null;
-    return {...g,shortRate,defRate,noRecvRate,bufPct,avgQty,unit,unitSrc,bufQty,prevCost,gap};
+    return {...g,shortRate,defRate,noRecvRate,avgQty,shortCnt,avgShort,medShort,maxShort,bufQty,bufPctRef,unit,unitSrc,prevCost,gap};
   });
-  rows.sort((a,b)=>(b.failCost-a.failCost)||(b.issCnt-a.issCnt));
+  // 권장여분이 산출된(부족 이력 있는) 제품 우선, 그 안에서 실패비용 내림차순
+  rows.sort((a,b)=>((b.bufQty?1:0)-(a.bufQty?1:0))||(b.failCost-a.failCost)||(b.issCnt-a.issCnt));
   return rows;
 }
 function toggleBufferRow(key){
@@ -2106,31 +2118,43 @@ function toggleBufferRow(key){
   renderOrderBuffer();
 }
 function bufferScenarioHtml(g){
-  const pcts=[...new Set(BUFFER_SCENARIOS.concat(g.bufPct?[g.bufPct]:[]))].sort((a,b)=>a-b);
-  const rows=pcts.map(p=>{
-    const bq=g.avgQty>0?Math.ceil(g.avgQty*p/100):0;
-    const pc=(bq&&g.unit)?bq*g.unit*g.taskCnt:null;
+  if(!g.shortCnt){
+    return `<tr><td colspan="13" style="padding:0;background:var(--surface2)"><div style="padding:10px 16px;font-size:11px;color:var(--text2)">
+      <b>${esc(g.prod)}</b> — 정량화된 부족 이력이 없어 여분수량 시나리오를 산출할 수 없습니다.
+      매칭된 이슈 ${g.issCnt}건(품질 ${g.issQ}·수량 ${g.issN})은 부족수량이 기록되지 않았거나 품질 보수·정상입고로 종결된 건입니다 — 여분 발주 불필요로 판단됩니다.
+    </div></td></tr>`;
+  }
+  // 시나리오 후보: 1개 / 중앙값 / 권장(평균) / 최대 — 과거 부족 이벤트 대비 커버리지와 비용을 함께 비교
+  const cands=[...new Set([1,g.medShort,g.bufQty,g.maxShort].filter(v=>v&&v>0).map(v=>Math.ceil(v)))].sort((a,b)=>a-b);
+  const rows=cands.map(bq=>{
+    const cover=g.shortEvents.filter(e=>e.short<=bq).length/g.shortCnt*100;
+    const pc=g.unit?bq*g.unit*g.taskCnt:null;
     const gap=pc!==null?g.failCost-pc:null;
-    const isRec=p===g.bufPct;
+    const isRec=bq===g.bufQty;
+    const tag=bq===g.maxShort&&!isRec?' (최대부족)':bq===Math.ceil(g.medShort)&&!isRec&&bq!==1?' (중앙값)':'';
     const verdict=gap===null?'—':gap>0?`<span style="color:var(--green);font-weight:600">예방 이득 +${faFull(Math.round(gap))}</span>`:gap<0?`<span style="color:var(--red)">예방비용 초과 ${faFull(Math.round(gap))}</span>`:'동일';
     return `<tr${isRec?' style="background:var(--blue-light)"':''}>
-      <td class="num" style="font-weight:${isRec?'700':'400'}">${p}%${isRec?' ★권장':''}</td>
-      <td class="num">${bq?bq.toLocaleString()+'개':'—'}</td>
+      <td class="num" style="font-weight:${isRec?'700':'400'}">${bq.toLocaleString()}개${isRec?' ★권장(평균)':tag}</td>
+      <td class="num" style="font-weight:600;color:${cover>=80?'var(--green)':cover>=50?'var(--amber)':'var(--red)'}">${cover.toFixed(0)}%</td>
       <td class="num">${pc!==null?faFull(Math.round(pc)):'—'}</td>
       <td class="num">${faFull(Math.round(g.failCost))}</td>
       <td class="num">${gap!==null?(gap>=0?'+':'')+faFull(Math.round(gap)):'—'}</td>
       <td style="font-size:11px">${verdict}</td>
     </tr>`;
   }).join('');
+  const evList=g.shortEvents.map(e=>`${e.short}개(발주 ${e.ordered})`).join(' · ');
   return `<tr><td colspan="13" style="padding:0;background:var(--surface2)"><div style="padding:10px 16px">
-    <div style="font-size:11px;color:var(--text2);margin-bottom:6px"><b>${esc(g.prod)}</b> — 여분수량 시나리오 비교 · 평균 1회 발주 ${Math.round(g.avgQty).toLocaleString()}개 · 발주 ${g.taskCnt}건 · 단가 ${g.unit?faFull(Math.round(g.unit))+' ('+g.unitSrc+')':'산출불가'} · 예방비용 = 여분수량 × 단가 × 발주건수(이력 전체 적용 가정)</div>
-    <table class="tbl"><thead><tr><th class="num">버퍼%</th><th class="num">여분수량/회</th><th class="num">예방비용(이력 적용 시)</th><th class="num">실패비용(실제)</th><th class="num">차액(실패−예방)</th><th>판정</th></tr></thead><tbody>${rows}</tbody></table>
+    <div style="font-size:11px;color:var(--text2);margin-bottom:6px"><b>${esc(g.prod)}</b> — 여분수량 시나리오 · 부족 이력 ${g.shortCnt}건: ${esc(crop(evList,120))} · 평균 1회 발주 ${Math.round(g.avgQty).toLocaleString()}개 · 발주 ${g.taskCnt}건 · 단가 ${g.unit?faFull(Math.round(g.unit))+' ('+g.unitSrc+')':'산출불가'}</div>
+    <table class="tbl"><thead><tr><th class="num">여분수량/회</th><th class="num">과거 부족 커버리지</th><th class="num">예방비용(이력 적용 시)</th><th class="num">실패비용(실제)</th><th class="num">차액(실패−예방)</th><th>판정</th></tr></thead><tbody>${rows}</tbody></table>
+    <div style="font-size:10px;color:var(--text3);margin-top:6px">커버리지 = 과거 부족 발생 건 중 해당 여분수량으로 전량 충당됐을 건의 비율 · 예방비용 = 여분수량 × 단가 × 발주건수(이력 전체에 여분을 실었다고 가정)</div>
   </div></td></tr>`;
 }
 function renderOrderBuffer(){
   const tbody=document.getElementById('tb-ord-buffer'); if(!tbody) return;
   if(!D.order||!D.issue){ tbody.innerHTML=emptyRow(13,'발주_RAW + 이슈_RAW 업로드 필요'); const k=document.getElementById('buf-kpi-row'); if(k) k.innerHTML=''; return; }
-  const rows=computeBufferRows();
+  const all=computeBufferRows();
+  const f=BUF_FILTER.toLowerCase();
+  const rows=f?all.filter(g=>g.prod.toLowerCase().includes(f)):all;
   const kEl=document.getElementById('buf-kpi-row');
   if(kEl){
     const failSum=rows.reduce((s,g)=>s+g.failCost,0);
@@ -2140,12 +2164,12 @@ function renderOrderBuffer(){
     const prevSum=comparable.reduce((s,g)=>s+g.prevCost,0);
     const gapSum=comparable.reduce((s,g)=>s+g.failCost,0)-prevSum;
     kEl.innerHTML=`
-      <div class="kpi-card c-blue"><div class="kpi-label">분석 대상 제품</div><div class="kpi-val">${rows.length}</div><div class="kpi-sub">이슈 이력 매칭 제품 (당해+전년)</div></div>
+      <div class="kpi-card c-blue"><div class="kpi-label">분석 대상 제품</div><div class="kpi-val">${rows.length}</div><div class="kpi-sub">이슈 이력 매칭 제품 (당해+전년)${f?' · 필터 적용':''} · 부족 이력 보유 ${rows.filter(g=>g.bufQty).length}개</div></div>
       <div class="kpi-card c-red"><div class="kpi-label">실패비용(실제)</div><div class="kpi-val">${fa(failSum)}</div><div class="kpi-sub">재제작 TASK 취득원가 합계</div></div>
-      <div class="kpi-card c-amber"><div class="kpi-label">예방비용(권장버퍼 적용 시)</div><div class="kpi-val">${fa(prevSum)}</div><div class="kpi-sub">권장 여분수량 × 단가 × 발주건수</div></div>
+      <div class="kpi-card c-amber"><div class="kpi-label">예방비용(권장여분 적용 시)</div><div class="kpi-val">${fa(prevSum)}</div><div class="kpi-sub">권장 여분수량 × 단가 × 발주건수</div></div>
       <div class="kpi-card ${gapSum>=0?'c-green':'c-red'}"><div class="kpi-label">차액(실패−예방)</div><div class="kpi-val">${gapSum>=0?'+':'−'}${fa(Math.abs(Math.round(gapSum)))}</div><div class="kpi-sub">예방비용 산출 가능 ${comparable.length}개 제품 기준 — ${gapSum>=0?'버퍼 도입이 재제작 대비 경제적':'예방비용이 실패비용보다 큼, 차액 양수(초록) 제품에 선별 적용 권장'}</div></div>`;
   }
-  if(!rows.length){ tbody.innerHTML=emptyRow(13,'이슈가 매칭된 제품 없음'); return; }
+  if(!rows.length){ tbody.innerHTML=emptyRow(13,f?'필터와 일치하는 제품 없음':'이슈가 매칭된 제품 없음'); return; }
   const pct=(v,digits=1)=>v===null?'—':v.toFixed(digits)+'%';
   tbody.innerHTML=rows.map((g,i)=>{
     // 제품명 내 개행은 공백으로 정규화한 키를 저장·전달 양쪽에 동일 사용, 백슬래시는 JS 리터럴용
@@ -2155,14 +2179,14 @@ function renderOrderBuffer(){
     let html=`<tr style="cursor:pointer" onclick="toggleBufferRow('${esc(rowKey).replace(/\\/g,'\\\\').replace(/'/g,"\\'")}')">
       <td class="rank">${i+1}</td>
       <td style="font-size:11px">${esc(crop(g.prod,30))}</td>
+      <td class="num" style="${g.bufQty?'font-weight:700;background:var(--blue-light);color:var(--blue)':'color:var(--text3)'}">${g.bufQty?g.bufQty.toLocaleString()+'개'+(g.bufPctRef?` <span style="font-size:9px;font-weight:400;color:var(--text3)">(${g.bufPctRef.toFixed(1)}%)</span>`:''):'—'}</td>
       <td class="num">${g.taskCnt}</td>
-      <td class="num">${g.qty.toLocaleString()}</td>
-      <td class="num" style="font-size:11px">${g.issQ}/${g.issN}</td>
-      <td class="num" style="color:${g.noRecvRate>1.56?'var(--red)':'var(--text2)'}">${pct(g.noRecvRate,2)}</td>
+      <td class="num">${g.shortCnt||'—'}</td>
+      <td class="num">${g.avgShort!==null?g.avgShort.toFixed(1)+'개':'—'}</td>
+      <td class="num">${g.maxShort!==null?g.maxShort.toLocaleString()+'개':'—'}</td>
       <td class="num">${pct(g.shortRate)}</td>
-      <td class="num">${pct(g.defRate)}</td>
-      <td class="num" style="font-weight:700;color:${g.bufPct>=5?'var(--red)':g.bufPct>=3?'var(--amber)':g.bufPct?'var(--blue)':'var(--text3)'}">${g.bufPct?g.bufPct+'%':'—'}</td>
-      <td class="num">${g.bufQty?g.bufQty.toLocaleString()+'개':'—'}</td>
+      <td class="num" style="color:${g.noRecvRate>1.56?'var(--red)':'var(--text2)'}">${pct(g.noRecvRate,2)}</td>
+      <td class="num" style="color:var(--text3)">${pct(g.defRate)}</td>
       <td class="num">${g.prevCost!==null?faFull(Math.round(g.prevCost)):'—'}</td>
       <td class="num" style="${g.failCost>0?'color:var(--red);font-weight:600':''}">${g.failCost>0?faFull(Math.round(g.failCost)):'0'}</td>
       <td class="num" style="font-weight:600;color:${g.gap===null?'var(--text3)':g.gap>0?'var(--green)':g.gap<0?'var(--red)':'var(--text2)'}">${g.gap!==null?(g.gap>=0?'+':'')+faFull(Math.round(g.gap)):'—'}</td>
