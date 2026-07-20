@@ -1,15 +1,16 @@
 name: weekly-airtable-progress
 
-# 매주 월요일 09:00 KST (= 00:00 UTC) 에어테이블에서 두 종류의 CSV를 갱신한다:
+# 매주 목요일 13:00 KST (= 04:00 UTC) 에어테이블에서 두 종류의 CSV를 갱신한다:
 #   1. 진행현황·매출결산 — CSV/progress_YYYY_WNN.csv / project_YYYY_WNN.csv
 #      (주차별 신규 파일, fetch_airtable_weekly.mjs)
 #   2. 발주/이슈/협력사 등 고정 파일명 CSV — CSV/order.csv 등을 그 자리에서
 #      갱신(AIRTABLE_SOURCES 변수로 설정된 항목만, fetch_airtable_sources.mjs)
 #      — 덮어쓰기 전 이전 버전을 CSV_BANK로 자동 아카이브(협력사는 월간 스냅샷도)
-# 수동 실행(workflow_dispatch)도 가능.
+# 수동 실행(workflow_dispatch)도 가능 — 대시보드의 "지금 새로고침" 버튼도
+# 이 워크플로를 GitHub API로 직접 트리거한다(§9 참고).
 on:
   schedule:
-    - cron: '0 0 * * 1'
+    - cron: '0 4 * * 4'
   workflow_dispatch:
 
 permissions:
