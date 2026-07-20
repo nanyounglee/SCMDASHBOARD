@@ -81,14 +81,24 @@ if (!issueSrc || !issueSrc.base || !issueSrc.table) {
   console.log('AIRTABLE_SOURCES에 issue 항목이 없어 프로브를 건너뜁니다.');
 } else {
   try {
-    // 뷰 없이 테이블 원본에서 최근 생성순 100건 — 이슈 뷰 밖의 레코드가 섞여 나오는지,
-    // 그 레코드에도 검수수량이 기록돼 있는지 본다.
-    const u = new URL(`https://api.airtable.com/v0/${issueSrc.base}/${encodeURIComponent(issueSrc.table)}`);
-    u.searchParams.set('pageSize', '100');
-    u.searchParams.set('cellFormat', 'string');
-    u.searchParams.set('timeZone', 'Asia/Seoul');
-    u.searchParams.set('userLocale', 'ko');
-    const { records } = await api(u.toString());
+    // 뷰 없이 테이블 원본을 조회 — 이슈 뷰 밖의 레코드(일반 입하 건)에도 검수수량이
+    // 기록돼 있는지 본다. 뷰 없는 조회는 순서가 임의라 오래된 레코드만 뽑힐 수 있어,
+    // 실제입하일 내림차순 정렬로 "최근 입하 100건"을 표본으로 삼는다(정렬 필드가 없어
+    // 에러가 나면 정렬 없이 재시도).
+    const mk = (sorted) => {
+      const u = new URL(`https://api.airtable.com/v0/${issueSrc.base}/${encodeURIComponent(issueSrc.table)}`);
+      u.searchParams.set('pageSize', '100');
+      u.searchParams.set('cellFormat', 'string');
+      u.searchParams.set('timeZone', 'Asia/Seoul');
+      u.searchParams.set('userLocale', 'ko');
+      if (sorted) { u.searchParams.set('sort[0][field]', '실제입하일'); u.searchParams.set('sort[0][direction]', 'desc'); }
+      return u.toString();
+    };
+    let records, sortNote;
+    try { ({ records } = await api(mk(true))); sortNote = '실제입하일 내림차순(최근 입하 우선)'; }
+    catch (e) { ({ records } = await api(mk(false))); sortNote = '정렬 없음(임의 순서 — 실제입하일 필드로 정렬 실패: ' + e.message.slice(0, 120) + ')'; }
+    const dates = records.map(r => String(r.fields['실제입하일'] ?? '').trim()).filter(Boolean);
+    console.log(`표본: ${sortNote} · 실제입하일 범위 ${dates.length ? dates[dates.length - 1] + ' ~ ' + dates[0] : '(날짜 값 없음)'}`);
     const total = records.length;
     const has = (r, f) => String(r.fields[f] ?? '').trim() !== '';
     const nonIssue = records.filter(r => !has(r, '이슈카테고리'));
