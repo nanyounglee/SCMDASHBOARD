@@ -969,12 +969,46 @@ function getCostTierValue(obj,qty){
 function getProcessesForGoods(goodsCode){
   return COST_DB.process.filter(p=>p.gc===goodsCode);
 }
+// v21.16: 공정 표준단가를 parts.csv 최신 단가로 산출 (사용자 지시 — 매주 갱신되는 신규 단가를
+// 원가 로직에 사용). 공정 구성(items)의 PT별로 parts.csv 구간단가(내림)를 합산하고, parts.csv에
+// 없는 파츠는 cost_db 단가DB로, 그마저 없거나 D.parts 미로드면 기존 공정 합산값(6/24 스냅샷)으로 폴백.
+let PARTS_PT_IDX=null, PARTS_PT_SRC=null;
+function getPartsPTIndex(){
+  if(PARTS_PT_SRC!==D.parts){
+    PARTS_PT_IDX={};
+    (D.parts||[]).forEach(r=>{const m=String(r['파츠명 (Long ver)']||'').match(/PT\d+/); if(m&&!PARTS_PT_IDX[m[0]])PARTS_PT_IDX[m[0]]=r;});
+    PARTS_PT_SRC=D.parts;
+  }
+  return PARTS_PT_IDX;
+}
+let DB_PRICE_IDX=null, DB_PRICE_SRC=null;
+function getDbPriceIndex(){
+  if(DB_PRICE_SRC!==COST_DB.price){
+    DB_PRICE_IDX={};
+    (COST_DB.price||[]).forEach(p=>{const m=String(p.item||'').match(/PT\d+/); if(m&&!DB_PRICE_IDX[m[0]])DB_PRICE_IDX[m[0]]=p;});
+    DB_PRICE_SRC=COST_DB.price;
+  }
+  return DB_PRICE_IDX;
+}
+function getProcStdUnit(proc,qty){
+  const pts=[...new Set(String(proc.items||'').match(/PT\d+/g)||[])];
+  if(!pts.length||!D.parts) return getCostTierValue(proc,qty);
+  const pIdx=getPartsPTIndex(), dIdx=getDbPriceIndex();
+  let sum=0, any=false;
+  pts.forEach(id=>{
+    const pr=pIdx[id];
+    if(pr){ const r=partTierCost(pr,qty); if(r){ sum+=r.value; any=true; return; } }
+    const dp=dIdx[id];
+    if(dp){ sum+=getCostTierValue(dp,qty); any=true; }
+  });
+  return any?sum:getCostTierValue(proc,qty);
+}
 function calcProjectCost(goodsCode,qty){
   const procs=getProcessesForGoods(goodsCode);
   if(!procs.length) return {total:0,details:[],method:'no_process'};
   let total=0;const details=[];
   procs.forEach(p=>{
-    const procCost=getCostTierValue(p,qty);
+    const procCost=getProcStdUnit(p,qty);
     const sub=procCost*qty;
     total+=sub;
     details.push({id:p.id,tc:p.tc,sup:p.sup,isStock:p.isStock==='Y',mfg:p.mfg,unitCost:procCost,qty,sub});
@@ -3092,6 +3126,17 @@ async function detectPartsChanges(){
       const prevGrad=String(pr['파츠졸업 Status']||'').includes('졸업');
       const curGrad=String(r['파츠졸업 Status']||'').includes('졸업');
       if(!prevGrad&&curGrad) entries.push({id:'part_grad|'+id+'|'+cur.label,type:'part_grad',name,date:dateKey,detail:[sup,detail].filter(Boolean).join(' · ')});
+      // v21.16: 단가 변경 감지 — 구간별 표준원가 비교(0으로의 삭제성 변경은 제외)
+      const tiers=[1,50,100,300,500,1000,3000,5000,10000,30000];
+      const chg=[]; let hi=0,lo=0;
+      tiers.forEach(t=>{
+        const pv=parseFloat(String(r[t+'개_표준원가']||'').replace(/,/g,'')), dv=parseFloat(String(pr[t+'개_표준원가']||'').replace(/,/g,''));
+        if(isNaN(pv)||isNaN(dv)||pv===dv||pv===0) return;
+        chg.push(t+'개 '+dv.toLocaleString()+'→'+pv.toLocaleString());
+        if(pv>dv)hi++; else lo++;
+      });
+      if(chg.length) entries.push({id:'part_price|'+id+'|'+cur.label,type:'part_price',name,date:dateKey,
+        detail:'단가 '+(hi&&lo?'변경(혼재)':hi?'인상':'인하')+': '+chg.slice(0,3).join(' · ')+(chg.length>3?' 외 '+(chg.length-3)+'구간':'')+(sup?' · '+sup:'')});
     });
     const prevGoods=goodsSetOf(prev.rows), curGoods=goodsSetOf(cur.rows);
     prevGoods.forEach(g=>{ if(!curGoods.has(g)) entries.push({id:'goods_unlinked|'+g+'|'+cur.label,type:'goods_unlinked',name:g,date:dateKey,detail:['파츠 연결 해제',detail].filter(Boolean).join(' · ')}); });
@@ -3131,7 +3176,7 @@ function persistChangeLog(newOnes){
     .catch(e=>console.error('change_log commit failed',e));
 }
 function toggleNoticeHistory(){ NOTICE_HISTORY_OPEN=!NOTICE_HISTORY_OPEN; renderMonthlyNotice(); }
-function noticeTypeLabel(t){ return {product_graduated:'🎓 졸업',product_launched:'🚀 출시',sup_added:'🆕 신규협력사',sup_terminated:'🔚 거래종료협력사',part_new:'🧩 신규 파츠',part_grad:'🧩 파츠 졸업',goods_unlinked:'🎓 제품 졸업(파츠연결해제)'}[t]||t; }
+function noticeTypeLabel(t){ return {product_graduated:'🎓 졸업',product_launched:'🚀 출시',sup_added:'🆕 신규협력사',sup_terminated:'🔚 거래종료협력사',part_new:'🧩 신규 파츠',part_grad:'🧩 파츠 졸업',goods_unlinked:'🎓 제품 졸업(파츠연결해제)',part_price:'💲 파츠 단가변경'}[t]||t; }
 function renderChangeHistoryToggle(allEntries){
   const sorted=allEntries.slice().sort((a,b)=>a.date<b.date?1:a.date>b.date?-1:0);
   return `<div style="grid-column:1/-1;margin-top:4px">
@@ -3169,8 +3214,8 @@ function renderMonthlyNotice() {
   const gradNames=new Set(gradRows.map(e=>String(e.name).replace(/\s*\(.*\)$/,'')));
   const unlinkedRows=byType('goods_unlinked').filter(e=>!gradNames.has(String(e.name)));
   const gradAllRows=gradRows.concat(unlinkedRows);
-  const partNewRows=byType('part_new'), partGradRows=byType('part_grad');
-  const partRows=partNewRows.map(e=>({...e,name:'신규: '+e.name})).concat(partGradRows.map(e=>({...e,name:'졸업: '+e.name})));
+  const partNewRows=byType('part_new'), partGradRows=byType('part_grad'), partPriceRows=byType('part_price');
+  const partRows=partNewRows.map(e=>({...e,name:'신규: '+e.name})).concat(partGradRows.map(e=>({...e,name:'졸업: '+e.name}))).concat(partPriceRows.map(e=>({...e,name:'단가: '+e.name})));
 
   // 3) 품절 제품 — stockout_list.csv 판매상태+변경일 기준(졸업 성격 제외) + 수동입력 보강. 기존 그대로 선택 기간 연동.
   let stockRows=[], manualStock=[];
@@ -3205,7 +3250,7 @@ function renderMonthlyNotice() {
   const addedHtml = D.sup ? noticeBox('🆕 신규 협력사',addedRows.length,addedRows.map(fmtEntry)) : noticeEmptyBox('신규 협력사','sup.csv 업로드 필요');
   const removedHtml = D.sup ? noticeBox('🔚 거래종료 협력사',removedRows.length,removedRows.map(fmtEntry)) : noticeEmptyBox('거래종료 협력사','sup.csv 업로드 필요');
 
-  const partHtml = D.parts ? noticeBox('🧩 파츠 신규/졸업',partRows.length,partRows.map(fmtEntry)) : noticeEmptyBox('파츠 신규/졸업','parts.csv 업로드 필요');
+  const partHtml = D.parts ? noticeBox('🧩 파츠 변경(신규·졸업·단가)',partRows.length,partRows.map(fmtEntry)) : noticeEmptyBox('파츠 변경','parts.csv 업로드 필요');
 
   wrap.innerHTML=gradHtml+launchHtml+stockHtml+addedHtml+removedHtml+partHtml+renderChangeHistoryToggle(allEntries);
 }
@@ -6184,7 +6229,7 @@ function renderCostProjectDetail() {
       const taskId=(r['task_id']||'').split('_');
       const tc=taskId[taskId.length-1]||'';
       const proc=procs.find(p=>p.tc===tc);
-      const stdCost=proc?getCostTierValue(proc,qty):0;
+      const stdCost=proc?getProcStdUnit(proc,qty):0; // v21.16: parts.csv 최신 단가 합산(폴백: 6/24 스냅샷)
       const diff=stdCost>0&&unitCost>0?((unitCost-stdCost)/stdCost*100):null;
       const diffBadge=diff===null?'<span style="color:var(--text3)">—</span>':diff<=0?`<span style="color:var(--green);font-weight:600">${diff.toFixed(1)}%</span>`:`<span style="color:var(--red);font-weight:600">+${diff.toFixed(1)}%</span>`;
       return `<tr><td class="rank">${i+1}</td><td style="font-size:10px;color:var(--text3)">${esc(crop((r['task_id']||'').replace(COST_SEL_PROJECT+'_',''),20))}</td><td style="font-size:11px">${esc(crop(r['산출물']||'',25))}</td><td style="font-size:11px">${esc(r['수주처']||'')}</td><td class="num">${qty.toLocaleString()}</td><td class="num">${unitCost>0?unitCost.toLocaleString()+'원':'<span style="color:var(--text3)">미입력</span>'}</td><td class="num">${sup>0?faFull(sup):'—'}</td><td class="num">${stdCost>0?stdCost.toLocaleString()+'원':'—'}</td><td class="num">${diffBadge}</td></tr>`;
