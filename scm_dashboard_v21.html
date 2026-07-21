@@ -522,7 +522,7 @@ a{color:var(--blue);text-decoration:none}
           <th class="num">미입하율</th><th class="num">불량률(참고)</th>
           <th class="num">예방비용(예상)</th><th class="num">실패비용(실제)</th><th class="num">차액(실패−예방)</th>
         </tr></thead><tbody id="tb-ord-buffer"></tbody></table></div>
-        <div style="font-size:10px;color:var(--text3);margin-top:8px">※ <b>권장여분/회</b> = 부족 이벤트마다 그 발주의 실제 여분(발주지시수량−고객주문수량, movement 매칭·미매칭 시 관행 평균으로 추정)으로 커버됐는지 판정 → <b>여분으로 커버 가능한 미커버 부족의 평균 부족수량(올림)</b>. 미커버가 없으면 <span style="color:var(--green)">유지</span> 배지와 함께 현행 관행 수준(반올림) 권장 · <b>여분 범위 밖(재제작 대응)</b>: 단가 1,000원 미만 파츠는 부족이 발주수량의 50% 이상, 그 외는 여분 제작비가 전체 제작비의 10% 이상(=부족이 발주수량의 10% 이상)인 건 — 권장 산정에서 제외하고 <span style="color:var(--red)">재제작 N</span> 배지로 분리 표시(과다 권장 방지) · 부족수량은 수량이슈내용 텍스트("N개 발주/M개 입하"·"N개 부족")와 이동수량 컬럼에서 추출, 괄호 %는 평균 1회 발주수량 대비 참고 비율 · <b>현재 여분/회(관행)</b> = (발주지시수량 − 고객주문수량)의 건별 평균 — 괄호 %는 Σ여분÷Σ고객주문(가중), 발주&lt;고객(분할발주)·재제작 행 제외 · <b>관행 진단</b>: <span style="color:var(--red)">상향 검토</span>=여분을 초과한 부족(미커버) 발생 / <span style="color:var(--green)">커버됨(유지)</span>=부족 전건이 당시 여분 범위 내(고객주문 방어) / <span style="color:var(--amber)">과다 가능</span>=부족 0 & 관행 여분율 5%↑(전사 중앙값 2.9%의 2배) / <span style="color:var(--green)">적정</span>=부족 0 & 5% 미만 · <b>부족발생</b> = 부족수량이 확인된 이슈 건수 · <b>부족률</b> = Σ부족 ÷ Σ발주(부족 발생 건 기준) · <b>불량률(참고)</b> = 샘플링검수 불량수량÷검수수량 — 보수·B급 입고로 종결되는 경우가 많아 <b>여분 산정에서 제외</b>(불량이 부족으로 이어진 건은 수량이슈에 이미 반영) · <b>예방비용</b> = 권장여분 × 단가(공급가액÷발주수량, 파츠리스트 CSV 시 DB원가 우선) × 발주건수(이력 전체 적용 가정) · <b>실패비용</b> = 재제작 TASK 취득원가 합계(재제작 행은 발주건수·단가 집계에서 제외) · <b>차액>0</b>이면 여분 도입이 재제작보다 경제적 · ⚠ 예방 단가와 실패비용은 원가 기준(공급가액 vs 취득원가)이 달라 근사 비교 · <b>구간차등 배지</b> = 발주수량 구간(500 미만/500~999/1,000↑)별 권장 여분이 서로 다른 제품 — 행 클릭 시 구간별 권장·구간 단가(그 구간 발주만의 Σ공급가액÷Σ수량 — 전체 평균 단가는 대량 발주 저단가에 끌려 소량 발주 여분 원가를 과소평가) 표 확인</div>
+        <div style="font-size:10px;color:var(--text3);margin-top:8px">※ <b>권장여분/회</b> = 부족 이벤트마다 그 발주의 실제 여분(발주지시수량−고객주문수량, movement 매칭·미매칭 시 관행 평균으로 추정)으로 커버됐는지 판정 → <b>여분으로 커버 가능한 미커버 부족의 평균 부족수량(올림)</b>. 미커버가 없으면 <span style="color:var(--green)">유지</span> 배지와 함께 현행 관행 수준(반올림) 권장 · <b>여분 범위 밖(재제작 대응)</b>: 단가 1,000원 미만 파츠는 부족이 발주수량의 50% 이상, 그 외는 여분 제작비가 전체 제작비의 10% 이상(=부족이 발주수량의 10% 이상)인 건 — 권장 산정에서 제외하고 <span style="color:var(--red)">재제작 N</span> 배지로 분리 표시(과다 권장 방지) · <b>전량재제작 관행 제외</b>: 저단가(1,000원 미만) 파츠 중 평균 발주수량의 50% 이상 규모 재제작 이력이 있는 제품(배경지 등 불량 시 전량 재제작)은 여분 권장 대상에서 통째로 제외 — <span style="color:var(--red)">전량재제작</span> 배지 · 부족수량은 수량이슈내용 텍스트("N개 발주/M개 입하"·"N개 부족")와 이동수량 컬럼에서 추출, 괄호 %는 평균 1회 발주수량 대비 참고 비율 · <b>현재 여분/회(관행)</b> = (발주지시수량 − 고객주문수량)의 건별 평균 — 괄호 %는 Σ여분÷Σ고객주문(가중), 발주&lt;고객(분할발주)·재제작 행 제외 · <b>관행 진단</b>: <span style="color:var(--red)">상향 검토</span>=여분을 초과한 부족(미커버) 발생 / <span style="color:var(--green)">커버됨(유지)</span>=부족 전건이 당시 여분 범위 내(고객주문 방어) / <span style="color:var(--amber)">과다 가능</span>=부족 0 & 관행 여분율 5%↑(전사 중앙값 2.9%의 2배) / <span style="color:var(--green)">적정</span>=부족 0 & 5% 미만 · <b>부족발생</b> = 부족수량이 확인된 이슈 건수 · <b>부족률</b> = Σ부족 ÷ Σ발주(부족 발생 건 기준) · <b>불량률(참고)</b> = 샘플링검수 불량수량÷검수수량 — 보수·B급 입고로 종결되는 경우가 많아 <b>여분 산정에서 제외</b>(불량이 부족으로 이어진 건은 수량이슈에 이미 반영) · <b>예방비용</b> = 권장여분 × 단가(공급가액÷발주수량, 파츠리스트 CSV 시 DB원가 우선) × 발주건수(이력 전체 적용 가정) · <b>실패비용</b> = 재제작 TASK 취득원가 합계(재제작 행은 발주건수·단가 집계에서 제외) · <b>차액>0</b>이면 여분 도입이 재제작보다 경제적 · ⚠ 예방 단가와 실패비용은 원가 기준(공급가액 vs 취득원가)이 달라 근사 비교 · <b>구간차등 배지</b> = 발주수량 구간(500 미만/500~999/1,000↑)별 권장 여분이 서로 다른 제품 — 행 클릭 시 구간별 권장·구간 단가(그 구간 발주만의 Σ공급가액÷Σ수량 — 전체 평균 단가는 대량 발주 저단가에 끌려 소량 발주 여분 원가를 과소평가) 표 확인</div>
       </div>
       <!-- v21.10: 예방비용 vs 실패비용 — 여분 투자 효과 (모면 사건 실측 포함) -->
       <div class="card" style="margin-top:16px">
@@ -1233,8 +1233,13 @@ function calcElapsedDays(r) {
   const end=actual||new Date();
   return Math.round((end-target)/86400000);
 }
+// v21.20: 실제입하일 lookup이 비어 있어도 입하여부에 '입하완료'가 있으면 입하로 인정 —
+// MM(movement)에서 입하완료 처리됐는데 실제입하일 필드만 공란인 21건이 하도급 위험 목록에
+// 오탐으로 올라오던 문제 수정('미입하' 명시값이 섞여 있으면 미입하 유지)
 function isArrived(r) {
-  return !!(r['실제입하일 (from movement)']||'').trim();
+  if((r['실제입하일 (from movement)']||'').trim()) return true;
+  const yn=String(r['입하여부']||'');
+  return yn.includes('입하완료')&&!yn.includes('미입하');
 }
 // v9 기준 단일화: 미입하 = '미입하 발생이력_movement' 이력 기준 (카드·Task탭·트래커·AI 공통)
 function hasNoReceipt(r) {
@@ -2298,11 +2303,12 @@ function computeBufferRows(){
   const prods={};
   orders.forEach(r=>{
     const p=(r['산출물']||'').trim(); if(!p) return;
-    if(!prods[p]) prods[p]={prod:p,taskCnt:0,qty:0,amt:0,noRecv:0,failCost:0,shortExp:0,shortMiss:0,shortEvents:[],inspQty:0,defQty:0,issQ:0,issN:0,issCnt:0,custQty:0,bufGiven:0,bufRows:0,orderRows:[]};
+    if(!prods[p]) prods[p]={prod:p,taskCnt:0,qty:0,amt:0,noRecv:0,failCost:0,shortExp:0,shortMiss:0,shortEvents:[],inspQty:0,defQty:0,issQ:0,issN:0,issCnt:0,custQty:0,bufGiven:0,bufRows:0,orderRows:[],reworkQtys:[]};
     const g=prods[p];
     // 재제작 행은 실패비용에만 계상 — 버퍼 반사실 가정(버퍼가 있었다면 재제작 미발생)에서
     // 발주건수·수량·평균단가에 섞으면 같은 행이 예방·실패 양쪽에 이중계상된다(리뷰 지적 반영)
-    if(String(r['task_id']||'').includes('재제작')){ g.failCost+=pa(r['취득원가']); return; }
+    // v21.20: 재제작 수량도 수집 — 저단가 파츠의 "전량 재제작 관행" 판정용
+    if(String(r['task_id']||'').includes('재제작')){ g.failCost+=pa(r['취득원가']); g.reworkQtys.push(pa(String(r['발주지시수량']||''))); return; }
     const oq=pa(String(r['발주지시수량']||''));
     g.taskCnt++; g.qty+=oq; g.amt+=pa(r['공급가액']);
     // v21.7: 현재 관행 여분 — 고객주문수량(고객이 실제 구매한 수량) 대비 발주지시수량 초과분.
@@ -2373,8 +2379,12 @@ function computeBufferRows(){
     const capRate=(unitForCap!=null&&unitForCap<1000)?0.5:0.1;
     const bufferable=uncovered.filter(e=>e.ordered>0&&(e.short/e.ordered)<capRate);
     const outscope=uncovered.length-bufferable.length;
+    // v21.20 (사용자 지시): 배경지류 저단가(<1,000원) 파츠는 불량 시 전량 재제작 관행 —
+    // 평균 발주수량의 50% 이상 규모의 재제작 이력이 있으면 여분으로 해결할 문제가 아니므로
+    // 그 제품은 권장 산정에서 통째로 제외(전량재제작 배지로 표시)
+    const fullRework=(unitForCap!=null&&unitForCap<1000&&avgQty>0)&&g.reworkQtys.some(q2=>q2>0&&q2>=0.5*avgQty);
     let bufQty=null, bufMode=null;
-    if(shortCnt){
+    if(shortCnt&&!fullRework){
       if(bufferable.length){ bufQty=Math.ceil(bufferable.reduce((s,e)=>s+e.short,0)/bufferable.length); bufMode='raise'; }
       else if(curBufAvg!=null&&curBufAvg>0){ bufQty=Math.max(1,Math.round(curBufAvg)); bufMode='keep'; }
       else if(outscope===0){ bufQty=Math.ceil(avgShort); bufMode='raise'; }
@@ -2392,7 +2402,8 @@ function computeBufferRows(){
     // v21.7: 관행 진단 — 상향/여분 무관 부족/과다 가능/적정 (v21.18: 미커버 기준으로 재정의)
     let practice=null;
     if(curBufAvg!==null){
-      if(shortCnt>0){
+      if(fullRework) practice={label:'전량재제작 관행',color:'var(--amber)',tip:'저단가 파츠(단가 '+Math.round(unitForCap)+'원) · 평균 발주수량의 50% 이상 규모 재제작 이력 — 불량 시 전량 재제작으로 대응하는 제품이라 여분 권장 제외'};
+      else if(shortCnt>0){
         if(bufferable.length) practice={label:'상향 검토',color:'var(--red)',tip:'여분으로 커버 가능한 미커버 부족 '+bufferable.length+'건 — 그 평균 부족수량으로 상향'+(outscope?' (여분 범위 밖 '+outscope+'건은 재제작 대응)':'')};
         else if(outscope>0) practice={label:'재제작 영역',color:'var(--amber)',tip:'미커버 부족 '+outscope+'건 전부 여분 범위 밖(단가 1,000원 미만은 발주수량의 50%↑, 그 외 10%↑ 부족) — 여분이 아닌 재제작으로 대응, 관행은 현행 유지'};
         else practice={label:'커버됨(유지)',color:'var(--green)',tip:'부족 '+shortCnt+'건 전부 당시 여분 범위 내 — 고객주문 수량은 방어됨, 현행 관행('+curBufAvg.toFixed(1)+'개) 유지'};
@@ -2424,7 +2435,7 @@ function computeBufferRows(){
       return {label:b.label,orderCnt:ords.length,shortCnt:evs.length,avgShort:bAvg,rec,mode,unit:(bQty>0&&bAmt>0)?bAmt/bQty:null};
     }).filter(b=>b.orderCnt>0||b.shortCnt>0);
     const bracketVaried=[...new Set(brackets.filter(b=>b.rec).map(b=>b.rec))].length>1;
-    return {...g,shortRate,defRate,noRecvRate,avgQty,shortCnt,avgShort,medShort,maxShort,bufQty,bufMode,uncoveredCnt,outscope,avgGap,bufPctRef,unit,unitSrc,prevCost,gap,curBufAvg,curBufPct,practice,brackets,bracketVaried};
+    return {...g,shortRate,defRate,noRecvRate,avgQty,shortCnt,avgShort,medShort,maxShort,bufQty,bufMode,uncoveredCnt,outscope,fullRework,avgGap,bufPctRef,unit,unitSrc,prevCost,gap,curBufAvg,curBufPct,practice,brackets,bracketVaried};
   });
   // 권장여분이 산출된(부족 이력 있는) 제품 우선, 그 안에서 실패비용 내림차순
   rows.sort((a,b)=>((b.bufQty?1:0)-(a.bufQty?1:0))||(b.failCost-a.failCost)||(b.issCnt-a.issCnt));
@@ -2516,7 +2527,7 @@ function renderOrderBuffer(){
     let html=`<tr style="cursor:pointer" onclick="toggleBufferRow('${esc(rowKey).replace(/\\/g,'\\\\').replace(/'/g,"\\'")}')">
       <td class="rank">${i+1}</td>
       <td style="font-size:11px">${esc(crop(g.prod,30))}</td>
-      <td class="num" title="${g.shortCnt?esc('부족 '+g.shortCnt+'건 중 미커버 '+(g.uncoveredCnt||0)+'건'+(g.outscope?' · 그중 여분 범위 밖(재제작 대응) '+g.outscope+'건 제외':'')+(g.uncoveredCnt&&!g.outscope?' · 미커버 평균 부족으로 상향':'')+(!g.uncoveredCnt?' — 당시 여분으로 전건 커버':'')):''}" style="${g.bufQty?'font-weight:700;background:var(--blue-light);color:var(--blue)':'color:var(--text3)'}">${(g.bufQty?g.bufQty.toLocaleString()+'개'+(g.bufMode==='keep'?' <span style="font-size:9px;font-weight:600;padding:1px 4px;border-radius:6px;background:var(--green-light);color:var(--green)">유지</span>':'')+(g.bufPctRef?` <span style="font-size:9px;font-weight:400;color:var(--text3)">(${g.bufPctRef.toFixed(1)}%)</span>`:''):'—')+(g.outscope?` <span style="font-size:9px;font-weight:600;padding:1px 4px;border-radius:6px;background:var(--red-light);color:var(--red)" title="여분 범위 밖 부족 ${g.outscope}건 — 단가 1,000원 미만은 발주수량의 50% 이상, 그 외 10% 이상 부족은 재제작으로 대응(권장 산정 제외)">재제작 ${g.outscope}</span>`:'')+(g.bracketVaried?` <span style="font-size:9px;font-weight:600;padding:1px 4px;border-radius:6px;background:var(--amber-light);color:#92400e" title="발주수량 구간별로 권장이 다릅니다: ${esc(g.brackets.filter(b=>b.rec).map(b=>b.label+' '+b.rec+'개').join(' · '))} — 행을 클릭해 구간별 표 확인">구간차등</span>`:'')}</td>
+      <td class="num" title="${g.shortCnt?esc('부족 '+g.shortCnt+'건 중 미커버 '+(g.uncoveredCnt||0)+'건'+(g.outscope?' · 그중 여분 범위 밖(재제작 대응) '+g.outscope+'건 제외':'')+(g.uncoveredCnt&&!g.outscope?' · 미커버 평균 부족으로 상향':'')+(!g.uncoveredCnt?' — 당시 여분으로 전건 커버':'')):''}" style="${g.bufQty?'font-weight:700;background:var(--blue-light);color:var(--blue)':'color:var(--text3)'}">${(g.bufQty?g.bufQty.toLocaleString()+'개'+(g.bufMode==='keep'?' <span style="font-size:9px;font-weight:600;padding:1px 4px;border-radius:6px;background:var(--green-light);color:var(--green)">유지</span>':'')+(g.bufPctRef?` <span style="font-size:9px;font-weight:400;color:var(--text3)">(${g.bufPctRef.toFixed(1)}%)</span>`:''):'—')+(g.fullRework?` <span style="font-size:9px;font-weight:600;padding:1px 4px;border-radius:6px;background:var(--red-light);color:var(--red)" title="저단가 파츠 · 평균 발주수량의 50% 이상 규모 재제작 이력 — 불량 시 전량 재제작 관행이라 여분 권장 제외">전량재제작</span>`:'')+(g.outscope&&!g.fullRework?` <span style="font-size:9px;font-weight:600;padding:1px 4px;border-radius:6px;background:var(--red-light);color:var(--red)" title="여분 범위 밖 부족 ${g.outscope}건 — 단가 1,000원 미만은 발주수량의 50% 이상, 그 외 10% 이상 부족은 재제작으로 대응(권장 산정 제외)">재제작 ${g.outscope}</span>`:'')+(g.bracketVaried?` <span style="font-size:9px;font-weight:600;padding:1px 4px;border-radius:6px;background:var(--amber-light);color:#92400e" title="발주수량 구간별로 권장이 다릅니다: ${esc(g.brackets.filter(b=>b.rec).map(b=>b.label+' '+b.rec+'개').join(' · '))} — 행을 클릭해 구간별 표 확인">구간차등</span>`:'')}</td>
       <td class="num">${g.curBufAvg!==null?g.curBufAvg.toFixed(1)+'개'+(g.curBufPct!==null?` <span style="font-size:9px;color:var(--text3)">(${g.curBufPct.toFixed(1)}%)</span>`:''):'—'}</td>
       <td>${g.practice?`<span style="font-size:10px;font-weight:600;color:${g.practice.color}" title="${esc(g.practice.tip)}">${g.practice.label}</span>`:'—'}</td>
       <td class="num">${g.taskCnt}</td>
