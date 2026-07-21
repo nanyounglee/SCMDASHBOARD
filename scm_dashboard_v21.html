@@ -897,7 +897,7 @@ a{color:var(--blue);text-decoration:none}
 
 <script>
 // ===== DATA =====
-const D = {order:null,issue:null,sup:null,ci:null,stockout_list:null,sales:null,inv_weekly:null,sales_monthly:null,purchase_review:null,season_plan:null,qms_raw:null,cost_reduction:null,quarter_eval:null,dashboard_period_summary:null,dashboard_group_summary:null,dashboard_sku_snapshot:null,parts:null};
+const D = {order:null,issue:null,sup:null,ci:null,stockout_list:null,sales:null,inv_weekly:null,sales_monthly:null,purchase_review:null,season_plan:null,qms_raw:null,cost_reduction:null,quarter_eval:null,dashboard_period_summary:null,dashboard_group_summary:null,dashboard_sku_snapshot:null,parts:null,proj_rev:null};
 // Legacy keys kept as computed views (not uploaded)
 Object.defineProperty(D,'task',{get(){return D.order;},set(){}});
 Object.defineProperty(D,'subcontract',{get(){return null;},set(){}});
@@ -7414,7 +7414,8 @@ const AUTO_CSV_DEFAULT={
   sales_monthly:'sales_monthly.csv',
   parts:'parts.csv',
   goods_master:'goods_master.csv',
-  quarter_eval:'quarter_eval.csv'
+  quarter_eval:'quarter_eval.csv',
+  proj_rev:'proj_rev.csv'
 };
 function autoLoadRaw(){
   fetch('CSV/_manifest.json').then(r=>r.ok?r.json():null).catch(()=>null).then(man=>{
