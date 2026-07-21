@@ -522,6 +522,18 @@ a{color:var(--blue);text-decoration:none}
         </tr></thead><tbody id="tb-ord-buffer"></tbody></table></div>
         <div style="font-size:10px;color:var(--text3);margin-top:8px">※ <b>권장여분/회</b> = 과거 부족 발생 건들의 <b>평균 부족수량 올림(개)</b> — 부족수량은 수량이슈내용 텍스트("N개 발주/M개 입하"·"발주수량 N…입하수량 M"·"N개 부족")와 이동수량 컬럼에서 추출, 괄호 %는 평균 1회 발주수량 대비 참고 비율 · <b>현재 여분/회(관행)</b> = (발주지시수량 − 고객주문수량)의 건별 평균 — 고객이 실제 구매한 수량 대비 지금 실무에서 얹고 있는 여분, 괄호 %는 Σ여분÷Σ고객주문(가중), 발주&lt;고객(분할발주)·재제작 행 제외 · <b>관행 진단</b>: <span style="color:var(--red)">상향 검토</span>=부족 발생 & 관행&lt;평균부족 / <span style="color:var(--amber)">여분 무관 부족</span>=관행≥평균부족인데도 부족 발생(생산·검수 문제 신호) / <span style="color:var(--amber)">과다 가능</span>=부족 0 & 관행 여분율 5%↑(전사 중앙값 2.9%의 2배) / <span style="color:var(--green)">적정</span>=부족 0 & 5% 미만 · <b>부족발생</b> = 부족수량이 확인된 이슈 건수 · <b>부족률</b> = Σ부족 ÷ Σ발주(부족 발생 건 기준) · <b>불량률(참고)</b> = 샘플링검수 불량수량÷검수수량 — 보수·B급 입고로 종결되는 경우가 많아 <b>여분 산정에서 제외</b>(불량이 부족으로 이어진 건은 수량이슈에 이미 반영) · <b>예방비용</b> = 권장여분 × 단가(공급가액÷발주수량, 파츠리스트 CSV 시 DB원가 우선) × 발주건수(이력 전체 적용 가정) · <b>실패비용</b> = 재제작 TASK 취득원가 합계(재제작 행은 발주건수·단가 집계에서 제외) · <b>차액>0</b>이면 여분 도입이 재제작보다 경제적 · ⚠ 예방 단가와 실패비용은 원가 기준(공급가액 vs 취득원가)이 달라 근사 비교 · <b>구간차등 배지</b> = 발주수량 구간(500 미만/500~999/1,000↑)별 권장 여분이 서로 다른 제품 — 행 클릭 시 구간별 권장·구간 단가(그 구간 발주만의 Σ공급가액÷Σ수량 — 전체 평균 단가는 대량 발주 저단가에 끌려 소량 발주 여분 원가를 과소평가) 표 확인</div>
       </div>
+      <!-- v21.10: 예방비용 vs 실패비용 — 여분 투자 효과 (모면 사건 실측 포함) -->
+      <div class="card" style="margin-top:16px">
+        <div class="card-header"><div><div class="card-title">예방비용 vs 실패비용 — 여분 투자 효과</div>
+        <div class="card-sub"><b>예방비용</b> = (발주지시수량−고객주문수량) × 그 발주의 실단가 — 여분에 실제로 쓴 돈 · <b>실패비용</b> = 재제작 취득원가 · <b>모면</b> = 부족이 발생했지만 여분 덕에 고객주문수량은 지켜진 건 (movement 조인 실측)</div></div></div>
+        <div class="kpi-row-4" id="prev-eff-kpis" style="margin-bottom:12px"></div>
+        <div class="ch" style="height:220px"><canvas id="ch-prev-fail-trend"></canvas></div>
+        <div class="tbl-wrap" style="max-height:400px;overflow-y:auto;margin-top:12px"><table class="tbl"><thead><tr>
+          <th class="rank">#</th><th>제품</th><th class="num">예방비용(여분 지출)</th><th class="num">여분수량 누적</th><th class="num">여분율</th>
+          <th class="num">부족</th><th class="num" style="color:var(--green)">모면</th><th class="num">재제작</th><th class="num">실패비용</th><th class="num">막은 손실(추정)</th><th>균형 진단</th>
+        </tr></thead><tbody id="tb-prev-eff"></tbody></table></div>
+        <div style="font-size:10px;color:var(--text3);margin-top:8px">※ 당해+전년 전체 이력(재고생산 제외) · <b>모면</b> = 수량이슈의 부족수량 ≤ 그 발주의 여분(movement_id로 발주 행 정확 매칭) — 여분이 없었다면 고객주문 미달·재제작으로 이어졌을 건 · <b>막은 손실(추정)</b> = 모면 건수 × 그 제품의 재제작 1회 평균비용(이력 없으면 전체 평균) · 월별 추이: 예방비용은 과업지시월, 실패비용은 세금계산서월 기준(실패비용 현황과 동일) · 예방비용은 소진되지 않으면 여분 재고로 남으므로 전액 비용은 아님 — 실패비용과의 직접 차감 비교는 참고용 · 여분율이 수백%로 비정상적으로 큰 제품은 발주 단위(박스·스리브 등)와 고객주문 단위(낱개)가 달라 생기는 왜곡일 수 있음 — "과다 가능" 판정 전에 단위 확인 필요</div>
+      </div>
       <!-- v21.6: 초도 발주 감지 (FAI 후보) — 사상 최초 제품×협력사 조합·신규 협력사 첫 발주 자동 추출 -->
       <div class="card" style="margin-top:16px">
         <div class="card-header">
@@ -2037,7 +2049,103 @@ function updateOrderTabs() {
   if (!D.order||!SEL_MONTH) return;
   renderOrdTopTable();
   renderOrderBuffer();
+  renderPreventionEffect();
   renderOrderFai();
+}
+// ===== v21.10: 예방비용 vs 실패비용 — 여분 투자 효과 =====
+// 예방비용 = 여분(발주지시수량−고객주문수량) × 그 발주의 실단가(공급가액÷발주수량) — 여분에 실제 쓴 돈.
+// 모면 = 수량이슈의 부족수량 ≤ 그 발주의 여분(movement_id 정확 매칭) — 부족이 났지만 여분 덕에
+// 고객주문수량은 지켜진 건. 막은 손실 추정 = 모면 건수 × 재제작 1회 평균비용(제품별, 없으면 전체 평균).
+function computePreventionEffect(){
+  if(!D.order) return null;
+  let curY=0;
+  D.order.forEach(r=>{const m=pOrderMonth(r['과업지시일자']); if(m){const y=+m.split('.')[0]; if(y>curY)curY=y;}});
+  const Z=()=>Array(13).fill(0);
+  const prevMonthly=Z(), failMonthly=Z();
+  const prods={}, mvOrder={};
+  [D.order,D.orderPrevYear].forEach(list=>(list||[]).forEach(r=>{
+    if(isStock(r)) return;
+    const p=(r['산출물']||'').trim();
+    const isRework=String(r['task_id']||'').includes('재제작');
+    if(p&&!prods[p]) prods[p]={prod:p,prevCost:0,bufUnits:0,custQty:0,reworkCnt:0,failCost:0,shortCnt:0,avoided:0};
+    if(isRework){ if(p){prods[p].reworkCnt++; prods[p].failCost+=pa(r['취득원가']);} return; }
+    const oq=pa(String(r['발주지시수량']||'')), cq=pa(String(r['고객주문수량']||'')), amt=pa(r['공급가액']);
+    const buf=(cq>0&&oq>cq)?oq-cq:0;
+    const unit=(oq>0&&amt>0)?amt/oq:0;
+    const pc=buf*unit;
+    if(p&&cq>0&&oq>=cq){ prods[p].prevCost+=pc; prods[p].bufUnits+=buf; prods[p].custQty+=cq; }
+    const mo=pOrderMonth(r['과업지시일자']);
+    if(mo&&pc>0){ const parts2=mo.split('.'); if(+parts2[0]===curY) prevMonthly[+parts2[1]]+=pc; }
+    String(r['movement_산출이동']||'').split(',').map(s=>s.trim()).filter(Boolean).forEach(tok=>{ mvOrder[tok]={buffer:buf,prod:p}; });
+  }));
+  // 실패비용 월별 — KPI 실패비용율·실패비용 현황과 동일 산식(reworkCostByMonth) 재사용
+  D.order.forEach(r=>{ const byM=reworkCostByMonth(r); Object.entries(byM).forEach(([m,a])=>{ const parts2=m.split('.'); if(+parts2[0]===curY) failMonthly[+parts2[1]]+=a; }); });
+  // 모면 사건 판정 (당해+전년 수량이슈)
+  let avoidedTotal=0, shortTotal=0;
+  [D.issue,D.issuePrevYear].forEach(list=>(list||[]).forEach(r=>{
+    const sh=parseShortageFromText(r['수량이슈내용']); if(!sh) return;
+    const short=sh.short||sh.shortOnly; if(!short) return;
+    const mv=(r['movement_id']||'').trim(); const om=mv?mvOrder[mv]:null;
+    if(!om) return;
+    shortTotal++;
+    if(om.prod&&prods[om.prod]) prods[om.prod].shortCnt++;
+    if(om.buffer>0&&short<=om.buffer){ avoidedTotal++; if(om.prod&&prods[om.prod]) prods[om.prod].avoided++; }
+  }));
+  const list=Object.values(prods);
+  const allRework=list.reduce((s,g)=>s+g.reworkCnt,0);
+  const allFail=list.reduce((s,g)=>s+g.failCost,0);
+  const avgReworkCost=allRework>0?allFail/allRework:0;
+  // 제품 자체 재제작 평균이 있으면 사용, 재제작 이력이 없거나 취득원가 0(비용 미기재)이면 전체 평균 폴백
+  list.forEach(g=>{ g.avoidedLoss=g.avoided*((g.reworkCnt>0&&g.failCost>0)?g.failCost/g.reworkCnt:avgReworkCost); });
+  return {curY,prevMonthly,failMonthly,prods:list,avoidedTotal,shortTotal,avgReworkCost};
+}
+function renderPreventionEffect(){
+  const kEl=document.getElementById('prev-eff-kpis'); if(!kEl) return;
+  const R=computePreventionEffect(); if(!R){ kEl.innerHTML=''; return; }
+  const prevSum=R.prevMonthly.reduce((s,v)=>s+v,0), failSum=R.failMonthly.reduce((s,v)=>s+v,0);
+  const avoidedLossSum=R.prods.reduce((s,g)=>s+g.avoidedLoss,0);
+  kEl.innerHTML=`
+    <div class="kpi-card c-blue"><div class="kpi-label">${R.curY}년 예방비용(여분 지출)</div><div class="kpi-val">${fa(prevSum)}</div><div class="kpi-sub">여분수량 × 발주 실단가 누적</div></div>
+    <div class="kpi-card c-red"><div class="kpi-label">${R.curY}년 실패비용(재제작)</div><div class="kpi-val">${fa(failSum)}</div><div class="kpi-sub">재제작 취득원가 누적</div></div>
+    <div class="kpi-card c-green"><div class="kpi-label">모면 사건</div><div class="kpi-val">${R.avoidedTotal}<span style="font-size:13px;color:var(--text3);font-weight:400">건</span></div><div class="kpi-sub">부족 ${R.shortTotal}건 중 여분이 고객주문을 지킨 건 (당해+전년 실측)</div></div>
+    <div class="kpi-card c-green"><div class="kpi-label">막은 손실(추정)</div><div class="kpi-val">${fa(avoidedLossSum)}</div><div class="kpi-sub">모면 건수 × 재제작 1회 평균비용(전체 평균 ${fa(Math.round(R.avgReworkCost))})</div></div>`;
+  // 월별 추이 차트 — 같은 단위(원)·단일 축, 파랑=예방·빨강=실패 (기존 팔레트와 동일)
+  dc('ch-prev-fail-trend'); const ctx=getCtx('ch-prev-fail-trend');
+  if(ctx){
+    const labels=Array.from({length:12},(_,i)=>(i+1)+'월');
+    CHARTS['ch-prev-fail-trend']=new Chart(ctx,{type:'bar',data:{labels,datasets:[
+      {label:'예방비용(여분 지출)',data:R.prevMonthly.slice(1),backgroundColor:'#1d4ed8',borderRadius:4},
+      {label:'실패비용(재제작)',data:R.failMonthly.slice(1),backgroundColor:'#dc2626',borderRadius:4}
+    ]},options:{responsive:true,maintainAspectRatio:false,
+      plugins:{legend:{position:'bottom',labels:{font:{size:10},boxWidth:10}},
+        tooltip:{callbacks:{label:c=>c.dataset.label+': '+faFull(Math.round(c.parsed.y))}}},
+      scales:{y:{beginAtZero:true,ticks:{callback:v=>fmtW(v),font:{size:10}}},x:{ticks:{font:{size:10}},grid:{display:false}}}}});
+  }
+  // 제품별 표 — 예방·실패 어느 쪽이든 돈이 움직인 제품, 금액 합 내림차순
+  const tbody=document.getElementById('tb-prev-eff'); if(!tbody) return;
+  const rows=R.prods.filter(g=>g.prevCost>0||g.failCost>0).sort((a,b)=>(b.prevCost+b.failCost)-(a.prevCost+a.failCost)).slice(0,30);
+  if(!rows.length){ tbody.innerHTML=emptyRow(11,'집계 대상 없음'); return; }
+  tbody.innerHTML=rows.map((g,i)=>{
+    const rate=g.custQty>0?(g.bufUnits/g.custQty*100):null;
+    let diag;
+    if(g.avoided>0) diag={label:`모면 실증 ${g.avoided}건`,color:'var(--green)',tip:'부족이 났지만 여분 덕에 고객주문을 지킨 사건이 실제로 관측됨 — 여분 투자 효과 입증'};
+    else if(g.failCost>0&&g.failCost>g.prevCost) diag={label:'실패>예방 — 상향 검토',color:'var(--red)',tip:'재제작 실패비용이 여분 지출보다 큼 — 여분 상향(또는 원인 개선) 검토'};
+    else if(g.shortCnt===0&&g.failCost===0&&rate!==null&&rate>=5) diag={label:'과다 가능',color:'var(--amber)',tip:'부족·재제작 이력이 없는데 여분율 '+rate.toFixed(1)+'% — 하향 여지'};
+    else diag={label:'균형',color:'var(--text3)',tip:'부족·재제작 대비 여분 지출이 균형 범위'};
+    return `<tr>
+      <td class="rank">${i+1}</td>
+      <td style="font-size:11px">${esc(crop(g.prod,30))}</td>
+      <td class="num">${faFull(Math.round(g.prevCost))}</td>
+      <td class="num">${g.bufUnits.toLocaleString()}개</td>
+      <td class="num">${rate!==null?rate.toFixed(1)+'%':'—'}</td>
+      <td class="num">${g.shortCnt||'—'}</td>
+      <td class="num" style="${g.avoided?'color:var(--green);font-weight:700':''}">${g.avoided||'—'}</td>
+      <td class="num">${g.reworkCnt||'—'}</td>
+      <td class="num" style="${g.failCost>0?'color:var(--red);font-weight:600':''}">${g.failCost>0?faFull(Math.round(g.failCost)):'—'}</td>
+      <td class="num" style="${g.avoidedLoss>0?'color:var(--green);font-weight:600':''}">${g.avoidedLoss>0?faFull(Math.round(g.avoidedLoss)):'—'}</td>
+      <td><span style="font-size:10px;font-weight:600;color:${diag.color}" title="${esc(diag.tip)}">${diag.label}</span></td>
+    </tr>`;
+  }).join('');
 }
 // ===== v21.6: 초도 발주 감지 (FAI 후보) — 사상 최초 제품×협력사 조합 · 신규 협력사 첫 발주 =====
 let FAI_FILTER='recent';
