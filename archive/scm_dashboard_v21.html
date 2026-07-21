@@ -896,7 +896,7 @@ a{color:var(--blue);text-decoration:none}
 
 <script>
 // ===== DATA =====
-const D = {order:null,issue:null,sup:null,ci:null,stockout_list:null,sales:null,inv_weekly:null,sales_monthly:null,purchase_review:null,season_plan:null,qms_raw:null,cost_reduction:null,quarter_eval:null,dashboard_period_summary:null,dashboard_group_summary:null,dashboard_sku_snapshot:null,parts:null,proj_rev:null};
+const D = {order:null,issue:null,sup:null,ci:null,stockout_list:null,sales:null,inv_weekly:null,sales_monthly:null,purchase_review:null,season_plan:null,qms_raw:null,cost_reduction:null,quarter_eval:null,dashboard_period_summary:null,dashboard_group_summary:null,dashboard_sku_snapshot:null,dashboard_sku_detail:null,dashboard_sku_monthly:null,raw_purchase:null,parts_master:null,parts:null,proj_rev:null};
 // Legacy keys kept as computed views (not uploaded)
 Object.defineProperty(D,'task',{get(){return D.order;},set(){}});
 Object.defineProperty(D,'subcontract',{get(){return null;},set(){}});
@@ -7704,6 +7704,10 @@ const AUTO_CSV_DEFAULT={
   dashboard_period_summary:'dashboard_period_summary.csv',
   dashboard_group_summary:'dashboard_group_summary.csv',
   dashboard_sku_snapshot:'dashboard_sku_snapshot.csv',
+  dashboard_sku_detail:'dashboard_sku_detail.csv',
+  dashboard_sku_monthly:'dashboard_sku_monthly.csv',
+  raw_purchase:'raw_발주.csv',
+  parts_master:'parts_master.csv',
   inv_weekly:'inv_weekly.csv',
   sales_monthly:'sales_monthly.csv',
   parts:'parts.csv',

@@ -1,0 +1,45 @@
+name: weekly-google-sheets-csv
+
+on:
+  schedule:
+    # Every Thursday 18:00 KST (= 09:00 UTC), after purchase dashboard stamping.
+    - cron: '0 9 * * 4'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: weekly-google-sheets-csv
+  cancel-in-progress: false
+
+jobs:
+  fetch-and-commit:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Fetch purchase dashboard CSVs from Google Sheets
+        env:
+          GOOGLE_SHEETS_ID: ${{ vars.GOOGLE_SHEETS_ID || '1U0zzofg5JtNU2NAwFlqvfgNwAeziuNIwE0EhTrAtj40' }}
+          GOOGLE_SHEETS_CSV_SOURCES: ${{ vars.GOOGLE_SHEETS_CSV_SOURCES || '[{"key":"dashboard_period_summary","sheet":"dashboard_period_summary","gid":"84172882","file":"dashboard_period_summary.csv"},{"key":"dashboard_group_summary","sheet":"dashboard_group_summary","gid":"1833555647","file":"dashboard_group_summary.csv"},{"key":"dashboard_sku_snapshot","sheet":"dashboard_sku_snapshot","gid":"1807763326","file":"dashboard_sku_snapshot.csv"},{"key":"dashboard_sku_detail","sheet":"dashboard_sku_detail","gid":"1818334811","file":"dashboard_sku_detail.csv"},{"key":"dashboard_sku_monthly","sheet":"dashboard_sku_monthly","gid":"1653077946","file":"dashboard_sku_monthly.csv"},{"key":"raw_purchase","sheet":"raw_발주","gid":"1071121681","file":"raw_발주.csv"},{"key":"parts_master","sheet":"parts_master","gid":"620593093","file":"parts_master.csv"}]' }}
+          GOOGLE_SERVICE_ACCOUNT_JSON: ${{ secrets.GOOGLE_SERVICE_ACCOUNT_JSON }}
+        run: node scripts/fetch_google_sheets_csv.mjs
+
+      - name: Commit & push if changed
+        run: |
+          git config user.name "google-sheets-bot"
+          git config user.email "actions@github.com"
+          git add CSV/ CSV_BANK/
+          if git diff --cached --quiet; then
+            echo "No Google Sheets CSV changes; skipping commit"
+          else
+            WK=$(TZ=Asia/Seoul date +%G-W%V)
+            git commit -m "chore: update purchase dashboard CSVs ($WK)"
+            git pull --rebase origin main
+            git push origin main
+          fi
