@@ -818,6 +818,8 @@ a{color:var(--blue);text-decoration:none}
           <button class="rep-btn" onclick="window.open('https://nanyounglee.github.io/scm-monthly-report/','_blank')"><div class="rep-btn-title">📊 월간 대시보드 열기 ↗</div><div class="rep-btn-desc">GitHub Pages 배포된 월간 리포트</div></button>
           <button class="rep-btn" onclick="window.open('https://github.com/Sincerely-SCM/SCM-Archive/tree/main/Meeting-Records/04_Parts','_blank')"><div class="rep-btn-title">🗒 팀 주간 회의록 ↗</div><div class="rep-btn-desc">SCM-Archive GitHub · Meeting-Records/04_Parts</div></button>
           <button class="rep-btn" onclick="window.open('https://github.com/Sincerely-SCM/SCM-Archive/tree/main/Regular-Reports','_blank')"><div class="rep-btn-title">📑 팀 주간 보고서 ↗</div><div class="rep-btn-desc">SCM-Archive GitHub · Regular-Reports</div></button>
+          <button class="rep-btn" onclick="genChangeReport()"><div class="rep-btn-title">📋 변경 이력 리포트 생성</div><div class="rep-btn-desc">파츠 신규/졸업 · 단가 변동 · 협력사·제품 변경을 파트별 섹션으로 정리 → .md 다운로드 (주간 리포트·회의 원천 데이터)</div></button>
+          <button class="rep-btn" onclick="window.open('https://github.com/nanyounglee/SCMDASHBOARD/tree/main/CSV_BANK','_blank')"><div class="rep-btn-title">🗂 변경 스냅샷 아카이브 ↗</div><div class="rep-btn-desc">CSV_BANK — 주차별 스냅샷·연도 아카이브 원본 내역 확인</div></button>
           <button class="rep-btn" onclick="window.open('https://github.com/nanyounglee/SCMDASHBOARD','_blank')"><div class="rep-btn-title">🚀 GitHub 저장소 열기 ↗</div><div class="rep-btn-desc">SCMDASHBOARD 레포지토리</div></button>
         </div>
       </div>
@@ -3106,6 +3108,8 @@ function toggleNoticeCollapse(){
   renderMonthlyNotice();
 }
 function fmtISODate(d){ return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0'); }
+// v22.1: 공지 표기용 — 파츠명의 PT번호 접두를 떼고 국문 제품명만 (사용자 요청: 품절·단가변동)
+function stripPT(name){ return String(name||'').replace(/^PT\d+-/,'').trim(); }
 function wkLabel(y,w){ return y+'_W'+String(w).padStart(2,'0'); }
 // ISO 주차 라벨('YYYY_WNN') → 그 주의 월요일 날짜(YYYY-MM-DD). 1월 4일은 항상 1주차에 속한다는
 // ISO 8601 규칙을 이용 — scripts/fetch_airtable_sources.mjs의 isoWeekOf()와 짝을 이루는 역변환.
@@ -3123,7 +3127,9 @@ function loadChangeLog(){
   let local=[]; try{ local=JSON.parse(localStorage.getItem('change_log_v1')||'[]'); }catch(e){}
   fetch('data/change_log.json').then(r=>r.ok?r.json():null).catch(()=>null).then(deployed=>{
     const map={};
-    ((deployed&&deployed.entries)||[]).concat(local).forEach(e=>{ map[e.id]=e; });
+    // v22.1: 같은 id는 배포본(data/change_log.json)이 로컬 캐시를 이김 — 표기 형식 개정(요약형) 시
+    // 브라우저에 남은 구형 로컬 항목이 배포본을 되덮는 문제 방지. 로컬 전용(미커밋 감지분)은 유지됨.
+    local.concat((deployed&&deployed.entries)||[]).forEach(e=>{ map[e.id]=e; });
     CHANGE_LOG=Object.values(map);
     CHANGE_LOG_LOADED=true;
     detectAndLogChanges();
@@ -3213,16 +3219,19 @@ async function detectPartsChanges(){
       const curGrad=String(r['파츠졸업 Status']||'').includes('졸업');
       if(!prevGrad&&curGrad) entries.push({id:'part_grad|'+id+'|'+cur.label,type:'part_grad',name,date:dateKey,detail:[sup,detail].filter(Boolean).join(' · ')});
       // v21.16: 단가 변경 감지 — 구간별 표준원가 비교(0으로의 삭제성 변경은 제외)
+      // v22.1: 표기는 요약형 "제품명 — 평균 N% 상승/인하" (사용자 요청 — 구간별 상세는 스냅샷·가격 에폭에 보존)
       const tiers=[1,50,100,300,500,1000,3000,5000,10000,30000];
-      const chg=[]; let hi=0,lo=0;
+      let pctSum=0, chgCnt=0;
       tiers.forEach(t=>{
         const pv=parseFloat(String(r[t+'개_표준원가']||'').replace(/,/g,'')), dv=parseFloat(String(pr[t+'개_표준원가']||'').replace(/,/g,''));
-        if(isNaN(pv)||isNaN(dv)||pv===dv||pv===0) return;
-        chg.push(t+'개 '+dv.toLocaleString()+'→'+pv.toLocaleString());
-        if(pv>dv)hi++; else lo++;
+        if(isNaN(pv)||isNaN(dv)||pv===dv||pv===0||dv===0) return;
+        pctSum+=(pv-dv)/dv*100; chgCnt++;
       });
-      if(chg.length) entries.push({id:'part_price|'+id+'|'+cur.label,type:'part_price',name,date:dateKey,
-        detail:'단가 '+(hi&&lo?'변경(혼재)':hi?'인상':'인하')+': '+chg.slice(0,3).join(' · ')+(chg.length>3?' 외 '+(chg.length-3)+'구간':'')+(sup?' · '+sup:'')});
+      if(chgCnt){
+        const avgPct=pctSum/chgCnt;
+        entries.push({id:'part_price|'+id+'|'+cur.label,type:'part_price',name:stripPT(name),date:dateKey,
+          detail:'평균 '+Math.abs(avgPct).toFixed(1)+'% '+(avgPct>=0?'상승':'인하')+(sup?' · '+sup:'')});
+      }
     });
     const prevGoods=goodsSetOf(prev.rows), curGoods=goodsSetOf(cur.rows);
     prevGoods.forEach(g=>{ if(!curGoods.has(g)) entries.push({id:'goods_unlinked|'+g+'|'+cur.label,type:'goods_unlinked',name:g,date:dateKey,detail:['파츠 연결 해제',detail].filter(Boolean).join(' · ')}); });
@@ -3262,7 +3271,7 @@ function persistChangeLog(newOnes){
     .catch(e=>console.error('change_log commit failed',e));
 }
 function toggleNoticeHistory(){ NOTICE_HISTORY_OPEN=!NOTICE_HISTORY_OPEN; renderMonthlyNotice(); }
-function noticeTypeLabel(t){ return {product_graduated:'🎓 졸업',product_launched:'🚀 출시',sup_added:'🆕 신규협력사',sup_terminated:'🔚 거래종료협력사',part_new:'🧩 신규 파츠',part_grad:'🧩 파츠 졸업',goods_unlinked:'🎓 제품 졸업(파츠연결해제)',part_price:'💲 파츠 단가변경'}[t]||t; }
+function noticeTypeLabel(t){ return {product_graduated:'🎓 졸업',product_launched:'🚀 출시',sup_added:'🆕 신규협력사',sup_terminated:'🔚 거래종료협력사',part_new:'🧩 신규 파츠',part_grad:'⚙️ 파츠 졸업',goods_unlinked:'🎓 제품 졸업(파츠연결해제)',part_price:'💲 단가 변동'}[t]||t; }
 function renderChangeHistoryToggle(allEntries){
   const sorted=allEntries.slice().sort((a,b)=>a.date<b.date?1:a.date>b.date?-1:0);
   return `<div style="grid-column:1/-1;margin-top:4px">
@@ -3300,8 +3309,8 @@ function renderMonthlyNotice() {
   const gradNames=new Set(gradRows.map(e=>String(e.name).replace(/\s*\(.*\)$/,'')));
   const unlinkedRows=byType('goods_unlinked').filter(e=>!gradNames.has(String(e.name)));
   const gradAllRows=gradRows.concat(unlinkedRows);
+  // v22.1: 신규/졸업/단가를 하나의 파츠 박스로 합치지 않고 각각 분리 표시 (사용자 요청)
   const partNewRows=byType('part_new'), partGradRows=byType('part_grad'), partPriceRows=byType('part_price');
-  const partRows=partNewRows.map(e=>({...e,name:'신규: '+e.name})).concat(partGradRows.map(e=>({...e,name:'졸업: '+e.name}))).concat(partPriceRows.map(e=>({...e,name:'단가: '+e.name})));
 
   // 3) 품절 제품 — stockout_list.csv 판매상태+변경일 기준(졸업 성격 제외) + 수동입력 보강. 기존 그대로 선택 기간 연동.
   let stockRows=[], manualStock=[];
@@ -3321,7 +3330,7 @@ function renderMonthlyNotice() {
   if(arrow) arrow.textContent=NOTICE_COLLAPSED?'▸':'▾';
   const summary=document.getElementById('notice-inline-summary');
   if(summary) summary.textContent=NOTICE_COLLAPSED
-    ? `— 🎓 ${D.goods_master?gradAllRows.length:'—'} · 🚀 ${D.goods_master?launchRows.length:'—'} · 🚫 ${D.stockout_list?stockRows.length+manualStock.length:'—'} · 🆕 ${D.sup?addedRows.length:'—'} · 🔚 ${D.sup?removedRows.length:'—'} · 🧩 ${D.parts?partRows.length:'—'}`
+    ? `— 🎓 ${D.goods_master?gradAllRows.length:'—'} · 🚀 ${D.goods_master?launchRows.length:'—'} · 🚫 ${D.stockout_list?stockRows.length+manualStock.length:'—'} · 🆕 ${D.sup?addedRows.length:'—'} · 🔚 ${D.sup?removedRows.length:'—'} · 🧩 ${D.parts?partNewRows.length:'—'} · ⚙️ ${D.parts?partGradRows.length:'—'} · 💲 ${D.parts?partPriceRows.length:'—'}`
     : '';
   const foot=document.getElementById('notice-footnote');
   if(foot) foot.style.display=NOTICE_COLLAPSED?'none':'';
@@ -3331,14 +3340,16 @@ function renderMonthlyNotice() {
   const gradHtml = D.goods_master ? noticeBox('🎓 졸업 제품',gradAllRows.length,gradAllRows.map(fmtEntry)) : noticeEmptyBox('졸업 제품','goods_master.csv 업로드 필요');
   const launchHtml = D.goods_master ? noticeBox('🚀 출시 제품',launchRows.length,launchRows.map(fmtEntry)) : noticeEmptyBox('출시 제품','goods_master.csv 업로드 필요');
   const stockHtml = D.stockout_list
-    ? noticeBox('🚫 품절 제품',stockRows.length+manualStock.length,stockRows.map(r=>esc(r['파츠명']||'')).concat(manualStock.map(m=>esc(m.parts))))
+    ? noticeBox('🚫 품절 제품',stockRows.length+manualStock.length,stockRows.map(r=>esc(stripPT(r['파츠명']||''))).concat(manualStock.map(m=>esc(stripPT(m.parts)))))
     : noticeEmptyBox('품절 제품','stockout_list.csv 업로드 필요');
   const addedHtml = D.sup ? noticeBox('🆕 신규 협력사',addedRows.length,addedRows.map(fmtEntry)) : noticeEmptyBox('신규 협력사','sup.csv 업로드 필요');
   const removedHtml = D.sup ? noticeBox('🔚 거래종료 협력사',removedRows.length,removedRows.map(fmtEntry)) : noticeEmptyBox('거래종료 협력사','sup.csv 업로드 필요');
 
-  const partHtml = D.parts ? noticeBox('🧩 파츠 변경(신규·졸업·단가)',partRows.length,partRows.map(fmtEntry)) : noticeEmptyBox('파츠 변경','parts.csv 업로드 필요');
+  const partNewHtml = D.parts ? noticeBox('🧩 신규 파츠',partNewRows.length,partNewRows.map(fmtEntry)) : noticeEmptyBox('신규 파츠','parts.csv 업로드 필요');
+  const partGradHtml = D.parts ? noticeBox('⚙️ 파츠 졸업',partGradRows.length,partGradRows.map(fmtEntry)) : noticeEmptyBox('파츠 졸업','parts.csv 업로드 필요');
+  const partPriceHtml = D.parts ? noticeBox('💲 단가 변동',partPriceRows.length,partPriceRows.map(fmtEntry)) : noticeEmptyBox('단가 변동','parts.csv 업로드 필요');
 
-  wrap.innerHTML=gradHtml+launchHtml+stockHtml+addedHtml+removedHtml+partHtml+renderChangeHistoryToggle(allEntries);
+  wrap.innerHTML=gradHtml+launchHtml+stockHtml+addedHtml+removedHtml+partNewHtml+partGradHtml+partPriceHtml+renderChangeHistoryToggle(allEntries);
 }
 // 수동 등록 예외 — 자동 집계(스냅샷 diff/변경일)로 잡히지 않는 건을 담당자가 직접 기입
 const MANUAL_VENDOR_TERM_MONTH='2026.6'; // 6월 = 26.2Q 마지막 달 기준으로 종료 처리
@@ -5053,6 +5064,36 @@ function genWeekly() {
 }
 // v21.19: exportKPI() 삭제 — 리포트 탭의 "KPI 요약 CSV 내보내기" 버튼 제거(사용자 요청)에 따라
 // 유일한 호출처가 사라짐. KPI 확인은 KPI 목표·트래킹 화면 + 현재 화면 CSV(범용 export)로 대체.
+// v22.1: 변경 이력 리포트 — change_log(스냅샷 diff 감지·백필)를 파트별 섹션으로 정리한 .md 생성.
+// 주간 리포트·회의에서 "변경사항" 섹션의 원천 데이터로 사용 (원본 스냅샷은 CSV_BANK 아카이브).
+function genChangeReport() {
+  if(!CHANGE_LOG_LOADED||!CHANGE_LOG.length){ alert('변경 이력이 아직 로드되지 않았습니다. 잠시 후 다시 시도해주세요.'); return; }
+  const today=new Date(); today.setHours(0,0,0,0);
+  const windowStart=new Date(today); windowStart.setDate(windowStart.getDate()-30);
+  const inWin=e=>{ const d=parseAnyDate(e.date); return d&&d>=windowStart&&d<=today; };
+  const recent=CHANGE_LOG.filter(inWin).sort((a,b)=>a.date<b.date?1:a.date>b.date?-1:0);
+  const byType=t=>recent.filter(e=>e.type===t);
+  const line=e=>`- ${e.name}${e.detail?` — ${e.detail}`:''} (${e.date})`;
+  const section=(title,types,owner)=>{
+    const rows=types.flatMap(t=>byType(t));
+    return `## ${title} — ${rows.length}건${owner?` · 담당: ${owner}`:''}\n\n${rows.length?rows.map(line).join('\n'):'- 변경 없음'}\n`;
+  };
+  const priceRows=byType('part_price');
+  const up=priceRows.filter(e=>(e.detail||'').includes('상승')), down=priceRows.filter(e=>(e.detail||'').includes('인하'));
+  const md=[
+    `# SCM 변경 이력 리포트 (${fmtISODate(windowStart)} ~ ${fmtISODate(today)})`,
+    ``,
+    `생성: ${fmtISODate(today)} · 원천: data/change_log.json(주간 스냅샷 diff 자동 감지) · 스냅샷 원본: 리포지토리 CSV_BANK/ · 누적 이력 ${CHANGE_LOG.length}건 중 최근 30일 ${recent.length}건`,
+    ``,
+    section('제품 변경 (졸업·출시·파츠연결해제)',['product_graduated','product_launched','goods_unlinked'],'외주생산 육승미'),
+    section('협력사 변경 (신규·거래종료)',['sup_added','sup_terminated'],'외주생산 육승미'),
+    section('파츠 변경 (신규·졸업)',['part_new','part_grad'],'외주생산 육승미'),
+    `## 단가 변동 — ${priceRows.length}건 (상승 ${up.length} · 인하 ${down.length}) · 담당: 외주생산 육승미\n\n${priceRows.length?priceRows.map(line).join('\n'):'- 변경 없음'}\n`,
+    `---`,
+    `문의: 데이터 내용(구매전략 S&OP) 김하은 · 데이터 내용(외주생산) 육승미 · 대시보드 구조/기능/로직 이난영`,
+  ].join('\n');
+  dlFile(`SCM_변경이력리포트_${fmtISODate(today)}.md`,md,'text/markdown');
+}
 function dlFile(name,content,type) {
   const a=document.createElement('a');
   a.href=URL.createObjectURL(new Blob(['﻿'+content],{type}));
@@ -5113,7 +5154,7 @@ function nav(el,id) {
     stock:'<b>확인 가능 지표:</b> 전체 품절수 · 비의도적 품절(납기지연/공급부족) · 의도적 품절(졸업/시즌/효율화) · 굿즈품절 | <b>필터:</b> 판매상태별(일시품절/품절예정/의도적 품절) | <b>테이블:</b> 파츠명/굿즈 · 판매상태 · 재고소유 · 품절성격/사유 · 변경일 · 경과일 · 굿즈품절여부 | <b>CSV:</b> 품절리스트',
     ai:'<b>사용법:</b> 협력사명 입력 → 발주현황/매입금액/3개월추이/품질이슈 분석 | 긴급 → 긴급발주 목록 | 미입하/task → 미입하현황 | 전월/매입 → 전월대비 비교 | 담당자명 → 개인 실적 | <b>CSV:</b> 발주_RAW + 이슈_RAW + 공급망_RAW',
     quote:'<b>기능:</b> 패키지(박스) 자동 견적 산출 — 마닐라박스/C형/W형/슬리브형 | <b>로직:</b> 전개사이즈 → 지류단가(27지종×15규격, 0원 규격 자동상향) → 여분·연수 → 원단/인쇄/코팅/톰슨/접착/특수공정/골판지 → 관리비(10%·최소15만) → 마진(최소20만) | <b>이력:</b> localStorage 저장 · CSV 내보내기 | <b>기준:</b> 외주버전 v1.2.2 단가표',
-    report:'<b>기능:</b> 주간리포트 .md 생성(발주/이슈 자동 요약) · 월간 대시보드 링크 · 팀 주간 회의록/보고서 바로가기(SCM-Archive) · GitHub 저장소 링크',
+    report:'<b>기능:</b> 주간리포트 .md 생성(발주/이슈 자동 요약) · <b>변경 이력 리포트 .md 생성</b>(파츠 신규/졸업·단가 변동·협력사·제품 변경 — 주간 리포트/회의 원천 데이터) · <b>변경 스냅샷 아카이브(CSV_BANK) 바로가기</b> · 월간 대시보드 링크 · 팀 주간 회의록/보고서 바로가기(SCM-Archive) · GitHub 저장소 링크',
   };
   document.getElementById('page-title').innerHTML=`${titles[id]||id}<span class="topbar-badge" id="page-month-badge">${selPeriodLabel()}</span>`;
   renderPeriodBar();
