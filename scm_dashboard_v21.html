@@ -505,7 +505,7 @@ a{color:var(--blue);text-decoration:none}
     <div id="sec-order" style="display:none">
       <div id="tab-ord-top" class="card">
         <div class="card-header"><div class="card-title">전체 제품 발주량 <span style="font-weight:400;font-size:11px;color:var(--text3)">(재고생산 제외 · 검색창 반영 · 헤더 클릭 시 해당 기준 내림차순)</span></div></div>
-        <div class="tbl-wrap"><table class="tbl tbl-ord-top"><thead><tr><th class="rank">#</th><th>산출물</th><th class="num th-sort sort-active" data-sort="qty" onclick="sortOrdTop('qty')">발주수량 ▾</th><th class="num" id="th-ord-adjacent">MoM</th><th class="num" id="th-ord-yoy">YoY</th><th class="num th-sort" data-sort="freq" onclick="sortOrdTop('freq')">월간발주빈도 ▾</th><th class="num">연간발주량합</th><th class="num th-sort" data-sort="amt" onclick="sortOrdTop('amt')">공급가액 ▾</th><th>담당자</th></tr></thead><tbody id="tb-ord-top"></tbody></table></div>
+        <div class="tbl-wrap"><table class="tbl tbl-ord-top"><thead><tr><th class="rank">#</th><th>산출물</th><th class="num th-sort sort-active" data-sort="qty" onclick="sortOrdTop('qty')">발주수량 ▾</th><th class="num" title="고객이 실제 구매(결제)한 수량 합계">고객주문수량</th><th class="num" title="현재 여분 발주율 = (발주지시수량 − 고객주문수량) ÷ 고객주문수량 — 고객주문>0 & 발주≥고객 행 기준(분할발주·재제작 제외), 5% 이상 주황">여분 발주율</th><th class="num" id="th-ord-adjacent">MoM</th><th class="num" id="th-ord-yoy">YoY</th><th class="num th-sort" data-sort="freq" onclick="sortOrdTop('freq')">월간발주빈도 ▾</th><th class="num">연간발주량합</th><th class="num th-sort" data-sort="amt" onclick="sortOrdTop('amt')">공급가액 ▾</th><th>담당자</th></tr></thead><tbody id="tb-ord-top"></tbody></table></div>
       </div>
       <!-- v22: 여분(버퍼) 발주수량 추천 — 이슈 이력 기반 예방원가 분석 (v21.5: 부족 이벤트 개수 기반 산식) -->
       <div class="card" style="margin-top:16px">
@@ -1985,10 +1985,16 @@ function renderOrdTopTable() {
   f.forEach(r=>{
     const prod=r['산출물']||'';
     const key=prodKey(r);
-    if (!byProd[key]) byProd[key]={qty:0,amt:0,freq:0,mgr:r['과업담당자_이름']||'',isBespoke:!prod,pn:r['발주번호']||''};
-    byProd[key].qty+=pa(r['발주지시수량']);
+    if (!byProd[key]) byProd[key]={qty:0,amt:0,freq:0,mgr:r['과업담당자_이름']||'',isBespoke:!prod,pn:r['발주번호']||'',cust:0,bufC:0,bufD:0};
+    const oq=pa(r['발주지시수량']);
+    byProd[key].qty+=oq;
     byProd[key].amt+=pa(r['공급가액']);
     byProd[key].freq++;
+    // v21.9: 고객주문수량(고객이 실제 구매한 수량) 합계 + 현재 여분 발주율 — v21.7 관행 산식과 동일
+    // (여분율 분모·분자는 고객주문>0 & 발주≥고객 행만: 분할발주 음수·재제작 행 제외)
+    const cq=pa(String(r['고객주문수량']||''));
+    if(cq>0) byProd[key].cust+=cq;
+    if(cq>0&&oq>=cq&&!String(r['task_id']||'').includes('재제작')){ byProd[key].bufC+=cq; byProd[key].bufD+=(oq-cq); }
   });
   // 연간발주량합: 선택 기간이 속한 연도 기준 누계(검색 필터 동일 적용, 재고생산 제외)
   const selYear=SEL_MONTH.split('.')[0];
@@ -2016,9 +2022,11 @@ function renderOrdTopTable() {
   const topHTML=entries.map(([k,v],i)=>{
     const prevQty=prevByProd[k]||0;const yoyQty=yoyByProd[k]||0;
     const yTotal=yearQty[k]||v.qty;
-    return `<tr><td class="rank">${i+1}</td><td>${v.isBespoke?`<span class="tag tag-gray">비스포크</span> <span class="mono">${esc(v.pn)}</span>`:esc(crop(k,30))}</td><td class="num">${v.qty.toLocaleString()}</td><td class="num">${momYoyBadge(v.qty,prevQty)}</td><td class="num">${momYoyBadge(v.qty,yoyQty)}</td><td class="num">${v.freq}</td><td class="num">${yTotal.toLocaleString()}</td><td class="num">${faFull(v.amt)}</td><td>${v.mgr||'—'}</td></tr>`;
+    const bufRate=v.bufC>0?(v.bufD/v.bufC*100):null;
+    const bufHtml=bufRate===null?'<span style="color:var(--text3)">—</span>':`<span style="font-weight:600;color:${bufRate>=5?'var(--amber)':'var(--text)'}">${bufRate.toFixed(1)}%</span>`;
+    return `<tr><td class="rank">${i+1}</td><td>${v.isBespoke?`<span class="tag tag-gray">비스포크</span> <span class="mono">${esc(v.pn)}</span>`:esc(crop(k,30))}</td><td class="num">${v.qty.toLocaleString()}</td><td class="num">${v.cust?v.cust.toLocaleString():'—'}</td><td class="num">${bufHtml}</td><td class="num">${momYoyBadge(v.qty,prevQty)}</td><td class="num">${momYoyBadge(v.qty,yoyQty)}</td><td class="num">${v.freq}</td><td class="num">${yTotal.toLocaleString()}</td><td class="num">${faFull(v.amt)}</td><td>${v.mgr||'—'}</td></tr>`;
   }).join('');
-  setTbody('tb-ord-top',topHTML||emptyRow(9,q?'검색 결과 없음':'발주 데이터 없음'));
+  setTbody('tb-ord-top',topHTML||emptyRow(11,q?'검색 결과 없음':'발주 데이터 없음'));
   document.querySelectorAll('#tab-ord-top .th-sort').forEach(th=>{
     th.classList.toggle('sort-active',th.getAttribute('data-sort')===ORD_TOP_SORT);
   });
