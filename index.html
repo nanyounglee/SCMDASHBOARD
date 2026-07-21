@@ -5103,7 +5103,7 @@ function nav(el,id) {
     supplier:'<b>탭:</b> 매입 현황 · 협력사 목록 (v22 통합) | <b>[매입 현황]</b> 협력사별 매입금액 Top10 · 제조유형 분포 · 업태별/인쇄유형별 매입금액 · 협력사별 매입상세 Top20(비중 프로그레스바) | <b>[협력사 목록]</b> 등록 협력사 · 활성 협력사(2개월↑ 발주 거래, 카드 클릭 시 필터) · 턴키제작/단순구매 수 · <b>협력사 변경 검토 진행 현황</b>(scm_vendor_change bank 실시간 연동, 카드 클릭 시 상세 대시보드) · 협력사명(클릭 시 월별 매입추이) · 업태 · 제조유형 · 인쇄유형 · 담당발주자 · 결제조건 · 발주 거래 개월수 · 협력사명 실시간 검색 | <b>CSV:</b> 공급망_RAW + 발주_RAW',
     kpi:'<b>확인 가능 지표:</b> 납기준수율 · 리드타임 · 품질이슈율 · 검수합격률 · 긴급발주비율 · 재제작률 · 공급망A등급비율 · 가용협력사비율 · 재고회전율 · 품절률 | <b>구조:</b> 5개 영역(납기/품질/비용/공급망/재고) 12개 지표 · 목표 대비 달성률 게이지 · 월별 추이 · 전월 대비 | <b>CSV:</b> 발주_RAW + 이슈_RAW + 공급망_RAW + 고객인지이슈_RAW + S&OP 재고주간 + 품절리스트',
     portfolio:'<b>확인 가능 지표:</b> QCD×관계 4분면 Tier(Tier1·Core/Tier2·Performer/Tier3·Developing/Tier4·General) · 등급별(A/B/C/D) 협력사수·비중 | <b>차트:</b> QCD×관계 산점도 · 등급분포 도넛 | <b>테이블:</b> 협력사별 5축 점수·QCD·관계·등급·Tier·담당자 · 이달 발주실적 필터 · 변경검토리스트(C등급) | <b>CSV:</b> 분기별평가 + 발주_RAW',
-    'supplier-product':'<b>확인 가능 지표:</b> 제조유형 × 굿즈코드 발주 매트릭스(히트맵) | <b>셀:</b> 발주건수(색상강도=건수비례), hover시 매입금액 표시 | <b>CSV:</b> 발주_RAW + 공급망_RAW',
+    'supplier-product':'<b>테이블 2종:</b> ① 굿즈코드 × 굿즈 카테고리유형(공정DB cat 기준 그룹 · 발주건수/수량/매입금액) ② 협력사 × 인쇄 유형(공급망_RAW 인쇄 필드 기준 그룹 · 협력사 클릭 시 상세 모달) | <b>CSV:</b> 발주_RAW + 공급망_RAW',
     qms:'<b>확인 가능 지표:</b> 총 품질이슈 · COPQ총액 · QI(초기품질)/QC(양산통제)/QA(고객보증) 분과별 건수 | <b>차트:</b> 이슈유형 파레토(바) · QI/QC/QA 비중(도넛) · 월별COPQ추이(바+라인) | <b>CSV:</b> QMS 품질데이터 또는 이슈_RAW',
     subcontract:'<b>확인 가능 지표:</b> 총 위험건수 · 최대지연일 · 위험협력사수 | <b>자동산출:</b> 발주_RAW 입하경과일(입하확정일/예정일 기준) + 공급망_RAW 하도급대상여부=대상 + 미입하 + 90일초과 | <b>필터:</b> 전체/90일+/120일+/180일+ | <b>CSV:</b> 발주_RAW + 공급망_RAW (별도 CSV 불필요)',
     stock:'<b>확인 가능 지표:</b> 전체 품절수 · 비의도적 품절(납기지연/공급부족) · 의도적 품절(졸업/시즌/효율화) · 굿즈품절 | <b>필터:</b> 판매상태별(일시품절/품절예정/의도적 품절) | <b>테이블:</b> 파츠명/굿즈 · 판매상태 · 재고소유 · 품절성격/사유 · 변경일 · 경과일 · 굿즈품절여부 | <b>CSV:</b> 품절리스트',
@@ -6429,35 +6429,79 @@ function renderProductTrend() {
 // We override the existing updateSupTab to add eval scores
 
 // ===== 3-12. 협력사유형별 제품군 =====
+// v21.21: 제조유형×굿즈코드 히트맵 → 두 개의 테이블로 재구성 (사용자 요청)
+//   ① 굿즈코드 × 굿즈 카테고리유형 — 카테고리 그룹 아래 굿즈코드별 발주건수/수량/매입금액
+//   ② 협력사 × 인쇄 유형 — 인쇄유형 그룹 아래 협력사별 발주건수/매입금액 (협력사 클릭 시 상세)
 function renderSupplierProduct() {
   const el=document.getElementById('sec-supplier-product');
   if(!D.order||!D.sup) { el.innerHTML='<div class="card empty">발주_RAW + 공급망_RAW CSV를 업로드해주세요.</div>'; return; }
-  const mfgMap={}; D.sup.forEach(r=>{mfgMap[r['협력사 이름']]=r['1. 제조유형']||'기타';});
-  // Build matrix: mfgType → goodsCategory → {count, amount}
-  const matrix={};
-  const allCats=new Set(), allMfg=new Set();
+  const mfgMap={}, printMap={};
+  D.sup.forEach(r=>{ const n=(r['협력사 이름']||'').trim(); if(!n)return; mfgMap[n]=r['1. 제조유형']||'기타'; printMap[n]=(r['인쇄']||'').trim()||'인쇄 없음'; });
+  const gm=getGcCatMap();
+  const gcName={}; if(typeof COST_DB==='object'&&COST_DB&&COST_DB.process) COST_DB.process.forEach(p=>{ if(p.gc&&p.gn&&!gcName[p.gc]) gcName[p.gc]=p.gn; });
+
+  // ① 굿즈코드 집계 → 카테고리 그룹
+  const byGc={};
+  // ② 협력사 집계 → 인쇄유형 그룹
+  const bySup={};
   D.order.filter(r=>!isStock(r)).forEach(r=>{
-    const sup=r['수주처']||''; const mfg=mfgMap[sup]||'기타';
-    const gc=goodsCode(r)||r['산출물']?.slice(0,4)||'기타';
-    allMfg.add(mfg); allCats.add(gc);
-    if(!matrix[mfg]) matrix[mfg]={};
-    if(!matrix[mfg][gc]) matrix[mfg][gc]={cnt:0,amt:0};
-    matrix[mfg][gc].cnt++; matrix[mfg][gc].amt+=pa(r['공급가액']);
+    const amt=pa(r['공급가액']), qty=pa(String(r['발주지시수량']||''));
+    const gc=goodsCode(r);
+    if(gc){
+      if(!byGc[gc]) byGc[gc]={cnt:0,qty:0,amt:0};
+      byGc[gc].cnt++; byGc[gc].qty+=qty; byGc[gc].amt+=amt;
+    }
+    const sup=(r['수주처']||'').trim();
+    if(sup){
+      if(!bySup[sup]) bySup[sup]={cnt:0,amt:0};
+      bySup[sup].cnt++; bySup[sup].amt+=amt;
+    }
   });
-  const mfgKeys=[...allMfg].sort(); const catKeys=[...allCats].sort().slice(0,15);
-  const maxCnt=Math.max(...mfgKeys.flatMap(m=>catKeys.map(c=>matrix[m]?.[c]?.cnt||0)),1);
+
+  // ① 카테고리 그룹핑 (굿즈코드의 카테고리 = 공정DB cat, 복수면 첫 값)
+  const catGroups={};
+  Object.entries(byGc).forEach(([gc,v])=>{
+    const cat=(gm[gc]&&gm[gc].size)?[...gm[gc]][0]:'기타';
+    if(!catGroups[cat]) catGroups[cat]=[];
+    catGroups[cat].push({gc,...v});
+  });
+  const catKeys=Object.keys(catGroups).sort((a,b)=>{
+    const sa=catGroups[a].reduce((s,x)=>s+x.amt,0), sb=catGroups[b].reduce((s,x)=>s+x.amt,0);
+    return sb-sa;
+  });
+  const gcTableRows=catKeys.map(cat=>{
+    const items=catGroups[cat].sort((a,b)=>b.amt-a.amt);
+    const tCnt=items.reduce((s,x)=>s+x.cnt,0), tQty=items.reduce((s,x)=>s+x.qty,0), tAmt=items.reduce((s,x)=>s+x.amt,0);
+    return `<tr style="background:var(--surface2)"><td colspan="2" style="font-weight:700">${esc(cat)} <span style="font-weight:400;color:var(--text3)">(${items.length}개 코드)</span></td><td class="num" style="font-weight:600">${tCnt.toLocaleString()}</td><td class="num" style="font-weight:600">${tQty.toLocaleString()}</td><td class="num" style="font-weight:600">${faFull(tAmt)}</td></tr>`
+      +items.map(x=>`<tr><td style="padding-left:20px"><span class="tag tag-gray">${esc(x.gc)}</span></td><td style="font-size:11px;color:var(--text2)">${esc(gcName[x.gc]||'—')}</td><td class="num">${x.cnt.toLocaleString()}</td><td class="num">${x.qty.toLocaleString()}</td><td class="num">${faFull(x.amt)}</td></tr>`).join('');
+  }).join('');
+
+  // ② 인쇄유형 그룹핑
+  const printGroups={};
+  Object.entries(bySup).forEach(([sup,v])=>{
+    const pt=printMap[sup]||'미등록(공급망_RAW 밖)';
+    if(!printGroups[pt]) printGroups[pt]=[];
+    printGroups[pt].push({sup,...v});
+  });
+  const printKeys=Object.keys(printGroups).sort((a,b)=>{
+    const sa=printGroups[a].reduce((s,x)=>s+x.amt,0), sb=printGroups[b].reduce((s,x)=>s+x.amt,0);
+    return sb-sa;
+  });
+  const supTableRows=printKeys.map(pt=>{
+    const items=printGroups[pt].sort((a,b)=>b.amt-a.amt);
+    const tCnt=items.reduce((s,x)=>s+x.cnt,0), tAmt=items.reduce((s,x)=>s+x.amt,0);
+    return `<tr style="background:var(--surface2)"><td colspan="2" style="font-weight:700">${esc(pt)} <span style="font-weight:400;color:var(--text3)">(${items.length}개사)</span></td><td class="num" style="font-weight:600">${tCnt.toLocaleString()}</td><td class="num" style="font-weight:600">${faFull(tAmt)}</td></tr>`
+      +items.map(x=>`<tr><td style="padding-left:20px;color:var(--blue);cursor:pointer" onclick="openSupplierDetailModal('${esc(x.sup).replace(/'/g,"\\'")}')">${esc(x.sup)}</td><td><span class="tag ${mfgMap[x.sup]==='턴키제작'?'tag-turnkey':mfgMap[x.sup]==='외주용역'?'tag-service':'tag-gray'}">${esc(mfgMap[x.sup]||'기타')}</span></td><td class="num">${x.cnt.toLocaleString()}</td><td class="num">${faFull(x.amt)}</td></tr>`).join('');
+  }).join('');
 
   el.innerHTML=`
-    <div class="card"><div class="card-header"><div class="card-title">제조유형 × 굿즈코드 매트릭스</div><div class="card-sub">셀 값: 발주건수 (색상 강도 = 건수 비례)</div></div>
-    <div class="tbl-wrap"><table class="tbl"><thead><tr><th>제조유형 \\ 굿즈코드</th>${catKeys.map(c=>`<th class="num" style="font-size:10px">${esc(c)}</th>`).join('')}<th class="num">합계</th></tr></thead><tbody>
-    ${mfgKeys.map(m=>{
-      const total=catKeys.reduce((s,c)=>s+(matrix[m]?.[c]?.cnt||0),0);
-      return `<tr><td><strong>${esc(m)}</strong></td>${catKeys.map(c=>{
-        const v=matrix[m]?.[c]?.cnt||0; const a=matrix[m]?.[c]?.amt||0;
-        const opacity=v>0?Math.max(0.1,v/maxCnt):0;
-        return `<td class="num" style="background:rgba(29,78,216,${opacity.toFixed(2)});color:${opacity>0.5?'#fff':'inherit'}" title="${esc(m)} × ${esc(c)}: ${v}건 / ${faFull(a)}">${v||''}</td>`;
-      }).join('')}<td class="num" style="font-weight:600">${total}</td></tr>`;
-    }).join('')}
+    <div class="card" style="margin-bottom:16px"><div class="card-header"><div><div class="card-title">굿즈코드 × 굿즈 카테고리유형</div><div class="card-sub">카테고리(공정DB 기준)별 굿즈코드 발주 실적 · 재고생산 제외 · 매입금액 내림차순</div></div></div>
+    <div class="tbl-wrap" style="max-height:480px;overflow-y:auto"><table class="tbl"><thead><tr><th style="width:90px">굿즈코드</th><th>굿즈명</th><th class="num">발주건수</th><th class="num">발주수량</th><th class="num">매입금액</th></tr></thead><tbody>
+    ${gcTableRows||emptyRow(5,'데이터 없음')}
+    </tbody></table></div></div>
+    <div class="card"><div class="card-header"><div><div class="card-title">협력사 × 인쇄 유형</div><div class="card-sub">인쇄 유형(공급망_RAW '인쇄' 필드)별 협력사 발주 실적 · 협력사 클릭 시 상세 모달 · 매입금액 내림차순</div></div></div>
+    <div class="tbl-wrap" style="max-height:480px;overflow-y:auto"><table class="tbl"><thead><tr><th>협력사</th><th style="width:90px">제조유형</th><th class="num">발주건수</th><th class="num">매입금액</th></tr></thead><tbody>
+    ${supTableRows||emptyRow(4,'데이터 없음')}
     </tbody></table></div></div>`;
 }
 
