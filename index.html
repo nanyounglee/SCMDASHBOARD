@@ -1454,6 +1454,10 @@ const FILE_SIGNATURES={
   dashboard_period_summary:{must:['period_unit','period_key','inv_amount','turnover_3m']},
   dashboard_group_summary: {must:['period_unit','period_key','group_type','group_name','inv_amount']},
   dashboard_sku_snapshot:  {must:['period_unit','period_key','parts_no','parts_name','inv_amount']},
+  dashboard_sku_detail:    {must:['파츠번호','굿즈연결','출시일','최근입하일']},
+  dashboard_sku_monthly:   {must:['파츠번호','년월','판매수량','품절주수']},
+  raw_purchase:            {must:['파츠번호','재고귀속파츠번호','발주지시수량','입하여부','입하예정일']},
+  parts_master:            {must:['파츠번호','파츠명','표준원가','굿즈카테고리']},
   purchase_review:{must:['REVIEW_ID','파츠번호','결정상태']},
   season_plan:    {must:['굿즈명','옵션','계획구분']},
   inv_weekly:     {must:['파츠번호','기준일','재고수량','재고금액']},
@@ -5321,6 +5325,79 @@ let EOQ_PARAMS = { orderCost: 50000, holdingRate: 0.20, leadTimeDays: 14, safety
 function toNum(v) { return parseFloat(String(v||'').replace(/[₩,\s%]/g,''))||0; }
 function fmtW(n) { if(Math.abs(n)>=1e8) return (n/1e8).toFixed(1)+'억'; if(Math.abs(n)>=1e4) return Math.round(n/1e4).toLocaleString()+'만'; return Math.round(n).toLocaleString()+'원'; }
 function fmtN(n) { return Math.round(n).toLocaleString(); }
+function cleanNum(v) { return parseFloat(String(v||'').replace(/[^\d.-]/g,''))||0; }
+function isBadPartNo(v) {
+  const s=String(v||'').trim();
+  return !s || s==='#ERROR!' || s==='#N/A' || s.includes('ERROR') || s.includes('N/A');
+}
+function getPartsMasterMapCsv() {
+  const map={};
+  (D.parts_master||[]).forEach(r=>{
+    const no=String(r['파츠번호']||r.parts_no||'').trim();
+    if(no) map[no]=r;
+  });
+  return map;
+}
+function getPendingIncomingOrdersSummary() {
+  if(!D.raw_purchase||!D.parts_master) return null;
+  const masterMap=getPartsMasterMapCsv();
+  const byPart={};
+  (D.raw_purchase||[]).forEach(r=>{
+    if(String(r['입하여부']||'').trim()!=='') return;
+    const invNo=String(r['재고귀속파츠번호']||'').trim();
+    const rawNo=String(r['파츠번호']||'').trim();
+    const partNo=!isBadPartNo(invNo)?invNo:(!isBadPartNo(rawNo)?rawNo:'');
+    if(!partNo) return;
+    const master=masterMap[partNo]||{};
+    const qty=cleanNum(r['발주지시수량']);
+    const unitCost=cleanNum(master['표준원가']);
+    const amount=qty*unitCost;
+    if(!byPart[partNo]) {
+      byPart[partNo]={
+        partNo,
+        partName:String(master['파츠명']||''),
+        category:String(master['굿즈카테고리']||master['서브카테고리']||'-'),
+        procurementType:String(master['조달유형']||master['생산구분']||master['소싱구분']||'-'),
+        unitCost,
+        qty:0,
+        amount:0,
+        orderCount:0,
+        dueDates:new Set(),
+      };
+    }
+    byPart[partNo].qty+=qty;
+    byPart[partNo].amount+=amount;
+    byPart[partNo].orderCount++;
+    String(r['입하예정일']||'').split(',').map(x=>x.trim()).filter(Boolean).forEach(d=>byPart[partNo].dueDates.add(d));
+  });
+  const rows=Object.values(byPart).map(r=>Object.assign({},r,{dueDates:[...r.dueDates].sort()})).sort((a,b)=>b.amount-a.amount);
+  const totalAmount=rows.reduce((s,r)=>s+r.amount,0);
+  const totalQty=rows.reduce((s,r)=>s+r.qty,0);
+  const orderCount=rows.reduce((s,r)=>s+r.orderCount,0);
+  return {rows,totalAmount,totalQty,skuCount:rows.length,orderCount};
+}
+function openIncomingOrdersModal() {
+  const summary=getPendingIncomingOrdersSummary();
+  const ov=document.getElementById('modal-overlay'), title=document.getElementById('modal-title'), tabs=document.getElementById('modal-tabs-el'), body=document.getElementById('modal-body');
+  if(!ov||!title||!body) return;
+  ov.classList.add('open'); if(tabs) tabs.innerHTML='';
+  title.textContent='입고예정금액 상세';
+  if(!summary) {
+    body.innerHTML='<div class="empty">raw_발주.csv + parts_master.csv 데이터가 필요합니다.</div>';
+    return;
+  }
+  body.innerHTML=`
+    <div style="display:flex;gap:10px;flex-wrap:wrap;margin-bottom:12px">
+      <span class="tag tag-gray">SKU ${fmtN(summary.skuCount)}</span>
+      <span class="tag tag-gray">미입하 발주 ${fmtN(summary.orderCount)}건</span>
+      <span class="tag tag-gray">예정수량 ${fmtN(summary.totalQty)}개</span>
+      <span class="tag tag-ok">예정금액 ${fmtW(summary.totalAmount)}</span>
+    </div>
+    <div class="tbl-wrap"><table class="tbl">
+      <thead><tr><th class="rank">#</th><th>파츠</th><th>카테고리</th><th>조달/생산</th><th class="num">예정수량</th><th class="num">표준원가</th><th class="num">입고예정금액</th><th class="num">발주건</th><th>입하예정일</th></tr></thead>
+      <tbody>${summary.rows.slice(0,200).map((r,i)=>`<tr><td class="rank">${i+1}</td><td>${esc(crop(r.partName||r.partNo,34))}<div style="font-size:10px;color:var(--text3)">${esc(r.partNo)}</div></td><td>${esc(r.category||'-')}</td><td>${esc(r.procurementType||'-')}</td><td class="num">${fmtN(r.qty)}</td><td class="num">${fmtW(r.unitCost)}</td><td class="num">${fmtW(r.amount)}</td><td class="num">${fmtN(r.orderCount)}</td><td style="font-size:11px">${esc((r.dueDates||[]).slice(0,3).join(', ')||'-')}</td></tr>`).join('')||emptyRow(9,'미입하 발주 없음')}</tbody>
+    </table></div>`;
+}
 function fmtPct(n) { return (n*100).toFixed(1)+'%'; }
 function fmtTurn(n) { return (n==null||isNaN(n))?'—':Number(n).toFixed(2)+'회'; }
 function normalizeMonthKey(v) { const m=String(v||'').match(/^(\d{2})-0*(\d{1,2})$/); return m?m[1]+'-'+Number(m[2]):String(v||'').trim(); }
@@ -5510,6 +5587,113 @@ function aggCategoryRows(catRows,subRows,total){
     return `<tr onclick="openAggGroupDetail('category','${encArg(name)}')" style="cursor:pointer"><td>${esc(name)} ${toggle}</td><td class="num">${fmtW(inv)}</td><td class="num">${total?(inv/total*100).toFixed(1)+'%':'-'}</td><td class="num">${fmtN(toNum(r.sku_count))}</td><td class="num">${fmtTurn(toNum(r.turnover_3m))}</td></tr>${childHtml}`;
   }).join('');
 }
+function buildAggNewProductSummary(groupRows, skuRows, totalInv) {
+  const npRow=(groupRows||[]).find(r=>String(r.group_type||'').trim()==='new_product'&&String(r.group_name||'').trim()==='Y')||{};
+  const newRows=(skuRows||[]).filter(r=>String(r.is_new_product||'').trim().toUpperCase()==='Y');
+  const firstRows=newRows.filter(r=>String(r.is_first_order||'').trim().toUpperCase()==='Y');
+  const reorderedRows=newRows.filter(r=>String(r.is_first_order||'').trim().toUpperCase()!=='Y');
+  const exceptionRows=(skuRows||[]).filter(r=>String(r.is_first_order||'').trim().toUpperCase()==='Y'&&String(r.is_new_product||'').trim().toUpperCase()!=='Y');
+  const amount=toNum(npRow.inv_amount)||newRows.reduce((s,r)=>s+toNum(r.inv_amount),0);
+  const skuCount=toNum(npRow.sku_count)||newRows.length;
+  const firstAmount=firstRows.reduce((s,r)=>s+toNum(r.inv_amount),0);
+  const reorderedAmount=reorderedRows.reduce((s,r)=>s+toNum(r.inv_amount),0);
+  return {
+    rows:newRows.sort((a,b)=>toNum(b.inv_amount)-toNum(a.inv_amount)),
+    firstRows:firstRows.sort((a,b)=>toNum(b.inv_amount)-toNum(a.inv_amount)),
+    reorderedRows:reorderedRows.sort((a,b)=>toNum(b.inv_amount)-toNum(a.inv_amount)),
+    exceptionRows:exceptionRows.sort((a,b)=>toNum(b.inv_amount)-toNum(a.inv_amount)),
+    amount, skuCount,
+    share:totalInv>0?amount/totalInv:0,
+    firstAmount,
+    firstCount:firstRows.length,
+    firstShare:amount>0?firstAmount/amount:0,
+    reorderedAmount,
+    reorderedCount:reorderedRows.length,
+    reorderedShare:amount>0?reorderedAmount/amount:0,
+  };
+}
+function renderAggSkuMiniRows(rows, limit=8) {
+  return (rows||[]).slice(0,limit).map(r=>`<tr><td>${esc(crop(r.parts_name||r.parts_no||'',30))}<div style="font-size:10px;color:var(--text3)">${esc(r.parts_no||'')}</div></td><td>${esc(r.category||'')}</td><td class="num">${fmtN(toNum(r.inv_qty))}</td><td class="num">${fmtW(toNum(r.inv_amount))}</td><td class="num">${fmtTurn(toNum(r.turnover_3m))}</td></tr>`).join('');
+}
+function openAggNewProductModal(filter='all') {
+  const p=getSelectedAggPeriod();
+  const ov=document.getElementById('modal-overlay'), title=document.getElementById('modal-title'), tabs=document.getElementById('modal-tabs-el'), body=document.getElementById('modal-body');
+  if(!ov||!title||!body) return;
+  ov.classList.add('open'); if(tabs) tabs.innerHTML='';
+  title.textContent='신제품 재고 상세';
+  if(!p){ body.innerHTML=emptyRow(1,'집계 CSV 데이터가 없습니다.'); return; }
+  const rows=getAggSkuRows(p.period_unit||SEL_INV_PERIOD,p.period_key);
+  const summary=buildAggNewProductSummary(getAggGroupRows(p.period_unit||SEL_INV_PERIOD,p.period_key),rows,toNum(p.inv_amount));
+  const source=filter==='first'?summary.firstRows:filter==='reordered'?summary.reorderedRows:filter==='exception'?summary.exceptionRows:summary.rows;
+  const buttons=[
+    ['all','전체 '+fmtN(summary.rows.length)],
+    ['first','초도발주 '+fmtN(summary.firstRows.length)],
+    ['reordered','재발주완료 '+fmtN(summary.reorderedRows.length)],
+    ['exception','예외 '+fmtN(summary.exceptionRows.length)],
+  ].map(([k,l])=>`<span class="m-chip${filter===k?' active':''}" onclick="openAggNewProductModal('${k}')">${l}</span>`).join('');
+  body.innerHTML=`
+    <div class="filter-row" style="margin-bottom:12px">${buttons}</div>
+    <div style="display:flex;gap:10px;flex-wrap:wrap;margin-bottom:12px">
+      <span class="tag tag-gray">신제품 ${fmtN(summary.skuCount)} SKU</span>
+      <span class="tag tag-gray">재고 ${fmtW(summary.amount)}</span>
+      <span class="tag tag-gray">전체 대비 ${(summary.share*100).toFixed(1)}%</span>
+      <span class="tag tag-gray">초도 ${(summary.firstShare*100).toFixed(1)}%</span>
+    </div>
+    <div style="font-size:11px;color:var(--text3);margin-bottom:10px">기준: dashboard_sku_snapshot의 is_new_product / is_first_order 플래그. 예외는 초도발주이지만 신제품 기준에는 포함되지 않은 SKU입니다.</div>
+    <div class="tbl-wrap"><table class="tbl"><thead><tr><th>파츠</th><th>카테고리</th><th class="num">재고수량</th><th class="num">재고금액</th><th class="num">3M회전율</th></tr></thead><tbody>${renderAggSkuMiniRows(source,200)||emptyRow(5,'대상 없음')}</tbody></table></div>`;
+}
+function currentSeasonName(baseDate) {
+  const m=String(baseDate||'').match(/^\d{4}-(\d{1,2})/);
+  const month=m?Number(m[1]):(new Date().getMonth()+1);
+  if([5,6,7,8].includes(month)) return '여름';
+  if([10,11,12,1].includes(month)) return '겨울';
+  return '봄가을';
+}
+function buildAggSeasonSummary(groupRows, skuRows, baseDate) {
+  const current=currentSeasonName(baseDate);
+  const seasonNames=['여름','겨울','봄가을'];
+  const seasonRows=seasonNames.map(name=>{
+    const r=(groupRows||[]).find(x=>String(x.group_type||'').trim()==='season'&&String(x.group_name||'').trim()===name)||{};
+    const detail=(skuRows||[]).filter(x=>String(x.season_type||'').trim()===name).sort((a,b)=>toNum(b.inv_amount)-toNum(a.inv_amount));
+    return {
+      name,
+      isCurrent:name===current,
+      amount:toNum(r.inv_amount)||detail.reduce((s,x)=>s+toNum(x.inv_amount),0),
+      skuCount:toNum(r.sku_count)||detail.length,
+      turnover1m:toNum(r.turnover_1m),
+      turnover3m:toNum(r.turnover_3m),
+      turnoverYtd:toNum(r.turnover_ytd),
+      sales3m:toNum(r.sales_3m),
+      rows:detail,
+    };
+  });
+  return {current,seasons:seasonRows,monthMapText:'여름 5~8월 · 겨울 10~1월 · 봄가을 2·3·4·9월'};
+}
+function openAggSeasonModal(filter='current') {
+  const p=getSelectedAggPeriod();
+  const ov=document.getElementById('modal-overlay'), title=document.getElementById('modal-title'), tabs=document.getElementById('modal-tabs-el'), body=document.getElementById('modal-body');
+  if(!ov||!title||!body) return;
+  ov.classList.add('open'); if(tabs) tabs.innerHTML='';
+  title.textContent='시즌별 재고회전율 상세';
+  if(!p){ body.innerHTML=emptyRow(1,'집계 CSV 데이터가 없습니다.'); return; }
+  const unit=p.period_unit||SEL_INV_PERIOD, key=p.period_key;
+  const summary=buildAggSeasonSummary(getAggGroupRows(unit,key),getAggSkuRows(unit,key),p.base_date||key);
+  const selected=filter==='current'?summary.current:filter;
+  const season=summary.seasons.find(s=>s.name===selected)||summary.seasons[0];
+  const buttons=summary.seasons.map(s=>`<span class="m-chip${selected===s.name?' active':''}" onclick="openAggSeasonModal('${s.name}')">${s.name} ${fmtTurn(s.turnover3m)}</span>`).join('');
+  body.innerHTML=`
+    <div class="filter-row" style="margin-bottom:12px">${buttons}</div>
+    <div style="display:flex;gap:10px;flex-wrap:wrap;margin-bottom:12px">
+      <span class="tag ${season.isCurrent?'tag-ok':'tag-gray'}">${season.name}${season.isCurrent?' · 현재 시즌':''}</span>
+      <span class="tag tag-gray">재고 ${fmtW(season.amount)}</span>
+      <span class="tag tag-gray">SKU ${fmtN(season.skuCount)}</span>
+      <span class="tag tag-gray">1M ${fmtTurn(season.turnover1m)}</span>
+      <span class="tag tag-gray">3M ${fmtTurn(season.turnover3m)}</span>
+      <span class="tag tag-gray">YTD ${fmtTurn(season.turnoverYtd)}</span>
+    </div>
+    <div style="font-size:11px;color:var(--text3);margin-bottom:10px">시즌 기준: ${esc(summary.monthMapText)} · dashboard_group_summary group_type=season 기준</div>
+    <div class="tbl-wrap"><table class="tbl"><thead><tr><th>파츠</th><th>카테고리</th><th class="num">재고수량</th><th class="num">재고금액</th><th class="num">3M판매</th><th class="num">3M회전율</th></tr></thead><tbody>${(season.rows||[]).slice(0,200).map(r=>`<tr><td>${esc(crop(r.parts_name||r.parts_no||'',34))}<div style="font-size:10px;color:var(--text3)">${esc(r.parts_no||'')}</div></td><td>${esc(r.category||'')}</td><td class="num">${fmtN(toNum(r.inv_qty))}</td><td class="num">${fmtW(toNum(r.inv_amount))}</td><td class="num">${fmtN(toNum(r.sales_3m))}</td><td class="num">${fmtTurn(toNum(r.turnover_3m))}</td></tr>`).join('')||emptyRow(6,'대상 없음')}</tbody></table></div>`;
+}
 function toggleAggSubcategories(idx){
   const el=document.getElementById('agg-sub-'+idx);
   if(el) el.style.display=el.style.display==='none'?'':'none';
@@ -5624,6 +5808,10 @@ function renderInventoryOpsFromAgg(){
   const bandStatus=String(p.band_status||'').trim()||'운영밴드 미확인';
   const bsc=bandStatus.includes('정상')?'var(--green)':bandStatus.includes('초과')?'var(--amber)':'var(--red)';
   const trend=getAggPeriodRows(unit).slice(-12);
+  const incoming=getPendingIncomingOrdersSummary();
+  const incomingAfter=inv+(incoming?incoming.totalAmount:0);
+  const newProduct=buildAggNewProductSummary(getAggGroupRows(unit,key),sku,inv);
+  const seasonSummary=buildAggSeasonSummary(getAggGroupRows(unit,key),sku,p.base_date||key);
   el.innerHTML=`
     ${renderAggPeriodControls()}
     <div style="font-size:12px;color:var(--text3);margin-bottom:10px">대시보드 집계 CSV 기준 · 조회기간 ${esc(aggPeriodLabel(p))}</div>
@@ -5633,7 +5821,7 @@ function renderInventoryOpsFromAgg(){
       <div class="kpi-card c-green" onclick="openModal('inventoryAsset')" style="cursor:pointer"><div class="kpi-label">재고회전율</div><div class="kpi-val">${fmtTurn(toNum(p.turnover_3m))}</div><div class="kpi-sub">1M ${fmtTurn(toNum(p.turnover_1m))} · 3M ${fmtTurn(toNum(p.turnover_3m))} · YTD ${fmtTurn(toNum(p.turnover_ytd))}</div></div>
       <div class="kpi-card c-red" onclick="openAggInventoryModal('stockout')" style="cursor:pointer"><div class="kpi-label">품절율</div><div class="kpi-val">${fmtPct(toNum(p.stockout_rate))}</div><div class="kpi-sub">비의도적 ${fmtN(toNum(p.stockout_count)||stockout.length)} / 관리대상 ${fmtN(toNum(p.managed_count)||managed.length)} · 30일+ ${long30.length} · 60일+ ${long60.length}</div></div>
       <div class="kpi-card c-amber" onclick="openAggInventoryModal('band')" style="cursor:pointer"><div class="kpi-label">운영밴드</div><div class="kpi-val" style="color:${bsc};font-size:20px">${esc(bandStatus)}</div><div class="kpi-sub">${band.q} ${fmtW(band.min)}~${fmtW(band.max)}</div></div>
-      <div class="kpi-card c-purple"><div class="kpi-label">입고예정금액</div><div class="kpi-val" style="font-size:20px;color:var(--text3)">추후 반영</div><div class="kpi-sub">incoming_orders CSV 연결 예정</div></div>
+      <div class="kpi-card c-purple" onclick="openIncomingOrdersModal()" style="cursor:pointer"><div class="kpi-label">입고예정금액</div><div class="kpi-val" style="font-size:20px">${incoming?fmtW(incoming.totalAmount):'데이터 없음'}</div><div class="kpi-sub">${incoming?`SKU ${fmtN(incoming.skuCount)} · 미입하 ${fmtN(incoming.orderCount)}건 · 입고 후 ${fmtW(incomingAfter)}`:'raw_발주 + parts_master 필요'}</div></div>
     </div>
     <div style="font-size:15px;font-weight:700;margin:18px 0 10px">2. 재고 구조</div>
     <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:16px">
@@ -5643,6 +5831,32 @@ function renderInventoryOpsFromAgg(){
         <div style="display:flex;gap:12px;margin-bottom:10px"><span class="tag tag-q">${stagnant.length} SKU</span><span class="tag tag-gray">${fmtW(stagnantAmt)}</span></div>
         <div class="tbl-wrap"><table class="tbl"><thead><tr><th>파츠명</th><th>카테고리</th><th class="num">재고금액</th><th class="num">3M회전율</th></tr></thead><tbody>${stagnant.slice(0,10).map(r=>`<tr><td>${esc(crop(r.parts_name||r.parts_no||'',26))}<div style="font-size:10px;color:var(--text3)">${esc(r.parts_no||'')}</div></td><td>${esc(r.category||'')}</td><td class="num">${fmtW(toNum(r.inv_amount))}</td><td class="num">${fmtTurn(toNum(r.turnover_3m))}</td></tr>`).join('')||emptyRow(4,'대상 없음')}</tbody></table></div>
       </div>
+    </div>
+    <div class="card" onclick="openAggNewProductModal('all')" style="cursor:pointer;margin-top:16px">
+      <div class="card-header"><div><div class="card-title">신제품 재고비중</div><div class="card-sub">출시 1년 이내 기준 · 초도발주/재발주완료 구성</div></div><div class="card-action">상세 보기</div></div>
+      <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:12px">
+        <div><div class="kpi-label">신제품 재고</div><div style="font-size:22px;font-weight:800">${fmtW(newProduct.amount)}</div><div class="kpi-sub">전체 대비 ${(newProduct.share*100).toFixed(1)}% · ${fmtN(newProduct.skuCount)} SKU</div></div>
+        <div><div class="kpi-label">초도발주</div><div style="font-size:22px;font-weight:800;color:var(--amber)">${fmtW(newProduct.firstAmount)}</div><div class="kpi-sub">${fmtN(newProduct.firstCount)} SKU · 신제품 내 ${(newProduct.firstShare*100).toFixed(1)}%</div></div>
+        <div><div class="kpi-label">재발주완료</div><div style="font-size:22px;font-weight:800;color:var(--blue)">${fmtW(newProduct.reorderedAmount)}</div><div class="kpi-sub">${fmtN(newProduct.reorderedCount)} SKU · 신제품 내 ${(newProduct.reorderedShare*100).toFixed(1)}%</div></div>
+        <div><div class="kpi-label">초도 예외</div><div style="font-size:22px;font-weight:800;color:var(--text2)">${fmtN(newProduct.exceptionRows.length)}</div><div class="kpi-sub">초도발주이나 신제품 기준 외</div></div>
+      </div>
+      <div style="height:12px;border-radius:6px;overflow:hidden;background:var(--surface2);display:flex">
+        <div onclick="event.stopPropagation();openAggNewProductModal('first')" title="초도발주" style="width:${Math.max(0,Math.min(100,newProduct.firstShare*100))}%;background:var(--amber)"></div>
+        <div onclick="event.stopPropagation();openAggNewProductModal('reordered')" title="재발주완료" style="width:${Math.max(0,Math.min(100,newProduct.reorderedShare*100))}%;background:var(--blue)"></div>
+      </div>
+      <div style="display:flex;gap:12px;margin-top:8px;font-size:11px;color:var(--text3);flex-wrap:wrap"><span>■ 초도발주</span><span>■ 재발주완료</span></div>
+    </div>
+    <div class="card" onclick="openAggSeasonModal('current')" style="cursor:pointer;margin-top:16px">
+      <div class="card-header"><div><div class="card-title">시즌별 재고회전율</div><div class="card-sub">3개월 회전율 기준 · 현재 시즌 ${esc(seasonSummary.current)} 강조</div></div><div class="card-action">상세 보기</div></div>
+      <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px">
+        ${seasonSummary.seasons.map(s=>`<div onclick="event.stopPropagation();openAggSeasonModal('${s.name}')" style="border:1px solid ${s.isCurrent?'var(--blue)':'var(--border)'};background:${s.isCurrent?'var(--blue-light)':'var(--surface2)'};border-radius:var(--r-sm);padding:12px 14px">
+          <div style="font-size:11px;color:var(--text3);font-weight:700;margin-bottom:4px">${esc(s.name)}${s.isCurrent?' · NOW':''}</div>
+          <div style="font-size:24px;font-weight:800;color:${s.isCurrent?'var(--blue)':'var(--text)'}">${fmtTurn(s.turnover3m)}</div>
+          <div class="kpi-sub">재고 ${fmtW(s.amount)} · ${fmtN(s.skuCount)} SKU</div>
+          <div class="kpi-sub">1M ${fmtTurn(s.turnover1m)} · YTD ${fmtTurn(s.turnoverYtd)}</div>
+        </div>`).join('')}
+      </div>
+      <div style="font-size:11px;color:var(--text3);margin-top:10px">${esc(seasonSummary.monthMapText)}</div>
     </div>
     <div style="font-size:15px;font-weight:700;margin:18px 0 10px">3. 카테고리별</div>
     <div class="card">

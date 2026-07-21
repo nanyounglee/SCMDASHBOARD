@@ -31,7 +31,8 @@
   @media print{body{padding:20px 24px}h2{page-break-after:avoid}.page-break{page-break-before:always}}
 </style>
 </head>
-<body><div style="background:#eff6ff;border:1px solid #bfdbfe;border-radius:8px;padding:14px 18px;margin:16px 0;font-size:13px;line-height:1.7"><b>🆕 v22 대개편 (2026-07-21)</b><br>① 사이드바 대분류 재편: <b>대시보드 / 구매전략·S&OP 재고운영 / 외주생산·발주 현황 / 외주생산·이슈 현황 / 외주생산·공급망 현황 / 구매조달·매출 분석 / 구매조달·KPI / 운영 서비스</b> — 품질 현황·하도급법 위험·견적계산기·AI 어시스턴트·리포트 생성은 운영 서비스로 통합, 원가 분석은 매출 분석 그룹으로 이동<br>② <b>공급망 포트폴리오</b>에 협력사·매입 현황(내부에 매입 현황/협력사 목록 서브탭 유지)과 협력사유형별 제품군을 서브탭으로 통합<br>※ 아래 본문의 화면 위치 설명은 v21 기준일 수 있음 — 기능 자체는 동일하며 위치만 위 구조로 이동</div>
+<body><div style="background:#ecfdf5;border:1px solid #bbf7d0;border-radius:8px;padding:14px 18px;margin:16px 0;font-size:13px;line-height:1.7"><b>🆕 v22.1 구매전략 재고운영 로직 보강 (2026-07-21)</b><br>① <code>getPendingIncomingOrdersSummary()</code>: <code>raw_발주.csv</code> 미입하 행을 <code>parts_master.csv</code> 표준원가와 조인해 입고예정금액을 계산합니다.<br>② <code>buildAggNewProductSummary()</code>: 신제품/초도발주 플래그로 신제품 재고비중과 초도·재발주 구성을 계산합니다.<br>③ <code>buildAggSeasonSummary()</code>: 시즌 그룹 집계와 SKU 스냅샷을 결합해 여름·겨울·봄가을 회전율을 계산합니다.<br>※ 기존 CSV 헤더명 변경은 없고, 신규 참조 헤더는 변경 시 changelog에 기록해야 합니다.</div>
+<div style="background:#eff6ff;border:1px solid #bfdbfe;border-radius:8px;padding:14px 18px;margin:16px 0;font-size:13px;line-height:1.7"><b>🆕 v22 대개편 (2026-07-21)</b><br>① 사이드바 대분류 재편: <b>대시보드 / 구매전략·S&OP 재고운영 / 외주생산·발주 현황 / 외주생산·이슈 현황 / 외주생산·공급망 현황 / 구매조달·매출 분석 / 구매조달·KPI / 운영 서비스</b> — 품질 현황·하도급법 위험·견적계산기·AI 어시스턴트·리포트 생성은 운영 서비스로 통합, 원가 분석은 매출 분석 그룹으로 이동<br>② <b>공급망 포트폴리오</b>에 협력사·매입 현황(내부에 매입 현황/협력사 목록 서브탭 유지)과 협력사유형별 제품군을 서브탭으로 통합<br>※ 아래 본문의 화면 위치 설명은 v21 기준일 수 있음 — 기능 자체는 동일하며 위치만 위 구조로 이동</div>
 <div style='max-width:900px;margin:20px auto;padding:18px 24px;border:2px solid #1d4ed8;border-radius:8px;background:#eff6ff;font-family:sans-serif'>
   <div style='font-size:15px;font-weight:800;color:#1d4ed8;margin-bottom:10px'>🆕 v22 변경 내역 (2026.07.20)</div>
   <ul style='font-size:12.5px;line-height:1.9;color:#334155;margin:0;padding-left:18px'>
@@ -191,6 +192,10 @@ FILE_SIGNATURES = {
   dashboard_period_summary: { must: ['period_unit','period_key','inv_amount','turnover_3m'] },
   dashboard_group_summary:  { must: ['period_unit','period_key','group_type','group_name','inv_amount'] },
   dashboard_sku_snapshot:   { must: ['period_unit','period_key','parts_no','parts_name','inv_amount'] },
+  dashboard_sku_detail:     { must: ['파츠번호','굿즈연결','출시일','최근입하일'] },
+  dashboard_sku_monthly:    { must: ['파츠번호','년월','판매수량','품절주수'] },
+  raw_purchase:             { must: ['파츠번호','재고귀속파츠번호','발주지시수량','입하여부','입하예정일'] },
+  parts_master:             { must: ['파츠번호','파츠명','표준원가','굿즈카테고리'] },
   parts: { must: ['파츠명 (Long ver)','굿즈 연결 현황 (from item)','파츠 유형'] },
   goods_master: { must: ['Goods Name','Goods Code','굿즈 Status','출시일','졸업일'] }, // v14
   purchase_review: { must: ['REVIEW_ID','파츠번호','결정상태'] },
@@ -294,6 +299,30 @@ MoM: getPrevMonth('2026.6') → '2026.5', getPrevMonth('2026.1') → '2025.12'</
 <div class="code">isAggManaged / isAggProduct / isAggStockout / aggStockoutDays — GSheets 사전산출 값 조회 전용
 getAggPeriodRows / getAggGroupRows / getAggSkuRows — dashboard_* 3종 조회
 renderAggInventoryDonut — group_type별 도넛차트</div>
+
+<h3>3-9a. 구매전략 재고운영 보강 로직 <span class="badge b-green">v22.1</span></h3>
+<div class="code">입고예정금액:
+  source = raw_발주.csv
+  대상 행 = 입하여부가 빈 행
+  조인 키 = 재고귀속파츠번호 우선, 없거나 오류값이면 파츠번호
+  단가 = parts_master.csv[파츠번호].표준원가
+  금액 = 발주지시수량 × 표준원가
+  출력 = 총 입고예정금액, SKU 수, 미입하 발주건수, SKU별 상세 모달
+
+신제품 재고비중:
+  group summary = dashboard_group_summary where group_type='new_product' and group_name='Y'
+  SKU 상세 = dashboard_sku_snapshot where is_new_product='Y'
+  초도발주 = is_new_product='Y' and is_first_order='Y'
+  재발주완료 = is_new_product='Y' and is_first_order!='Y'
+  초도 예외 = is_first_order='Y' and is_new_product!='Y'
+  비중 = 신제품 재고금액 / 전체 재고금액
+
+시즌별 재고회전율:
+  group summary = dashboard_group_summary where group_type='season'
+  SKU 상세 = dashboard_sku_snapshot where season_type in ('여름','겨울','봄가을')
+  현재 시즌 = 기준일 월 기준: 여름 5~8월, 겨울 10~1월, 봄가을 2·3·4·9월
+  출력 = 시즌별 재고금액, SKU 수, turnover_1m, turnover_3m, turnover_ytd, SKU 상세 모달</div>
+<div class="note"><b>CSV 헤더 영향:</b> 이번 변경에서 기존 헤더명은 바꾸지 않았다. 다만 신규 기능은 <code>raw_발주.csv</code>의 <code>입하여부</code>, <code>재고귀속파츠번호</code>, <code>발주지시수량</code>, <code>입하예정일</code>, <code>parts_master.csv</code>의 <code>표준원가</code>, <code>dashboard_sku_snapshot.csv</code>의 <code>is_new_product</code>, <code>is_first_order</code>, <code>season_type</code>, <code>dashboard_group_summary.csv</code>의 <code>group_type</code>, <code>group_name</code>, <code>turnover_3m</code>에 의존한다. 원천 시트에서 이 헤더가 변경되면 코드와 문서를 함께 수정해야 한다.</div>
 
 <h3>3-10. 협력사 평가 점수 산식 (원본, 5축 15점)</h3>
 <p>협력사 QCD/관계 원점수는 아래 5축 산식으로 산출하며, v9(반기환산)·v12(Tier 분류 교체)·v13(평가기준 단일화) 모두 이 산식 자체는 그대로 재사용한다.</p>

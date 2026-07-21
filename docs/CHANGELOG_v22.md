@@ -4,6 +4,13 @@
 
 v22는 **정보 구조 대개편** 버전입니다 — 기능이 늘면서 혼재됐던 사이드바를 업무 대분류 기준으로 재편하고, 공급망 관련 3개 화면을 하나로 통합했습니다. (버전 규칙: 큰 기능 개편 = 메이저 업, 버그·정교화 = 소수점 — v21.14 확정 규칙의 첫 적용)
 
+## v22.1 구매전략 재고운영 기능 보강 (2026.07.21)
+- **입고예정금액 카드 연결**: `raw_발주.csv`에서 `입하여부`가 비어 있는 미입하 발주를 읽고, `재고귀속파츠번호` 우선으로 `parts_master.csv`의 `표준원가`를 매칭해 `발주지시수량 × 표준원가`로 입고예정금액을 계산합니다. 카드 클릭 시 SKU별 상세 모달을 표시합니다.
+- **신제품 재고비중 카드 신규**: `dashboard_group_summary.csv`의 `group_type=new_product`와 `dashboard_sku_snapshot.csv`의 `is_new_product`, `is_first_order` 플래그를 사용해 신제품 재고금액, 전체 대비 비중, 초도발주/재발주완료 구성, 초도 예외 SKU를 표시합니다.
+- **시즌별 재고회전율 카드 신규**: `dashboard_group_summary.csv`의 `group_type=season`과 `dashboard_sku_snapshot.csv`의 `season_type`을 사용해 여름/겨울/봄가을별 재고금액, SKU 수, 1M/3M/YTD 회전율을 표시합니다. 기준일 월로 현재 시즌을 강조합니다.
+- **수동 업로드 자동인식 보강**: 자동 로드에는 이미 포함돼 있던 `dashboard_sku_detail.csv`, `dashboard_sku_monthly.csv`, `raw_발주.csv`, `parts_master.csv`를 드래그 업로드해도 파일 유형을 인식하도록 `FILE_SIGNATURES`를 추가했습니다.
+- **원본 CSV 헤더값 변경 여부**: 기존 헤더명 변경은 없습니다. 단, 신규 기능은 아래 헤더를 사용하므로 원천 시트에서 해당 헤더가 바뀌면 함께 공지와 코드 수정이 필요합니다: `raw_발주.csv`의 `파츠번호`, `재고귀속파츠번호`, `발주지시수량`, `입하여부`, `입하예정일`; `parts_master.csv`의 `파츠번호`, `파츠명`, `표준원가`, `굿즈카테고리`, `서브카테고리`; `dashboard_sku_snapshot.csv`의 `is_new_product`, `is_first_order`, `season_type`; `dashboard_group_summary.csv`의 `group_type`, `group_name`, `inv_amount`, `sku_count`, `turnover_1m`, `turnover_3m`, `turnover_ytd`.
+
 ## 사이드바 대분류 재편
 - **8개 대분류로 재구성**: 대시보드(종합 현황) / **구매전략 · S&OP 재고운영**(품절 상세·졸업 검토·재고운영·매입 검토·시즌재고·EOQ) / **외주생산 · 발주 현황**(발주 현황·발주 진행현황) / **외주생산 · 이슈 현황**(이슈 현황) / **외주생산 · 공급망 현황**(공급망 포트폴리오·협력사 변경 검토↗) / **구매조달 · 매출 분석**(매출/마진·제품별 판매량 추이·원가 분석) / **구매조달 · KPI**(KPI 목표·트래킹) / **운영 서비스**
 - **운영 서비스 그룹 신설**: 품질 현황(QMS)·하도급법 위험·견적계산기·AI 어시스턴트·리포트 생성 — 분석 화면이 아닌 "운영 서비스" 성격의 기능을 한 그룹으로 통합
