@@ -3855,9 +3855,25 @@ function getGoodsPartsIndex() {
   }
   return GOODS_PARTS_IDX;
 }
+let ORDER_NAME_IDX=null, ORDER_NAME_SRC=null;
+function getOrderNamePartsIndex() {
+  if(ORDER_NAME_SRC!==D.parts) {
+    ORDER_NAME_IDX={};
+    (D.parts||[]).forEach(row=>{
+      const k=(row['발주서명칭']||'').trim();
+      if(k){
+        if(!ORDER_NAME_IDX[k]) ORDER_NAME_IDX[k]=[];
+        ORDER_NAME_IDX[k].push(row);
+      }
+    });
+    ORDER_NAME_SRC=D.parts;
+  }
+  return ORDER_NAME_IDX;
+}
 function computeGoodsDbCostForOrder(goodsName,qty) {
-  const idx=getGoodsPartsIndex();
-  const parts=idx[goodsName];
+  const orderIdx=getOrderNamePartsIndex();
+  const goodsIdx=getGoodsPartsIndex();
+  const parts=orderIdx[goodsName]||goodsIdx[goodsName];
   if(!parts||!parts.length) return null;
   let unitSum=0,missing=0;
   parts.forEach(p=>{
