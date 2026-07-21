@@ -592,17 +592,13 @@ a{color:var(--blue);text-decoration:none}
       </div>
       <div class="card" style="margin-bottom:16px">
         <div class="card-header"><div><div class="card-title">미입하율 추이</div><div class="card-sub">미입하율 = 미입하건수 ÷ 전체 발주 TASK × 100 (월별) · 2026 목표 1.56% 이하 · <b>차트의 월 지점 클릭 시 MoM·YoY 상세 표시</b></div></div></div>
-        <div class="grid-2">
-          <div>
-            <div class="ch" style="height:210px"><canvas id="ch-iss-noarrival"></canvas></div>
-            <div id="iss-noa-info" style="font-size:12px;color:var(--text2);margin-top:8px;padding:8px 10px;background:var(--surface2);border-radius:var(--r-sm)">차트의 월 지점을 클릭하면 해당 월 미입하율의 MoM·YoY 비교가 여기에 표시됩니다.</div>
-          </div>
-          <div class="tbl-wrap"><table class="tbl"><thead><tr><th>월</th><th class="num">전체TASK</th><th class="num">미입하건수</th><th class="num">미입하율</th><th class="num">전년동월</th><th class="num">YoY</th></tr></thead><tbody id="tb-iss-noarrival"></tbody></table></div>
-        </div>
+        <!-- v21.12: 미입하율 월별 표 제거 — 차트+지점 클릭 상세로 충분 (사용자 요청) -->
+        <div class="ch" style="height:210px"><canvas id="ch-iss-noarrival"></canvas></div>
+        <div id="iss-noa-info" style="font-size:12px;color:var(--text2);margin-top:8px;padding:8px 10px;background:var(--surface2);border-radius:var(--r-sm)">차트의 월 지점을 클릭하면 해당 월 미입하율의 MoM·YoY 비교가 여기에 표시됩니다.</div>
       </div>
       <!-- v22: 실패비용 현황 — 고객인지이슈 탭 통합 시 이슈현황 본문으로 이동 (서브탭과 무관하게 항상 표시) -->
       <div class="card" style="margin-bottom:16px">
-        <div class="card-header"><div class="card-title">실패비용 현황</div><div class="card-sub">재제작 자동집계 + 수기입력 실패비용 · YoY · 월별 추이 · 매입금액 대비 비중</div></div>
+        <div class="card-header"><div class="card-title">실패비용 vs 예방비용</div><div class="card-sub">실패비용(재제작 자동집계+수기입력) · <b>예방비용(여분 지출 = (발주지시수량−고객주문수량)×실단가)</b> · YoY · 월별 추이 · 매입금액 대비 비중을 나란히 비교</div></div>
         <div id="ci-failcost-wrap"></div>
       </div>
       <div class="tabs">
@@ -2547,15 +2543,7 @@ function renderIssueAnalytics(){
     onClick:(e)=>issNoaChartClick(e),
     plugins:{legend:{position:'bottom',labels:{font:{size:10},boxWidth:10}},tooltip:{callbacks:{label:c=>c.dataset.label+': '+(c.parsed.y===null?'—':c.parsed.y.toFixed(2)+'%')}}},
     scales:{y:{beginAtZero:true,ticks:{font:{size:10},callback:v=>v+'%'}}}}});
-  // ---- 표: 미입하율 월별 추이 (전년동월 비교) ----
-  const noaHTML=Array.from({length:12},(_,i)=>i+1).filter(m=>taskCur[m]>0||taskPrev[m]>0).map(m=>{
-    const rate=taskCur[m]?(noaCur[m]/taskCur[m]*100):null;
-    const rateP=taskPrev[m]?(noaPrev[m]/taskPrev[m]*100):null;
-    const yoy=(rate!==null&&rateP!==null)?rate-rateP:null;
-    const yoyColor=yoy===null?'var(--text3)':(yoy>0?'var(--red)':yoy<0?'var(--green)':'var(--text3)');
-    return `<tr><td>${m}월</td><td class="num">${taskCur[m]||0}</td><td class="num">${noaCur[m]||0}</td><td class="num" style="font-weight:600">${rate!==null?rate.toFixed(2)+'%':'—'}</td><td class="num" style="color:var(--text3)">${rateP!==null?rateP.toFixed(2)+'%':'—'}</td><td class="num" style="color:${yoyColor};font-weight:600">${yoy!==null?(yoy>=0?'+':'')+yoy.toFixed(2)+'%p':'—'}</td></tr>`;
-  }).join('');
-  setTbody('tb-iss-noarrival',noaHTML||emptyRow(6));
+  // v21.12: 미입하율 월별 표 제거 — 차트 + 지점 클릭 MoM/YoY 상세로 대체 (사용자 요청)
 }
 
 // v21.3: 미입하율 추이 차트 지점 클릭 → MoM/YoY 상세 패널. 상태는 renderIssueAnalytics가 채움.
@@ -2725,13 +2713,22 @@ function ciManualCostByMonth() {
 function renderCIFailCostPanel() {
   const wrap=document.getElementById('ci-failcost-wrap'); if(!wrap) return;
   if(!D.order) { wrap.innerHTML=emptyRow(1,'발주_RAW 업로드 필요'); return; }
-  const autoByMonth={}, amtByMonth={};
+  const autoByMonth={}, amtByMonth={}, prevCostByMonth={};
   D.order.forEach(r=>{
     const bmAmt=purchaseByMonth(r);
     Object.entries(bmAmt).forEach(([m,a])=>{ amtByMonth[m]=(amtByMonth[m]||0)+a; });
     const bmCost=reworkCostByMonth(r);
     Object.entries(bmCost).forEach(([m,a])=>{ autoByMonth[m]=(autoByMonth[m]||0)+a; });
   });
+  // v21.12: 예방비용(여분 지출) 월별 — (발주지시수량−고객주문수량)×그 발주의 실단가, 과업지시월 기준
+  // (전년 라인용으로 전년 발주 포함 · v21.10 예방비용 카드와 동일 산식)
+  [D.order,D.orderPrevYear].forEach(list=>(list||[]).forEach(r=>{
+    if(isStock(r)||String(r['task_id']||'').includes('재제작')) return;
+    const oq=pa(String(r['발주지시수량']||'')), cq=pa(String(r['고객주문수량']||'')), amt=pa(r['공급가액']);
+    if(!(cq>0&&oq>cq&&amt>0)) return;
+    const mo=pOrderMonth(r['과업지시일자']); if(!mo) return;
+    prevCostByMonth[mo]=(prevCostByMonth[mo]||0)+(oq-cq)*(amt/oq);
+  }));
   const manualByMonth=ciManualCostByMonth();
   const allMonths=[...new Set([...Object.keys(autoByMonth),...Object.keys(manualByMonth),...Object.keys(amtByMonth)])].sort(monthCmp);
   if(!allMonths.length) { wrap.innerHTML='<div style="font-size:12px;color:var(--text3);padding:8px 0">매입/재제작 데이터 없음</div>'; return; }
@@ -2750,30 +2747,42 @@ function renderCIFailCostPanel() {
   const pctOfAmt=curAmt>0?(ytdCur/curAmt*100):null;
   const autoYtd=curMonthsPresent.reduce((s,n)=>s+(autoByMonth[curYear+'.'+n]||0),0);
   const manualYtd=curMonthsPresent.reduce((s,n)=>s+(manualByMonth[curYear+'.'+n]||0),0);
+  // v21.12: 예방비용 당해·전년 시리즈 + 매입 대비 비중 — 실패와 같은 분모(당해 매입금액)로 % 비교
+  const prevCostCur=curMonthsPresent.map(n=>prevCostByMonth[curYear+'.'+n]||0);
+  const prevCostYtd=prevCostCur.reduce((a,b)=>a+b,0);
+  const prevCostPct=curAmt>0?(prevCostYtd/curAmt*100):null;
   wrap.innerHTML=`
     <div style="display:flex;gap:12px;margin-bottom:14px;flex-wrap:wrap">
       <div style="background:var(--red-light);color:var(--red);padding:8px 14px;border-radius:6px">
         <div style="font-size:10px;font-weight:600">${curYear}년 누계 실패비용</div>
         <div style="font-size:16px;font-weight:700">${faFull(ytdCur)}</div>
+        <div style="font-size:10px;margin-top:2px">매입 대비 <b>${pctOfAmt===null?'—':pctOfAmt.toFixed(3)+'%'}</b></div>
+      </div>
+      <div style="background:var(--blue-light);color:var(--blue);padding:8px 14px;border-radius:6px">
+        <div style="font-size:10px;font-weight:600">${curYear}년 누계 예방비용(여분 지출)</div>
+        <div style="font-size:16px;font-weight:700">${faFull(Math.round(prevCostYtd))}</div>
+        <div style="font-size:10px;margin-top:2px">매입 대비 <b>${prevCostPct===null?'—':prevCostPct.toFixed(3)+'%'}</b></div>
       </div>
       <div style="background:${yoy===null?'var(--surface2)':yoy>=0?'var(--red-light)':'var(--green-light)'};color:${yoy===null?'var(--text3)':yoy>=0?'var(--red)':'var(--green)'};padding:8px 14px;border-radius:6px">
-        <div style="font-size:10px;font-weight:600">YoY (전년 동기 ${ytdPrev>0?faFull(ytdPrev):'0원'})</div>
+        <div style="font-size:10px;font-weight:600">실패비용 YoY (전년 동기 ${ytdPrev>0?faFull(ytdPrev):'0원'})</div>
         <div style="font-size:16px;font-weight:700">${yoy===null?'—':(yoy>=0?'+':'')+yoy.toFixed(1)+'%'}</div>
       </div>
       <div style="background:var(--surface2);padding:8px 14px;border-radius:6px">
-        <div style="font-size:10px;font-weight:600;color:var(--text3)">매입금액 대비 비중</div>
-        <div style="font-size:16px;font-weight:700">${pctOfAmt===null?'—':pctOfAmt.toFixed(3)+'%'}</div>
+        <div style="font-size:10px;font-weight:600;color:var(--text3)">예방÷실패 배율</div>
+        <div style="font-size:16px;font-weight:700">${ytdCur>0?(prevCostYtd/ytdCur).toFixed(1)+'배':'—'}</div>
+        <div style="font-size:10px;margin-top:2px;color:var(--text3)">여분 투자 효과 상세는 발주 현황 카드</div>
       </div>
     </div>
     <div class="ch" style="height:180px"><canvas id="ch-ci-failcost"></canvas></div>
-    <div style="font-size:10px;color:var(--text3);margin-top:8px">실패비용 = 발주_RAW task_id '재제작' 취득원가 자동집계(${faFull(autoYtd)}) + 고객인지이슈 수기입력 추가 실패비용(${faFull(manualYtd)}) · 매입금액 대비 비중은 동일 기간(${curYear}년 ${curMonthsPresent[0]}~${curMonthsPresent[curMonthsPresent.length-1]}월) 매입금액 기준</div>`;
+    <div style="font-size:10px;color:var(--text3);margin-top:8px">실패비용 = 발주_RAW task_id '재제작' 취득원가 자동집계(${faFull(autoYtd)}) + 고객인지이슈 수기입력 추가 실패비용(${faFull(manualYtd)}) · 예방비용 = (발주지시수량−고객주문수량)×그 발주의 실단가, 과업지시월 기준(실패비용은 세금계산서월 기준) · 매입금액 대비 비중은 동일 기간(${curYear}년 ${curMonthsPresent[0]}~${curMonthsPresent[curMonthsPresent.length-1]}월) 매입금액 분모 공통 · 예방비용은 소진되지 않으면 여분 재고로 남아 전액 비용은 아님</div>`;
   dc('ch-ci-failcost');
   const ctx=getCtx('ch-ci-failcost');
   if(ctx) {
     CHARTS['ch-ci-failcost']=new Chart(ctx,{type:'line',data:{labels:curMonthsPresent.map(n=>n+'월'),datasets:[
-      {label:prevYear+'년',data:prevVals,borderColor:'#94a3b8',borderDash:[5,4],borderWidth:2,tension:.3,pointRadius:3,fill:false},
-      {label:curYear+'년',data:curVals,borderColor:'#dc2626',borderWidth:2.5,tension:.3,pointRadius:3,fill:false}
-    ]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:true,position:'bottom',labels:{font:{size:10},boxWidth:10}}},scales:{y:{ticks:{font:{size:10},callback:v=>fmtW(v)}}}}});
+      {label:'실패 '+prevYear+'년',data:prevVals,borderColor:'#94a3b8',borderDash:[5,4],borderWidth:2,tension:.3,pointRadius:3,fill:false},
+      {label:'실패 '+curYear+'년',data:curVals,borderColor:'#dc2626',borderWidth:2.5,tension:.3,pointRadius:3,fill:false},
+      {label:'예방 '+curYear+'년',data:prevCostCur,borderColor:'#1d4ed8',borderWidth:2.5,tension:.3,pointRadius:3,fill:false}
+    ]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:true,position:'bottom',labels:{font:{size:10},boxWidth:10}},tooltip:{callbacks:{label:c=>c.dataset.label+': '+faFull(Math.round(c.parsed.y))}}},scales:{y:{ticks:{font:{size:10},callback:v=>fmtW(v)}}}}});
   }
 }
 
@@ -6139,7 +6148,11 @@ function renderProductTrend() {
   const q=getSearchQuery();
   const nq=q?normCat(q):'';
   const byProduct={};
-  D.order.filter(r=>!isStock(r)&&(!q||matchesSearch(r,q)||catTokenMatch(getOrderRowCategoryStr(r),nq))).forEach(r=>{
+  // v21.12: 파츠유형에 Product Parts가 없는 행(인쇄·포장 전용 발주)은 제외 — 같은 제품이 본품 발주와
+  // 인쇄 발주(박·실크 등)로 나뉘어 수량이 중복 집계되는 것을 방지. 단 수주처가 신시어리웨일즈 주식회사인
+  // 행은 예외(자사 제작 건은 인쇄 파츠 행이 곧 제품 발주 기록이라 제외하면 그 제품이 통째로 사라짐)
+  D.order.filter(r=>!isStock(r)&&(!q||matchesSearch(r,q)||catTokenMatch(getOrderRowCategoryStr(r),nq))
+    &&(partsType(r).includes('Product Parts')||(r['수주처']||'').trim()==='신시어리웨일즈 주식회사')).forEach(r=>{
     const name=(r['산출물']||'').trim(); if(!name) return; // 비스포크(산출물 없음)는 반복성 없어 제외
     const mk=pOrderMonth(r['과업지시일자']); if(!mk) return;
     const qty=pa(r['발주지시수량']);
@@ -6159,7 +6172,7 @@ function renderProductTrend() {
   // v21.4: 표에서 최근 6개월만 잘라 보여주던 것을 데이터 전체 월(최대 13개월)로 확대 — 26.1월 누락 문제 해결
   const shownMonths=allMonths.slice(-13);
   el.innerHTML=`
-    <div class="card"><div class="card-header"><div class="card-title">제품별 월간 발주수량 추이 (Top 10)</div><div class="card-sub">총 ${sorted.length}개 제품 · 발주지시수량 기준 · 재고생산 제외 · 검색창에 <b>Goods Category</b>(예: Drinkware, Stationery)를 입력하면 해당 카테고리 제품 전체 표시${q?' · <b>검색 필터 적용</b>':''}</div></div>
+    <div class="card"><div class="card-header"><div class="card-title">제품별 월간 발주수량 추이 (Top 10)</div><div class="card-sub">총 ${sorted.length}개 제품 · 발주지시수량 기준 · 재고생산 제외 · <b>파츠유형 Product Parts 포함 발주만</b>(인쇄·포장 전용 발주 행 제외로 중복 집계 방지, 신시어리웨일즈 제작 건은 예외) · 검색창에 <b>Goods Category</b>(예: Drinkware, Stationery)를 입력하면 해당 카테고리 제품 전체 표시${q?' · <b>검색 필터 적용</b>':''}</div></div>
     <div class="ch" style="height:320px"><canvas id="ch-prod-trend"></canvas></div></div>
     <div class="card" style="margin-top:12px"><div class="card-header"><div class="card-title">제품별 발주 요약 <span style="font-weight:400;font-size:11px;color:var(--text3)">(${URGENT_EXCLUDE_SUP} 제작 제품 제외${q?' · 검색 필터 적용':''})</span></div></div>
     <div class="tbl-wrap"><table class="tbl"><thead><tr><th class="rank">#</th><th>제품명</th><th>제작 협력사</th><th class="num">누적 발주수량</th><th class="num">월평균</th>${shownMonths.map(m=>`<th class="num" style="font-size:10px">${m}</th>`).join('')}</tr></thead><tbody>
