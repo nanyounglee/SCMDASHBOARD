@@ -953,11 +953,18 @@ function buildCostMaps(){
   COST_DB.process.forEach(p=>{if(p.id)COST_PROC_MAP[p.id]=p;});
   COST_DB.price.forEach(p=>{if(p.item)COST_PRICE_MAP[p.item]=p;});
 }
+// v21.14: 구간 선택을 내림 기준으로 통일 (사용자 확정 규칙) — 발주수량 이하의 최대 구간 단가를
+// 사용하고, 이하 구간에 값이 없으면 상위 구간으로 폴백. parts.csv 경로(partTierCost)와 동일 규칙.
+// 예: 5,800개 → 5,000개 구간 (기존 올림 로직은 10,000개 구간을 잡아 규칙이 경로마다 달랐음)
 function getCostTierValue(obj,qty){
   const tiers=[1,50,100,300,500,1000,3000,5000,10000,30000];
-  let val=obj.c500||obj.c100||0;
-  for(const t of tiers){if(qty<=t&&obj['c'+t]){val=obj['c'+t];break;}if(obj['c'+t])val=obj['c'+t];}
-  return val;
+  for(let i=tiers.length-1;i>=0;i--){
+    if(tiers[i]<=qty&&obj['c'+tiers[i]]) return obj['c'+tiers[i]];
+  }
+  for(let i=0;i<tiers.length;i++){
+    if(tiers[i]>qty&&obj['c'+tiers[i]]) return obj['c'+tiers[i]];
+  }
+  return 0;
 }
 function getProcessesForGoods(goodsCode){
   return COST_DB.process.filter(p=>p.gc===goodsCode);
