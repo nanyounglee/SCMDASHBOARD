@@ -169,11 +169,17 @@ async function runSource(src) {
     console.warn(`  레코드 0건 — 파일을 건드리지 않고 건너뜁니다(기존 CSV 유지).`);
     return false;
   }
+  const apiFields = [...new Set(records.flatMap(r => Object.keys(r.fields)))];
   let headers = existingHeaders(file);
   if (!headers) {
-    headers = [...new Set(records.flatMap(r => Object.keys(r.fields)))];
+    headers = apiFields;
     console.log(`  기존 CSV 없음 — API 필드 순 헤더 사용(${headers.length}개)`);
   } else {
+    // v22.2 감사 수정: 기존 헤더를 그대로 동결하면 Airtable에 새로 생긴 필드가 영영 CSV에 못
+    // 들어오고, 그 상태로는 "내용 동일" 판정에도 걸려 갱신 자체가 스킵됨 — 기존 순서 유지 +
+    // 신규 필드를 뒤에 병합(대시보드 파서는 이름 기반이라 뒤 추가는 안전)
+    const added = apiFields.filter(h => !headers.includes(h));
+    if (added.length) { headers = headers.concat(added); console.log(`  신규 필드 ${added.length}개 헤더 뒤에 추가: ${added.join(', ')}`); }
     console.log(`  헤더 재사용(${headers.length}개 컬럼)`);
   }
   const csvText = toCsv(headers, records);

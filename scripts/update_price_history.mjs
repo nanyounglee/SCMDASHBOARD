@@ -46,7 +46,7 @@ const idx = Object.fromEntries(h.map((k, i) => [k, i]));
 if (idx['파츠명 (Long ver)'] == null) { console.log('parts.csv 헤더가 예상과 다릅니다 — 건너뜁니다.'); process.exit(0); }
 
 const today = new Date(Date.now() + 9 * 3600e3).toISOString().slice(0, 10); // KST
-let changed = 0, added = 0;
+let changed = 0, added = 0, reshaped = 0;
 d.slice(1).forEach(r => {
   if (r.length < 5) return;
   const m = String(r[idx['파츠명 (Long ver)']] || '').match(/PT\d+/);
@@ -64,7 +64,13 @@ d.slice(1).forEach(r => {
     if (pv == null || dv == null) continue;
     if (pv !== dv && pv !== 0) { isChanged = true; break; }
   }
-  if (!isChanged) return;
+  if (!isChanged) {
+    // v22.2 감사 수정: 값↔미기재(null) 전이는 단가 변경(에폭 대상)은 아니지만 current는 최신
+    // 스냅샷으로 맞춰야 함 — 안 맞추면 새로 기재된 구간의 비교 상대가 계속 null로 남아,
+    // 그 구간에 이후 실제 단가 변경이 와도 영구히 감지되지 않음(에폭 추가 없이 current만 갱신).
+    if (TIERS.some((t, i) => (now[i] == null) !== (old[i] == null))) { hist.current[id] = now; reshaped++; }
+    return;
+  }
   if (!hist.epochs[id]) hist.epochs[id] = [{ from: '0000-01-01', tiers: old }];
   // 같은 날 중복 실행 방어: 오늘 에폭이 이미 있으면 tiers만 갱신
   const todayEp = hist.epochs[id].find(e => e.from === today);
@@ -73,10 +79,10 @@ d.slice(1).forEach(r => {
   changed++;
 });
 
-if (changed || added) {
+if (changed || added || reshaped) {
   hist.updatedAt = today;
   fs.writeFileSync(HIST_PATH, JSON.stringify(hist));
-  console.log(`단가 변경 ${changed}건 에폭 추가(${today}), 신규 PT ${added}건 등록 — ${HIST_PATH} 갱신`);
+  console.log(`단가 변경 ${changed}건 에폭 추가(${today}), 신규 PT ${added}건 등록, 기재 형태 갱신 ${reshaped}건 — ${HIST_PATH} 갱신`);
 } else {
   console.log('단가 변경 없음 — 이력 파일 유지');
 }

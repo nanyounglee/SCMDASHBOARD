@@ -75,11 +75,17 @@ function toCsv(headers, records) {
 
 // ---- 기존 최신 파일에서 헤더 재사용 (대시보드 컬럼 호환 유지) ----
 function latestExistingHeaders(prefix) {
-  const dirs = ['CSV', ...(fs.existsSync('CSV_BANK') ? fs.readdirSync('CSV_BANK').map(d => path.join('CSV_BANK', d)) : [])];
+  // v22.2 감사 수정: CSV_BANK에는 주차 폴더 외에 파일(sup_YYYY_MM.csv 등)도 놓일 수 있어
+  // 디렉토리만 골라야 함 — 파일을 readdirSync 하면 ENOTDIR로 워크플로 전체가 죽음
+  const bankDirs = fs.existsSync('CSV_BANK')
+    ? fs.readdirSync('CSV_BANK', { withFileTypes: true }).filter(e => e.isDirectory()).map(e => path.join('CSV_BANK', e.name))
+    : [];
+  const dirs = ['CSV', ...bankDirs];
   let best = null; // {y,w,file}
   for (const dir of dirs) {
-    if (!fs.existsSync(dir)) continue;
-    for (const f of fs.readdirSync(dir)) {
+    let files;
+    try { files = fs.readdirSync(dir); } catch (e) { continue; }
+    for (const f of files) {
       const m = f.match(new RegExp(`^${prefix}_(\\d{4})_W(\\d{2})\\.csv$`));
       if (m) { const y = +m[1], w = +m[2]; if (!best || y > best.y || (y === best.y && w > best.w)) best = { y, w, file: path.join(dir, f) }; }
     }
@@ -119,10 +125,16 @@ async function runJob(prefix, table, view) {
   const records = await fetchView(table, view);
   console.log(`  ${records.length}건 수신`);
   if (!records.length) { console.warn(`  레코드 0건 — 파일을 만들지 않고 건너뜁니다(기존 파일 유지).`); return false; }
+  const apiFields = [...new Set(records.flatMap(r => Object.keys(r.fields)))];
   let headers = latestExistingHeaders(prefix);
   if (!headers) { // 첫 실행 폴백: 레코드 등장 순 필드
-    headers = [...new Set(records.flatMap(r => Object.keys(r.fields)))];
+    headers = apiFields;
     console.log(`  기존 파일 없음 — API 필드 순 헤더 사용(${headers.length}개)`);
+  } else {
+    // v22.2 감사 수정: 기존 헤더를 그대로 동결하면 Airtable에 새로 생긴 필드가 영영 CSV에서
+    // 빠짐 — 기존 순서 유지 + 신규 필드를 뒤에 병합(대시보드 파서는 이름 기반이라 뒤 추가는 안전)
+    const added = apiFields.filter(h => !headers.includes(h));
+    if (added.length) { headers = headers.concat(added); console.log(`  신규 필드 ${added.length}개 헤더 뒤에 추가: ${added.join(', ')}`); }
   }
   const out = path.join('CSV', `${prefix}_${wk(CUR_Y, CUR_W)}.csv`);
   fs.writeFileSync(out, toCsv(headers, records));

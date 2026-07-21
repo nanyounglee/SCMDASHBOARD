@@ -24,7 +24,12 @@ jobs:
   fetch-and-commit:
     runs-on: ubuntu-latest
     steps:
+      # fetch-depth: 0 — fetch_airtable_sources.mjs가 `git log -1 -- <file>`로 각 CSV의
+      # 마지막 커밋 날짜를 구해 아카이브 주차를 정하는데, 얕은 체크아웃(depth 1)에서는
+      # 모든 파일이 HEAD 커밋 날짜로 나와 CSV_BANK 주차 라벨이 어긋난다 (v22.2 감사 수정)
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
 
       - uses: actions/setup-node@v4
         with:
