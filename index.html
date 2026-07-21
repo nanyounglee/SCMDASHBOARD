@@ -491,14 +491,23 @@ a{color:var(--blue);text-decoration:none}
       </div>
     </div>
 
-    <!-- ORDER (v18: 발주량Top20/Bottom20/프로젝트별매입/발주Task 탭 제거 — 전체 제품 발주량 단일 화면) -->
+    <!-- ORDER — v22.4: 전체 제품 발주량 / 여분 추천 / 여분 투자 효과 / 초도 발주 감지를 서브탭으로 분리 배치 (사용자 요청) -->
     <div id="sec-order" style="display:none">
+      <div class="tabs">
+        <div class="tab active" onclick="swTab(this,'ord','ord-tab-main')">전체 제품 발주량</div>
+        <div class="tab" onclick="swTab(this,'ord','ord-tab-buffer')">여분(버퍼) 추천</div>
+        <div class="tab" onclick="swTab(this,'ord','ord-tab-preveff')">여분 투자 효과</div>
+        <div class="tab" onclick="swTab(this,'ord','ord-tab-fai')">초도 발주 감지</div>
+      </div>
+      <div id="ord-tab-main" class="tab-panel active">
       <div id="tab-ord-top" class="card">
-        <div class="card-header"><div class="card-title">전체 제품 발주량 <span style="font-weight:400;font-size:11px;color:var(--text3)">(재고생산 제외 · 검색창 반영 · 헤더 클릭 시 해당 기준 내림차순)</span></div></div>
+        <div class="card-header"><div class="card-title">전체 제품 발주량 <span style="font-weight:400;font-size:11px;color:var(--text3)">(재고생산 제외 · 검색창 반영 · 헤더 클릭 시 해당 기준 내림차순 · <b>산출물 클릭 시 제품 상세 발주 현황 드릴다운</b>)</span></div></div>
         <div class="tbl-wrap"><table class="tbl tbl-ord-top"><thead><tr><th class="rank">#</th><th>산출물</th><th class="num th-sort sort-active" data-sort="qty" onclick="sortOrdTop('qty')">발주수량 ▾</th><th class="num" title="고객이 실제 구매(결제)한 수량 합계">고객주문수량</th><th class="num" title="현재 여분 발주율 = (발주지시수량 − 고객주문수량) ÷ 고객주문수량 — 고객주문>0 & 발주≥고객 행 기준(분할발주·재제작 제외), 5% 이상 주황">여분 발주율</th><th class="num" id="th-ord-adjacent">MoM</th><th class="num" id="th-ord-yoy">YoY</th><th class="num th-sort" data-sort="freq" onclick="sortOrdTop('freq')">월간발주빈도 ▾</th><th class="num">연간발주량합</th><th class="num th-sort" data-sort="amt" onclick="sortOrdTop('amt')">공급가액 ▾</th><th>담당자</th></tr></thead><tbody id="tb-ord-top"></tbody></table></div>
       </div>
+      </div>
       <!-- v22: 여분(버퍼) 발주수량 추천 — 이슈 이력 기반 예방원가 분석 (v21.5: 부족 이벤트 개수 기반 산식) -->
-      <div class="card" style="margin-top:16px">
+      <div id="ord-tab-buffer" class="tab-panel" style="display:none">
+      <div class="card">
         <div class="card-header">
           <div><div class="card-title">여분(버퍼) 발주수량 추천 — 관행 여분 대비 미커버 부족 보정</div><div class="card-sub">당해+전년 아카이브 전체 이력 기준(상단 기간 필터 무관) · <b>권장여분 = 현재 관행 여분 + 미커버 부족 보정</b> — 부족이 났어도 그 발주의 여분 범위 내였으면(고객주문 방어) <b>현행 유지</b>, 여분을 초과한 부족만 그 평균만큼 보정 · 부족 이력 있는 제품이 상단 정렬 · 행 클릭 시 <b>수량 구간별(500개 미만/500~999/1,000개 이상) 차등 권장</b> + 여분수량 시나리오별 커버리지·차액 비교</div></div>
           <input id="buf-search" placeholder="제품명으로 바로 찾기..." oninput="BUF_FILTER=this.value.trim();renderOrderBuffer()" style="font-size:12px;padding:5px 10px;border:1px solid var(--border2);border-radius:var(--r-sm);width:200px">
@@ -512,8 +521,10 @@ a{color:var(--blue);text-decoration:none}
         </tr></thead><tbody id="tb-ord-buffer"></tbody></table></div>
         <div style="font-size:10px;color:var(--text3);margin-top:8px">※ <b>권장여분/회</b> = 부족 이벤트마다 그 발주의 실제 여분(발주지시수량−고객주문수량, movement 매칭·미매칭 시 관행 평균으로 추정)으로 커버됐는지 판정 → <b>여분으로 커버 가능한 미커버 부족의 평균 부족수량(올림)</b>. 미커버가 없으면 <span style="color:var(--green)">유지</span> 배지와 함께 현행 관행 수준(반올림) 권장 · <b>여분 범위 밖(재제작 대응)</b>: 단가 1,000원 미만 파츠는 부족이 발주수량의 50% 이상, 그 외는 여분 제작비가 전체 제작비의 10% 이상(=부족이 발주수량의 10% 이상)인 건 — 권장 산정에서 제외하고 <span style="color:var(--red)">재제작 N</span> 배지로 분리 표시(과다 권장 방지) · <b>전량재제작 관행 제외</b>: 저단가(1,000원 미만) 파츠 중 평균 발주수량의 50% 이상 규모 재제작 이력이 있는 제품(배경지 등 불량 시 전량 재제작)은 여분 권장 대상에서 통째로 제외 — <span style="color:var(--red)">전량재제작</span> 배지 · 부족수량은 수량이슈내용 텍스트("N개 발주/M개 입하"·"N개 부족")와 이동수량 컬럼에서 추출, 괄호 %는 평균 1회 발주수량 대비 참고 비율 · <b>현재 여분/회(관행)</b> = (발주지시수량 − 고객주문수량)의 건별 평균 — 괄호 %는 Σ여분÷Σ고객주문(가중), 발주&lt;고객(분할발주)·재제작 행 제외 · <b>관행 진단</b>: <span style="color:var(--red)">상향 검토</span>=여분을 초과한 부족(미커버) 발생 / <span style="color:var(--green)">커버됨(유지)</span>=부족 전건이 당시 여분 범위 내(고객주문 방어) / <span style="color:var(--amber)">과다 가능</span>=부족 0 & 관행 여분율 5%↑(전사 중앙값 2.9%의 2배) / <span style="color:var(--green)">적정</span>=부족 0 & 5% 미만 · <b>부족발생</b> = 부족수량이 확인된 이슈 건수 · <b>부족률</b> = Σ부족 ÷ Σ발주(부족 발생 건 기준) · <b>불량률(참고)</b> = 샘플링검수 불량수량÷검수수량 — 보수·B급 입고로 종결되는 경우가 많아 <b>여분 산정에서 제외</b>(불량이 부족으로 이어진 건은 수량이슈에 이미 반영) · <b>예방비용</b> = 권장여분 × 단가(공급가액÷발주수량, 파츠리스트 CSV 시 DB원가 우선) × 발주건수(이력 전체 적용 가정) · <b>실패비용</b> = 재제작 TASK 취득원가 합계(재제작 행은 발주건수·단가 집계에서 제외) · <b>차액>0</b>이면 여분 도입이 재제작보다 경제적 · ⚠ 예방 단가와 실패비용은 원가 기준(공급가액 vs 취득원가)이 달라 근사 비교 · <b>구간차등 배지</b> = 발주수량 구간(500 미만/500~999/1,000↑)별 권장 여분이 서로 다른 제품 — 행 클릭 시 구간별 권장·구간 단가(그 구간 발주만의 Σ공급가액÷Σ수량 — 전체 평균 단가는 대량 발주 저단가에 끌려 소량 발주 여분 원가를 과소평가) 표 확인</div>
       </div>
+      </div>
       <!-- v21.10: 예방비용 vs 실패비용 — 여분 투자 효과 (모면 사건 실측 포함) -->
-      <div class="card" style="margin-top:16px">
+      <div id="ord-tab-preveff" class="tab-panel" style="display:none">
+      <div class="card">
         <div class="card-header"><div><div class="card-title">예방비용 vs 실패비용 — 여분 투자 효과</div>
         <div class="card-sub"><b>예방비용</b> = (발주지시수량−고객주문수량) × 그 발주의 실단가 — 여분에 실제로 쓴 돈 · <b>실패비용</b> = 재제작 취득원가 · <b>모면</b> = 부족이 발생했지만 여분 덕에 고객주문수량은 지켜진 건 (movement 조인 실측)</div></div></div>
         <div class="kpi-row-4" id="prev-eff-kpis" style="margin-bottom:12px"></div>
@@ -524,8 +535,10 @@ a{color:var(--blue);text-decoration:none}
         </tr></thead><tbody id="tb-prev-eff"></tbody></table></div>
         <div style="font-size:10px;color:var(--text3);margin-top:8px">※ 당해+전년 전체 이력(재고생산 제외) · <b>모면</b> = 수량이슈의 부족수량 ≤ 그 발주의 여분(movement_id로 발주 행 정확 매칭) — 여분이 없었다면 고객주문 미달·재제작으로 이어졌을 건 · <b>막은 손실(추정)</b> = 모면 건수 × 그 제품의 재제작 1회 평균비용(이력 없으면 전체 평균) · 월별 추이: 예방비용은 과업지시월, 실패비용은 세금계산서월 기준(실패비용 현황과 동일) · 예방비용은 소진되지 않으면 여분 재고로 남으므로 전액 비용은 아님 — 실패비용과의 직접 차감 비교는 참고용 · 여분율이 수백%로 비정상적으로 큰 제품은 발주 단위(박스·스리브 등)와 고객주문 단위(낱개)가 달라 생기는 왜곡일 수 있음 — "과다 가능" 판정 전에 단위 확인 필요</div>
       </div>
+      </div>
       <!-- v21.6: 초도 발주 감지 (FAI 후보) — 사상 최초 제품×협력사 조합·신규 협력사 첫 발주 자동 추출 -->
-      <div class="card" style="margin-top:16px">
+      <div id="ord-tab-fai" class="tab-panel" style="display:none">
+      <div class="card">
         <div class="card-header">
           <div><div class="card-title">초도 발주 감지 <span style="font-weight:400;font-size:11px;color:var(--text3)">(FAI 후보 — 초도품 승인 대상 자동 추출)</span></div>
           <div class="card-sub">2025 아카이브+2026 전체 이력에서 <b>사상 처음 발주된 제품×협력사 조합</b>과 <b>신규 협력사의 첫 발주</b>를 최초 발주일 기준으로 추출 · 승인 상태 기록은 추후 인라인 입력으로 확장 예정</div></div>
@@ -539,6 +552,7 @@ a{color:var(--blue);text-decoration:none}
           <th class="rank">#</th><th>최초 발주일</th><th>제품(산출물)</th><th>협력사</th><th class="num">첫 발주수량</th><th>담당자</th><th>구분</th>
         </tr></thead><tbody id="tb-ord-fai"></tbody></table></div>
         <div style="font-size:10px;color:var(--text3);margin-top:8px">※ 초도 = (산출물, 수주처) 조합의 최초 과업지시일자가 2026년(재고생산·산출물 미기재 비스포크 제외) · <b>신규 협력사</b> = 2025년 발주 이력이 전혀 없는 수주처의 첫 발주 — 초도품 승인(FAI)·공정 검증 대상 선별용. 인쇄물은 교정시트·샘플 발주 이력과 교차 확인 권장</div>
+      </div>
       </div>
     </div>
 
@@ -649,12 +663,8 @@ a{color:var(--blue);text-decoration:none}
     </div>
 
     <!-- SUPPLIER -->
-    <!-- SUPPLIER — v22: 매입 현황(구 sec-purchase)과 협력사 목록을 서브탭으로 통합 -->
+    <!-- SUPPLIER — v22.4: 내부 탭 제거, 협력사 목록은 공급망 포트폴리오 첫 서브탭 상단으로 이동(사용자 요청) — 이 섹션은 매입 현황 전용 -->
     <div id="sec-supplier" style="display:none">
-      <div class="tabs">
-        <div class="tab active" onclick="swTab(this,'sup','tab-sup-pur')">매입 현황</div>
-        <div class="tab" onclick="swTab(this,'sup','tab-sup-list')">협력사 목록</div>
-      </div>
       <div id="tab-sup-pur" class="tab-panel active">
         <div class="chart-grid" style="margin-bottom:16px">
           <div class="card">
@@ -682,40 +692,7 @@ a{color:var(--blue);text-decoration:none}
           <div class="tbl-wrap"><table class="tbl"><thead><tr><th class="rank">#</th><th>협력사</th><th>제조유형</th><th>주요업태</th><th class="num">공급가액</th><th class="num">건수</th><th style="width:130px">비중</th></tr></thead><tbody id="tb-sup-pur"></tbody></table></div>
         </div>
       </div>
-      <div id="tab-sup-list" class="tab-panel" style="display:none">
-        <div class="kpi-row-4" style="margin-bottom:16px">
-          <div class="card" style="text-align:center">
-            <div class="kpi-label" style="margin-bottom:8px">등록 협력사</div>
-            <div class="kpi-val" id="s-total">—</div><div class="kpi-sub" id="s-active-sub">마스터 기준</div>
-          </div>
-          <div class="card" id="s-active-card" style="text-align:center;cursor:pointer" onclick="toggleSupActiveFilter()">
-            <div class="kpi-label" style="margin-bottom:8px">활성 협력사</div>
-            <div class="kpi-val" id="s-active" style="color:var(--green)">—</div><div class="kpi-sub" id="s-active-desc">2개월 이상 발주 거래 · 클릭 시 필터</div>
-          </div>
-          <div class="card" style="text-align:center">
-            <div class="kpi-label" style="margin-bottom:8px">턴키제작</div>
-            <div class="kpi-val" id="s-turnkey">—</div><div class="kpi-sub">협력사 수</div>
-          </div>
-          <div class="card" style="text-align:center">
-            <div class="kpi-label" style="margin-bottom:8px">단순구매</div>
-            <div class="kpi-val" id="s-purchase">—</div><div class="kpi-sub">협력사 수</div>
-          </div>
-        </div>
-        <div class="card" id="vc-status-card" style="cursor:pointer" onclick="window.open('https://nanyounglee.github.io/scm_vendor_change/','_blank')" title="협력사 변경 검토 대시보드로 이동">
-          <div class="card-header">
-            <div><div class="card-title">협력사 변경 검토 진행 현황 <span style="font-weight:400;font-size:11px;color:var(--text3)">scm_vendor_change ↗</span></div><div class="card-sub" id="vc-status-sub">불러오는 중…</div></div>
-          </div>
-          <div id="vc-status-body"><div style="font-size:12px;color:var(--text3);padding:8px 0">협력사 변경 검토 대시보드에서 불러오는 중…</div></div>
-        </div>
-        <div class="card">
-          <div class="card-header">
-            <div class="card-title">협력사 목록 <span id="sup-list-sub" style="font-weight:400;font-size:11px;color:var(--text3)"></span></div>
-            <input id="sup-search" style="font-size:12px;padding:5px 10px;border:1px solid var(--border2);border-radius:var(--r-sm);width:200px" placeholder="협력사명 검색..." oninput="filterSup(this.value)">
-          </div>
-          <div class="tbl-wrap"><table class="tbl"><thead><tr><th>협력사명</th><th>업태</th><th>제조유형</th><th>인쇄유형</th><th>담당발주자</th><th>결제조건</th><th class="num">발주 거래 개월수</th></tr></thead><tbody id="tb-sup"></tbody></table></div>
-          <div style="font-size:10px;color:var(--text3);margin-top:8px">※ 발주 거래 개월수 = 기준 월이 속한 연도 1월~기준 월 중 발주(과업지시) 이력이 있는 개월수 (예: 7월 기준 7/7) · <span class="tag tag-ok" style="font-size:9px">활성</span> = 2개월 이상 거래 · 협력사명 클릭 시 월별 매입금액 추이</div>
-        </div>
-      </div>
+      <!-- v22.4: 협력사 목록(KPI·변경검토·목록 테이블)은 pf-tab-main 상단으로 이동 -->
     </div>
 
     <!-- STOCK -->
@@ -847,6 +824,39 @@ a{color:var(--blue);text-decoration:none}
         <div class="tab" onclick="swTab(this,'pf','pf-tab-supprod')">협력사유형별 제품군</div>
       </div>
       <div id="pf-tab-main" class="tab-panel active">
+        <!-- v22.4: 협력사 목록을 포트폴리오 진입 시 가장 먼저 보이는 테이블로 이동 (사용자 요청 — 구 협력사·매입 현황의 내부 탭에서 승격) -->
+        <div class="kpi-row-4" style="margin-bottom:16px">
+          <div class="card" style="text-align:center">
+            <div class="kpi-label" style="margin-bottom:8px">등록 협력사</div>
+            <div class="kpi-val" id="s-total">—</div><div class="kpi-sub" id="s-active-sub">마스터 기준</div>
+          </div>
+          <div class="card" id="s-active-card" style="text-align:center;cursor:pointer" onclick="toggleSupActiveFilter()">
+            <div class="kpi-label" style="margin-bottom:8px">활성 협력사</div>
+            <div class="kpi-val" id="s-active" style="color:var(--green)">—</div><div class="kpi-sub" id="s-active-desc">2개월 이상 발주 거래 · 클릭 시 필터</div>
+          </div>
+          <div class="card" style="text-align:center">
+            <div class="kpi-label" style="margin-bottom:8px">턴키제작</div>
+            <div class="kpi-val" id="s-turnkey">—</div><div class="kpi-sub">협력사 수</div>
+          </div>
+          <div class="card" style="text-align:center">
+            <div class="kpi-label" style="margin-bottom:8px">단순구매</div>
+            <div class="kpi-val" id="s-purchase">—</div><div class="kpi-sub">협력사 수</div>
+          </div>
+        </div>
+        <div class="card" style="margin-bottom:16px">
+          <div class="card-header">
+            <div class="card-title">협력사 목록 <span id="sup-list-sub" style="font-weight:400;font-size:11px;color:var(--text3)"></span></div>
+            <input id="sup-search" style="font-size:12px;padding:5px 10px;border:1px solid var(--border2);border-radius:var(--r-sm);width:200px" placeholder="협력사명 검색..." oninput="filterSup(this.value)">
+          </div>
+          <div class="tbl-wrap" style="max-height:420px;overflow-y:auto"><table class="tbl"><thead><tr><th>협력사명</th><th>업태</th><th>제조유형</th><th>인쇄유형</th><th>담당발주자</th><th>결제조건</th><th class="num">발주 거래 개월수</th></tr></thead><tbody id="tb-sup"></tbody></table></div>
+          <div style="font-size:10px;color:var(--text3);margin-top:8px">※ 발주 거래 개월수 = 기준 월이 속한 연도 1월~기준 월 중 발주(과업지시) 이력이 있는 개월수 (예: 7월 기준 7/7) · <span class="tag tag-ok" style="font-size:9px">활성</span> = 2개월 이상 거래 · 협력사명 클릭 시 월별 매입금액 추이</div>
+        </div>
+        <div class="card" id="vc-status-card" style="cursor:pointer;margin-bottom:16px" onclick="window.open('https://nanyounglee.github.io/scm_vendor_change/','_blank')" title="협력사 변경 검토 대시보드로 이동">
+          <div class="card-header">
+            <div><div class="card-title">협력사 변경 검토 진행 현황 <span style="font-weight:400;font-size:11px;color:var(--text3)">scm_vendor_change ↗</span></div><div class="card-sub" id="vc-status-sub">불러오는 중…</div></div>
+          </div>
+          <div id="vc-status-body"><div style="font-size:12px;color:var(--text3);padding:8px 0">협력사 변경 검토 대시보드에서 불러오는 중…</div></div>
+        </div>
         <div id="portfolio-content"><div class="empty">분기별평가 CSV를 업로드하면 공급망 포트폴리오가 표시됩니다.</div></div>
       </div>
       <div id="pf-tab-supplier" class="tab-panel" style="display:none"></div>
@@ -2099,7 +2109,7 @@ function renderOrdTopTable() {
     const yTotal=yearQty[k]||v.qty;
     const bufRate=v.bufC>0?(v.bufD/v.bufC*100):null;
     const bufHtml=bufRate===null?'<span style="color:var(--text3)">—</span>':`<span style="font-weight:600;color:${bufRate>=5?'var(--amber)':'var(--text)'}">${bufRate.toFixed(1)}%</span>`;
-    return `<tr><td class="rank">${i+1}</td><td>${v.isBespoke?`<span class="tag tag-gray">비스포크</span> <span class="mono">${esc(v.pn)}</span>`:esc(crop(k,30))}</td><td class="num">${v.qty.toLocaleString()}</td><td class="num">${v.cust?v.cust.toLocaleString():'—'}</td><td class="num">${bufHtml}</td><td class="num">${momYoyBadge(v.qty,prevQty)}</td><td class="num">${momYoyBadge(v.qty,yoyQty)}</td><td class="num">${v.freq}</td><td class="num">${yTotal.toLocaleString()}</td><td class="num">${faFull(v.amt)}</td><td>${v.mgr||'—'}</td></tr>`;
+    return `<tr><td class="rank">${i+1}</td><td>${v.isBespoke?`<span class="tag tag-gray">비스포크</span> <span class="mono">${esc(v.pn)}</span>`:`<span style="cursor:pointer;color:var(--blue);font-weight:600" title="클릭 시 제품 상세 발주 현황(이슈·여분·투자효과)" onclick="openProductOrderDetail('${esc(k).replace(/'/g,"\\'")}')">${esc(crop(k,30))}</span>`}</td><td class="num">${v.qty.toLocaleString()}</td><td class="num">${v.cust?v.cust.toLocaleString():'—'}</td><td class="num">${bufHtml}</td><td class="num">${momYoyBadge(v.qty,prevQty)}</td><td class="num">${momYoyBadge(v.qty,yoyQty)}</td><td class="num">${v.freq}</td><td class="num">${yTotal.toLocaleString()}</td><td class="num">${faFull(v.amt)}</td><td>${v.mgr||'—'}</td></tr>`;
   }).join('');
   setTbody('tb-ord-top',topHTML||emptyRow(11,q?'검색 결과 없음':'발주 데이터 없음'));
   document.querySelectorAll('#tab-ord-top .th-sort').forEach(th=>{
@@ -2486,6 +2496,78 @@ function bufferScenarioHtml(g){
     <table class="tbl"><thead><tr><th class="num">여분수량/회</th><th class="num">과거 부족 커버리지</th><th class="num">예방비용(이력 적용 시)</th><th class="num">실패비용(실제)</th><th class="num">차액(실패−예방)</th><th>판정</th></tr></thead><tbody>${rows}</tbody></table>
     <div style="font-size:10px;color:var(--text3);margin-top:6px">커버리지 = 과거 부족 발생 건 중 해당 여분수량으로 전량 충당됐을 건의 비율 · 예방비용 = 여분수량 × 단가 × 발주건수(이력 전체에 여분을 실었다고 가정) · 구간별 표의 단가는 해당 구간 발주만의 Σ공급가액÷Σ수량이라 전체 평균 단가와 다를 수 있음</div>
   </div></td></tr>`;
+}
+// v22.4: 전체 제품 발주량 → 산출물 클릭 드릴다운 (사용자 요청) — 제품 하나의 발주 이력·이슈·
+// 여분율·권장여분·예방비용vs실패비용(여분 투자 효과)을 한 모달에서. 여분 수치는 여분 추천 표와
+// 동일 산식(computeBufferRows)을 재사용해 두 화면이 어긋나지 않게 한다.
+function openProductOrderDetail(prod){
+  const ov=document.getElementById('modal-overlay');
+  document.getElementById('modal-tabs-el').innerHTML='';
+  document.getElementById('modal-title').textContent='제품 상세 발주 현황 — '+prod;
+  const body=document.getElementById('modal-body');
+  ov.classList.add('open');
+  const orders=[...(D.order||[]),...(D.orderPrevYear||[])].filter(r=>!isStock(r)&&(r['산출물']||'').trim()===prod);
+  if(!orders.length){ body.innerHTML='<div class="empty">해당 제품의 발주 이력이 없습니다.</div>'; return; }
+  // 기본 집계 (여분 추천 표와 동일 규칙: 재제작 분리, 발주≥고객 행만 여분 집계)
+  let taskCnt=0,qty=0,amt=0,cust=0,buf=0,rework=0,reworkCost=0;
+  orders.forEach(r=>{
+    if(String(r['task_id']||'').includes('재제작')){ rework++; reworkCost+=pa(r['취득원가']); return; }
+    const oq=pa(String(r['발주지시수량']||'')); taskCnt++; qty+=oq; amt+=pa(r['공급가액']);
+    const cq=pa(String(r['고객주문수량']||''));
+    if(cq>0&&oq>=cq){ cust+=cq; buf+=(oq-cq); }
+  });
+  const bufPct=cust>0?(buf/cust*100):null;
+  const b=computeBufferRows().find(r=>r.prod===prod)||null;
+  const pset=new Set([prod]);
+  const issues=[...(D.issue||[]),...(D.issuePrevYear||[])].filter(r=>bufferIssueProductKey(r,pset)===prod)
+    .sort((a,c)=>{const da=parseAnyDate(getIssueDateStr(a)),dc=parseAnyDate(getIssueDateStr(c));return (da&&dc)?dc-da:0;});
+  const chip=(label,val,color)=>`<span style="background:var(--surface2);padding:4px 10px;border-radius:20px;font-size:12px">${label} <b${color?` style="color:${color}"`:''}>${val}</b></span>`;
+  const chips=[
+    chip('발주 TASK',taskCnt+'건'), chip('총 발주수량',qty.toLocaleString()+'개'),
+    chip('고객주문 합',cust?cust.toLocaleString()+'개':'—'),
+    chip('현재 여분율',bufPct!==null?bufPct.toFixed(1)+'%':'—',bufPct!==null&&bufPct>=5?'var(--amber)':undefined),
+    chip('이슈',issues.length+'건',issues.length?'var(--red)':undefined),
+    rework?chip('재제작',rework+'건 · '+faFull(Math.round(reworkCost)),'var(--red)'):''
+  ].filter(Boolean).join(' ');
+  // 여분·투자효과 요약 (여분 추천 표와 동일 산식)
+  let bufHtml='';
+  if(b){
+    const recTxt=b.fullRework?'<span style="color:var(--red);font-weight:700">전량재제작 관행 — 여분 권장 제외</span>'
+      :b.bufQty?`<b style="color:var(--blue)">${b.bufQty.toLocaleString()}개/회</b>${b.bufMode==='keep'?' <span style="color:var(--green);font-size:11px">(현행 유지)</span>':' <span style="color:var(--red);font-size:11px">(상향)</span>'}`
+      :(b.shortCnt?'<span style="color:var(--text3)">권장 없음 (전건 여분 범위 밖·재제작 대응)</span>':'<span style="color:var(--text3)">부족 이력 없음</span>');
+    const effTxt=(b.prevCost!==null&&b.gap!==null)
+      ?`예방비용(예상) ${faFull(Math.round(b.prevCost))} vs 실패비용(실제) ${faFull(Math.round(b.failCost))} → <b style="color:${b.gap>0?'var(--green)':'var(--red)'}">${b.gap>0?'여분 도입 이득 +':'예방비용 초과 '}${faFull(Math.round(b.gap))}</b>`
+      :(b.failCost?`실패비용(실제) ${faFull(Math.round(b.failCost))} · 예방비용 산출불가(단가 없음)`:'예방·실패비용 산출 대상 없음');
+    bufHtml=`<div class="card" style="margin:12px 0;padding:12px 16px">
+      <div style="font-size:12px;font-weight:700;margin-bottom:6px">여분(버퍼) 요약 <span style="font-weight:400;font-size:10px;color:var(--text3)">— 당해+전년 전체 이력 · 여분 추천 표와 동일 산식</span></div>
+      <div style="font-size:12px;line-height:2">권장여분/회: ${recTxt} · 현재 관행 여분/회: ${b.curBufAvg!==null?Math.round(b.curBufAvg).toLocaleString()+'개'+(b.curBufPct!==null?' ('+b.curBufPct.toFixed(1)+'%)':''):'—'}
+      ${b.practice?` · 진단: <b style="color:${b.practice.color}">${b.practice.label}</b>`:''}<br>
+      부족 이력 ${b.shortCnt}건${b.uncoveredCnt?` (여분 미커버 ${b.uncoveredCnt}건)`:''}${b.outscope?` · 재제작 대응 ${b.outscope}건`:''} · ${effTxt}</div>
+      <div style="font-size:10px;color:var(--text3);margin-top:4px">구간별 차등 권장·여분수량 시나리오는 발주 현황 → 여분(버퍼) 추천 탭에서 이 제품 행을 클릭하면 확인할 수 있습니다.</div>
+    </div>`;
+  } else {
+    bufHtml=`<div style="font-size:11px;color:var(--text3);margin:10px 0">이슈 이력이 없어 여분 권장 산식 대상이 아닙니다 — 현재 관행 여분율만 참고하세요.</div>`;
+  }
+  const recent=orders.slice().sort((a,c)=>{const da=parseAnyDate(a['과업지시일자']),dc=parseAnyDate(c['과업지시일자']);return (da&&dc)?dc-da:0;}).slice(0,30);
+  const ordHtml=`<div style="font-size:12px;font-weight:700;margin:12px 0 6px">발주 이력 <span style="font-weight:400;font-size:10px;color:var(--text3)">(당해+전년 · 최근 30건 · 재고생산 제외)</span></div>
+    <table class="tbl"><thead><tr><th class="rank">#</th><th>발주일</th><th>발주번호</th><th>협력사</th><th class="num">발주수량</th><th class="num">고객주문</th><th class="num">여분</th><th class="num">공급가액</th><th>구분</th></tr></thead><tbody>
+    ${recent.map((r,i)=>{
+      const rw=String(r['task_id']||'').includes('재제작');
+      const oq=pa(String(r['발주지시수량']||'')), cq=pa(String(r['고객주문수량']||''));
+      const bf=(cq>0&&oq>=cq&&!rw)?oq-cq:null;
+      return `<tr><td class="rank">${i+1}</td><td style="font-size:11px">${esc(r['과업지시일자']||'—')}</td><td class="mono" style="font-size:11px">${esc(r['발주번호']||'—')}</td><td style="font-size:11px">${esc(r['수주처']||'—')}</td><td class="num">${oq.toLocaleString()}</td><td class="num">${cq?cq.toLocaleString():'—'}</td><td class="num">${bf!==null?bf.toLocaleString():'—'}</td><td class="num">${faFull(pa(r['공급가액']))}</td><td>${rw?'<span class="tag" style="background:var(--red-light);color:var(--red)">재제작</span>':''}</td></tr>`;
+    }).join('')}
+    </tbody></table>`;
+  const issHtml=`<div style="font-size:12px;font-weight:700;margin:14px 0 6px">제품 이슈 이력 <span style="font-weight:400;font-size:10px;color:var(--text3)">(당해+전년 · 여분 산식과 동일 매칭)</span></div>
+    ${issues.length?`<table class="tbl"><thead><tr><th class="rank">#</th><th>일자</th><th>유형</th><th>내용</th><th class="num">부족수량</th><th>대응</th></tr></thead><tbody>
+    ${issues.slice(0,30).map((r,i)=>{
+      const sh=parseShortageFromText(r['수량이슈내용']);
+      const short=sh?(sh.short||sh.shortOnly):null;
+      const resp=r['품질등급의견판단사유_SCM']||r['수량이슈대응방안_SCM']||r['운영이슈개선방안_SCM']||'';
+      return `<tr><td class="rank">${i+1}</td><td style="font-size:11px">${esc(getIssueDateStr(r)||'—')}</td><td>${catTags(r['이슈카테고리']||'')}</td><td style="font-size:11px">${esc(crop(r['품질이슈내용']||r['수량이슈내용']||r['운영이슈내용(by물류)']||'',50))}</td><td class="num" style="${short?'color:var(--red);font-weight:600':''}">${short?short.toLocaleString()+'개':'—'}</td><td style="font-size:11px;color:var(--text2)">${esc(crop(resp,40))||'—'}</td></tr>`;
+    }).join('')}
+    </tbody></table>`:'<div style="font-size:11px;color:var(--text3)">매칭된 이슈 없음</div>'}`;
+  body.innerHTML=`<div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:4px">${chips}</div>${bufHtml}${ordHtml}${issHtml}`;
 }
 function renderOrderBuffer(){
   const tbody=document.getElementById('tb-ord-buffer'); if(!tbody) return;
@@ -5196,9 +5278,9 @@ function nav(el,id) {
     issue:'<b>확인 가능 지표:</b> 기간 이슈 건수 · 기간 발주 TASK · <b>이슈율(이슈÷TASK×100, 전년 동기 %p 비교)</b> · <b>미입하율 추이 차트+표</b>(당해 vs 전년 vs 목표선 · 지점 클릭 시 MoM/YoY 상세) · <b>실패비용 현황</b>(재제작 자동집계+수기입력, YoY·월별 추이) | <b>차트:</b> 월별 이슈 추이(품질/수량/운영) · <b>이슈율 2025 vs 2026 동기 비교</b>(2025 원본 RAW 기준) | <b>탭:</b> 전체 · 품질이슈(등급+내용) · 수량이슈(내용+대응) · 운영이슈(내용+개선) · <b>고객인지이슈(검수유출률·연도별/작성자별 차트·대응/실패비용 수기입력)</b> · 제품×협력사 이슈율 · 재발 이슈 | <b>컬럼:</b> 입하일 · 프로젝트 · 제품 · 담당자 · 유형 · 내용 · <b>대응</b>(품질등급의견판단사유_SCM) · <b>실패비용</b>(재제작 취득원가) | <b>CSV:</b> 이슈_RAW + 발주_RAW + 고객인지이슈_RAW + 2025 RAW(비교선)',
     sales:'<b>확인 가능 지표:</b> 월매출 · 평균마진율 · 총주문수량 | <b>차트:</b> 월별매출추이(바) · 제품별매출비중(도넛) | <b>테이블:</b> 제품명 · 주문수량 · 판매단가 · 소계 · 원가율(공정DB 기반) · 추정마진율 | <b>CSV:</b> 판매주문 | <b>임베딩:</b> cost_db.json',
     'product-trend':'<b>확인 가능 지표:</b> 제품별 월간 발주수량 추이 Top10 멀티라인차트(발주지시수량 기준·재고생산 제외) | <b>검색:</b> 제품명/협력사/굿즈코드 + <b>Goods Category</b>(예: Drinkware 입력 시 보틀·컵·텀블러 등 카테고리 전체 제품 표시, 띄어쓰기 무관) | <b>테이블:</b> 제품명 · 누적발주수량 · 월평균 · 연간 전체 월별 수치(1월부터) | <b>CSV:</b> 발주_RAW + 임베딩(cost_db·parts_master 카테고리)',
-    supplier:'<b>탭:</b> 매입 현황 · 협력사 목록 (v22 통합) | <b>[매입 현황]</b> 협력사별 매입금액 Top10 · 제조유형 분포 · 업태별/인쇄유형별 매입금액 · 협력사별 매입상세 Top20(비중 프로그레스바) | <b>[협력사 목록]</b> 등록 협력사 · 활성 협력사(2개월↑ 발주 거래, 카드 클릭 시 필터) · 턴키제작/단순구매 수 · <b>협력사 변경 검토 진행 현황</b>(scm_vendor_change bank 실시간 연동, 카드 클릭 시 상세 대시보드) · 협력사명(클릭 시 월별 매입추이) · 업태 · 제조유형 · 인쇄유형 · 담당발주자 · 결제조건 · 발주 거래 개월수 · 협력사명 실시간 검색 | <b>CSV:</b> 공급망_RAW + 발주_RAW',
+    supplier:'<b>매입 현황</b> (v22.4: 협력사 목록은 공급망 포트폴리오 첫 화면으로 이동) | 협력사별 매입금액 Top10 · 제조유형 분포 · 업태별/인쇄유형별 매입금액 · 협력사별 매입상세 Top20(비중 프로그레스바) · 기간 단위 월/분기/기간지정 | <b>CSV:</b> 공급망_RAW + 발주_RAW',
     kpi:'<b>확인 가능 지표:</b> 납기준수율 · 리드타임 · 품질이슈율 · 검수합격률 · 긴급발주비율 · 재제작률 · 공급망A등급비율 · 가용협력사비율 · 재고회전율 · 품절률 | <b>구조:</b> 5개 영역(납기/품질/비용/공급망/재고) 12개 지표 · 목표 대비 달성률 게이지 · 월별 추이 · 전월 대비 | <b>CSV:</b> 발주_RAW + 이슈_RAW + 공급망_RAW + 고객인지이슈_RAW + S&OP 재고주간 + 품절리스트',
-    portfolio:'<b>확인 가능 지표:</b> QCD×관계 4분면 Tier(Tier1·Core/Tier2·Performer/Tier3·Developing/Tier4·General) · 등급별(A/B/C/D) 협력사수·비중 | <b>차트:</b> QCD×관계 산점도 · 등급분포 도넛 | <b>테이블:</b> 협력사별 5축 점수·QCD·관계·등급·Tier·담당자 · 이달 발주실적 필터 · 변경검토리스트(C등급) | <b>CSV:</b> 분기별평가 + 발주_RAW',
+    portfolio:'<b>첫 화면(v22.4):</b> 협력사 목록(등록/활성/턴키/단순구매 KPI · 업태·제조·인쇄유형·담당발주자·결제조건·거래개월수 · 협력사명 검색/클릭 시 매입추이 · 변경 검토 진행 현황↗) | <b>확인 가능 지표:</b> QCD×관계 4분면 Tier(Tier1·Core/Tier2·Performer/Tier3·Developing/Tier4·General) · 등급별(A/B/C/D) 협력사수·비중 | <b>차트:</b> QCD×관계 산점도 · 등급분포 도넛 | <b>테이블:</b> 협력사별 5축 점수·QCD·관계·등급·Tier·담당자 · 이달 발주실적 필터 · 변경검토리스트(C등급) | <b>CSV:</b> 분기별평가 + 발주_RAW + 공급망_RAW',
     'supplier-product':'<b>테이블 2종:</b> ① 굿즈코드 × 굿즈 카테고리유형(공정DB cat 기준 그룹 · 발주건수/수량/매입금액) ② 협력사 × 인쇄 유형(공급망_RAW 인쇄 필드 기준 그룹 · 협력사 클릭 시 상세 모달) | <b>CSV:</b> 발주_RAW + 공급망_RAW',
     qms:'<b>확인 가능 지표:</b> 총 품질이슈 · COPQ총액 · QI(초기품질)/QC(양산통제)/QA(고객보증) 분과별 건수 | <b>차트:</b> 이슈유형 파레토(바) · QI/QC/QA 비중(도넛) · 월별COPQ추이(바+라인) | <b>CSV:</b> QMS 품질데이터 또는 이슈_RAW',
     subcontract:'<b>확인 가능 지표:</b> 총 위험건수 · 최대지연일 · 위험협력사수 | <b>자동산출:</b> 발주_RAW 입하경과일(입하확정일/예정일 기준) + 공급망_RAW 하도급대상여부=대상 + 미입하 + 90일초과 | <b>필터:</b> 전체/90일+/120일+/180일+ | <b>CSV:</b> 발주_RAW + 공급망_RAW (별도 CSV 불필요)',
@@ -5213,7 +5295,7 @@ function nav(el,id) {
   if(guideEl){const g=guides[id];if(g){guideEl.innerHTML=g;guideEl.style.display='';}else{guideEl.style.display='none';}}
   if (id==='overview') { renderIssueLegend(); renderMonthlyNotice(); }
   if (id==='progress') renderProgressSection();
-  if (id==='portfolio') { updatePurchaseTabs(); loadVendorChangeStatus(); } // v22: 협력사·매입 서브탭 통합 — 진입 시 차트 재렌더(숨김 상태 0크기 방지)
+  if (id==='portfolio') { updatePurchaseTabs(); updateSupTab(); loadVendorChangeStatus(); } // v22: 협력사·매입 서브탭 통합 — 진입 시 차트 재렌더(숨김 상태 0크기 방지) · v22.4: 협력사 목록이 첫 화면으로 이동
   // v22: 숨김 상태에서 refreshAll이 그린 차트는 0크기 — 이슈 섹션 진입 시 분석 차트(추이/이슈율/미입하율) 재렌더,
   // CI 탭이 활성인 채였다면 CI 차트도 재렌더
   if (id==='issue') { renderIssueAnalytics(); const p=document.getElementById('tab-iss-ci'); if(p&&p.style.display!=='none') renderCICharts(); }
@@ -5251,6 +5333,10 @@ function swTab(el,group,targetId) {
   if (targetId==='pf-tab-supprod') renderSupplierProduct(); // v22: 포트폴리오 서브탭
   if (targetId==='tab-iss-ci') renderCICharts(); // v22: 숨김 상태에서 그려진 차트는 크기 0 — 탭 활성화 시 재렌더
   if (targetId==='tab-sup-pur') updatePurchaseTabs(); // v22: 협력사·매입 통합 — 매입 서브탭 활성화 시 차트 재렌더
+  if (targetId==='pf-tab-supplier') updatePurchaseTabs(); // v22.4: 내부 탭 제거 후 바깥 서브탭 전환 시 차트 재렌더
+  if (targetId==='ord-tab-buffer') renderOrderBuffer(); // v22.4: 발주 현황 서브탭 분리 — 활성화 시 재렌더
+  if (targetId==='ord-tab-preveff') renderPreventionEffect();
+  if (targetId==='ord-tab-fai') renderOrderFai();
 }
 // v21.1: 재발 이슈 뷰 — 같은 제품×협력사 조합의 이슈가 연도 불문 2회 이상이면 자동 추출.
 // 근본원인 분류 필드가 아직 없어 '동일 원인' 판정은 불가 — 같은 조합의 반복 발생을 재발 신호로 사용.

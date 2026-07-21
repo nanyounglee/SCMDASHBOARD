@@ -123,6 +123,23 @@ function existingHeaders(file) {
   const first = fs.readFileSync(p, 'utf8').replace(/^﻿/, '').split(/\r?\n/)[0];
   return parseHeaderLine(first);
 }
+// ---- 기존 CSV 전체 행 파싱 (수동 컬럼 보존용) ----
+function existingRows(file) {
+  const p = path.join('CSV', file);
+  if (!fs.existsSync(p)) return null;
+  const txt = fs.readFileSync(p, 'utf8').replace(/^﻿/, '');
+  const rows = []; let row = [], cur = '', inQ = false;
+  for (let i = 0; i < txt.length; i++) {
+    const c = txt[i];
+    if (inQ) { if (c === '"') { if (txt[i + 1] === '"') { cur += '"'; i++; } else inQ = false; } else cur += c; }
+    else if (c === '"') inQ = true;
+    else if (c === ',') { row.push(cur); cur = ''; }
+    else if (c === '\n') { row.push(cur.replace(/\r$/, '')); rows.push(row); row = []; cur = ''; }
+    else cur += c;
+  }
+  if (cur || row.length) { row.push(cur); rows.push(row); }
+  return rows;
+}
 
 // ---- 덮어쓰기 전 아카이브: 일반 주차 아카이브 + (sup.csv) 월간 스냅샷 ----
 function archiveBeforeOverwrite(file) {
@@ -181,6 +198,32 @@ async function runSource(src) {
     const added = apiFields.filter(h => !headers.includes(h));
     if (added.length) { headers = headers.concat(added); console.log(`  신규 필드 ${added.length}개 헤더 뒤에 추가: ${added.join(', ')}`); }
     console.log(`  헤더 재사용(${headers.length}개 컬럼)`);
+    // v22.4: 수동 컬럼 보존 — 기존 CSV에는 있지만 Airtable API가 반환하지 않는 컬럼(예: sup.csv의
+    // '업태'·'인쇄' — 원천 테이블에 없어 수기로 삽입한 데이터)은 첫 컬럼(예: '협력사 이름') 값으로
+    // 기존 행과 매칭해 값을 이월한다. 이 보존이 없으면 자동 갱신이 돌 때마다 수기 데이터가 지워짐.
+    const manualCols = headers.filter(h => !apiFields.includes(h));
+    if (manualCols.length) {
+      const keyField = src.keyField || headers[0];
+      const prev = existingRows(file);
+      if (prev && prev.length > 1) {
+        const ph = prev[0]; const pKey = ph.indexOf(keyField);
+        const pIdx = manualCols.map(c => ph.indexOf(c));
+        if (pKey !== -1) {
+          const prevMap = {};
+          prev.slice(1).forEach(r => { const k = String(r[pKey] || '').trim(); if (k) prevMap[k] = r; });
+          let carried = 0;
+          records.forEach(rec => {
+            const k = String(rec.fields[keyField] ?? '').trim();
+            const old = k ? prevMap[k] : null; if (!old) return;
+            manualCols.forEach((c, i) => {
+              const ov = pIdx[i] !== -1 ? old[pIdx[i]] : '';
+              if (ov && (rec.fields[c] == null || String(rec.fields[c]).trim() === '')) { rec.fields[c] = ov; carried++; }
+            });
+          });
+          console.log(`  수동 컬럼 ${manualCols.length}개 보존(${manualCols.join(', ')}) — 키 '${keyField}' 매칭으로 ${carried}개 값 이월`);
+        }
+      }
+    }
   }
   const csvText = toCsv(headers, records);
 
