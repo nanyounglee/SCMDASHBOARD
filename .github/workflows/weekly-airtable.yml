@@ -46,11 +46,14 @@ jobs:
           AIRTABLE_SOURCES: ${{ vars.AIRTABLE_SOURCES }}
         run: node scripts/fetch_airtable_sources.mjs
 
+      - name: Update parts price history (단가 변경 에폭 추가)
+        run: node scripts/update_price_history.mjs
+
       - name: Commit & push if changed
         run: |
           git config user.name "airtable-bot"
           git config user.email "actions@github.com"
-          git add CSV/ CSV_BANK/
+          git add CSV/ CSV_BANK/ data/parts_price_history.json
           if git diff --cached --quiet; then
             echo "변경 없음 — 커밋 생략"
           else

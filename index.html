@@ -990,12 +990,37 @@ function getDbPriceIndex(){
   }
   return DB_PRICE_IDX;
 }
-function getProcStdUnit(proc,qty){
+// v21.17: 단가 시점 이력 — data/parts_price_history.json의 에폭(from 날짜별 구간단가)으로
+// 발주일 시점의 단가를 조회 (사용자 확정: 단가 변경일 이전 발주 = 구단가, 이후 = 신단가).
+// 에폭이 없는 파츠(변경 이력 없음)는 전 기간 현재 단가 적용. 주간 워크플로의
+// scripts/update_price_history.mjs가 변경 감지 시 에폭을 자동 추가한다.
+let PRICE_HISTORY=null;
+function loadPriceHistory(){
+  fetch('data/parts_price_history.json').then(r=>r.ok?r.json():null).catch(()=>null).then(j=>{ if(j) PRICE_HISTORY=j; });
+}
+const PRICE_TIER_STEPS=[1,50,100,300,500,1000,3000,5000,10000,30000];
+function tierPickArr(arr,qty){
+  for(let i=PRICE_TIER_STEPS.length-1;i>=0;i--){ if(PRICE_TIER_STEPS[i]<=qty&&arr[i]!=null) return arr[i]; }
+  for(let i=0;i<PRICE_TIER_STEPS.length;i++){ if(PRICE_TIER_STEPS[i]>qty&&arr[i]!=null) return arr[i]; }
+  return null;
+}
+function histTiersAt(ptId,dateStr){
+  const eps=PRICE_HISTORY&&PRICE_HISTORY.epochs&&PRICE_HISTORY.epochs[ptId];
+  if(!eps||!eps.length) return null;
+  let best=null;
+  eps.forEach(e=>{ if(e.from<=dateStr&&(!best||e.from>best.from)) best=e; });
+  return best?best.tiers:null;
+}
+function getProcStdUnit(proc,qty,dateStr){
   const pts=[...new Set(String(proc.items||'').match(/PT\d+/g)||[])];
   if(!pts.length||!D.parts) return getCostTierValue(proc,qty);
   const pIdx=getPartsPTIndex(), dIdx=getDbPriceIndex();
   let sum=0, any=false;
   pts.forEach(id=>{
+    if(dateStr){
+      const ht=histTiersAt(id,dateStr);
+      if(ht){ const v=tierPickArr(ht,qty); if(v!=null){ sum+=v; any=true; return; } }
+    }
     const pr=pIdx[id];
     if(pr){ const r=partTierCost(pr,qty); if(r){ sum+=r.value; any=true; return; } }
     const dp=dIdx[id];
@@ -1003,12 +1028,12 @@ function getProcStdUnit(proc,qty){
   });
   return any?sum:getCostTierValue(proc,qty);
 }
-function calcProjectCost(goodsCode,qty){
+function calcProjectCost(goodsCode,qty,dateStr){
   const procs=getProcessesForGoods(goodsCode);
   if(!procs.length) return {total:0,details:[],method:'no_process'};
   let total=0;const details=[];
   procs.forEach(p=>{
-    const procCost=getProcStdUnit(p,qty);
+    const procCost=getProcStdUnit(p,qty,dateStr);
     const sub=procCost*qty;
     total+=sub;
     details.push({id:p.id,tc:p.tc,sup:p.sup,isStock:p.isStock==='Y',mfg:p.mfg,unitCost:procCost,qty,sub});
@@ -3368,7 +3393,7 @@ function updateSalesSection() {
     const qty=pa(r['주문수량'])||1;
     // 굿즈코드 추출 → 공정DB에서 원가 산출
     const gc=prod.match(/^[A-Z]{4}/)?prod.match(/^([A-Z]{4})/)[1]:'';
-    const costData=gc?calcProjectCost(gc,qty):{total:0};
+    const costData=gc?calcProjectCost(gc,qty,monthKeyToDate(mo,28)):{total:0}; // v21.17: 조회 월 시점 단가
     const unitCost=costData.total>0?Math.round(costData.total/qty):0;
     const estCost=unitCost*qty;
     const cr=sub>0&&estCost>0?(estCost/sub*100):0;
@@ -6229,7 +6254,7 @@ function renderCostProjectDetail() {
       const taskId=(r['task_id']||'').split('_');
       const tc=taskId[taskId.length-1]||'';
       const proc=procs.find(p=>p.tc===tc);
-      const stdCost=proc?getProcStdUnit(proc,qty):0; // v21.16: parts.csv 최신 단가 합산(폴백: 6/24 스냅샷)
+      const od=parseAnyDate(r['과업지시일자']); const stdCost=proc?getProcStdUnit(proc,qty,od?fmtISODate(od):null):0; // v21.17: 발주일 시점 단가
       const diff=stdCost>0&&unitCost>0?((unitCost-stdCost)/stdCost*100):null;
       const diffBadge=diff===null?'<span style="color:var(--text3)">—</span>':diff<=0?`<span style="color:var(--green);font-weight:600">${diff.toFixed(1)}%</span>`:`<span style="color:var(--red);font-weight:600">+${diff.toFixed(1)}%</span>`;
       return `<tr><td class="rank">${i+1}</td><td style="font-size:10px;color:var(--text3)">${esc(crop((r['task_id']||'').replace(COST_SEL_PROJECT+'_',''),20))}</td><td style="font-size:11px">${esc(crop(r['산출물']||'',25))}</td><td style="font-size:11px">${esc(r['수주처']||'')}</td><td class="num">${qty.toLocaleString()}</td><td class="num">${unitCost>0?unitCost.toLocaleString()+'원':'<span style="color:var(--text3)">미입력</span>'}</td><td class="num">${sup>0?faFull(sup):'—'}</td><td class="num">${stdCost>0?stdCost.toLocaleString()+'원':'—'}</td><td class="num">${diffBadge}</td></tr>`;
@@ -8038,6 +8063,7 @@ window.addEventListener('load',()=>{
   load2025Data();
   loadPriorYearArchive();
   loadCostDB();
+  loadPriceHistory();
   loadPartsMaster();
   loadCIOverrides();
   loadProgressNotes();
