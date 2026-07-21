@@ -3855,6 +3855,8 @@ function getGoodsPartsIndex() {
   }
   return GOODS_PARTS_IDX;
 }
+// e00d14f(동료 커밋)가 스냅샷 파일에만 반영했던 수정을 index.html로 이식 — 산출물은 parts.csv의
+// 발주서명칭과 일치(95% 매칭)하므로 발주서명칭 인덱스를 1순위로 조회, 굿즈 연결 인덱스는 폴백
 let ORDER_NAME_IDX=null, ORDER_NAME_SRC=null;
 function getOrderNamePartsIndex() {
   if(ORDER_NAME_SRC!==D.parts) {
