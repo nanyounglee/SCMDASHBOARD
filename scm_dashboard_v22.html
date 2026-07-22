@@ -1922,6 +1922,7 @@ function refreshAll() {
   updateCITabs();
   updateSupTab();
   if(CURRENT_SECTION==='product-trend') renderProductTrend(); // v19: 검색·기간 변경 시 제품별 추이도 갱신
+  if(CURRENT_SECTION==='eoq') renderEOQ(); // v22.7: 검색어 입력 시 EOQ 테이블도 재렌더(기존엔 refreshAll에서 누락돼 검색이 안 먹었음)
   updateStockSection();
   updateSalesSection();
   updateSubcontractSection();
@@ -5275,7 +5276,7 @@ function nav(el,id) {
     'stockout-detail':'<b>확인 가능 지표:</b> 비의도적/의도적 품절 건수 · 굿즈 품절 건수 · 품절 사유별 분포 · 재고소유구분별 분포 | <b>테이블:</b> 비의도적 품절 상세(경과일 내림차순, 30일+ 빨강) · 의도적 품절(졸업/시즌/효율화) · 변경사유 전문 표시 | <b>CSV:</b> 품절리스트 (sales_status_history)',
     'purchase-review':'<b>확인 가능 지표:</b> 전체 검토건수 · 미확정 계획금액 · 확정 매입금액 | <b>필터:</b> 전체/미확정/확정 상태 전환 | <b>테이블:</b> 파츠명·번호 · 재고수량 · 계획/확정 수량 · 결정상태/사항 · 회의명 | <b>CSV:</b> 매입검토현황 (S&OP purchase_review)',
     'season-plan':'<b>확인 가능 지표:</b> 구매팀 희망금액 · S&OP 확정금액 · 확정 입력률 | <b>탭:</b> 전체요약 + 계획구분별 탭(국내생산/직소싱/중개소싱 등) | <b>테이블:</b> 굿즈명 · 옵션 · 24Q4/25Q4/26Q4예상 판매 · 매입희망수량 · S&OP 확정(입력 가능, localStorage 저장) · 단가 | <b>CSV:</b> 시즌재고계획 (시즌매입_파츠연결)',
-    eoq:'<b>확인 가능 지표:</b> 발주필요 SKU수 · 긴급발주 대상수 · 평균EOQ | <b>테이블:</b> 파츠별 현재고 · 일평균수요 · EOQ(경제적발주량) · ROP(재발주점) · 안전재고 · ROP도달까지 일수 | <b>파라미터:</b> 1회발주비용(기본5만) · 보관비율(20%) · 리드타임(14일) · 안전재고(7일) | <b>CSV:</b> S&OP 재고주간 + 매출월간',
+    eoq:'<b>확인 가능 지표:</b> 발주필요 SKU수 · 긴급발주 대상수 · 평균EOQ · EOQ 산출 제외 SKU수(3개월 판매실적 없음) | <b>테이블:</b> 파츠별 현재고 · 조달유형(국내생산/국내소싱/직소싱/중개소싱, 필터 가능) · 일평균수요(최근 3개월 판매량÷90일) · EOQ(경제적발주량) · ROP(재발주점) · 안전재고 · 리드타임(파츠별 실측 우선) · ROP도달까지 일수 | <b>파라미터:</b> 1회발주비용(기본5만) · 보관비율(20%) · 안전재고(7일) — 업계 통상 가정값, 사내 실측 산출값 아님 · 리드타임은 parts_master 파츠별 실측치 우선, 없으면 기본 14일 | <b>CSV:</b> 재고 SKU 스냅샷(dashboard_sku_snapshot) + 파츠 마스터(parts_master, 리드타임)',
     graduation:'<b>확인 가능 지표:</b> 졸업후보 품목수 · 해당 재고금액 | <b>조건:</b> 3M회전율 < 0.1 + 관리대상Y | <b>테이블:</b> 파츠명 · 카테고리 · 잔여재고 · 재고금액 · 3M판매량 · 회전율 · 권장조치(운영종료/졸업/모니터링) | <b>CSV:</b> S&OP 재고주간',
     order:'<b>확인 가능 지표:</b> 전체 제품 발주량(발주수량·월간발주빈도·연간발주량합, 헤더 클릭 정렬) + MoM(전월대비) + YoY(전년대비) 증감률 · 검색창 연동 · 재고생산(굿즈코드 STCK 포함) 제외 | <b>여분(버퍼) 발주수량 추천:</b> 제품별 이슈 이력(수량부족률·품질불량률·미입하율) 기반 권장 버퍼%·여분수량 · 예방비용 vs 실패비용(재제작) 차액 비교 · 행 클릭 시 버퍼% 시나리오별 비교 | <b>CSV:</b> 발주_RAW + 이슈_RAW',
     progress:'<b>확인 가능 지표:</b> 담당자별 진행중/신규/완료(전주 대비) TASK 요약 · TASK별 진행률(입하예정일 기준 %) · 지연 표시 | <b>비고:</b> 특이사항·협력사 입하현황 수기 입력 — 저장/수정 시 이력 병기, GitHub 연동(⚙) 시 자동 커밋·배포 | <b>CSV:</b> 매주 월요일 09:00 에어테이블 진행현황 뷰 → CSV/progress_연도_W주차.csv 커밋 (전주 파일과 자동 비교, 지난 파일은 CSV_BANK 아카이브)',
@@ -6404,8 +6405,86 @@ function saveSPQty(idx,val) {
 }
 
 // ===== 3-6. EOQ · 발주알람 =====
+// v22.7: 조달유형 필터 — EOQ 결과를 국내생산/국내소싱/직소싱/중개소싱별로 갈라 볼 수 있게
+let EOQ_PROC_FILTER='all';
+function setEoqProcFilter(v){ EOQ_PROC_FILTER=v; renderEOQ(); }
+function eoqProcFilterChips(counts){
+  const total=Object.values(counts).reduce((a,b)=>a+b,0);
+  const types=Object.keys(counts).sort((a,b)=>counts[b]-counts[a]);
+  const opts=[['all','전체',total],...types.map(t=>[t,t,counts[t]])];
+  return `<div style="display:flex;gap:6px;align-items:center;font-size:11px;flex-wrap:wrap"><span style="color:var(--text3)">조달유형</span>${opts.map(([v,label,c])=>`<span class="m-chip${EOQ_PROC_FILTER===v?' active':''}" style="cursor:pointer;${EOQ_PROC_FILTER===v?'border-color:var(--blue);color:var(--blue);font-weight:700':''}" onclick="setEoqProcFilter('${esc(v)}')">${esc(label||'미분류')} ${c}</span>`).join('')}</div>`;
+}
+// v22.7: dashboard_sku_snapshot(매일 갱신) 기반 EOQ — 레거시 inv_weekly/sales_monthly는 갱신이 멈춰
+// 파츠 목록이 불완전했음(재고운영·졸업 검토·품절 상세와 동일하게 집계 소스 우선 사용으로 전환).
+// 일평균수요는 로드된 전체 개월 평균이 아니라 sales_3m(최근 3개월 판매량)÷90일로 산출.
+function renderEOQFromAgg(){
+  const el=document.getElementById('sec-eoq');
+  const p=getSelectedAggPeriod(); if(!p){ el.innerHTML='<div class="card empty">dashboard_sku_snapshot CSV 데이터가 없습니다.</div>'; return; }
+  const skuRows=getAggSkuRows(p.period_unit||SEL_INV_PERIOD,p.period_key).filter(isAggManaged);
+  const masterMap=getPartsMasterMapCsv();
+  const P=EOQ_PARAMS;
+  const q=getSearchQuery();
+
+  const all=skuRows.map(r=>{
+    const pn=String(r.parts_no||'').trim();
+    const name=r.parts_name||pn;
+    const qty=toNum(r.inv_qty);
+    const up=toNum(r.unit_price);
+    const sales3m=toNum(r.sales_3m);
+    const procType=r.procurement_type||r.sourcing_type||r.production_type||'미분류';
+    const master=masterMap[pn];
+    const partLeadTime=master?toNum(master['재고리드타임']):0;
+    const leadTimeDays=partLeadTime>0?partLeadTime:P.leadTimeDays;
+    const leadTimeSrc=partLeadTime>0?'실측':'기본';
+    const dailyDemand=sales3m/90;
+    const annualDemand=dailyDemand*365;
+    const H=up*P.holdingRate;
+    const eoq=H>0&&annualDemand>0?Math.round(Math.sqrt(2*annualDemand*P.orderCost/H)):0;
+    const safetyStock=Math.round(dailyDemand*P.safetyDays);
+    const rop=Math.round(dailyDemand*leadTimeDays+safetyStock);
+    const needsOrder=dailyDemand>0&&qty<rop;
+    const daysUntilROP=dailyDemand>0?Math.round((qty-rop)/dailyDemand):null;
+    return {pn,name,qty,up,sales3m,dailyDemand,eoq,rop,safetyStock,needsOrder,daysUntilROP,cat:r.category||'',procType,leadTimeDays,leadTimeSrc};
+  });
+
+  // v22.7: 최근 3개월 판매실적이 없는 관리대상 SKU는 EOQ 산출(0나누기 방지)에서 제외하되
+  // 몇 개가 왜 빠졌는지 화면에 그대로 노출(조용히 사라지지 않도록 — 전체 재고 대비 투명성)
+  const withSales=all.filter(r=>r.sales3m>0);
+  const noSalesCount=all.length-withSales.length;
+
+  const searched=q?withSales.filter(r=>r.name.toLowerCase().includes(q)||r.pn.toLowerCase().includes(q)):withSales;
+
+  const procCounts={}; searched.forEach(r=>{procCounts[r.procType]=(procCounts[r.procType]||0)+1;});
+  const results=(EOQ_PROC_FILTER==='all'?searched:searched.filter(r=>r.procType===EOQ_PROC_FILTER)).sort((a,b)=>(a.daysUntilROP??9999)-(b.daysUntilROP??9999));
+
+  const needsOrderCount=results.filter(r=>r.needsOrder).length;
+  const urgentCount=results.filter(r=>r.daysUntilROP!==null&&r.daysUntilROP<=0).length;
+  const avgEOQ=results.length>0?Math.round(results.reduce((s,r)=>s+r.eoq,0)/results.length):0;
+
+  el.innerHTML=`
+    <div class="kpi-row-4">
+      <div class="kpi-card c-red"><div class="kpi-label">발주 필요 SKU</div><div class="kpi-val">${needsOrderCount}</div><div class="kpi-sub">현재고 &lt; ROP</div></div>
+      <div class="kpi-card c-amber"><div class="kpi-label">긴급 발주 대상</div><div class="kpi-val">${urgentCount}</div><div class="kpi-sub">ROP 이미 도달</div></div>
+      <div class="kpi-card c-blue"><div class="kpi-label">평균 EOQ</div><div class="kpi-val">${fmtN(avgEOQ)}개</div></div>
+      <div class="kpi-card c-purple"><div class="kpi-label">EOQ 산출 제외</div><div class="kpi-val">${noSalesCount}</div><div class="kpi-sub">관리대상 중 최근 3개월 판매실적 없음</div></div>
+    </div>
+    <div class="card" style="margin-top:8px;padding:10px 14px;font-size:11px;color:var(--text3);line-height:1.6">
+      파라미터: 1회 발주비용 ${fmtN(P.orderCost)}원 · 보관비율 ${(P.holdingRate*100).toFixed(0)}% · 안전재고 ${P.safetyDays}일 — <b>업계 통상 가정값, 사내 실측 산출값 아님</b> · 리드타임은 파츠별 실측치(parts_master "재고리드타임") 우선 적용, 없는 파츠만 기본 ${P.leadTimeDays}일 · 기준 ${esc(aggPeriodLabel(p))} — 관리대상 ${skuRows.length}개 SKU 중 ${withSales.length}개가 EOQ 산출 대상(3개월 판매실적 有)
+    </div>
+    <div class="card" style="margin-top:12px"><div class="card-header"><div class="card-title">EOQ · 발주 알람 테이블</div><div class="card-sub">ROP(재발주점) 도달 순서 정렬 · 일평균수요 = 최근 3개월 판매량 ÷ 90일</div></div>
+    ${eoqProcFilterChips(procCounts)}
+    <div class="tbl-wrap" style="margin-top:8px"><table class="tbl"><thead><tr><th>파츠명</th><th>카테고리</th><th>조달유형</th><th class="num">현재고</th><th class="num">일평균수요(3M)</th><th class="num">EOQ</th><th class="num">ROP</th><th class="num">안전재고</th><th class="num">리드타임</th><th class="num">ROP까지</th><th>상태</th></tr></thead><tbody>
+    ${results.slice(0,50).map(r=>{
+      const dc=r.needsOrder?'color:var(--red);font-weight:600':'';
+      const badge=r.daysUntilROP!==null&&r.daysUntilROP<=0?'<span class="tag tag-q">즉시 발주</span>':r.needsOrder?'<span class="tag tag-n">발주 필요</span>':'<span class="tag tag-ok">정상</span>';
+      const leadCell=r.leadTimeSrc==='실측'?`${r.leadTimeDays}일`:`${r.leadTimeDays}일 <span style="color:var(--text3)">(기본)</span>`;
+      return `<tr><td>${esc(r.name)}<div style="font-size:10px;color:var(--text3)">${esc(r.pn)}</div></td><td>${esc(r.cat)}</td><td style="font-size:11px">${esc(r.procType)}</td><td class="num">${fmtN(r.qty)}</td><td class="num">${r.dailyDemand.toFixed(1)}</td><td class="num">${fmtN(r.eoq)}</td><td class="num">${fmtN(r.rop)}</td><td class="num">${fmtN(r.safetyStock)}</td><td class="num" title="${r.leadTimeSrc==='실측'?'파츠별 실측 재고리드타임':'전역 기본값'}">${leadCell}</td><td class="num" style="${dc}">${r.daysUntilROP!==null?r.daysUntilROP+'일':'—'}</td><td>${badge}</td></tr>`;
+    }).join('')||emptyRow(11,q||EOQ_PROC_FILTER!=='all'?'조건과 일치하는 SKU 없음':'데이터 없음')}
+    </tbody></table></div></div>`;
+}
 function renderEOQ() {
   const el=document.getElementById('sec-eoq');
+  if(hasAggInventoryData()) { renderEOQFromAgg(); return; }
   if(!D.inv_weekly||!D.sales_monthly) { el.innerHTML='<div class="card empty">S&OP 재고주간 + 매출월간 CSV를 업로드해주세요.</div>'; return; }
   const dates=getInvDates(); const latest=dates[dates.length-1]||'';
   const latestRows=D.inv_weekly.filter(r=>invDateKey(r['기준일'])===latest);
