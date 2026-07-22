@@ -746,8 +746,11 @@ a{color:var(--blue);text-decoration:none}
     <div id="sec-ai" style="display:none">
       <div class="ai-panel">
         <div class="ai-header">AI 운영 어시스턴트</div>
-        <div class="ai-desc">업로드된 CSV 데이터를 기반으로 협력사 현황, 이슈 분석, KPI 비교 등을 질문할 수 있습니다.</div>
+        <div class="ai-desc">업로드된 CSV 데이터를 기반으로 제품 정의서·리드타임/단가 기존 답변, 협력사 현황, 이슈 분석, KPI 비교 등을 질문할 수 있습니다.</div>
         <div class="ai-chips">
+          <span class="ai-chip" onclick="runQ(this.textContent)">밸류 메모큐브 리드타임 문의</span>
+          <span class="ai-chip" onclick="runQ(this.textContent)">페이퍼 샤쉐 단가 문의</span>
+          <span class="ai-chip" onclick="runQ(this.textContent)">인스타 피규어 제품 정의서</span>
           <span class="ai-chip" onclick="runQ(this.textContent)">서울디지털인쇄 이번달 발주 현황</span>
           <span class="ai-chip" onclick="runQ(this.textContent)">이번달 긴급 발주 목록</span>
           <span class="ai-chip" onclick="runQ(this.textContent)">품질이슈 최다 협력사</span>
@@ -756,7 +759,7 @@ a{color:var(--blue);text-decoration:none}
           <span class="ai-chip" onclick="runQ(this.textContent)">매입금액 전월 대비 비교</span>
         </div>
         <div class="ai-input-row">
-          <input class="ai-input" id="ai-q" placeholder="예: MROZ 최근 3개월 품질이슈 및 발주금액 분석" onkeydown="if(event.key==='Enter')runQ(document.getElementById('ai-q').value)">
+          <input class="ai-input" id="ai-q" placeholder="예: 밸류 메모큐브 리드타임 문의 / MROZ 최근 3개월 품질이슈 및 발주금액 분석" onkeydown="if(event.key==='Enter')runQ(document.getElementById('ai-q').value)">
           <button class="ai-run" onclick="runQ(document.getElementById('ai-q').value)">분석 →</button>
         </div>
         <div class="ai-result" id="ai-result">CSV 파일을 업로드하고 질문을 입력하세요.</div>
@@ -904,7 +907,7 @@ a{color:var(--blue);text-decoration:none}
 
 <script>
 // ===== DATA =====
-const D = {order:null,issue:null,sup:null,ci:null,stockout_list:null,sales:null,purchase_review:null,season_plan:null,qms_raw:null,cost_reduction:null,quarter_eval:null,dashboard_period_summary:null,dashboard_group_summary:null,dashboard_sku_snapshot:null,dashboard_sku_detail:null,dashboard_sku_monthly:null,raw_purchase:null,parts_master:null,parts:null,proj_rev:null};
+const D = {order:null,issue:null,sup:null,ci:null,stockout_list:null,sales:null,purchase_review:null,season_plan:null,qms_raw:null,cost_reduction:null,quarter_eval:null,dashboard_period_summary:null,dashboard_group_summary:null,dashboard_sku_snapshot:null,dashboard_sku_detail:null,dashboard_sku_monthly:null,raw_purchase:null,parts_master:null,parts:null,proj_rev:null,check_answer:null,check_question:null};
 // Legacy keys kept as computed views (not uploaded)
 Object.defineProperty(D,'task',{get(){return D.order;},set(){}});
 Object.defineProperty(D,'subcontract',{get(){return null;},set(){}});
@@ -1352,12 +1355,14 @@ const FIELD_HINTS = {
   qms_raw:{required:['발생일','이슈유형','파츠번호']},
   cost_reduction:{required:['일자','항목','절감액']},
   parts:{required:['파츠명 (Long ver)','굿즈 연결 현황 (from item)']},
-  goods_master:{required:['Goods Name','Goods Code','굿즈 Status','출시일','졸업일']}
+  goods_master:{required:['Goods Name','Goods Code','굿즈 Status','출시일','졸업일']},
+  check_answer:{required:['제품명 (from Product List)','질문 내용','질문 - 문의유형']},
+  check_question:{required:['제품명 (from Product List)','질문 1','질문 1- 문의유형']}
 };
 const KEY_LABELS = {
   order:'발주_RAW',issue:'이슈_RAW',sup:'공급망_RAW',ci:'고객인지이슈_RAW',
   stockout_list:'품절리스트',sales:'판매주문',
-  purchase_review:'매입검토현황',season_plan:'시즌재고계획',qms_raw:'QMS_품질데이터',cost_reduction:'원가절감실적',parts:'코스트베이스(파츠리스트)',goods_master:'굿즈마스터(졸업/출시)'
+  purchase_review:'매입검토현황',season_plan:'시즌재고계획',qms_raw:'QMS_품질데이터',cost_reduction:'원가절감실적',parts:'코스트베이스(파츠리스트)',goods_master:'굿즈마스터(졸업/출시)',check_answer:'제품문의답변이력',check_question:'제품문의원본(질문1~3)'
 };
 function validateCSV(key,rows) {
   const warns=[];
@@ -1409,6 +1414,8 @@ const UPLOAD_SLOTS=[
   {key:'sales',icon:'💰',label:'판매주문',src:'GSheets SUPER BASE',fields:'제품명, 주문수량, 판매단가, 소계',row:'etc'},
   {key:'qms_raw',icon:'🔬',label:'QMS 품질',src:'Airtable SCM KPI → 품질이슈 뷰',fields:'발생일, 이슈유형, 파츠번호',row:'etc'},
   {key:'cost_reduction',icon:'💹',label:'원가/Movement',src:'Airtable → Movement 재고투입',fields:'project, 출고자재, 수량, 실제단가',row:'etc'},
+  {key:'check_answer',icon:'💡',label:'제품문의답변이력',src:'Airtable Check_standard → Check_standard_Answer 뷰',fields:'제품명 (from Product List), 질문 - 문의유형, 질문 내용, 답변, Goods_ID',row:'etc'},
+  {key:'check_question',icon:'💬',label:'제품문의원본(질문1~3)',src:'Airtable Check_standard → Check_standard_Question 뷰',fields:'제품명 (from Product List), 질문 1~3, 질문 1~3- 문의유형, 답변 1~3 text',row:'etc'},
 ];
 function buildUploadZones() {
   const rows={prod:[],buy:[],etc:[]};
@@ -1476,6 +1483,8 @@ const FILE_SIGNATURES={
   proj_rev:       {must:['프로젝트명 (Short ver.)','총 매출액','출고 날짜(월)']},
   parts:          {must:['파츠명 (Long ver)','굿즈 연결 현황 (from item)','파츠 유형']},
   goods_master:   {must:['Goods Name','Goods Code','굿즈 Status','출시일','졸업일']},
+  check_answer:   {must:['Goods_ID','질문 - 문의유형','답변','slackts']},
+  check_question: {must:['질문 1- 문의유형','질문 1','records ID','Slack ID (from 문의자)']},
   order:          {must:['과업지시일자','발주번호']},
 };
 function detectCSVType(headers) {
@@ -5212,8 +5221,89 @@ function runQ(q) {
   document.getElementById('ai-q').value=q;
   document.getElementById('ai-result').innerHTML=analyzeQ(q);
 }
+// v22.11: 제품명 인식 → 제품 정의서 링크 + 리드타임/단가 등 기존 문의답변 검색(check_answer.csv,
+// Check_standard_Answer 뷰) — 적절한 기존 답변이 없으면 과거 슬랙 문의 텍스트만 폴백 표시(딥링크 없음, 사용자 확인).
+const PRODUCT_DEF_LINK='https://airtable.com/appAbBz1Y48qhpHwz/pag4AWkMoOxzRwT7O?OIeeI=';
+const normQType=s=>(s||'').replace(/\s+/g,'');
+function aiQaCard(r,withAnswer) {
+  return `<div style="margin-top:8px;padding:8px 10px;background:var(--surface2);border-radius:var(--r-sm);font-size:12px">
+    <div style="color:var(--text3);font-size:11px">${esc(r['문의일자']||'')} · ${esc(r['질문 - 문의유형']||'')}</div>
+    <div style="margin-top:2px"><b>Q.</b> ${esc(crop(r['질문 내용']||'',withAnswer?120:150))}</div>
+    ${withAnswer?`<div style="margin-top:2px;color:var(--text2)"><b>A.</b> ${esc(crop(r['답변']||'',200))}</div>`:''}
+  </div>`;
+}
+// v22.11: check_question.csv(질문 1~3 + 답변 1~3, 서브질문마다 별도 문의유형)를 check_answer와
+// 동일한 형태({제품명,문의유형,질문내용,답변,문의일자,slackts})로 평탄화 — 검색 커버리지 확대(사용자 요청).
+let CHECK_QUESTION_FLAT_CACHE=null;
+function flattenCheckQuestion() {
+  if (!D.check_question) return [];
+  if (CHECK_QUESTION_FLAT_CACHE&&CHECK_QUESTION_FLAT_CACHE._src===D.check_question) return CHECK_QUESTION_FLAT_CACHE;
+  const out=[];
+  D.check_question.forEach(r=>{
+    const prod=(r['제품명 (from Product List)']||r['제품 명칭']||'').trim();
+    if (!prod) return;
+    [1,2,3].forEach(n=>{
+      const qtext=(r[`질문 ${n}`]||'').trim();
+      if (!qtext) return;
+      out.push({
+        '제품명 (from Product List)':prod,
+        '질문 - 문의유형':r[`질문 ${n}- 문의유형`]||'',
+        '질문 내용':qtext,
+        '답변':(r[`답변 ${n} text`]||'').trim(),
+        '문의일자':r['문의 생성일']||'',
+        'slackts':r['slackts']||'',
+        'Goods_ID':''
+      });
+    });
+  });
+  out._src=D.check_question;
+  CHECK_QUESTION_FLAT_CACHE=out;
+  return out;
+}
+function matchProductQuery(q) {
+  const answerRows=D.check_answer||[];
+  const questionRows=flattenCheckQuestion();
+  if (!answerRows.length&&!questionRows.length) return null;
+  const pool=[...answerRows,...questionRows];
+  const names=[...new Set(pool.map(r=>(r['제품명 (from Product List)']||r['제품 명칭']||'').trim()).filter(n=>n.length>=2))]
+    .sort((a,b)=>b.length-a.length);
+  const prodName=names.find(n=>q.includes(n));
+  if (!prodName) return null;
+
+  const rows=pool.filter(r=>(r['제품명 (from Product List)']||r['제품 명칭']||'').trim()===prodName);
+  const byRecent=(a,b)=>(parseFloat(b['slackts'])||0)-(parseFloat(a['slackts'])||0);
+
+  const leadKeys=['리드타임','제작기간','납기','일정'];
+  const priceKeys=['단가','가격','견적','원가'];
+  let typeFilter=null, typeLabel='';
+  if (leadKeys.some(k=>q.includes(k))) { typeFilter='제작기간문의'; typeLabel='리드타임(제작기간)'; }
+  else if (priceKeys.some(k=>q.includes(k))) { typeFilter='단가문의'; typeLabel='단가'; }
+
+  const scoped=typeFilter?rows.filter(r=>normQType(r['질문 - 문의유형'])===typeFilter):rows;
+  // 제품 정의서 링크 — Goods_ID가 있는 아무 행(최신 우선, 여러 개면 첫 값 사용)
+  const withGoods=rows.filter(r=>(r['Goods_ID']||'').trim()).sort(byRecent);
+  const goodsId=withGoods.length?withGoods[0]['Goods_ID'].split(',')[0].trim():'';
+  const linkHtml=goodsId?`<div style="margin-bottom:8px"><a href="${PRODUCT_DEF_LINK}${esc(goodsId)}" target="_blank" style="color:var(--blue);font-weight:600">📄 ${esc(prodName)} 제품 정의서 열기 ↗</a></div>`:'';
+
+  const answered=scoped.filter(r=>(r['답변']||'').trim()).sort(byRecent);
+  if (answered.length) {
+    const list=answered.slice(0,3).map(r=>aiQaCard(r,true)).join('');
+    return `<strong>${esc(prodName)}</strong>${typeFilter?` — ${typeLabel} 문의 기존 답변`:' 관련 문의 이력'} (${answered.length}건)<br>${linkHtml}${list}`;
+  }
+
+  // 답변 이력 없음 — 폴백: 슬랙 질문 텍스트만 표시(딥링크 없음)
+  const pending=(scoped.length?scoped:rows).slice().sort(byRecent);
+  if (pending.length) {
+    const list=pending.slice(0,3).map(r=>aiQaCard(r,false)).join('');
+    return `<strong>${esc(prodName)}</strong>${typeFilter?` — ${typeLabel} 문의`:''}에 대한 확정 답변 이력이 없습니다.<br>${linkHtml}<div style="font-size:11px;color:var(--text3);margin-top:4px">과거 슬랙 관련 문의 내용:</div>${list}`;
+  }
+
+  return `<strong>${esc(prodName)}</strong> 제품을 확인했지만 등록된 문의 이력이 없습니다.<br>${linkHtml}`;
+}
 function analyzeQ(q) {
-  if (!D.order&&!D.issue&&!D.sup) return '⚠ CSV 파일을 먼저 업로드해주세요.';
+  if (!D.order&&!D.issue&&!D.sup&&!D.check_answer&&!D.check_question) return '⚠ CSV 파일을 먼저 업로드해주세요.';
+  const productAns=matchProductQuery(q);
+  if (productAns) return productAns;
   const allSups=[...(D.sup||[]).map(r=>r['협력사 이름']),...(D.order||[]).map(r=>r['수주처'])].filter(Boolean);
   let supName=null;
   for (const s of [...new Set(allSups)]) { if (s.length>=2&&q.includes(s.slice(0,3))) { supName=s; break; } }
@@ -5375,7 +5465,7 @@ function nav(el,id) {
     qms:'<b>확인 가능 지표:</b> 총 품질이슈 · COPQ총액 · QI(초기품질)/QC(양산통제)/QA(고객보증) 분과별 건수 | <b>차트:</b> 이슈유형 파레토(바) · QI/QC/QA 비중(도넛) · 월별COPQ추이(바+라인) | <b>CSV:</b> QMS 품질데이터 또는 이슈_RAW',
     subcontract:'<b>확인 가능 지표:</b> 총 위험건수 · 최대지연일 · 위험협력사수 | <b>자동산출:</b> 발주_RAW 입하경과일(입하확정일/예정일 기준) + 공급망_RAW 하도급대상여부=대상 + 미입하 + 90일초과 | <b>필터:</b> 전체/90일+/120일+/180일+ | <b>CSV:</b> 발주_RAW + 공급망_RAW (별도 CSV 불필요)',
     stock:'<b>확인 가능 지표:</b> 전체 품절수 · 비의도적 품절(납기지연/공급부족) · 의도적 품절(졸업/시즌/효율화) · 굿즈품절 | <b>필터:</b> 판매상태별(일시품절/품절예정/의도적 품절) | <b>테이블:</b> 파츠명/굿즈 · 판매상태 · 재고소유 · 품절성격/사유 · 변경일 · 경과일 · 굿즈품절여부 | <b>CSV:</b> 품절리스트',
-    ai:'<b>사용법:</b> 협력사명 입력 → 발주현황/매입금액/3개월추이/품질이슈 분석 | 긴급 → 긴급발주 목록 | 미입하/task → 미입하현황 | 전월/매입 → 전월대비 비교 | 담당자명 → 개인 실적 | <b>CSV:</b> 발주_RAW + 이슈_RAW + 공급망_RAW',
+    ai:'<b>사용법:</b> 제품명 입력 → 제품 정의서 링크 + 리드타임/제작기간·단가 문의 기존 답변(최신 3건, 답변 없으면 과거 슬랙 문의 텍스트로 폴백) — Check_standard_Answer(응답 완료) + Check_standard_Question(질문1~3·답변1~3 원본) 두 소스를 함께 검색해 커버리지 확대 | 협력사명 입력 → 발주현황/매입금액/3개월추이/품질이슈 분석 | 긴급 → 긴급발주 목록 | 미입하/task → 미입하현황 | 전월/매입 → 전월대비 비교 | 담당자명 → 개인 실적 | <b>CSV:</b> 제품문의답변이력(check_answer) + 제품문의원본(check_question) + 발주_RAW + 이슈_RAW + 공급망_RAW',
     quote:'<b>기능:</b> 패키지(박스) 자동 견적 산출 — 마닐라박스/C형/W형/슬리브형 | <b>로직:</b> 전개사이즈 → 지류단가(27지종×15규격, 0원 규격 자동상향) → 여분·연수 → 원단/인쇄/코팅/톰슨/접착/특수공정/골판지 → 관리비(10%·최소15만) → 마진(최소20만) | <b>이력:</b> localStorage 저장 · CSV 내보내기 | <b>기준:</b> 외주버전 v1.2.2 단가표',
     report:'<b>기능:</b> 주간리포트 .md 생성(발주/이슈 자동 요약) · <b>변경 이력 리포트 .md 생성</b>(파츠 신규/졸업·단가 변동·협력사·제품 변경 — 주간 리포트/회의 원천 데이터) · <b>변경 스냅샷 아카이브(CSV_BANK) 바로가기</b> · 월간 대시보드 링크 · 팀 주간 회의록/보고서 바로가기(SCM-Archive) · GitHub 저장소 링크',
   };
@@ -7147,24 +7237,16 @@ function computeKPIs() {
   }
 
   // --- Supply chain grades ---
-  if (D.quarter_eval) {
-    // v9: 2Q까지 데이터 기준 · 1Q/2Q 등급 상이 시 점수 평균으로 등급 재산정 · A등급만 카운트
-    const gradeMid = {A:13.5, B:8.5, C:4, D:1};
-    const gradeOf = s => s >= 12 ? 'A' : s >= 6 ? 'B' : s >= 3 ? 'C' : 'D';
-    let totalEval = 0, aCount = 0;
-    D.quarter_eval.forEach(row => {
-      const g1 = (row['1Q_공급망관리등급'] || '').trim();
-      const g2 = (row['2Q_공급망관리등급'] || '').trim();
-      const t1 = parseFloat(row['1Q_공급망관리점수']) || 0;
-      const t2 = parseFloat(row['2Q_공급망관리점수']) || 0;
-      let g = '';
-      if (g1 && g2 && g1 !== g2) {
-        const avg = ((t1 || gradeMid[g1] || 0) + (t2 || gradeMid[g2] || 0)) / 2;
-        g = gradeOf(avg);
-      } else g = g2 || g1;
-      if (g) { totalEval++; if (g === 'A') aCount++; }
-    });
-    r.supply_agrade = totalEval > 0 ? (aCount / totalEval) * 100 : null;
+  // v22.10: 공급망 포트폴리오 탭과 동일한 정식 평가 기준(getEvaluatedPortfolioVendors)을 재사용.
+  // 기존엔 quarter_eval.csv의 1Q/2Q_공급망관리등급 원본 텍스트 컬럼을 이 함수가 별도로 재계산했는데,
+  // 1Q 컬럼에 스프레드시트 수식 오류(#REF!)가 섞여 있고 1Q/2Q 상이 시 평균으로 낮은 쪽에 끌려가는 바람에
+  // 포트폴리오 탭엔 A등급이 6곳 있는데도 이 카드는 A등급 비율 0%로 표시되는 불일치가 있었음.
+  if ((D.order && D.issue) || D.quarter_eval) {
+    const evalVendors = getEvaluatedPortfolioVendors();
+    if (evalVendors.length) {
+      const aCount = evalVendors.filter(v => v._grade === 'A').length;
+      r.supply_agrade = (aCount / evalVendors.length) * 100;
+    }
   }
 
   if (D.order && D.sup) {
@@ -7354,10 +7436,10 @@ function saveKPITarget(id, val) {
 }
 
 // ===== PORTFOLIO =====
-function renderPortfolio() {
-  const el=document.getElementById('portfolio-content');
-  if (!el) return;
-
+// v22.10: 공급망 포트폴리오와 KPI 트래킹(A등급 비율)이 동일한 "정식 평가 단일 기준"을 쓰도록
+// 협력사 소스 선택+등급/Tier 분류 로직을 단일 함수로 추출(기존엔 renderPortfolio() 안에만 있어서
+// KPI 카드가 quarter_eval 원본 등급 컬럼을 별도로 재계산하다 두 화면 결과가 어긋났음).
+function getEvaluatedPortfolioVendors() {
   // v12: 리포트 정식 평가 기준 — QCD는 발주·이슈 RAW 반기 누적으로 산출, 관계(예외·대체)는 분기별평가 CSV 병합(결측 1점)
   let vendors=[];
   const currentQ=(() => { const m=new Date().getMonth()+1; return m<=3?1:m<=6?2:m<=9?3:4; })();
@@ -7368,11 +7450,9 @@ function renderPortfolio() {
     vendors=parseQuarterEval(D.quarter_eval, currentQ);
     window._portfolioWindowLabel='분기별평가 CSV 기준';
   } else {
-    el.innerHTML='<div class="empty" style="padding:40px;text-align:center"><div style="font-size:32px;margin-bottom:12px">📊</div><div style="font-size:14px;font-weight:600;margin-bottom:6px">공급망 포트폴리오</div><div style="font-size:12px;color:var(--text3)">분기별평가 CSV를 업로드하거나, 발주_RAW + 이슈_RAW를 업로드하면 자동 산출됩니다.</div></div>';
-    return;
+    return [];
   }
-
-  if (!vendors.length) { el.innerHTML='<div class="empty">협력사 데이터가 없습니다.</div>'; return; }
+  if (!vendors.length) return [];
 
   // Classify into quadrants
   // v9: 2Q까지 데이터 기준 · 1Q/2Q 등급 상이 시 점수 평균으로 등급 재산정
@@ -7405,6 +7485,19 @@ function renderPortfolio() {
     else if (!qcdHigh && relHigh) v._quad = 'Developing';
     else v._quad = 'General';
   });
+  return vendors;
+}
+
+function renderPortfolio() {
+  const el=document.getElementById('portfolio-content');
+  if (!el) return;
+
+  if (!((D.order && D.issue) || D.quarter_eval)) {
+    el.innerHTML='<div class="empty" style="padding:40px;text-align:center"><div style="font-size:32px;margin-bottom:12px">📊</div><div style="font-size:14px;font-weight:600;margin-bottom:6px">공급망 포트폴리오</div><div style="font-size:12px;color:var(--text3)">분기별평가 CSV를 업로드하거나, 발주_RAW + 이슈_RAW를 업로드하면 자동 산출됩니다.</div></div>';
+    return;
+  }
+  const vendors = getEvaluatedPortfolioVendors();
+  if (!vendors.length) { el.innerHTML='<div class="empty">협력사 데이터가 없습니다.</div>'; return; }
 
   // Grade distribution
   const gradeDist = {A:0, B:0, C:0, D:0};
@@ -8047,7 +8140,9 @@ const AUTO_CSV_DEFAULT={
   parts:'parts.csv',
   goods_master:'goods_master.csv',
   quarter_eval:'quarter_eval.csv',
-  proj_rev:'proj_rev.csv'
+  proj_rev:'proj_rev.csv',
+  check_answer:'check_answer.csv',
+  check_question:'check_question.csv'
 };
 function autoLoadRaw(){
   fetch('CSV/_manifest.json').then(r=>r.ok?r.json():null).catch(()=>null).then(man=>{
