@@ -238,6 +238,10 @@ a{color:var(--blue);text-decoration:none}
     종합 현황
   </div>
   <div class="sb-section">구매전략 · S&OP 재고운영</div>
+  <div class="sb-item" onclick="nav(this,'inventory-ops')">
+    <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M2 13V6l6-4 6 4v7M6 13V9h4v4"/><path d="M2 6h12"/></svg>
+    재고운영 현황
+  </div>
   <div class="sb-item" onclick="nav(this,'stockout-detail')">
     <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M8 2v12M2 8h12"/><circle cx="8" cy="8" r="6"/></svg>
     품절 상세
@@ -245,10 +249,6 @@ a{color:var(--blue);text-decoration:none}
   <div class="sb-item" onclick="nav(this,'graduation')">
     <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M8 2L2 5l6 3 6-3-6-3z"/><path d="M3 6.5v4l5 3 5-3v-4"/></svg>
     졸업 검토
-  </div>
-  <div class="sb-item" onclick="nav(this,'inventory-ops')">
-    <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M2 13V6l6-4 6 4v7M6 13V9h4v4"/><path d="M2 6h12"/></svg>
-    재고운영 현황
   </div>
   <div class="sb-item" onclick="nav(this,'purchase-review')">
     <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M3 3h10v10H3z"/><path d="M6 6l2 2 2-2"/></svg>
@@ -778,6 +778,14 @@ a{color:var(--blue);text-decoration:none}
           <button class="rep-btn" onclick="genChangeReport()"><div class="rep-btn-title">📋 변경 이력 리포트 생성</div><div class="rep-btn-desc">파츠 신규/졸업 · 단가 변동 · 협력사·제품 변경을 파트별 섹션으로 정리 → .md 다운로드 (주간 리포트·회의 원천 데이터)</div></button>
           <button class="rep-btn" onclick="window.open('https://github.com/nanyounglee/SCMDASHBOARD/tree/main/CSV_BANK','_blank')"><div class="rep-btn-title">🗂 변경 스냅샷 아카이브 ↗</div><div class="rep-btn-desc">CSV_BANK — 주차별 스냅샷·연도 아카이브 원본 내역 확인</div></button>
           <button class="rep-btn" onclick="window.open('https://github.com/nanyounglee/SCMDASHBOARD','_blank')"><div class="rep-btn-title">🚀 GitHub 저장소 열기 ↗</div><div class="rep-btn-desc">SCMDASHBOARD 레포지토리</div></button>
+        </div>
+      </div>
+      <div class="card">
+        <div class="card-header"><div class="card-title">구매전략파트</div></div>
+        <div id="psr-week-select-wrap" style="margin-bottom:10px"></div>
+        <textarea id="psr-memo-input" placeholder="특이사항 메모 (선택 — 데이터로는 알 수 없는 운영 판단·맥락) — 입력 시 5-1에 원문 그대로 추가됩니다" style="width:100%;min-height:56px;font-size:12px;padding:8px 10px;border:1px solid var(--border2);border-radius:var(--r-sm);background:var(--surface);margin-bottom:10px;resize:vertical;box-sizing:border-box"></textarea>
+        <div class="report-grid">
+          <button class="rep-btn" onclick="genWeeklyInventoryReport()"><div class="rep-btn-title">📦 주간 재고 리포트 생성</div><div class="rep-btn-desc">재고수준·재고구조·품절·장기미회전·이슈(규칙 기반 자동 판정) 요약 → .md 파일 다운로드</div></button>
         </div>
       </div>
     </div>
@@ -5486,7 +5494,7 @@ function nav(el,id) {
     stock:'<b>확인 가능 지표:</b> 전체 품절수 · 비의도적 품절(납기지연/공급부족) · 의도적 품절(졸업/시즌/효율화) · 굿즈품절 | <b>필터:</b> 판매상태별(일시품절/품절예정/의도적 품절) | <b>테이블:</b> 파츠명/굿즈 · 판매상태 · 재고소유 · 품절성격/사유 · 변경일 · 경과일 · 굿즈품절여부 | <b>CSV:</b> 품절리스트',
     ai:'<b>사용법:</b> 제품명 입력 → 제품 정의서 링크 + 리드타임/제작기간·단가 문의 기존 답변(최신 3건, 답변 없으면 과거 슬랙 문의 텍스트로 폴백) — Check_standard_Answer(응답 완료) + Check_standard_Question(질문1~3·답변1~3 원본) 두 소스를 함께 검색해 커버리지 확대 | 협력사명 입력 → 발주현황/매입금액/3개월추이/품질이슈 분석 | 긴급 → 긴급발주 목록 | 미입하/task → 미입하현황 | 전월/매입 → 전월대비 비교 | 담당자명 → 개인 실적 | <b>CSV:</b> 제품문의답변이력(check_answer) + 제품문의원본(check_question) + 발주_RAW + 이슈_RAW + 공급망_RAW',
     quote:'<b>기능:</b> 패키지(박스) 자동 견적 산출 — 마닐라박스/C형/W형/슬리브형 | <b>로직:</b> 전개사이즈 → 지류단가(27지종×15규격, 0원 규격 자동상향) → 여분·연수 → 원단/인쇄/코팅/톰슨/접착/특수공정/골판지 → 관리비(10%·최소15만) → 마진(최소20만) | <b>이력:</b> localStorage 저장 · CSV 내보내기 | <b>기준:</b> 외주버전 v1.2.2 단가표',
-    report:'<b>기능:</b> 주간리포트 .md 생성(발주/이슈 자동 요약) · <b>변경 이력 리포트 .md 생성</b>(파츠 신규/졸업·단가 변동·협력사·제품 변경 — 주간 리포트/회의 원천 데이터) · <b>변경 스냅샷 아카이브(CSV_BANK) 바로가기</b> · 월간 대시보드 링크 · 팀 주간 회의록/보고서 바로가기(SCM-Archive) · GitHub 저장소 링크',
+    report:'<b>기능:</b> 구매전략파트 주간 재고 리포트 .md 생성(재고수준·재고구조·품절·장기미회전·이슈 자동 요약, 주차 선택 가능) · 주간리포트 .md 생성(발주/이슈 자동 요약) · <b>변경 이력 리포트 .md 생성</b>(파츠 신규/졸업·단가 변동·협력사·제품 변경 — 주간 리포트/회의 원천 데이터) · <b>변경 스냅샷 아카이브(CSV_BANK) 바로가기</b> · 월간 대시보드 링크 · 팀 주간 회의록/보고서 바로가기(SCM-Archive) · GitHub 저장소 링크',
   };
   document.getElementById('page-title').innerHTML=`${titles[id]||id}<span class="topbar-badge" id="page-month-badge">${selPeriodLabel()}</span>`;
   renderPeriodBar();
@@ -5506,6 +5514,7 @@ function nav(el,id) {
   if (id==='purchase-review') renderPurchaseReview();
   if (id==='season-plan') renderSeasonPlan();
   if (id==='eoq') renderEOQ();
+  if (id==='report') renderPsrWeekSelect_();
   if (id==='graduation') renderGraduation();
   if (id==='cost-analysis') renderCostAnalysis();
   if (id==='product-trend') renderProductTrend();
@@ -5922,6 +5931,708 @@ function aggBaseDateText(r){
 function aggRealSubcategory(r){
   return String(r['서브카테고리']||r.subcategory||r.sub_category_name||'').trim() || '미분류';
 }
+
+// ============================================================
+// 구매전략파트 주간 재고 리포트 (psr = Purchase Strategy Report)
+// .clasp Apps Script 대시보드 generateWeeklyReportMd()를 동일 집계 CSV(dashboard_period_summary/
+// dashboard_group_summary/dashboard_sku_snapshot/raw_발주/parts_master) 기준으로 이식.
+// ============================================================
+let SEL_REPORT_WEEK_KEY = '';
+
+function renderPsrWeekSelect_(){
+  const wrap = document.getElementById('psr-week-select-wrap');
+  if(!wrap) return;
+  if(!hasAggInventoryData()){ wrap.innerHTML = '<div class="muted" style="font-size:12px">재고 KPI 데이터(dashboard_period_summary 등) 로딩 중...</div>'; return; }
+  const rows = getAggPeriodRows('weekly');
+  if(!rows.length){ wrap.innerHTML = '<div class="muted" style="font-size:12px">주별 스냅샷 데이터가 없습니다.</div>'; return; }
+  if(!SEL_REPORT_WEEK_KEY || !rows.some(r=>String(r.period_key||'')===SEL_REPORT_WEEK_KEY)){
+    SEL_REPORT_WEEK_KEY = String(rows[rows.length-1].period_key||'');
+  }
+  const opts = rows.slice().reverse().map(r=>{
+    const key=String(r.period_key||'');
+    const baseTxt = (r.base_date && r.base_date!==key) ? ' ('+r.base_date+')' : '';
+    return `<option value="${esc(key)}" ${key===SEL_REPORT_WEEK_KEY?'selected':''}>${esc(key)}${esc(baseTxt)}</option>`;
+  }).join('');
+  wrap.innerHTML = `<span class="filter-label" style="font-size:12px;color:var(--text2);margin-right:8px">기준 주차</span>
+    <select onchange="SEL_REPORT_WEEK_KEY=this.value" style="font-size:12px;padding:5px 9px;border:1px solid var(--border2);border-radius:var(--r-sm);background:var(--surface)">${opts}</select>`;
+}
+
+function psrGroupAmount_(unit,key,type){
+  const rows = getAggGroupRows(unit,key,type);
+  const total = rows.reduce((s,r)=>s+toNum(r.inv_amount),0);
+  return rows.map(r=>{
+    const amount = toNum(r.inv_amount);
+    const share = total>0 ? amount/total : 0;
+    return { name:String(r.group_name||'미분류'), amount, amountText:fa(amount), share, shareText:(share*100).toFixed(1)+'%', count:toNum(r.sku_count) };
+  }).sort((a,b)=>b.amount-a.amount);
+}
+
+function psrNewProductSummary_(unit,key){
+  const groupRows = psrGroupAmount_(unit,key,'new_product');
+  const row = groupRows.find(r=>r.name==='Y') || {amount:0,share:0,count:0};
+  const skuRows = getAggSkuRows(unit,key);
+  const firstRows = skuRows.filter(r=>String(r.is_new_product)==='Y' && String(r.is_first_order)==='Y');
+  const firstAmount = firstRows.reduce((s,r)=>s+toNum(r.inv_amount),0);
+  const firstCount = firstRows.length;
+  const firstShare = row.amount>0 ? firstAmount/row.amount : 0;
+  const reorderedAmount = row.amount - firstAmount;
+  const reorderedCount = row.count - firstCount;
+  const reorderedShare = row.amount>0 ? reorderedAmount/row.amount : 0;
+  return {
+    amountText: fa(row.amount), shareText:(row.share*100).toFixed(1)+'%', skuCount: row.count,
+    firstOrderAmountText: fa(firstAmount), firstOrderShareText:(firstShare*100).toFixed(1)+'%', firstOrderCount: firstCount,
+    reorderedAmountText: fa(reorderedAmount), reorderedShareText:(reorderedShare*100).toFixed(1)+'%', reorderedCount: reorderedCount,
+  };
+}
+
+function psrCurrentSeasonType_(baseDateStr){
+  const d = new Date(String(baseDateStr||'').replace(/\./g,'-'));
+  const month = isNaN(d.getTime()) ? (new Date().getMonth()+1) : d.getMonth()+1;
+  if([5,6,7,8].includes(month)) return '여름';
+  if([10,11,12,1].includes(month)) return '겨울';
+  return '봄가을';
+}
+
+function psrSeasonSummary_(unit,key,baseDateStr){
+  const rows = getAggGroupRows(unit,key,'season');
+  const currentSeason = psrCurrentSeasonType_(baseDateStr);
+  const seasons = ['여름','겨울','봄가을'].map(name=>{
+    const r = rows.find(x=>String(x.group_name||'').trim()===name) || {};
+    return {
+      name, isCurrent: name===currentSeason,
+      turnover3mText: fmtTurn(toNum(r.turnover_3m)),
+      inventoryAmountText: fa(toNum(r.inv_amount)),
+      skuCount: toNum(r.sku_count),
+    };
+  });
+  return { currentSeason, seasons, monthMapText:'여름 5~8월 · 겨울 10~1월 · 봄가을 2·3·4·9월' };
+}
+
+function psrCategoryTop5_(unit,key){
+  const rows = getAggGroupRows(unit,key,'category');
+  const total = rows.reduce((s,r)=>s+toNum(r.inv_amount),0);
+  const skuRows = getAggSkuRows(unit,key);
+  return rows.map(r=>{
+    const amount = toNum(r.inv_amount);
+    const share = total>0 ? amount/total : 0;
+    const skus = skuRows.filter(s=>s.category===r.group_name && isAggManaged(s))
+      .sort((a,b)=>toNum(b.inv_amount)-toNum(a.inv_amount))
+      .slice(0,3)
+      .map(s=>({
+        partName: String(s.parts_name||''),
+        inventoryAmountValue: toNum(s.inv_amount),
+        salesQty1m: toNum(s.sales_1m).toLocaleString(),
+        salesQty: toNum(s.sales_3m).toLocaleString(),
+        inventoryQty: toNum(s.inv_qty).toLocaleString(),
+        turnover: fmtTurn(toNum(s.turnover_3m)),
+      }));
+    return { category:String(r.group_name||'미분류'), amount, inventoryShareText:(share*100).toFixed(1)+'%', skus };
+  }).sort((a,b)=>b.amount-a.amount).slice(0,5);
+}
+
+function psrStockoutSummary_(unit,key){
+  const allRows = getAggSkuRows(unit,key);
+  const statusMap = {};
+  allRows.forEach(r=>{ const s=String(r.sales_status||'상태없음').trim(); statusMap[s]=(statusMap[s]||0)+1; });
+  const statusSummary = Object.keys(statusMap).map(s=>({status:s,count:statusMap[s]}));
+  const nonIntentionalList = allRows
+    .filter(r=>isAggManaged(r) && isAggStockout(r))
+    .sort((a,b)=> aggStockoutDays(b)-aggStockoutDays(a) || toNum(b.inv_amount)-toNum(a.inv_amount))
+    .map(r=>({
+      partNo: String(r.parts_no||'').trim(),
+      partName: String(r.parts_name||''),
+      salesStatus: String(r.sales_status||''),
+      stockoutDays: aggStockoutDays(r),
+      stockoutStartDate: String(r.stockout_start||'').trim() || '-',
+    }));
+  return { statusSummary, nonIntentionalList };
+}
+
+function psrLaunchDateMap_(){
+  const map = {};
+  (D.parts_master||[]).forEach(r=>{
+    const no = String(r['파츠번호']||'').trim();
+    if(no) map[no] = String(r['출시일']||'').trim();
+  });
+  return map;
+}
+
+function psrStagnantList_(unit,key,baseDateStr){
+  const launchMap = psrLaunchDateMap_();
+  const baseDate = new Date(String(baseDateStr||'').replace(/\./g,'-'));
+  const rows = getAggSkuRows(unit,key).filter(r=>isAggManaged(r) && isAggProduct(r) && toNum(r.turnover_3m)<0.1);
+  return rows.filter(r=>{
+    const launchRaw = launchMap[String(r.parts_no||'').trim()];
+    if(!launchRaw) return true;
+    const launch = new Date(launchRaw.replace(/\./g,'-'));
+    if(isNaN(launch.getTime())||isNaN(baseDate.getTime())) return true;
+    const diffMonths = (baseDate.getFullYear()-launch.getFullYear())*12 + (baseDate.getMonth()-launch.getMonth());
+    return diffMonths>=3;
+  }).sort((a,b)=>toNum(b.inv_amount)-toNum(a.inv_amount)).map(r=>({
+    partNo: String(r.parts_no||'').trim(),
+    partName:String(r.parts_name||''), category:String(r.category||''),
+    inventoryQty: toNum(r.inv_qty).toLocaleString(),
+    inventoryAmountValue: toNum(r.inv_amount),
+    inventoryAmountText: fa(toNum(r.inv_amount)),
+    turnoverText: fmtTurn(toNum(r.turnover_3m)),
+  }));
+}
+
+// 파츠번호가 속한 raw_발주/parts_master 관련 헬퍼 — 원본 AggregationBase.js의
+// buildFirstOrderMap_/isFirstOrderTaskForPart_/isLegacyPart_/getIncomingOrdersSummary 이식
+function psrNormDate_(text){
+  const m = String(text||'').trim().match(/^(\d{4})[.\-\/](\d{1,2})[.\-\/](\d{1,2})/);
+  return m ? (m[1]+'-'+String(m[2]).padStart(2,'0')+'-'+String(m[3]).padStart(2,'0')) : '';
+}
+function psrIsErrorValue_(v){ return /^#[A-Z0-9\/]+[!?]?$/.test(String(v||'').trim()); }
+
+// EOQ·발주알람 탭에서 "즉시발주" 대상 중 이미 raw_발주에 미입하 건이 걸려있는(=제작중) 파츠를
+// 수량·입하예정일과 함께 보여주기 위한 맵. pending 판정 로직은 psrIncomingSummary_()와 동일.
+function psrPendingOrderMap_(){
+  const map = {};
+  (D.raw_purchase||[]).forEach(r=>{
+    if(String(r.project||'').includes('24년')) return;
+    if(String(r['입하여부']||'').trim()!=='') return;
+    const invNo=String(r['재고귀속파츠번호']||'').trim();
+    const rawNo=String(r['파츠번호']||'').trim();
+    const effectiveNo=(invNo&&!psrIsErrorValue_(invNo))?invNo:((rawNo&&!psrIsErrorValue_(rawNo))?rawNo:'');
+    if(!effectiveNo) return;
+    const qty = toNum(r['발주지시수량'])||0;
+    const expDate = psrNormDate_(r['입하예정일']);
+    if(!map[effectiveNo]) map[effectiveNo] = { qty:0, dates:[] };
+    map[effectiveNo].qty += qty;
+    if(expDate && map[effectiveNo].dates.indexOf(expDate)<0) map[effectiveNo].dates.push(expDate);
+  });
+  Object.keys(map).forEach(no=>map[no].dates.sort());
+  return map;
+}
+function psrShortDate_(iso){
+  const m = String(iso||'').match(/^\d{4}-(\d{2})-(\d{2})$/);
+  return m ? (Number(m[1])+'/'+Number(m[2])) : (iso||'');
+}
+
+function psrFirstOrderTaskMap_(){
+  const tasksByPart={};
+  (D.raw_purchase||[]).forEach(r=>{
+    const project=String(r.project||'').trim();
+    if(!project.includes('재고생산')) return;
+    const invNo=String(r['재고귀속파츠번호']||'').trim();
+    const rawNo=String(r['파츠번호']||'').trim();
+    const partNo=invNo||rawNo;
+    const taskId=String(r.task_id||'').trim();
+    if(!partNo||!taskId) return;
+    if(!tasksByPart[partNo]) tasksByPart[partNo]={};
+    if(tasksByPart[partNo].hasOwnProperty(taskId)) return;
+    tasksByPart[partNo][taskId]={ orderDate: psrNormDate_(r['과업지시일자']) };
+  });
+  const firstTaskByPart={};
+  Object.keys(tasksByPart).forEach(partNo=>{
+    const ids=Object.keys(tasksByPart[partNo]).sort((a,b)=>{
+      const da=tasksByPart[partNo][a].orderDate, db=tasksByPart[partNo][b].orderDate;
+      if(!da&&!db) return 0; if(!da) return 1; if(!db) return -1;
+      return da<db?-1:da>db?1:0;
+    });
+    if(ids.length) firstTaskByPart[partNo]=ids[0];
+  });
+  return firstTaskByPart;
+}
+
+function psrIsLegacyPart_(partNo, masterMap){
+  const master = masterMap[partNo]||{};
+  const launchRaw = String(master['출시일']||'').trim();
+  if(!/^\d{4}[.\-\/]\d{1,2}[.\-\/]\d{1,2}$/.test(launchRaw)) return false;
+  const norm = psrNormDate_(launchRaw);
+  return !!norm && norm < '2025-01-01';
+}
+
+function psrIncomingSummary_(){
+  if(!D.raw_purchase || !D.parts_master) return null;
+  const masterMap={};
+  D.parts_master.forEach(r=>{ const no=String(r['파츠번호']||'').trim(); if(no) masterMap[no]=r; });
+  const firstTaskByPart = psrFirstOrderTaskMap_();
+
+  const pending = D.raw_purchase.filter(r=>{
+    if(String(r.project||'').includes('24년')) return false;
+    return String(r['입하여부']||'').trim()==='';
+  });
+
+  const partMap={};
+  pending.forEach(r=>{
+    const invNo=String(r['재고귀속파츠번호']||'').trim();
+    const rawNo=String(r['파츠번호']||'').trim();
+    const effectiveNo=(invNo&&!psrIsErrorValue_(invNo))?invNo:((rawNo&&!psrIsErrorValue_(rawNo))?rawNo:'');
+    if(!effectiveNo) return;
+    if(!partMap[effectiveNo]){
+      const master=masterMap[effectiveNo]||{};
+      const qty=toNum(r['발주지시수량'])||0;
+      const unitPrice=toNum(master['표준원가'])||0;
+      const amount=qty*unitPrice;
+      const taskId=String(r.task_id||'').trim();
+      const isFirstOrder = !psrIsLegacyPart_(effectiveNo,masterMap) && !!taskId && taskId===firstTaskByPart[effectiveNo];
+      partMap[effectiveNo]={ amount, isFirstOrder, orderCount:0 };
+    }
+    partMap[effectiveNo].orderCount++;
+  });
+
+  const list = Object.values(partMap);
+  const totalAmount = list.reduce((s,r)=>s+r.amount,0);
+  const firstOrderAmount = list.reduce((s,r)=>s+(r.isFirstOrder?r.amount:0),0);
+  return {
+    totalAmount, totalAmountFull: totalAmount.toLocaleString()+'원',
+    skuCount: list.length,
+    orderCount: list.reduce((s,r)=>s+r.orderCount,0),
+    firstOrderAmount, firstOrderAmountText: fa(firstOrderAmount),
+    firstOrderRatio: totalAmount>0 ? firstOrderAmount/totalAmount : 0,
+    firstOrderSkuCount: list.filter(r=>r.isFirstOrder).length,
+    generalSkuCount: list.filter(r=>!r.isFirstOrder).length,
+  };
+}
+
+function psrMonthKeyFromDate_(dateStr){
+  const d = new Date(String(dateStr||'').replace(/\./g,'-'));
+  if(isNaN(d.getTime())) return '';
+  return String(d.getFullYear()).slice(-2)+'-'+(d.getMonth()+1);
+}
+
+// 2025년 월별 재고금액 (전년동기 대비 비교용 수동 입력값 — .clasp Index.html과 동일 값)
+const PSR_PREV_YEAR_INVENTORY_AMOUNT = {
+  '2025-01': 269833695, '2025-02': 431229538, '2025-03': 463593032, '2025-04': 487394964,
+  '2025-05': 539679618, '2025-06': 539666031, '2025-07': 613754800, '2025-08': 730026566,
+  '2025-09': 713184482, '2025-10': 821009144, '2025-11': 927983075, '2025-12': 693635790,
+};
+function psrPrevYearSummary_(baseDateStr){
+  const d = new Date(String(baseDateStr||'').replace(/\./g,'-'));
+  if(isNaN(d.getTime())) return null;
+  const monthKey = (d.getFullYear()-1)+'-'+String(d.getMonth()+1).padStart(2,'0');
+  const amount = PSR_PREV_YEAR_INVENTORY_AMOUNT[monthKey];
+  if(amount===undefined) return null;
+  return { amount, baseDate: monthKey };
+}
+
+function psrFmtComp_(curAmount, prevAmount, prevLabelText, label){
+  if(!prevAmount) return '  - '+label+': 데이터 없음';
+  const delta=curAmount-prevAmount;
+  const sign=delta>=0?'+':'';
+  const pct=prevAmount>0?' ('+sign+(delta/prevAmount*100).toFixed(1)+'%)':'';
+  return '  - '+label+': '+sign+fa(delta)+pct+'  (전기 '+fa(prevAmount)+', '+prevLabelText+')';
+}
+
+function psrGetSelectedWeekRow_(){
+  const rows = getAggPeriodRows('weekly');
+  if(!rows.length) return null;
+  return rows.find(r=>String(r.period_key||'')===SEL_REPORT_WEEK_KEY) || rows[rows.length-1];
+}
+
+// .clasp Index.html의 getISOWeekInfo_/getWeeklyReportFilename_와 동일한 파일명 규칙
+// (inventory-strategy 스킬이 SCM-Archive/Regular-Reports에서 찾는 "YYYY_W주차_MMDD_주간보고_구매전략파트.md" 형식)
+function psrGetISOWeekInfo_(dateObj){
+  const d = new Date(Date.UTC(dateObj.getFullYear(), dateObj.getMonth(), dateObj.getDate()));
+  const day = d.getUTCDay() || 7;
+  d.setUTCDate(d.getUTCDate() + 4 - day);
+  const yearStart = new Date(Date.UTC(d.getUTCFullYear(), 0, 1));
+  const week = Math.ceil(((d - yearStart) / 86400000 + 1) / 7);
+  return { year: d.getUTCFullYear(), week };
+}
+function psrWeeklyReportFilename_(dateStr){
+  const dateObj = new Date(String(dateStr||'').replace(/\./g,'-'));
+  if (isNaN(dateObj.getTime())) return '주간보고_구매전략파트.md';
+  const iso  = psrGetISOWeekInfo_(dateObj);
+  const week = 'W' + String(iso.week).padStart(2,'0');
+  const mmdd = String(dateObj.getMonth()+1).padStart(2,'0') + String(dateObj.getDate()).padStart(2,'0');
+  return iso.year + '_' + week + '_' + mmdd + '_주간보고_구매전략파트.md';
+}
+
+// ============================================================
+// 5번 섹션 규칙 기반 자동 작성 — inventory-strategy 스킬
+// (C:\Users\rlagk\.claude\skills\inventory-strategy\SKILL.md)의 "판단 기준 임계값" 표를
+// LLM 호출 없이 JS 규칙엔진으로 이식. 자연스러운 서술이나 "전주 대비 신규 이슈만" 판별은
+// 지원하지 않음 — 매주 조건에 걸리는 전체 후보를 다시 보여준다.
+// ============================================================
+
+function psrIsMonthStartWeek_(baseDateStr){
+  const d = new Date(String(baseDateStr||'').replace(/\./g,'-'));
+  if(isNaN(d.getTime())) return false;
+  return d.getDate() <= 7;
+}
+
+function psrBuildSkuWeeklyHistory_(unit, upToKey){
+  const rows = (D.dashboard_sku_snapshot||[]).filter(r=>
+    String(r.period_unit||'').trim()===unit && String(r.period_key||'').trim()<=upToKey
+  );
+  const map = {};
+  rows.forEach(r=>{
+    const no = String(r.parts_no||'').trim();
+    if(!no) return;
+    if(!map[no]) map[no]=[];
+    map[no].push(r);
+  });
+  Object.keys(map).forEach(no=>map[no].sort((a,b)=>String(a.period_key||'').localeCompare(String(b.period_key||''))));
+  return map;
+}
+
+// 최신 주부터 역순으로 sales_1m===0인 연속 주 수를 셈. 월초(1~7일) 주는 "1개월 판매량이
+// 부분 합계라 0에 가까움"(SKILL.md 월초 예외)이라 스킵하고 스트릭도 끊지 않는다.
+function psrConsecutiveZeroWeeks_(history){
+  let count=0;
+  for(let i=history.length-1;i>=0;i--){
+    const r=history[i];
+    if(psrIsMonthStartWeek_(r.base_date||r.period_key)) continue;
+    if(toNum(r.sales_1m)===0) count++;
+    else break;
+  }
+  return count;
+}
+
+function psrIsSalesDrop50_(history){
+  if(history.length<2) return false;
+  const latest=toNum(history[history.length-1].sales_3m);
+  const prev=toNum(history[history.length-2].sales_3m);
+  if(prev<=0) return false;
+  return (prev-latest)/prev >= 0.5;
+}
+
+// 관리대상 SKU 전체에 스킬의 임계값 규칙(데이터로 계산 가능한 것)을 적용해 이슈 후보를 만든다.
+// 한 SKU가 여러 규칙에 걸리면 우선순위(숫자가 작을수록 심각) 가장 높은 것을 대표로, 나머지 사유는 이어붙인다.
+function psrBuildIssueCandidates_(unit,key,baseDate,totalInv){
+  const skuRows = getAggSkuRows(unit,key).filter(isAggManaged);
+  const histMap = psrBuildSkuWeeklyHistory_(unit,key);
+  const stagnantMap = {};
+  psrStagnantList_(unit,key,baseDate).forEach(r=>{ if(r.partNo) stagnantMap[r.partNo]=r; });
+  const stockoutMap = {};
+  psrStockoutSummary_(unit,key).nonIntentionalList.forEach(r=>{ if(r.partNo) stockoutMap[r.partNo]=r; });
+
+  const candidates = {};
+  function addReason(partNo, partName, category, priority, label, reasonText){
+    const cur = candidates[partNo];
+    if(!cur || priority < cur.priority){
+      candidates[partNo] = { partNo, partName, category, priority, label, reasons:[reasonText], amount:0 };
+    } else if(cur.reasons.indexOf(reasonText)<0) {
+      cur.reasons.push(reasonText);
+    }
+  }
+
+  skuRows.forEach(r=>{
+    const partNo = String(r.parts_no||'').trim();
+    if(!partNo) return;
+    const partName = String(r.parts_name||'');
+    const category = String(r.category||'');
+    const amount = toNum(r.inv_amount);
+    const history = histMap[partNo] || [];
+
+    // 단일 SKU 집중 (전체 재고 10%+)
+    if(totalInv>0 && amount/totalInv >= 0.1){
+      addReason(partNo, partName, category, 1, '재고 과다', '재고 비중 '+(amount/totalInv*100).toFixed(1)+'% (단일 SKU 10%+)');
+    }
+
+    // 연속 판매 0
+    const zeroWeeks = psrConsecutiveZeroWeeks_(history);
+    if(zeroWeeks>=3){
+      addReason(partNo, partName, category, 1, '소진 필요', '연속 '+zeroWeeks+'주 판매 0');
+    } else if(zeroWeeks>=2){
+      addReason(partNo, partName, category, 2, '소진 필요', '연속 '+zeroWeeks+'주 판매 0');
+    }
+    // 신규 출시 판매 부진 (4주+)
+    if(String(r.is_new_product)==='Y' && zeroWeeks>=4){
+      addReason(partNo, partName, category, 2, '모니터링', '신규 출시 후 '+zeroWeeks+'주 연속 판매 0');
+    }
+    // 판매 급감 (전주 대비 50%+)
+    if(psrIsSalesDrop50_(history)){
+      addReason(partNo, partName, category, 3, '모니터링', '3개월 판매량 전주 대비 50%↑ 감소');
+    }
+  });
+
+  // 장기미회전 (기존 4섹션 함수 재사용)
+  Object.keys(stagnantMap).forEach(partNo=>{
+    const r = stagnantMap[partNo];
+    addReason(partNo, r.partName, r.category, 2, '소진 필요', '3개월 회전율 '+r.turnoverText+' (장기미회전)');
+  });
+
+  // 품절 장기화/초장기 (기존 3섹션 함수 재사용)
+  Object.keys(stockoutMap).forEach(partNo=>{
+    const r = stockoutMap[partNo];
+    if(r.stockoutDays>=300){
+      addReason(partNo, r.partName, '', 1, '졸업 검토', '품절 '+r.stockoutDays+'일 경과 (초장기)');
+    } else if(r.stockoutDays>=30){
+      addReason(partNo, r.partName, '', 2, '공급 리스크', '품절 '+r.stockoutDays+'일 경과 (장기화)');
+    }
+  });
+
+  const invMap = {};
+  skuRows.forEach(r=>{ invMap[String(r.parts_no||'').trim()] = toNum(r.inv_amount); });
+  Object.values(candidates).forEach(c=>{ c.amount = invMap[c.partNo] || 0; });
+
+  return Object.values(candidates).sort((a,b)=> a.priority-b.priority || b.amount-a.amount);
+}
+
+const PSR_PRIORITY_ICON = { 1:'🔴 긴급', 2:'🟠 높음', 3:'🟡 모니터링' };
+
+function psrRenderSection5_(L, unit, key, baseDate, periodRow, totalInv, memoText){
+  L.push('## 5. 주요 이슈 및 우선순위'); L.push('');
+  L.push('### 5-1. 주간 변동 요약'); L.push('');
+  const stockoutRate = toNum(periodRow.stockout_rate);
+  L.push('- 품절율: '+(stockoutRate*100).toFixed(1)+'% (비의도적 품절 '+toNum(periodRow.stockout_count).toLocaleString()+'건 / 관리대상 '+toNum(periodRow.managed_count).toLocaleString()+'건)');
+  const skuRowsForCounts = getAggSkuRows(unit,key);
+  const longStockout30 = skuRowsForCounts.filter(r=>isAggManaged(r)&&isAggStockout(r)&&aggStockoutDays(r)>=30).length;
+  const longStockout60 = skuRowsForCounts.filter(r=>isAggManaged(r)&&isAggStockout(r)&&aggStockoutDays(r)>=60).length;
+  L.push('- 장기 품절 30일+: '+longStockout30+'건');
+  L.push('- 장기 품절 60일+: '+longStockout60+'건');
+  L.push('- 3개월 회전율: '+fmtTurn(toNum(periodRow.turnover_3m)));
+
+  const weeklyRows = getAggPeriodRows('weekly');
+  const idx = weeklyRows.findIndex(r=>String(r.period_key||'')===key);
+  const recent = weeklyRows.slice(Math.max(0,idx-3), idx+1);
+  if(recent.length>=2){
+    let dir=null, streak=0;
+    for(let i=recent.length-1;i>0;i--){
+      const cur=toNum(recent[i].inv_amount), prev=toNum(recent[i-1].inv_amount);
+      const d = cur>prev ? 'up' : cur<prev ? 'down' : 'flat';
+      if(dir===null){ dir=d; streak = d==='flat' ? 0 : 1; }
+      else if(d===dir){ streak++; }
+      else break;
+    }
+    L.push(dir && dir!=='flat' && streak>=2
+      ? '- 전주 대비 주요 변화: 재고자산 평가액 '+streak+'주 연속 '+(dir==='up'?'증가':'감소')
+      : '- 전주 대비 주요 변화: 뚜렷한 연속 추세 없음');
+  } else {
+    L.push('- 전주 대비 주요 변화: 데이터 부족');
+  }
+
+  const inc = psrIncomingSummary_();
+  if(inc && inc.totalAmount>0){
+    L.push('- 입고예정 반영 시 재고 수준: 현재 + '+fa(inc.totalAmount)+' 유입 예정 (1-4 참고)');
+  }
+  if(memoText && memoText.trim()){
+    L.push('- 특이사항: '+memoText.trim());
+  }
+  L.push('');
+
+  const candidates = psrBuildIssueCandidates_(unit,key,baseDate,totalInv);
+  const urgent = candidates.filter(c=>c.priority===1);
+
+  L.push('### 5-2. 우선순위 소진 이슈'); L.push('');
+  L.push('> ※ 규칙 기반 자동 판정(🔴 긴급 항목만 표시) — 전주 대비 신규/변경 여부는 구분하지 않음');
+  L.push('');
+  if(urgent.length){
+    urgent.slice(0,5).forEach(c=>{
+      L.push('**'+c.partName+'** ('+c.label+')');
+      L.push('- '+c.reasons.join(' · '));
+      L.push('');
+    });
+  } else {
+    L.push('- 🔴 긴급 대상 없음');
+    L.push('');
+  }
+
+  L.push('### 5-3. 주요 관리 대상 SKU'); L.push('');
+  if(candidates.length){
+    L.push('| 우선순위 | SKU | 사유 | 구분 |');
+    L.push('|:---:|---|---|---|');
+    candidates.slice(0,10).forEach(c=>{
+      L.push('| '+PSR_PRIORITY_ICON[c.priority]+' | '+c.partName+' | '+c.reasons.join(' · ')+' | '+c.label+' |');
+    });
+  } else {
+    L.push('- 대상 없음');
+  }
+}
+
+function genWeeklyInventoryReport(){
+  if(!hasAggInventoryData()){ alert('재고 KPI 데이터(dashboard_period_summary 등)가 아직 로드되지 않았습니다.'); return; }
+  const periodRow = psrGetSelectedWeekRow_();
+  if(!periodRow){ alert('선택한 주차의 재고 스냅샷을 찾을 수 없습니다.'); return; }
+  const unit='weekly', key=String(periodRow.period_key||'');
+  const baseDate = String(periodRow.base_date||key);
+  const L=[];
+
+  const totalInv = toNum(periodRow.inv_amount);
+  const band = getBandForDate(baseDate);
+  const bandRatio = band.max>0 ? totalInv/band.max : 0;
+  const bandStatus = String(periodRow.band_status||'데이터 없음').trim();
+
+  L.push('# [주간 재고 운영 리포트]');
+  L.push('기준일: '+baseDate);
+  L.push(''); L.push('---'); L.push('');
+
+  // ─ Section 1 ──────────────────────────────────────────
+  L.push('## 1. 재고 수준 및 건전성'); L.push('');
+  L.push('### 1-1. 재고자산 평가액');
+  L.push('- 재고자산 평가액: '+totalInv.toLocaleString()+'원');
+  const weeklyRows = getAggPeriodRows('weekly');
+  const wIdx = weeklyRows.findIndex(r=>String(r.period_key||'')===key);
+  const prevWeekRow = wIdx>0 ? weeklyRows[wIdx-1] : null;
+  const monthlyRows = getAggPeriodRows('monthly');
+  const curMonthKey = psrMonthKeyFromDate_(baseDate);
+  const mIdx = monthlyRows.findIndex(r=>String(r.period_key||'')===curMonthKey);
+  const prevMonthRow = mIdx>0 ? monthlyRows[mIdx-1] : null;
+  L.push(psrFmtComp_(totalInv, prevWeekRow?toNum(prevWeekRow.inv_amount):null, prevWeekRow?String(prevWeekRow.base_date||prevWeekRow.period_key||''):'', '전주 대비'));
+  L.push(psrFmtComp_(totalInv, prevMonthRow?toNum(prevMonthRow.inv_amount):null, prevMonthRow?String(prevMonthRow.base_date||prevMonthRow.period_key||''):'', '전월 대비'));
+  const py = psrPrevYearSummary_(baseDate);
+  L.push(psrFmtComp_(totalInv, py?py.amount:null, py?py.baseDate:'', '전년동기 대비'));
+  L.push('');
+  L.push('### 1-2. 운영 밴드');
+  L.push('- 운영 밴드: '+fa(band.min)+' ~ '+fa(band.max));
+  L.push('- 목표 수준: '+fa(band.target));
+  L.push('- 현재 상태: '+bandStatus);
+  L.push('  - Max 대비 비율: '+(bandRatio*100).toFixed(1)+'%');
+  L.push('');
+  L.push('### 1-3. 신제품 재고금액');
+  const npGroupExists = getAggGroupRows(unit,key,'new_product').length>0;
+  if(npGroupExists){
+    const np = psrNewProductSummary_(unit,key);
+    L.push('- 신제품 재고금액: '+np.amountText+' ('+np.shareText+', '+np.skuCount+'개 SKU)');
+    L.push('  - 초도발주: '+np.firstOrderAmountText+' ('+np.firstOrderShareText+', '+np.firstOrderCount+'개 SKU)');
+    L.push('  - 재발주완료: '+np.reorderedAmountText+' ('+np.reorderedShareText+', '+np.reorderedCount+'개 SKU)');
+  } else {
+    L.push('- 데이터 연결 필요');
+  }
+  L.push('> ※ 집계 기준: parts_master 출시일이 조회 기준일로부터 최근 1년 이내인 파츠');
+  L.push('');
+  L.push('### 1-4. 입고예정금액');
+  const inc = psrIncomingSummary_();
+  if(inc){
+    L.push('- 입고예정금액 합계: '+inc.totalAmountFull);
+    const generalAmt = inc.totalAmount - inc.firstOrderAmount;
+    const generalPct = inc.totalAmount>0 ? (generalAmt/inc.totalAmount*100) : 0;
+    L.push('  - 초도발주: '+inc.firstOrderAmountText+' ('+(inc.firstOrderRatio*100).toFixed(1)+'%, '+inc.firstOrderSkuCount+'개 SKU)');
+    L.push('  - 일반(재발주 등): '+fa(generalAmt)+' ('+generalPct.toFixed(1)+'%, '+inc.generalSkuCount+'개 SKU)');
+  } else {
+    L.push('- 데이터 연결 필요 (raw_발주/parts_master CSV 확인 필요)');
+  }
+  L.push('');
+  L.push('### 1-5. 생산 구분 비중 (재고금액 기준)');
+  const prodRows = psrGroupAmount_(unit,key,'production').filter(r=>r.name && r.amount>0);
+  const srcRows  = psrGroupAmount_(unit,key,'sourcing');
+  const srcMap = {}; srcRows.forEach(r=>{ if(r.name) srcMap[r.name]=r; });
+  if(prodRows.length){
+    prodRows.forEach(r=>{
+      L.push('- '+r.name+': '+r.amountText+' ('+r.shareText+')');
+      if(r.name==='해외생산'){
+        ['직소싱','국내소싱','중개소싱'].forEach(n=>{
+          const src=srcMap[n];
+          L.push('  - '+n+': '+(src?src.amountText+' ('+src.shareText+')':'-'));
+        });
+      }
+    });
+  } else {
+    L.push('- 데이터 연결 필요');
+  }
+  L.push(''); L.push('---'); L.push('');
+
+  // ─ Section 2 ──────────────────────────────────────────
+  L.push('## 2. 재고 구조 현황'); L.push('');
+  L.push('### 2-1. 카테고리별 재고 현황'); L.push('');
+  const top5 = psrCategoryTop5_(unit,key);
+  if(top5.length){
+    L.push('| 카테고리 | 비중 | SKU | 재고금액 | 1개월 판매량 | 3개월 판매량 | 잔여재고수량 | 재고회전율 |');
+    L.push('|---|---:|---|---:|---:|---:|---:|---:|');
+    top5.forEach(cat=>{
+      if(!cat.skus.length){
+        L.push('| '+cat.category+' | '+cat.inventoryShareText+' | - | - | - | - | - | - |');
+        return;
+      }
+      cat.skus.forEach((sku,idx)=>{
+        L.push('| '+(idx===0?cat.category:'')+' | '+(idx===0?cat.inventoryShareText:'')+' | '+sku.partName+' | '+fa(sku.inventoryAmountValue)+' | '+sku.salesQty1m+' | '+sku.salesQty+' | '+sku.inventoryQty+' | '+sku.turnover+' |');
+      });
+    });
+    L.push('');
+    L.push('> ※ 1개월 판매량: 기준일이 속한 달의 월간 판매수량 (월 진행 중일 경우 부분 합계)');
+    L.push('> ※ 3개월 판매량: 기준일 포함 직전 3개월 누적 판매수량');
+    L.push('> ※ 재고회전율: 3개월 기준');
+  } else {
+    L.push('- 데이터 연결 필요');
+  }
+  L.push('');
+  L.push('### 2-2. 시즌재고현황'); L.push('');
+  const seasonSummary = psrSeasonSummary_(unit,key,baseDate);
+  const curSeasonRow = seasonSummary.seasons.find(s=>s.isCurrent);
+  if(curSeasonRow){
+    L.push('- 현재 시즌: **'+curSeasonRow.name+'**');
+    L.push('- 재고금액: '+curSeasonRow.inventoryAmountText);
+    L.push('- 3개월 회전율: '+curSeasonRow.turnover3mText);
+    L.push('- SKU: '+curSeasonRow.skuCount+'개');
+    L.push('');
+    const PSR_SEASON_KEYWORD = {'여름':'선풍기','겨울':'다이어리'};
+    const kw = PSR_SEASON_KEYWORD[curSeasonRow.name];
+    if(kw){
+      const kwSkuRows = getAggSkuRows(unit,key)
+        .filter(r=>String(r.season_type||'').trim()===curSeasonRow.name && String(r.parts_name||'').indexOf(kw)>=0)
+        .sort((a,b)=>toNum(b.inv_amount)-toNum(a.inv_amount));
+      L.push('**핵심 품목 ('+kw+')**');
+      L.push('> ※ 시즌 전체 SKU 중 파츠명에 "'+kw+'"이 포함된 품목만 필터링해 표시 (나머지 시즌 품목은 제외됨)');
+      L.push('');
+      if(kwSkuRows.length){
+        L.push('| 파츠명 | 재고금액 | 재고수량 | 재고회전율 |');
+        L.push('|---|---:|---:|---:|');
+        kwSkuRows.forEach(r=>{
+          L.push('| '+String(r.parts_name||'-')+' | '+fa(toNum(r.inv_amount))+' | '+toNum(r.inv_qty).toLocaleString()+' | '+fmtTurn(toNum(r.turnover_3m))+' |');
+        });
+      } else {
+        L.push('- "'+kw+'" 포함 품목 없음');
+      }
+      L.push('');
+    }
+    L.push('> ※ 시즌 구분: '+seasonSummary.monthMapText);
+  } else {
+    L.push('- 데이터 연결 필요');
+  }
+  L.push(''); L.push('---'); L.push('');
+
+  // ─ Section 3 ──────────────────────────────────────────
+  L.push('## 3. 품절 관리'); L.push('');
+  L.push('### 3-1. 품절 현황 요약'); L.push('');
+  const so = psrStockoutSummary_(unit,key);
+  let masterIntent=0;
+  so.statusSummary.forEach(r=>{ if(r.status==='의도적 품절') masterIntent+=r.count; });
+  const masterNonInt = so.nonIntentionalList.length;
+  L.push('| 판매상태 | 선매입 | 협력사 | 합계 |');
+  L.push('|---|---:|---:|---:|');
+  L.push('| 비의도적 품절 | '+masterNonInt+' | 0 | '+masterNonInt+' |');
+  L.push('| 의도적 품절 | '+masterIntent+' | 0 | '+masterIntent+' |');
+  L.push('| **합계** | **'+(masterNonInt+masterIntent)+'** | **0** | **'+(masterNonInt+masterIntent)+'** |');
+  L.push('');
+  L.push('### 3-2. 품절 목록 (비의도적 품절)'); L.push('');
+  L.push('> ※ 장기품절 기준: 품절 시작일로부터 **30일 이상** 경과한 항목'); L.push('');
+  L.push('> ※ 협력사 품절 데이터는 이번 버전에서 미포함 — 전부 선매입 기준');
+  L.push('');
+  if(so.nonIntentionalList.length){
+    L.push('| 재고구분 | 판매상태 | 파츠명 | 품절 시작일 | 누적일수 | 굿즈품절 | 대안여부 |');
+    L.push('|---|---|---|---|---:|:---:|:---:|');
+    so.nonIntentionalList.forEach(r=>{
+      const statusText = r.salesStatus + (r.stockoutDays>=30?' **(장기품절)**':'');
+      L.push('| 선매입 | '+statusText+' | '+r.partName+' | '+r.stockoutStartDate+' | '+(r.stockoutDays?r.stockoutDays+'일':'-')+' | - | - |');
+    });
+  } else {
+    L.push('- 대상 없음');
+  }
+  L.push(''); L.push('---'); L.push('');
+
+  // ─ Section 4 ──────────────────────────────────────────
+  L.push('## 4. 장기미회전재고'); L.push('');
+  L.push('> 기준: 3개월 회전율 0.1회 미만 (관리대상 Y · Product Parts · 출시 3개월 미만 신제품 제외)'); L.push('');
+  const stagnantAll = psrStagnantList_(unit,key,baseDate);
+  const stagnantTotalAmt = stagnantAll.reduce((s,r)=>s+r.inventoryAmountValue,0);
+  const stagnantRatio = totalInv>0 ? (stagnantTotalAmt/totalInv*100).toFixed(1)+'%' : '-';
+  const stagnant = stagnantAll.slice(0,10);
+  if(stagnant.length){
+    L.push('- **합계**: '+fa(stagnantTotalAmt)+' (전체 재고 대비 '+stagnantRatio+')');
+    L.push('');
+    L.push('| 제품명 | 카테고리 | 재고수량 | 재고금액 | 3개월 회전율 |');
+    L.push('|---|---|---:|---:|---:|');
+    stagnant.forEach(r=>{
+      L.push('| '+r.partName+' | '+r.category+' | '+r.inventoryQty+' | '+r.inventoryAmountText+' | '+r.turnoverText+' |');
+    });
+  } else {
+    L.push('- 대상 없음');
+  }
+  L.push(''); L.push('---'); L.push('');
+
+  // ─ Section 5 ──────────────────────────────────────────
+  const memoInput = document.getElementById('psr-memo-input');
+  psrRenderSection5_(L, unit, key, baseDate, periodRow, totalInv, memoInput ? memoInput.value : '');
+
+  const md = L.join('\n');
+  dlFile(psrWeeklyReportFilename_(baseDate), md, 'text/markdown');
+}
+
 function encArg(v){ return encodeURIComponent(String(v||'')); }
 function decArg(v){ return decodeURIComponent(String(v||'')); }
 function renderFuturePage(el,title,desc){
@@ -6541,28 +7252,35 @@ function renderEOQFromAgg(){
   const procCounts={}; searched.forEach(r=>{procCounts[r.procType]=(procCounts[r.procType]||0)+1;});
   const results=(EOQ_PROC_FILTER==='all'?searched:searched.filter(r=>r.procType===EOQ_PROC_FILTER)).sort((a,b)=>(a.daysUntilROP??9999)-(b.daysUntilROP??9999));
 
-  const needsOrderCount=results.filter(r=>r.needsOrder).length;
-  const urgentCount=results.filter(r=>r.daysUntilROP!==null&&r.daysUntilROP<=0).length;
+  const pendingMap=psrPendingOrderMap_();
+  const needsOrderCount=results.filter(r=>r.needsOrder && !pendingMap[r.pn]).length;
+  const urgentCount=results.filter(r=>r.daysUntilROP!==null&&r.daysUntilROP<=0 && !pendingMap[r.pn]).length;
+  const inProductionCount=results.filter(r=>r.needsOrder && pendingMap[r.pn]).length;
   const avgEOQ=results.length>0?Math.round(results.reduce((s,r)=>s+r.eoq,0)/results.length):0;
   const approxCount=results.filter(r=>r.safetyStockSrc==='근사').length;
 
   el.innerHTML=`
     <div class="kpi-row-4">
-      <div class="kpi-card c-red"><div class="kpi-label">발주 필요 SKU</div><div class="kpi-val">${needsOrderCount}</div><div class="kpi-sub">현재고 &lt; ROP</div></div>
-      <div class="kpi-card c-amber"><div class="kpi-label">긴급 발주 대상</div><div class="kpi-val">${urgentCount}</div><div class="kpi-sub">ROP 이미 도달</div></div>
+      <div class="kpi-card c-red"><div class="kpi-label">발주 필요 SKU</div><div class="kpi-val">${needsOrderCount}</div><div class="kpi-sub">현재고 &lt; ROP · 발주 완료 제외</div></div>
+      <div class="kpi-card c-amber"><div class="kpi-label">긴급 발주 대상</div><div class="kpi-val">${urgentCount}</div><div class="kpi-sub">ROP 이미 도달 · 발주 완료 제외</div></div>
       <div class="kpi-card c-blue"><div class="kpi-label">평균 EOQ</div><div class="kpi-val">${fmtN(avgEOQ)}개</div></div>
       <div class="kpi-card c-purple"><div class="kpi-label">EOQ 산출 제외</div><div class="kpi-val">${noSalesCount}</div><div class="kpi-sub">관리대상 중 최근 3개월 판매실적 없음</div></div>
     </div>
     <div class="card" style="margin-top:8px;padding:10px 14px;font-size:11px;color:var(--text3);line-height:1.6">
       파라미터: 1회 발주비용 ${fmtN(P.orderCost)}원 · 보관비율 ${(P.holdingRate*100).toFixed(0)}% · 리드타임은 파츠별 실측치(parts_master "재고리드타임") 우선 적용, 없는 파츠만 기본 ${P.leadTimeDays}일 · 기준 ${esc(aggPeriodLabel(p))}(${getEoqTargetQuarter(p)}분기) — 관리대상 ${skuRows.length}개 SKU 중 ${withSales.length}개가 EOQ 산출 대상(3개월 판매실적 有)<br>
-      안전재고: <b>목표서비스수준 ${(sl.level*100).toFixed(0)}%(품절율 ${((1-sl.level)*100).toFixed(0)}%↓, Z=${sl.z}) × 일별수요표준편차 × √리드타임</b> — 1~3분기 97%(3%↓) · 4분기 95%(5%↓) 기준. dashboard_sku_monthly 월별 판매이력 2개월 미만인 SKU ${approxCount}개는 안전재고일수(${P.safetyDays}일) 근사로 폴백
+      안전재고: <b>목표서비스수준 ${(sl.level*100).toFixed(0)}%(품절율 ${((1-sl.level)*100).toFixed(0)}%↓, Z=${sl.z}) × 일별수요표준편차 × √리드타임</b> — 1~3분기 97%(3%↓) · 4분기 95%(5%↓) 기준. dashboard_sku_monthly 월별 판매이력 2개월 미만인 SKU ${approxCount}개는 안전재고일수(${P.safetyDays}일) 근사로 폴백<br>
+      🔵 발주 완료(제작중) ${inProductionCount}건은 raw_발주 미입하 건 기준(재고귀속파츠번호/파츠번호 매칭)
     </div>
     <div class="card" style="margin-top:12px"><div class="card-header"><div class="card-title">EOQ · 발주 알람 테이블</div><div class="card-sub">ROP(재발주점) 도달 순서 정렬 · 일평균수요 = 최근 3개월 판매량 ÷ 90일</div></div>
     ${eoqProcFilterChips(procCounts)}
     <div class="tbl-wrap" style="margin-top:8px"><table class="tbl"><thead><tr><th>파츠명</th><th>카테고리</th><th>조달유형</th><th class="num">현재고</th><th class="num">일평균수요(3M)</th><th class="num">EOQ</th><th class="num">ROP</th><th class="num">안전재고</th><th class="num">리드타임</th><th class="num">ROP까지</th><th>상태</th></tr></thead><tbody>
     ${results.slice(0,50).map(r=>{
       const dc=r.needsOrder?'color:var(--red);font-weight:600':'';
-      const badge=r.daysUntilROP!==null&&r.daysUntilROP<=0?'<span class="tag tag-q">즉시 발주</span>':r.needsOrder?'<span class="tag tag-n">발주 필요</span>':'<span class="tag tag-ok">정상</span>';
+      const pendingInfo=r.needsOrder ? pendingMap[r.pn] : null;
+      const badge=pendingInfo
+        ? '<span class="tag tag-ok" style="background:var(--blue-light);color:var(--blue)">🔵 발주 완료(제작중)</span>'
+          + '<div style="font-size:10px;color:var(--text3);margin-top:2px">'+fmtN(pendingInfo.qty)+'개 · 입하예정 '+(pendingInfo.dates.length?pendingInfo.dates.map(psrShortDate_).join(', '):'미정')+'</div>'
+        : r.daysUntilROP!==null&&r.daysUntilROP<=0?'<span class="tag tag-q">즉시 발주</span>':r.needsOrder?'<span class="tag tag-n">발주 필요</span>':'<span class="tag tag-ok">정상</span>';
       const leadCell=r.leadTimeSrc==='실측'?`${r.leadTimeDays}일`:`${r.leadTimeDays}일 <span style="color:var(--text3)">(기본)</span>`;
       const safetyCell=r.safetyStockSrc==='통계'?`${fmtN(r.safetyStock)}`:`${fmtN(r.safetyStock)} <span style="color:var(--text3)">(근사)</span>`;
       return `<tr><td>${esc(r.name)}<div style="font-size:10px;color:var(--text3)">${esc(r.pn)}</div></td><td>${esc(r.cat)}</td><td style="font-size:11px">${esc(r.procType)}</td><td class="num">${fmtN(r.qty)}</td><td class="num">${r.dailyDemand.toFixed(1)}</td><td class="num">${fmtN(r.eoq)}</td><td class="num">${fmtN(r.rop)}</td><td class="num" title="${r.safetyStockSrc==='통계'?'Z×수요표준편차×√리드타임':'이력 부족 — 안전재고일수 근사'}">${safetyCell}</td><td class="num" title="${r.leadTimeSrc==='실측'?'파츠별 실측 재고리드타임':'전역 기본값'}">${leadCell}</td><td class="num" style="${dc}">${r.daysUntilROP!==null?r.daysUntilROP+'일':'—'}</td><td>${badge}</td></tr>`;
