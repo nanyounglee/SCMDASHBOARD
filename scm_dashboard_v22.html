@@ -5228,7 +5228,7 @@ const normQType=s=>(s||'').replace(/\s+/g,'');
 function aiQaCard(r,withAnswer) {
   return `<div style="margin-top:8px;padding:8px 10px;background:var(--surface2);border-radius:var(--r-sm);font-size:12px">
     <div style="color:var(--text3);font-size:11px">${esc(r['문의일자']||'')} · ${esc(r['질문 - 문의유형']||'')}</div>
-    <div style="margin-top:2px"><b>Q.</b> ${esc(crop(r['질문 내용']||'',withAnswer?120:150))}</div>
+    <div style="margin-top:2px;color:var(--text)"><b>Q.</b> ${esc(crop(r['질문 내용']||'',withAnswer?120:150))}</div>
     ${withAnswer?`<div style="margin-top:2px;color:var(--text2)"><b>A.</b> ${esc(crop(r['답변']||'',200))}</div>`:''}
   </div>`;
 }
@@ -5260,9 +5260,15 @@ function flattenCheckQuestion() {
   CHECK_QUESTION_FLAT_CACHE=out;
   return out;
 }
+// v22.12: check_answer와 flattenCheckQuestion()이 같은 슬랙 문의를 각자의 소스에서 중복으로
+// 담고 있는 경우(실측 99%)가 있어, 같은 (제품명+질문 앞부분) 조합은 check_answer 쪽을 우선하고
+// check_question 쪽 중복은 제외 — 안 그러면 동일 Q&A가 두 번 표시돼 "답변만 계속 나온다"는
+// 혼란을 줌(사용자 제보).
+const dedupKey=r=>(r['제품명 (from Product List)']||'').trim()+'|'+(r['질문 내용']||'').trim().slice(0,60);
 function matchProductQuery(q) {
   const answerRows=D.check_answer||[];
-  const questionRows=flattenCheckQuestion();
+  const answerKeys=new Set(answerRows.map(dedupKey));
+  const questionRows=flattenCheckQuestion().filter(r=>!answerKeys.has(dedupKey(r)));
   if (!answerRows.length&&!questionRows.length) return null;
   const pool=[...answerRows,...questionRows];
   const names=[...new Set(pool.map(r=>(r['제품명 (from Product List)']||r['제품 명칭']||'').trim()).filter(n=>n.length>=2))]
