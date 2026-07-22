@@ -827,13 +827,13 @@ a{color:var(--blue);text-decoration:none}
         <div class="tab" onclick="swTab(this,'pf','pf-tab-supprod')">협력사유형별 제품군</div>
       </div>
       <div id="pf-tab-main" class="tab-panel active">
-        <!-- v22.4: 협력사 목록을 포트폴리오 진입 시 가장 먼저 보이는 테이블로 이동 (사용자 요청 — 구 협력사·매입 현황의 내부 탭에서 승격) -->
+        <!-- v22.9: 1) 등록/활성 버튼 → 2) Tier별 협력사 수+매트릭스+도넛 → 3) 공통 상세 협력사 목록 → 4) 협력사 변경 검토 진행현황 → 5) 협력사 변경 검토 리스트 순서로 재배치 (사용자 요청) -->
         <div class="kpi-row-4" style="margin-bottom:16px">
-          <div class="card" style="text-align:center">
+          <div class="card" style="text-align:center;cursor:pointer" onclick="showAllSupList()" title="클릭하면 아래 상세 협력사 목록이 전체 표시됩니다">
             <div class="kpi-label" style="margin-bottom:8px">등록 협력사</div>
             <div class="kpi-val" id="s-total">—</div><div class="kpi-sub" id="s-active-sub">마스터 기준</div>
           </div>
-          <div class="card" id="s-active-card" style="text-align:center;cursor:pointer" onclick="toggleSupActiveFilter()">
+          <div class="card" id="s-active-card" style="text-align:center;cursor:pointer" onclick="toggleSupActiveFilter()" title="클릭하면 아래 상세 협력사 목록이 활성 협력사만 필터링됩니다">
             <div class="kpi-label" style="margin-bottom:8px">활성 협력사</div>
             <div class="kpi-val" id="s-active" style="color:var(--green)">—</div><div class="kpi-sub" id="s-active-desc">2개월 이상 발주 거래 · 클릭 시 필터</div>
           </div>
@@ -846,13 +846,26 @@ a{color:var(--blue);text-decoration:none}
             <div class="kpi-val" id="s-purchase">—</div><div class="kpi-sub">협력사 수</div>
           </div>
         </div>
-        <div class="card" style="margin-bottom:16px">
-          <div class="card-header">
-            <div class="card-title">협력사 목록 <span id="sup-list-sub" style="font-weight:400;font-size:11px;color:var(--text3)"></span></div>
+        <div id="portfolio-content"><div class="empty">분기별평가 CSV를 업로드하면 공급망 포트폴리오가 표시됩니다.</div></div>
+        <div class="card" style="margin-bottom:16px" id="sup-unified-card">
+          <div class="card-header" style="flex-wrap:wrap;row-gap:8px">
+            <div class="card-title">상세 협력사 목록 <span id="sup-list-sub" style="font-weight:400;font-size:11px;color:var(--text3)"></span></div>
             <input id="sup-search" style="font-size:12px;padding:5px 10px;border:1px solid var(--border2);border-radius:var(--r-sm);width:200px" placeholder="협력사명 검색..." oninput="filterSup(this.value)">
           </div>
-          <div class="tbl-wrap" style="max-height:420px;overflow-y:auto"><table class="tbl"><thead><tr><th>협력사명</th><th>업태</th><th>제조유형</th><th>인쇄유형</th><th>담당발주자</th><th>결제조건</th><th class="num">발주 거래 개월수</th></tr></thead><tbody id="tb-sup"></tbody></table></div>
-          <div style="font-size:10px;color:var(--text3);margin-top:8px">※ 발주 거래 개월수 = 기준 월이 속한 연도 1월~기준 월 중 발주(과업지시) 이력이 있는 개월수 (예: 7월 기준 7/7) · <span class="tag tag-ok" style="font-size:9px">활성</span> = 2개월 이상 거래 · 협력사명 클릭 시 월별 매입금액 추이</div>
+          <div id="sup-unified-controls" style="margin-top:8px"></div>
+          <div class="tbl-wrap" style="max-height:520px;overflow-y:auto;margin-top:10px">
+            <table class="tbl" id="sup-unified-table">
+              <thead><tr>
+                <th style="width:36px">#</th><th>협력사</th><th>담당자</th><th style="width:50px">Tier</th>
+                <th style="width:42px">TASK</th><th style="width:42px">매입</th><th style="width:42px">이슈</th>
+                <th style="width:42px">예외</th><th style="width:42px">대체</th><th style="width:40px">QCD</th>
+                <th style="width:40px">관계</th><th style="width:50px">총점</th><th style="width:42px">등급</th>
+                <th class="num" style="width:75px">거래개월수</th>
+              </tr></thead>
+              <tbody id="sup-unified-tbody"></tbody>
+            </table>
+          </div>
+          <div style="font-size:10px;color:var(--text3);margin-top:8px">※ 발주 거래 개월수 = 기준 월이 속한 연도 1월~기준 월 중 발주(과업지시) 이력이 있는 개월수(예: 7월 기준 7/7) · <span class="tag tag-ok" style="font-size:9px">활성</span> = 2개월 이상 거래 · Tier·점수는 발주_RAW+이슈_RAW(또는 분기별평가 CSV) 업로드 시 산출 · 협력사명 클릭 시 업태·제조유형·인쇄유형·결제조건 및 월별 매입금액 추이 표시</div>
         </div>
         <div class="card" id="vc-status-card" style="cursor:pointer;margin-bottom:16px" onclick="window.open('https://nanyounglee.github.io/scm_vendor_change/','_blank')" title="협력사 변경 검토 대시보드로 이동">
           <div class="card-header">
@@ -860,7 +873,13 @@ a{color:var(--blue);text-decoration:none}
           </div>
           <div id="vc-status-body"><div style="font-size:12px;color:var(--text3);padding:8px 0">협력사 변경 검토 대시보드에서 불러오는 중…</div></div>
         </div>
-        <div id="portfolio-content"><div class="empty">분기별평가 CSV를 업로드하면 공급망 포트폴리오가 표시됩니다.</div></div>
+        <div class="card" style="padding:20px;border:1.5px solid var(--red)">
+          <div class="card-header" style="margin-bottom:8px">
+            <div class="card-title" style="color:var(--red)">⚠ 변경검토 리스트 (C·D등급)</div>
+            <div class="card-sub" style="margin-left:auto">거래 축소·이관 검토 대상 — 총점 기준 C(3~5)·D(0~2)등급</div>
+          </div>
+          <div id="portfolio-change-review"></div>
+        </div>
       </div>
       <div id="pf-tab-supplier" class="tab-panel" style="display:none"></div>
       <div id="pf-tab-supprod" class="tab-panel" style="display:none"></div>
@@ -2996,6 +3015,7 @@ function renderCIFailCostPanel() {
 // v12: 발주 거래 개월수(기준 월 연도 1월~기준 월) + 활성 협력사(2개월 이상 거래) 필터 + 협력사명 클릭 시 매입추이 모달
 let SUP_ACTIVE_ONLY=false;
 let SUP_EXPANDED=new Set();
+let SUP_QUAD_FILTER='all'; // v22.9: 등록/활성/Tier 버튼이 공통으로 쓰는 상세 협력사 목록의 Tier 필터
 function getSupTradeMonths() {
   const res={map:{},elapsed:0,year:''};
   if(!D.order||!SEL_MONTH) return res;
@@ -3012,24 +3032,35 @@ function getSupTradeMonths() {
   });
   return res;
 }
+function scrollToSupList() {
+  const card=document.getElementById('sup-unified-card');
+  if(card) card.scrollIntoView({behavior:'smooth', block:'start'});
+}
+function showAllSupList() {
+  SUP_ACTIVE_ONLY=false;
+  const card=document.getElementById('s-active-card');
+  if(card) card.style.outline='';
+  const desc=document.getElementById('s-active-desc');
+  if(desc) desc.textContent='2개월 이상 발주 거래 · 클릭 시 필터';
+  SUP_QUAD_FILTER='all';
+  window._portfolioActiveOnly=false;
+  const q=document.getElementById('sup-search'); if(q) q.value='';
+  renderUnifiedSupTable();
+  scrollToSupList();
+}
 function toggleSupActiveFilter() {
   SUP_ACTIVE_ONLY=!SUP_ACTIVE_ONLY;
   const card=document.getElementById('s-active-card');
   if(card) card.style.outline=SUP_ACTIVE_ONLY?'2px solid var(--green)':'';
   const desc=document.getElementById('s-active-desc');
   if(desc) desc.textContent=SUP_ACTIVE_ONLY?'필터 적용 중 · 클릭 시 해제':'2개월 이상 발주 거래 · 클릭 시 필터';
-  renderSupTable(getSupSearchRows());
-}
-function getSupSearchRows() {
-  const q=(document.getElementById('sup-search')?.value||'').trim();
-  let rows=D.sup||[];
-  if(q) rows=rows.filter(r=>(r['협력사 이름']||'').includes(q));
-  return rows;
+  renderUnifiedSupTable();
+  scrollToSupList();
 }
 function updateSupTab() {
   if (!D.sup) return;
   const registered=D.sup.filter(r=>(r['협력사 이름']||'').trim()).length;
-  const trading=D.sup.filter(r=>!r['협력사 Status']||r['협력사 Status']==='거래중');
+  const trading=D.sup.filter(r=>(r['협력사 이름']||'').trim()&&(!r['협력사 Status']||r['협력사 Status']==='거래중'));
   const tm=getSupTradeMonths();
   const activeCnt=D.sup.filter(r=>{
     const name=(r['협력사 이름']||'').trim();
@@ -3040,17 +3071,20 @@ function updateSupTab() {
   setValue('s-active',activeCnt);
   setValue('s-turnkey',trading.filter(r=>r['1. 제조유형']==='턴키제작').length);
   setValue('s-purchase',trading.filter(r=>r['1. 제조유형']==='단순구매').length);
-  renderSupTable(getSupSearchRows());
+  renderUnifiedSupTable();
 }
 function filterSup(q) {
-  const list=renderSupTable(getSupSearchRows());
-  const query=(document.getElementById('sup-search')?.value||'').trim();
-  if (query && list && list.length===1) { SUP_EXPANDED.add(list[0]['협력사 이름']); renderSupTable(list); } // 검색 결과가 1곳으로 좁혀지면 드릴다운 자동으로 펼침
+  renderUnifiedSupTable();
+  const query=(q||'').trim();
+  if (query) {
+    const rows=buildUnifiedSupRows().filter(r=>r.name.includes(query));
+    if (rows.length===1) { SUP_EXPANDED.add(rows[0].name); renderUnifiedSupTable(); } // 검색 결과가 1곳으로 좁혀지면 드릴다운 자동으로 펼침
+  }
 }
 function toggleSupDrilldown(name) {
   if (SUP_EXPANDED.has(name)) SUP_EXPANDED.delete(name);
   else SUP_EXPANDED.add(name);
-  renderSupTable(getSupSearchRows());
+  renderUnifiedSupTable();
 }
 // ===== 협력사 변경 검토 진행 현황 — scm_vendor_change 대시보드의 bank/ 폴더(팀 공유 백업)에서 실시간 집계 =====
 // 두 사이트 모두 nanyounglee.github.io 아래에 있어 fetch가 동일 출처라 CORS 제약이 없다.
@@ -3124,40 +3158,113 @@ function renderVendorChangeStatus(data) {
     <div class="tbl-wrap"><table class="tbl"><thead><tr><th>완료월</th><th>제품</th><th>변경 전</th><th>변경 후</th><th>확정일</th><th>완료일</th></tr></thead><tbody>${rows}</tbody></table></div>
     <div style="font-size:10px;color:var(--text3);margin-top:8px">※ scm_vendor_change 저장소 bank/ 폴더(팀 공유 백업) 기준 · 카드 클릭 시 상세 대시보드로 이동 · 로컬에서 작성됐지만 아직 bank에 공유되지 않은 변경은 반영되지 않을 수 있음</div>`;
 }
-function renderSupTable(rows) {
+// v22.9: 등록/활성 협력사 버튼과 Tier(quad) 버튼이 공통으로 사용하는 상세 협력사 목록.
+// 마스터(D.sup, 빈 이름행 제외)를 기준 행으로 삼고, Tier·점수 데이터(window._portfolioVendors)가
+// 있으면 이름으로 병합한다 — 마스터에 없는 협력사는 여기에 나타나지 않아 등록 협력사 수와 항상 일치.
+function buildUnifiedSupRows() {
+  const base=(D.sup||[]).filter(r=>(r['협력사 이름']||'').trim());
   const tm=getSupTradeMonths();
-  let list=rows||[];
-  if(SUP_ACTIVE_ONLY) list=list.filter(r=>{
+  const vendorMap={};
+  (window._portfolioVendors||[]).forEach(v=>{ vendorMap[v.name]=v; });
+  return base.map(r=>{
     const name=(r['협력사 이름']||'').trim();
-    return name&&tm.map[name]&&tm.map[name].size>=2;
-  });
-  const sub=document.getElementById('sup-list-sub');
-  if(sub) sub.textContent=`(${list.length}개사${SUP_ACTIVE_ONLY?' · 활성 필터':''}${tm.elapsed?` · ${tm.year}년 1~${tm.elapsed}월 발주 기준`:''})`;
-  if (!list.length) { setTbody('tb-sup','<tr><td colspan="7" class="empty">데이터 없음</td></tr>'); return list; }
-  // 거래 개월수 내림차순 → 이름순 정렬
-  list=[...list].sort((a,b)=>{
-    const ca=(tm.map[(a['협력사 이름']||'').trim()]||new Set()).size;
-    const cb=(tm.map[(b['협력사 이름']||'').trim()]||new Set()).size;
-    return cb-ca||String(a['협력사 이름']||'').localeCompare(String(b['협력사 이름']||''),'ko');
-  });
-  const expandedInList=[];
-  const html=list.map((r,i)=>{
-    const name=(r['협력사 이름']||'').trim();
-    const mfg=r['1. 제조유형']||''; const tc=mfg==='턴키제작'?'tag-turnkey':mfg==='외주용역'?'tag-service':'tag-gray';
-    const biz=(r['업태']||'').split(',')[0].trim()||'—';
-    const print=r['인쇄']||'—';
     const cnt=(tm.map[name]||new Set()).size;
-    const isActive=cnt>=2;
-    const monthsCell=tm.elapsed?`<span style="font-weight:700;color:${isActive?'var(--green)':cnt>0?'var(--text)':'var(--text3)'}">${cnt}/${tm.elapsed}</span>${isActive?' <span class="tag tag-ok">활성</span>':''}`:'—';
-    const expanded=SUP_EXPANDED.has(name);
-    const nameArg=esc(name).replace(/'/g,"\\'");
-    const row=`<tr${expanded?' style="background:var(--blue-light)"':''}><td><strong style="color:var(--blue);cursor:pointer" onclick="toggleSupDrilldown('${nameArg}')">${expanded?'▾':'▸'} ${esc(name)}</strong></td><td style="font-size:11px;color:var(--text3)">${esc(crop(biz,18))}</td><td>${mfg?`<span class="tag ${tc}">${mfg}</span>`:'—'}</td><td style="font-size:11px">${esc(crop(print,20))}</td><td style="font-size:11px">${r['발주담당자']||'—'}</td><td style="font-size:11px">${r['협력사 결제조건']||'—'}</td><td class="num">${monthsCell}</td></tr>`;
-    if (expanded) { expandedInList.push({name,idx:i}); return row+`<tr id="sup-drill-row-${i}"><td colspan="7" style="padding:0"><div id="sup-drill-${i}" style="padding:16px;background:var(--surface2);border-top:1px solid var(--border)"></div></td></tr>`; }
+    const v=vendorMap[name];
+    return {
+      name,
+      mgr:r['발주담당자']||'',
+      biz:(r['업태']||'').split(',')[0].trim()||'—',
+      mfg:r['1. 제조유형']||'',
+      print:r['인쇄']||'—',
+      pay:r['협력사 결제조건']||'—',
+      months:cnt, elapsed:tm.elapsed, year:tm.year, active:cnt>=2,
+      quad:v?v._quad:null, grade:v?v._grade:null, total:v?v._total:null,
+      taskScore:v?v._taskScore:null, amtScore:v?v._amtScore:null, issueScore:v?v._issueScore:null,
+      exceptScore:v?v._exceptScore:null, replaceScore:v?v._replaceScore:null,
+      qcd:v?v._qcd:null, rel:v?v._rel:null
+    };
+  });
+}
+const QUAD_COLORS={Core:'#059669', Performer:'#1D4ED8', Developing:'#D97706', General:'#94A3B8'};
+function renderPortfolioQuadChips(quadCounts) {
+  const container=document.getElementById('portfolio-quad-filter');
+  if(!container) return;
+  if(!quadCounts) { container.innerHTML=''; return; }
+  container.innerHTML=`<span class="m-chip${SUP_QUAD_FILTER==='all'?' active':''}" data-quad="all" onclick="filterPortfolioQuad(this,'all')">전체</span>
+    ${['Core','Performer','Developing','General'].map(q=>`<span class="m-chip${SUP_QUAD_FILTER===q?' active':''}" data-quad="${q}" onclick="filterPortfolioQuad(this,'${q}')" style="border-color:${QUAD_COLORS[q]}">${q} (${quadCounts[q]||0})</span>`).join('')}`;
+}
+function renderUnifiedSupTable() {
+  const allRows=buildUnifiedSupRows();
+  const hasScores=allRows.some(r=>r.total!==null);
+  const controls=document.getElementById('sup-unified-controls');
+  if (controls) {
+    controls.innerHTML=`<div style="display:flex;align-items:center;flex-wrap:wrap;gap:8px">
+      <label style="display:flex;align-items:center;gap:5px;font-size:11px;color:var(--text2);cursor:pointer">
+        <input type="checkbox" id="portfolio-active-only" ${window._portfolioActiveOnly?'checked':''} onchange="togglePortfolioActive(this.checked)"> ${SEL_MONTH?fmtMonth(SEL_MONTH):'이번달'} 발주실적 있는 협력사만
+      </label>
+      <div style="display:flex;gap:6px;margin-left:auto" id="portfolio-quad-filter"></div>
+    </div>`;
+  }
+  const quadCounts=hasScores?{Core:0,Performer:0,Developing:0,General:0}:null;
+  if (quadCounts) allRows.forEach(r=>{ if(r.quad && quadCounts[r.quad]!==undefined) quadCounts[r.quad]++; });
+  renderPortfolioQuadChips(quadCounts);
+
+  const q=(document.getElementById('sup-search')?.value||'').trim();
+  let rows=q?allRows.filter(r=>r.name.includes(q)):allRows;
+  if (SUP_ACTIVE_ONLY) rows=rows.filter(r=>r.active);
+  if (window._portfolioActiveOnly) {
+    const activeSet=window._portfolioActiveSet||new Set();
+    rows=rows.filter(r=>activeSet.has(r.name));
+  }
+  if (SUP_QUAD_FILTER!=='all') rows=rows.filter(r=>r.quad===SUP_QUAD_FILTER);
+
+  const tm=getSupTradeMonths();
+  const sub=document.getElementById('sup-list-sub');
+  if(sub) sub.textContent=`(${rows.length}개사${SUP_ACTIVE_ONLY?' · 활성 필터':''}${SUP_QUAD_FILTER!=='all'?' · '+SUP_QUAD_FILTER:''}${tm.elapsed?` · ${tm.year}년 1~${tm.elapsed}월 발주 기준`:''})`;
+
+  // 점수 있으면 총점 내림차순, 없으면 거래 개월수 내림차순 → 이름순
+  rows=[...rows].sort((a,b)=>{
+    if ((a.total!==null)!==(b.total!==null)) return a.total!==null?-1:1;
+    if (a.total!==null && b.total!==null && a.total!==b.total) return b.total-a.total;
+    return b.months-a.months || a.name.localeCompare(b.name,'ko');
+  });
+
+  const tbody=document.getElementById('sup-unified-tbody');
+  if (!tbody) return rows;
+  if (!rows.length) { tbody.innerHTML='<tr><td colspan="14" class="empty">데이터 없음</td></tr>'; return rows; }
+  const gradeStyle=g=>{
+    if(g==='A') return 'background:#d1fae5;color:#065f46;font-weight:700';
+    if(g==='B') return 'background:#fef3c7;color:#92400e;font-weight:700';
+    if(g==='C'||g==='D') return 'background:#fee2e2;color:#991b1b;font-weight:700';
+    return '';
+  };
+  const expandedInList=[];
+  const html=rows.map((r,i)=>{
+    const expanded=SUP_EXPANDED.has(r.name);
+    const nameArg=esc(r.name).replace(/'/g,"\\'");
+    const monthsCell=r.elapsed?`<span style="font-weight:700;color:${r.active?'var(--green)':r.months>0?'var(--text)':'var(--text3)'}">${r.months}/${r.elapsed}</span>${r.active?' <span class="tag tag-ok">활성</span>':''}`:'—';
+    const row=`<tr${expanded?' style="background:var(--blue-light)"':''}>
+      <td style="color:var(--text3)">${i+1}</td>
+      <td><strong style="color:var(--blue);cursor:pointer" onclick="toggleSupDrilldown('${nameArg}')">${expanded?'▾':'▸'} ${esc(r.name)}</strong></td>
+      <td style="font-size:11px;color:var(--text2)">${esc(r.mgr||'—')}</td>
+      <td>${r.quad?`<span style="font-size:10px;padding:2px 6px;border-radius:10px;background:${QUAD_COLORS[r.quad]};color:#fff;font-weight:600">${r.quad}</span>`:'—'}</td>
+      <td style="text-align:center">${r.taskScore??'—'}</td>
+      <td style="text-align:center">${r.amtScore??'—'}</td>
+      <td style="text-align:center">${r.issueScore??'—'}</td>
+      <td style="text-align:center">${r.exceptScore??'—'}</td>
+      <td style="text-align:center">${r.replaceScore??'—'}</td>
+      <td style="text-align:center;font-weight:600">${r.qcd!==null?r.qcd+'/9':'—'}</td>
+      <td style="text-align:center;font-weight:600">${r.rel!==null?r.rel+'/6':'—'}</td>
+      <td style="text-align:center;font-weight:600">${r.total!==null?r.total.toFixed(1):'—'}</td>
+      <td style="text-align:center">${r.grade?`<span style="padding:2px 8px;border-radius:10px;font-size:11px;${gradeStyle(r.grade)}">${r.grade}</span>`:'—'}</td>
+      <td class="num">${monthsCell}</td>
+    </tr>`;
+    if (expanded) { expandedInList.push({name:r.name,idx:i}); return row+`<tr id="sup-drill-row-${i}"><td colspan="14" style="padding:0"><div id="sup-drill-${i}" style="padding:16px;background:var(--surface2);border-top:1px solid var(--border)"></div></td></tr>`; }
     return row;
   }).join('');
-  setTbody('tb-sup',html);
+  tbody.innerHTML=html;
   expandedInList.forEach(({name,idx})=>renderSupplierDrilldown(name,idx));
-  return list;
+  return rows;
 }
 
 // ===== MONTHLY NOTICE (월간 공지사항: 졸업/출시/품절) =====
@@ -4441,7 +4548,7 @@ function setSupDrillMonth(supName,val) {
   const title=document.getElementById('modal-title');
   const ov=document.getElementById('modal-overlay');
   if (ov&&ov.classList.contains('open')&&title&&title.textContent==='협력사 상세 — '+supName) openSupplierDetailModal(supName);
-  if (document.getElementById('tb-sup')) renderSupTable(getSupSearchRows());
+  if (document.getElementById('sup-unified-tbody')) renderUnifiedSupTable();
 }
 function buildSupplierDetail(supName,canvasId,footerHtml) {
   const mfgMap={}; if(D.sup) D.sup.forEach(r=>{mfgMap[r['협력사 이름']]=r['1. 제조유형']||'기타';});
@@ -4471,6 +4578,9 @@ function buildSupplierDetail(supName,canvasId,footerHtml) {
   const allProds=Object.entries(byProd).sort((a,b)=>b[1]-a[1]||a[0].localeCompare(b[0],'ko'));
   const mfg=mfgMap[supName]||'—';
   const bizMap=getBizTypeMap(); const biz=bizMap[supName]||'—';
+  const supRow=(D.sup||[]).find(r=>(r['협력사 이름']||'').trim()===supName);
+  const printType=supRow?(supRow['인쇄']||'—'):'—';
+  const payTerm=supRow?(supRow['협력사 결제조건']||'—'):'—';
   // 이슈 상세 (project_name↔project 코드 매칭)
   const issues=getIssuesForSupplier(supName);
   const issueRate=orders.length?(issues.length/orders.length*100):0;
@@ -4537,6 +4647,8 @@ function buildSupplierDetail(supName,canvasId,footerHtml) {
     <div style="display:flex;gap:12px;margin-bottom:14px;font-size:13px;flex-wrap:wrap;align-items:center">
       <span class="tag ${mfg==='턴키제작'?'tag-turnkey':mfg==='외주용역'?'tag-service':'tag-gray'}">${mfg}</span>
       <span style="color:var(--text3)">업태: ${esc(biz)}</span>
+      <span style="color:var(--text3)">인쇄: ${esc(printType)}</span>
+      <span style="color:var(--text3)">결제조건: ${esc(payTerm)}</span>
       <span style="color:var(--text3)">총 발주 ${orders.length}건</span>
       <span style="color:${issueRate>=10?'var(--red)':'var(--text3)'}">이슈율 ${issueRate.toFixed(1)}% (${issues.length}건)</span>
       <span style="margin-left:auto;display:flex;gap:6px;align-items:center;font-size:12px;color:var(--text3)">월별 필터 ${monthSelectHtml}
@@ -7307,13 +7419,10 @@ function renderPortfolio() {
   const quadBgs = {Core:'var(--green-light)', Performer:'var(--blue-light)', Developing:'var(--amber-light)', General:'#f1f5f9'};
   const quadDesc = {Core:'Tier1·Core · QCD상위·관계상위', Performer:'Tier2·Performer · QCD상위·관계중하', Developing:'Tier3·Developing · QCD중하·관계상위', General:'Tier4·General · QCD중하·관계중하'};
 
-  // Sort vendors by total score desc
-  const sorted = [...vendors].sort((a,b) => b._total - a._total);
-
   el.innerHTML = `
     <div class="kpi-row-4" style="margin-bottom:20px">
       ${['Core','Performer','Developing','General'].map(q => `
-        <div class="kpi-card" style="border-left:4px solid ${quadColors[q]};cursor:pointer;transition:box-shadow .15s" onclick="clickPortfolioKpi('${q}')" onmouseenter="this.style.boxShadow='0 2px 8px rgba(0,0,0,.1)'" onmouseleave="this.style.boxShadow=''" title="클릭하면 아래 협력사별 상세 표가 ${q}로 필터링됩니다">
+        <div class="kpi-card" style="border-left:4px solid ${quadColors[q]};cursor:pointer;transition:box-shadow .15s" onclick="clickPortfolioKpi('${q}')" onmouseenter="this.style.boxShadow='0 2px 8px rgba(0,0,0,.1)'" onmouseleave="this.style.boxShadow=''" title="클릭하면 아래 상세 협력사 목록이 ${q}로 필터링됩니다">
           <div class="kpi-label">${q}</div>
           <div class="kpi-val">${quadCounts[q]}<span style="font-size:13px;color:var(--text3);font-weight:400">사</span></div>
           <div class="kpi-sub">${quadDesc[q]} · ${total?((quadCounts[q]/total*100).toFixed(1)):'0'}%</div>
@@ -7374,47 +7483,6 @@ function renderPortfolio() {
         </div>
       </div>
     </div>
-
-    <div class="card" style="padding:20px">
-      <div class="card-header" style="margin-bottom:4px;flex-wrap:wrap">
-        <div class="card-title">협력사별 상세 (${total}사)</div>
-        <label style="display:flex;align-items:center;gap:5px;font-size:11px;color:var(--text2);margin-left:12px;cursor:pointer">
-          <input type="checkbox" id="portfolio-active-only" onchange="togglePortfolioActive(this.checked)"> ${SEL_MONTH?fmtMonth(SEL_MONTH):'이번달'} 발주실적 있는 협력사만
-        </label>
-        <div style="display:flex;gap:6px;margin-left:auto" id="portfolio-quad-filter">
-          <span class="m-chip active" data-quad="all" onclick="filterPortfolioQuad(this,'all')">전체</span>
-          ${['Core','Performer','Developing','General'].map(q=>`<span class="m-chip" data-quad="${q}" onclick="filterPortfolioQuad(this,'${q}')" style="border-color:${quadColors[q]}">${q} (${quadCounts[q]})</span>`).join('')}
-        </div>
-      </div>
-      <div style="max-height:500px;overflow-y:auto;margin-top:10px">
-        <table class="tbl" id="portfolio-table">
-          <thead><tr>
-            <th style="width:40px">#</th>
-            <th>협력사</th>
-            <th>담당자</th>
-            <th style="width:50px">Tier</th>
-            <th style="width:45px">TASK</th>
-            <th style="width:45px">매입</th>
-            <th style="width:45px">이슈</th>
-            <th style="width:45px">예외</th>
-            <th style="width:45px">대체</th>
-            <th style="width:40px">QCD</th>
-            <th style="width:40px">관계</th>
-            <th style="width:55px">총점</th>
-            <th style="width:45px">등급</th>
-          </tr></thead>
-          <tbody id="portfolio-tbody"></tbody>
-        </table>
-      </div>
-    </div>
-
-    <div class="card" style="padding:20px;margin-top:16px;border:1.5px solid var(--red)">
-      <div class="card-header" style="margin-bottom:8px">
-        <div class="card-title" style="color:var(--red)">⚠ 변경검토 리스트 (C·D등급)</div>
-        <div class="card-sub" style="margin-left:auto">거래 축소·이관 검토 대상 — 총점 기준 C(3~5)·D(0~2)등급</div>
-      </div>
-      <div id="portfolio-change-review"></div>
-    </div>
   `;
 
   // Render scatter dots
@@ -7448,8 +7516,8 @@ function renderPortfolio() {
     });
   }
 
-  // Render table
-  renderPortfolioTable(sorted, quadColors, 'all');
+  // v22.9: Tier/점수 데이터가 갱신됐으니 공통 상세 협력사 목록도 함께 갱신
+  renderUnifiedSupTable();
 }
 
 function renderPortfolioDots(vendors, quadColors) {
@@ -7465,60 +7533,20 @@ function renderPortfolioDots(vendors, quadColors) {
   }).join('');
 }
 
-function renderPortfolioTable(vendors, quadColors, filter) {
-  const tbody = document.getElementById('portfolio-tbody');
-  if (!tbody) return;
-  let filtered = filter === 'all' ? vendors : vendors.filter(v => v._quad === filter);
-  if (window._portfolioActiveOnly) {
-    const activeSet = window._portfolioActiveSet || new Set();
-    filtered = filtered.filter(v => activeSet.has((v.name||'').trim()));
-  }
-  const gradeStyle = g => {
-    if (g === 'A') return 'background:#d1fae5;color:#065f46;font-weight:700';
-    if (g === 'B') return 'background:#fef3c7;color:#92400e;font-weight:700';
-    return 'background:#fee2e2;color:#991b1b;font-weight:700';
-  };
-  tbody.innerHTML = filtered.map((v, i) => `<tr>
-    <td style="color:var(--text3)">${i+1}</td>
-    <td style="font-weight:500">${esc(v.name)}</td>
-    <td style="font-size:11px;color:var(--text2)">${esc(v.mgr || '')}</td>
-    <td><span style="font-size:10px;padding:2px 6px;border-radius:10px;background:${quadColors[v._quad]};color:#fff;font-weight:600">${v._quad}</span></td>
-    <td style="text-align:center">${v._taskScore}</td>
-    <td style="text-align:center">${v._amtScore}</td>
-    <td style="text-align:center">${v._issueScore}</td>
-    <td style="text-align:center">${v._exceptScore}</td>
-    <td style="text-align:center">${v._replaceScore}</td>
-    <td style="text-align:center;font-weight:600">${v._qcd}/9</td>
-    <td style="text-align:center;font-weight:600">${v._rel}/6</td>
-    <td style="text-align:center;font-weight:600">${v._total.toFixed(1)}</td>
-    <td style="text-align:center"><span style="padding:2px 8px;border-radius:10px;font-size:11px;${gradeStyle(v._grade)}">${v._grade||'-'}</span></td>
-  </tr>`).join('') || `<tr><td colspan="13" style="text-align:center;color:var(--text3);padding:20px">해당 조건의 협력사가 없습니다.</td></tr>`;
-}
-
+// v22.9: 협력사별 상세 표는 공통 상세 협력사 목록(renderUnifiedSupTable)으로 통합됨.
+// Tier(quad) 카드·필터 칩은 이제 그 목록을 필터링+스크롤한다.
 function clickPortfolioKpi(quad) {
-  const chip = document.querySelector('#portfolio-quad-filter .m-chip[data-quad="'+quad+'"]');
-  if (chip) filterPortfolioQuad(chip, quad);
-  const table = document.getElementById('portfolio-table');
-  if (table) table.scrollIntoView({behavior:'smooth', block:'center'});
+  SUP_QUAD_FILTER = quad;
+  renderUnifiedSupTable();
+  scrollToSupList();
 }
 function filterPortfolioQuad(chipEl, quad) {
-  const container = document.getElementById('portfolio-quad-filter');
-  container.querySelectorAll('.m-chip').forEach(c => c.classList.remove('active'));
-  chipEl.classList.add('active');
-  window._portfolioQuadFilter = quad;
-  // Re-sort and render
-  const vendors = window._portfolioVendors || [];
-  const sorted = [...vendors].sort((a,b) => b._total - a._total);
-  const quadColors = {Core:'#059669', Performer:'#1D4ED8', Developing:'#D97706', General:'#94A3B8'};
-  renderPortfolioTable(sorted, quadColors, quad);
+  SUP_QUAD_FILTER = quad;
+  renderUnifiedSupTable();
 }
 function togglePortfolioActive(checked) {
   window._portfolioActiveOnly = checked;
-  const quad = window._portfolioQuadFilter || 'all';
-  const vendors = window._portfolioVendors || [];
-  const sorted = [...vendors].sort((a,b) => b._total - a._total);
-  const quadColors = {Core:'#059669', Performer:'#1D4ED8', Developing:'#D97706', General:'#94A3B8'};
-  renderPortfolioTable(sorted, quadColors, quad);
+  renderUnifiedSupTable();
 }
 // v12: 변경검토 리스트 — 총점 기준 C/D등급(거래축소·이관 검토 대상)
 function renderPortfolioChangeReview(vendors, quadColors) {
@@ -7599,16 +7627,28 @@ function computeFromRaw(orderData, issueData, supData, quarterEval) {
   const stats = {};
   const supMap = {};
   // 마스터 전체 시드 — 발주 0건 협력사 포함(리포트 기준 D 고정 대상)
+  const hasMaster = !!(supData && supData.length);
   if (supData) supData.forEach(r => {
     const name = (r['협력사 이름'] || '').trim();
     if (!name) return;
-    supMap[name] = { mgr: (r['발주담당자'] || '').trim() };
+    supMap[name] = { mgr: (r['발주담당자'] || '').trim(), biz: (r['업태']||'').trim(), mfg: (r['1. 제조유형']||'').trim(), print: (r['인쇄']||'').trim(), pay: (r['협력사 결제조건']||'').trim() };
     stats[name] = { task: 0, amount: 0, issue: 0, norecv: 0 };
   });
 
+  // v22.9: 마스터(공급망_RAW)에 없는 협력사명이 발주_RAW에만 남아있는 경우(졸업·거래종료 또는 미등록)
+  // Tier 집계에 자동 편입되지 않도록 제외 — "등록 협력사" 수(마스터 기준)와 Tier 합계를 일치시킴.
+  // 단, 최근 발주 이력이 있는 미등록 협력사는 unregistered 목록에 모아 별도로 노출(등록 안내용).
+  window._portfolioUnregisteredVendors = {};
   orderData.forEach(r => {
     const vendor = (r['수주처'] || '').trim();
     if (!vendor) return;
+    if (hasMaster && !stats[vendor]) {
+      const mo=pOrderMonth(r['과업지시일자']);
+      const u=window._portfolioUnregisteredVendors[vendor]||(window._portfolioUnregisteredVendors[vendor]={count:0,lastMonth:''});
+      u.count++;
+      if (mo && mo>u.lastMonth) u.lastMonth=mo;
+      return;
+    }
     const mo=pOrderMonth(r['과업지시일자']);
     if (winSet && (!mo || !winSet.has(mo))) return;
     if (!stats[vendor]) stats[vendor] = { task: 0, amount: 0, issue: 0, norecv: 0 };
@@ -7656,7 +7696,8 @@ function computeFromRaw(orderData, issueData, supData, quarterEval) {
     const rel = relMap[name] || {except:1, replace:1};
     const total = +(taskScore + amtScore + issueScore + rel.except + rel.replace).toFixed(1);
     const grade = noOrder ? 'D' : calcGrade(total);
-    const v = { name, mgr: (supMap[name] || {}).mgr || '' };
+    const sm = supMap[name] || {};
+    const v = { name, mgr: sm.mgr || '', biz: sm.biz || '', mfg: sm.mfg || '', print: sm.print || '', pay: sm.pay || '' };
     v.q1 = v.q2 = { task: taskScore, amount: amtScore, issue: issueScore, except: rel.except, replace: rel.replace, total, grade };
     vendors.push(v);
   });
@@ -8452,7 +8493,7 @@ window.addEventListener('load',()=>{
   loadCostDB();
   loadPriceHistory();
   // v22: 협력사·매입 현황(sec-supplier) / 협력사유형별 제품군(sec-supplier-product) 섹션을
-  // 공급망 포트폴리오 서브탭 패널로 입양 — 렌더러들이 내부 id(tb-sup 등)를 대상으로 하므로
+  // 공급망 포트폴리오 서브탭 패널로 입양 — 렌더러들이 내부 id(tb-sup-pur 등)를 대상으로 하므로
   // DOM만 옮기면 그대로 동작. sec- 접두 id는 nav의 전체 숨김 대상이라 입양 시 id 교체.
   (function(){
     const supSec=document.getElementById('sec-supplier');
