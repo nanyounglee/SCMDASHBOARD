@@ -5260,6 +5260,7 @@ function nav(el,id) {
   document.querySelectorAll('[id^="sec-"]').forEach(s=>s.style.display='none');
   const sec=document.getElementById('sec-'+id);
   if (sec) sec.style.display='';
+  const up=document.getElementById('sec-upload'); if(up) up.style.display=(id==='overview')?'':'none'; // v22.5: 데이터 업로드는 종합현황에서만 노출
   document.querySelectorAll('.sb-item').forEach(i=>i.classList.remove('active'));
   if (el) el.classList.add('active');
   CURRENT_SECTION=id;
