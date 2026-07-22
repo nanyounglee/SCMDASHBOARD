@@ -10,7 +10,5 @@
   "dashboard_sku_detail": "dashboard_sku_detail.csv",
   "dashboard_sku_monthly": "dashboard_sku_monthly.csv",
   "raw_purchase": "raw_발주.csv",
-  "parts_master": "parts_master.csv",
-  "inv_weekly": "inv_weekly.csv",
-  "sales_monthly": "sales_monthly.csv"
+  "parts_master": "parts_master.csv"
 }
