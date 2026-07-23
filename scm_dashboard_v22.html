@@ -2967,6 +2967,10 @@ function updateCITabs() {
 }
 // v12: 고객인지이슈 대응내용/실패비용 수기 입력 — localStorage 저장 + data/ci_overrides.json 배포 파일 내보내기
 let CI_OVERRIDES={};
+// v22.18: 여러 사람이 각자 브라우저에서 동시에 입력 — 저장 시점의 로컬 CI_OVERRIDES 전체를 그대로 덮어쓰면
+// 그 사이 다른 사람이 커밋한 항목이 지워질 위험이 있어, 이 브라우저에서 "직접 건드린 항목(CI_DIRTY)"만
+// 배포본에 얹어 커밋한다 — 건드리지 않은 항목은 항상 배포본(deployed) 최신값을 그대로 둠
+const CI_DIRTY=new Set();
 function loadCIOverrides() {
   try { CI_OVERRIDES=JSON.parse(localStorage.getItem('ci_overrides_v1')||'{}'); } catch(e) { CI_OVERRIDES={}; }
   fetch('data/ci_overrides.json').then(r=>r.ok?r.json():null).catch(()=>null).then(deployed=>{
@@ -2977,6 +2981,16 @@ function loadCIOverrides() {
     if(D.ci) { updateCITabs(); renderCIFailCostPanel(); }
   });
 }
+// v22.18: 커밋/내보내기 직전에 배포본을 다시 받아, 이 브라우저가 직접 수정한 항목(CI_DIRTY)만 얹어
+// 병합 — 저장 버튼을 누른 시점과 실제 GitHub 반영 시점 사이 다른 사람의 변경을 덮어쓰지 않도록 함
+async function mergeCIOverridesForSave() {
+  let deployed=null;
+  try { const r=await fetch('data/ci_overrides.json?_='+Date.now()); if(r.ok) deployed=await r.json(); } catch(e){}
+  const merged=Object.assign({}, deployed||{});
+  CI_DIRTY.forEach(k=>{ if(CI_OVERRIDES[k]!==undefined) merged[k]=CI_OVERRIDES[k]; });
+  CI_OVERRIDES=merged; // 다른 사람의 항목도 화면에 함께 반영
+  return merged;
+}
 function persistCIOverrides() {
   localStorage.setItem('ci_overrides_v1',JSON.stringify(CI_OVERRIDES));
   const st=document.getElementById('ci-save-status');
@@ -2984,11 +2998,14 @@ function persistCIOverrides() {
   // v13: GitHub 토큰 등록 시 data/ci_overrides.json 자동 커밋 (디바운스 3초 — 타이핑 중 과다 커밋 방지)
   if(typeof ghToken==='function'&&ghToken()){
     clearTimeout(window._ciCommitTimer);
-    window._ciCommitTimer=setTimeout(()=>{
+    window._ciCommitTimer=setTimeout(async ()=>{
       if(st) st.textContent='GitHub 커밋 중...';
-      commitFileToGitHub('data/ci_overrides.json',JSON.stringify(CI_OVERRIDES,null,2),'고객인지이슈 대응·실패비용 업데이트 '+new Date().toISOString().slice(0,16).replace('T',' '))
-        .then(()=>{ if(st) st.textContent='✅ GitHub 커밋 완료 · '+new Date().toLocaleTimeString('ko-KR'); })
-        .catch(e=>{ if(st) st.textContent='⚠ 커밋 실패(HTTP '+(e.status||'?')+') — 로컬에는 저장됨'; });
+      try {
+        const merged=await mergeCIOverridesForSave();
+        await commitFileToGitHub('data/ci_overrides.json',JSON.stringify(merged,null,2),'고객인지이슈 대응·실패비용 업데이트 '+new Date().toISOString().slice(0,16).replace('T',' '));
+        if(st) st.textContent='✅ GitHub 커밋 완료 · '+new Date().toLocaleTimeString('ko-KR');
+        if(D.ci) { updateCITabs(); renderCIFailCostPanel(); }
+      } catch(e) { if(st) st.textContent='⚠ 커밋 실패(HTTP '+(e.status||'?')+') — 로컬에는 저장됨'; }
     },3000);
   }
 }
@@ -2996,19 +3013,25 @@ function ciFieldInput(idx,field,val) {
   if(!idx) return;
   if(!CI_OVERRIDES[idx]) CI_OVERRIDES[idx]={};
   CI_OVERRIDES[idx][field]=val;
+  CI_DIRTY.add(String(idx));
   persistCIOverrides();
   if(field==='cost') renderCIFailCostPanel();
 }
-function exportCIOverrides() {
-  const blob=new Blob([JSON.stringify(CI_OVERRIDES,null,2)],{type:'application/json'});
+async function exportCIOverrides() {
+  // v22.17: GitHub PAT 미설정 시에도 로컬 배포 스크립트 없이 반영할 수 있도록 — GitHub의 웹 업로드
+  // 화면(data/ 폴더)을 새 탭으로 띄워 드래그&드롭 커밋만으로 배포되게 함. 팝업 차단 방지를 위해
+  // 클릭과 동시에(await 이전에) 먼저 연다.
+  window.open(`https://github.com/${GH_REPO}/upload/${GH_BRANCH}/data`,'_blank');
+  // v22.18: 다운로드할 내용도 배포본과 병합해서 만든다 — 이 브라우저가 직접 건드린 항목만 얹으므로
+  // 다른 사람이 이미 커밋한 항목을 이 파일로 덮어쓰지 않음
+  const merged=await mergeCIOverridesForSave();
+  if(D.ci) { updateCITabs(); renderCIFailCostPanel(); }
+  const blob=new Blob([JSON.stringify(merged,null,2)],{type:'application/json'});
   const url=URL.createObjectURL(blob);
   const a=document.createElement('a'); a.href=url; a.download='ci_overrides.json';
   document.body.appendChild(a); a.click(); document.body.removeChild(a);
   URL.revokeObjectURL(url);
-  // v22.17: GitHub PAT 미설정 시에도 로컬 배포 스크립트 없이 반영할 수 있도록 — 다운로드 직후
-  // GitHub의 웹 업로드 화면(data/ 폴더)을 새 탭으로 띄워 드래그&드롭 커밋만으로 배포되게 함
-  window.open(`https://github.com/${GH_REPO}/upload/${GH_BRANCH}/data`,'_blank');
-  alert('ci_overrides.json 파일이 다운로드되었고, GitHub 업로드 화면을 새 탭에 열었습니다.\n\n⚠ 예전에도 같은 파일을 받은 적이 있으면 브라우저가 파일명 뒤에 "(1)" 같은 번호를 자동으로 붙입니다. GitHub 화면에 올리기 전에 다운로드 폴더에서 파일명이 정확히 ci_overrides.json인지 확인하거나(다르면 이름 바꾸기), 이미 올린 뒤라면 그 화면에서 파일명을 클릭해 ci_overrides.json으로 고쳐주세요 — 이름이 다르면 대시보드가 반영하지 못합니다.\n\n파일명 확인 후 그 화면에 끌어다 놓고 하단의 "Commit changes"를 누르면 1~2분 내 index.html(GitHub Pages)에도 자동 반영됩니다.\n(⚙ GitHub 연동 설정으로 토큰을 등록하면 이 단계 자체가 필요 없어집니다.)');
+  alert('ci_overrides.json 파일이 다운로드되었고, GitHub 업로드 화면을 새 탭에 열었습니다.\n\n(다른 사람이 이미 올린 항목은 자동으로 함께 포함됐습니다 — 이 파일로 다른 사람 입력을 덮어쓸 걱정은 없습니다.)\n\n⚠ 예전에도 같은 파일을 받은 적이 있으면 브라우저가 파일명 뒤에 "(1)" 같은 번호를 자동으로 붙입니다. GitHub 화면에 올리기 전에 다운로드 폴더에서 파일명이 정확히 ci_overrides.json인지 확인하거나(다르면 이름 바꾸기), 이미 올린 뒤라면 그 화면에서 파일명을 클릭해 ci_overrides.json으로 고쳐주세요 — 이름이 다르면 대시보드가 반영하지 못합니다.\n\n파일명 확인 후 그 화면에 끌어다 놓고 하단의 "Commit changes"를 누르면 1~2분 내 index.html(GitHub Pages)에도 자동 반영됩니다.\n(⚙ GitHub 연동 설정으로 토큰을 등록하면 이 단계 자체가 필요 없어집니다.)');
 }
 // v12: 재제작 취득원가 월별 집계 — 세금계산서작성월 우선, 없으면 과업지시일자 월로 폴백(KPI 실패비용율 집계와 총액 일치 유지)
 function reworkCostByMonth(r) {
@@ -10006,6 +10029,9 @@ function fetchLatestWeekly(prefix,lookback){
 let PROGRESS_WEEK=null, PROGRESS_PREV_WEEK=null;
 let PROG_MGR_FILTER=null, PROG_STATUS_FILTER=null;
 let PROGRESS_NOTES={}; const PROG_NOTE_EDITING=new Set();
+// v22.18: 고객인지이슈와 동일한 이유 — 여러 사람이 각자 브라우저에서 비고를 입력하므로, 저장 시
+// 이 브라우저가 직접 건드린 TASK만 배포본에 얹어 커밋(다른 사람의 비고를 덮어쓰지 않음)
+const PROG_DIRTY=new Set();
 function loadProgressData(){
   fetchLatestWeekly('progress',12).then(cur=>{
     if(!cur){ renderProgressSection(); return; }
@@ -10033,6 +10059,16 @@ function loadProgressNotes(){
     renderProgressSection();
   });
 }
+// v22.18: 커밋/내보내기 직전에 배포본을 다시 받아, 이 브라우저가 직접 수정한 TASK(PROG_DIRTY)만
+// 얹어 병합 — 저장 시점과 실제 GitHub 반영 시점 사이 다른 사람의 비고를 덮어쓰지 않도록 함
+async function mergeProgressNotesForSave() {
+  let deployed=null;
+  try { const r=await fetch('data/progress_notes.json?_='+Date.now()); if(r.ok) deployed=await r.json(); } catch(e){}
+  const merged=Object.assign({}, deployed||{});
+  PROG_DIRTY.forEach(k=>{ if(PROGRESS_NOTES[k]!==undefined) merged[k]=PROGRESS_NOTES[k]; });
+  PROGRESS_NOTES=merged; // 다른 사람의 비고도 화면에 함께 반영
+  return merged;
+}
 function persistProgressNotes(commit){
   localStorage.setItem('progress_notes_v1',JSON.stringify(PROGRESS_NOTES));
   const st=document.getElementById('prog-save-status');
@@ -10040,24 +10076,30 @@ function persistProgressNotes(commit){
   if(commit){
     if(ghToken()){
       if(st) st.textContent='GitHub 커밋 중...';
-      commitFileToGitHub('data/progress_notes.json',JSON.stringify(PROGRESS_NOTES,null,2),'비고 업데이트 '+new Date().toISOString().slice(0,16).replace('T',' '))
-        .then(()=>{ if(st) st.textContent='✅ GitHub 커밋 완료 · '+new Date().toLocaleTimeString('ko-KR')+' (1~2분 후 배포 반영)'; })
+      mergeProgressNotesForSave().then(merged=>
+        commitFileToGitHub('data/progress_notes.json',JSON.stringify(merged,null,2),'비고 업데이트 '+new Date().toISOString().slice(0,16).replace('T',' '))
+      )
+        .then(()=>{ if(st) st.textContent='✅ GitHub 커밋 완료 · '+new Date().toLocaleTimeString('ko-KR')+' (1~2분 후 배포 반영)'; renderProgressSection(); })
         .catch(e=>{ if(st) st.textContent='⚠ 커밋 실패(HTTP '+(e.status||'?')+') — ⚙에서 토큰·권한 확인 · 로컬에는 저장됨'; });
     } else {
       if(st) st.textContent='저장됨(이 브라우저) · ⚙ GitHub 연동 설정 시 자동 커밋되어 팀 공유';
     }
   }
 }
-function exportProgressNotes(){
-  const blob=new Blob([JSON.stringify(PROGRESS_NOTES,null,2)],{type:'application/json'});
+async function exportProgressNotes(){
+  // v22.17: GitHub PAT 미설정 시에도 로컬 배포 스크립트 없이 반영할 수 있도록 — 팝업 차단 방지를 위해
+  // 클릭과 동시에(await 이전에) GitHub 웹 업로드 화면(data/ 폴더)을 먼저 새 탭으로 연다
+  window.open(`https://github.com/${GH_REPO}/upload/${GH_BRANCH}/data`,'_blank');
+  // v22.18: 다운로드할 내용도 배포본과 병합 — 이 브라우저가 직접 건드린 TASK만 얹으므로 다른 사람이
+  // 이미 커밋한 비고를 이 파일로 덮어쓰지 않음
+  const merged=await mergeProgressNotesForSave();
+  renderProgressSection();
+  const blob=new Blob([JSON.stringify(merged,null,2)],{type:'application/json'});
   const url=URL.createObjectURL(blob);
   const a=document.createElement('a'); a.href=url; a.download='progress_notes.json';
   document.body.appendChild(a); a.click(); document.body.removeChild(a);
   URL.revokeObjectURL(url);
-  // v22.17: GitHub PAT 미설정 시에도 로컬 배포 스크립트 없이 반영할 수 있도록 — 다운로드 직후
-  // GitHub의 웹 업로드 화면(data/ 폴더)을 새 탭으로 띄워 드래그&드롭 커밋만으로 배포되게 함
-  window.open(`https://github.com/${GH_REPO}/upload/${GH_BRANCH}/data`,'_blank');
-  alert('progress_notes.json 이 다운로드되었고, GitHub 업로드 화면을 새 탭에 열었습니다.\n\n⚠ 예전에도 같은 파일을 받은 적이 있으면 브라우저가 파일명 뒤에 "(1)" 같은 번호를 자동으로 붙입니다. GitHub 화면에 올리기 전에 다운로드 폴더에서 파일명이 정확히 progress_notes.json인지 확인하거나(다르면 이름 바꾸기), 이미 올린 뒤라면 그 화면에서 파일명을 클릭해 progress_notes.json으로 고쳐주세요 — 이름이 다르면 대시보드가 반영하지 못합니다.\n\n파일명 확인 후 그 화면에 끌어다 놓고 하단의 "Commit changes"를 누르면 1~2분 내 index.html(GitHub Pages)에도 자동 반영됩니다.\n(⚙ GitHub 연동 설정으로 토큰을 등록하면 이 단계 자체가 필요 없어집니다.)');
+  alert('progress_notes.json 이 다운로드되었고, GitHub 업로드 화면을 새 탭에 열었습니다.\n\n(다른 사람이 이미 올린 비고는 자동으로 함께 포함됐습니다 — 이 파일로 다른 사람 입력을 덮어쓸 걱정은 없습니다.)\n\n⚠ 예전에도 같은 파일을 받은 적이 있으면 브라우저가 파일명 뒤에 "(1)" 같은 번호를 자동으로 붙입니다. GitHub 화면에 올리기 전에 다운로드 폴더에서 파일명이 정확히 progress_notes.json인지 확인하거나(다르면 이름 바꾸기), 이미 올린 뒤라면 그 화면에서 파일명을 클릭해 progress_notes.json으로 고쳐주세요 — 이름이 다르면 대시보드가 반영하지 못합니다.\n\n파일명 확인 후 그 화면에 끌어다 놓고 하단의 "Commit changes"를 누르면 1~2분 내 index.html(GitHub Pages)에도 자동 반영됩니다.\n(⚙ GitHub 연동 설정으로 토큰을 등록하면 이 단계 자체가 필요 없어집니다.)');
 }
 function progTaskId(r){ return (r['task_id']||r['발주번호']||'').trim(); }
 function progDue(r){
@@ -10124,6 +10166,7 @@ function saveProgNote(id){
   if(!text){ renderProgressSection(); return; }
   if(!PROGRESS_NOTES[id]) PROGRESS_NOTES[id]={text,date:stamp,edits:[]};
   else { if(!PROGRESS_NOTES[id].edits) PROGRESS_NOTES[id].edits=[]; PROGRESS_NOTES[id].edits.push({text,date:stamp}); }
+  PROG_DIRTY.add(id);
   persistProgressNotes(true);
   renderProgressSection();
 }
