@@ -5479,6 +5479,9 @@ function genWeeklyOutsource() {
   const issuesByType = (issues, type) => issues.filter(r => (r['이슈카테고리']||'').includes(type));
   const primaryCat = r => (r['이슈카테고리']||'').split(',')[0].trim();
   const issuesByPrimary = (issues, type) => issues.filter(r => primaryCat(r).includes(type));
+  const projMap = getProjKeySupplierMap();
+  const mvMap = getMovementSupplierMap();
+  const supOfIssue = r => issueSupplierOf(r, projMap, mvMap) || (r['(파트너)발주협력사명 텍스트']||'').replace(/^"+|"+$/g,'').trim() || '';
 
   // --- 이번 주 / 전주 order ---
   const curOrders = D.order ? D.order.filter(r => orderInWeek(r, curLabel)) : [];
@@ -5679,7 +5682,7 @@ function genWeeklyOutsource() {
     md += `|---|---|---|---|---|---|---|\n`;
     sortedQ.forEach(r => {
       const item = (r['item (통합) (from order)'] || r['입고물품'] || '(확인필요)').substring(0, 40);
-      const sup = r['수주처'] || r['프로젝트_발주자'] || '';
+      const sup = supOfIssue(r);
       const content = (r['품질이슈내용']||'').replace(/\n/g,' ').substring(0, 50);
       const resp = (r['품질등급의견판단사유_SCM']||r['품질이슈대응방안_SCM']||'').replace(/\n/g,' ').substring(0, 50);
       const initG = r['품질등급최초판정']||'', scmG = r['품질등급의견_SCM']||'';
@@ -5695,7 +5698,7 @@ function genWeeklyOutsource() {
     md += `\n> 등급 일치율 **${rateStr}(${curQuality.length}건 중 ${matchCnt}건 일치)**`;
     if (mismatchQ.length) {
       const summary = mismatchQ.map(r => {
-        const s = r['수주처']||r['프로젝트_발주자']||'';
+        const s = supOfIssue(r);
         const a=r['품질등급최초판정']||'', b=r['품질등급의견_SCM']||'';
         return `${s}(${a}→${b})`;
       });
@@ -5726,7 +5729,7 @@ function genWeeklyOutsource() {
     md += `|---|---|---|---|\n`;
     curQtyIssues.forEach(r => {
       const item = (r['item (통합) (from order)'] || r['입고물품'] || '(확인필요)').substring(0,40);
-      const sup = r['수주처'] || r['프로젝트_발주자'] || '';
+      const sup = supOfIssue(r);
       md += `| ${item} | ${sup} | ${(r['수량이슈내용']||'').replace(/\n/g,' ').substring(0,60)} | ${(r['수량이슈대응방안_SCM']||'(확인필요)').replace(/\n/g,' ').substring(0,60)} |\n`;
     });
   } else {
@@ -5741,7 +5744,7 @@ function genWeeklyOutsource() {
     md += `|---|---|---|---|\n`;
     curOpIssues.forEach(r => {
       const item = (r['item (통합) (from order)'] || r['입고물품'] || '(확인필요)').substring(0,40);
-      const sup = r['수주처'] || r['프로젝트_발주자'] || '';
+      const sup = supOfIssue(r);
       md += `| ${item} | ${sup} | ${(r['운영이슈내용(by물류)']||'').replace(/\n/g,' ').substring(0,60)} | ${(r['운영이슈개선방안_SCM']||'(확인필요)').replace(/\n/g,' ').substring(0,60)} |\n`;
     });
   } else {
@@ -5788,7 +5791,7 @@ function genWeeklyOutsource() {
   if (curQuality.length) {
     const supCount = {};
     curQuality.forEach(r => {
-      const s = r['수주처'] || r['프로젝트_발주자'] || '';
+      const s = supOfIssue(r);
       if (s) supCount[s] = (supCount[s]||0) + 1;
     });
     const topSups = Object.entries(supCount).sort((a,b) => b[1]-a[1]).slice(0,7);
