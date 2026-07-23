@@ -788,6 +788,18 @@ a{color:var(--blue);text-decoration:none}
           <button class="rep-btn" onclick="genWeeklyInventoryReport()"><div class="rep-btn-title">📦 주간 재고 리포트 생성</div><div class="rep-btn-desc">재고수준·재고구조·품절·장기미회전·이슈(규칙 기반 자동 판정) 요약 → .md 파일 다운로드</div></button>
         </div>
       </div>
+      <!-- 외주생산파트 -->
+      <div class="card" style="margin-top:12px">
+        <div class="card-header">
+          <div class="card-title">외주생산파트</div>
+          <div class="card-sub">ISO week 기준 · 집계구간: 전주 목13:00~해당주 목12:59</div>
+        </div>
+        <div class="report-grid">
+          <button class="rep-btn" onclick="genWeeklyOutsource()"><div class="rep-btn-title">📝 주간 리포트 생성</div><div class="rep-btn-desc">7섹션 KPI·이슈·공급망 요약 → .md 다운로드</div></button>
+          <button class="rep-btn" onclick="genMeetingDraftFromAirtable()"><div class="rep-btn-title">📋 주간 회의록 프롬프트 복사</div><div class="rep-btn-desc">① 클릭(자동복사) → ② claude.ai 새 탭 → ③ Ctrl+V → ④ TTS 내용 붙여넣기 후 전송</div></button>
+        </div>
+        <div id="meeting-draft-status" style="display:none; margin-top:8px; padding:8px 10px; background:#f0f4f0; border-radius:4px; font-size:12px; color:#333; line-height:1.6;"></div>
+      </div>
     </div>
 
     <!-- INVENTORY-OPS -->
@@ -5432,6 +5444,120 @@ function genChangeReport() {
   ].join('\n');
   dlFile(`SCM_변경이력리포트_${fmtISODate(today)}.md`,md,'text/markdown');
 }
+// ===== 외주생산파트 회의록 초안 생성 (Airtable 이번 주 안건 자동 집계) =====
+function _mtgSectionForRow(name) {
+  if (/KPI/.test(name)) return 1;
+  if (/공지사항/.test(name)) return 2;
+  if (/담당자별|일정공유|일정 공유/.test(name)) return 3;
+  if (/품질|재제작|의사결정/.test(name)) return 4;
+  if (/이니셔티브/.test(name)) return 5;
+  return null;
+}
+function _mtgExtractWeekBlock(notes, targetWeek) {
+  if (!notes || !notes.trim()) return { content: '', status: 'empty' };
+  const lines = notes.split('\n');
+  // 헤더 형식: M/D(요일) [YYYY-Www] / M/D(요일) **[YYYY-Www]** / M/D(요일)** [YYYY-Www]**
+  const HDR = /^\s*\d{1,2}\/\d{1,2}\([월화수목금토일]\)\s*\**\s*\[(\d{4}-W\d{2})\]\**\s*$/;
+  let inTarget = false;
+  const buf = [];
+  for (const line of lines) {
+    const m = line.match(HDR);
+    if (m) {
+      if (m[1] === targetWeek) { inTarget = true; }
+      else if (inTarget) break;
+    } else if (inTarget) buf.push(line);
+  }
+  if (!buf.length) return { content: '', status: 'not_found' };
+  while (buf.length && !buf[buf.length - 1].trim()) buf.pop();
+  while (buf.length && !buf[0].trim()) buf.shift();
+  const content = buf.join('\n').trim();
+  return { content, status: content ? 'ok' : 'empty_block' };
+}
+async function genMeetingDraftFromAirtable() {
+  const statusDiv = document.getElementById('meeting-draft-status');
+  statusDiv.style.display = 'block';
+  statusDiv.textContent = '⏳ Airtable 회의자료 로딩 중...';
+  let agenda;
+  try {
+    const r = await fetch('CSV/meeting_agenda.json');
+    if (!r.ok) throw new Error('HTTP ' + r.status);
+    agenda = await r.json();
+  } catch (e) {
+    statusDiv.innerHTML = '❌ 데이터 없음 — 먼저 <b>"지금 새로고침"</b>을 실행하세요. (' + e.message + ')';
+    return;
+  }
+  const today = new Date();
+  const { y: cy, w: cw } = isoWeekOf(today);
+  const curLabel = cy + '-W' + String(cw).padStart(2, '0');
+  const mondayStr = isoWeekMondayDate(wkLabel(cy, cw));
+  const mondayDate = parseAnyDate(mondayStr);
+  const thursDate = new Date(mondayDate); thursDate.setDate(mondayDate.getDate() + 3);
+  const prevThursDate = new Date(thursDate); prevThursDate.setDate(thursDate.getDate() - 7);
+  const pad2 = n => String(n).padStart(2, '0');
+  const fmtShort = d => (d.getMonth() + 1) + '.' + pad2(d.getDate());
+  const period = fmtShort(prevThursDate) + '(목)13:00~' + fmtShort(thursDate) + '(목)12:59';
+  const secs = { 1: [], 2: [], 3: [], 4: [], 5: [] };
+  let parsedOk = 0;
+  const sorted = [...(agenda.records || [])].sort((a, b) => (parseFloat(a.order) || 99) - (parseFloat(b.order) || 99));
+  for (const rec of sorted) {
+    const sec = _mtgSectionForRow(rec.name || '');
+    if (sec === null) continue;
+    const parsed = _mtgExtractWeekBlock(rec.notes || '', curLabel);
+    const content = parsed.content;
+    const status = parsed.status;
+    if (status === 'ok') { secs[sec].push({ name: rec.name, content }); parsedOk++; }
+  }
+  const STITLE = { 1: '1. KPI 리뷰', 2: '2. 공지사항', 3: '3. 주간 업무 공유', 4: '4. 공급망 관리', 5: '5. 이니셔티브 점검' };
+  let airtableSection = '';
+  for (let s = 1; s <= 5; s++) {
+    const items = secs[s];
+    if (!items || !items.length) continue;
+    airtableSection += '## ' + STITLE[s] + '\n\n';
+    for (const item of items) {
+      if (items.length > 1) airtableSection += '**' + item.name + '**\n\n';
+      airtableSection += item.content + '\n\n';
+    }
+  }
+  const dayNames = ['일','월','화','수','목','금','토'];
+  const thursDay = dayNames[thursDate.getDay()];
+  const prompt = [
+    '[' + curLabel + ' · ' + (thursDate.getMonth()+1) + '/' + thursDate.getDate() + '(' + thursDay + ')] 외주생산파트 파트회의 자료',
+    '집계구간: ' + period,
+    '',
+    '════════════════════════════════════',
+    '📌 Airtable 자동 수집',
+    '════════════════════════════════════',
+    '',
+    airtableSection.trim() || '(이번 주 Airtable 안건 없음)',
+    '',
+    '════════════════════════════════════',
+    '🎤 회의 TTS / 녹취 내용',
+    '════════════════════════════════════',
+    '👉 이 아래에 회의 녹취 또는 TTS 내용을 붙여넣어주세요',
+    '',
+    '',
+    '════════════════════════════════════',
+    '📄 직전주 회의록 (선택)',
+    '════════════════════════════════════',
+    '👉 직전주 회의록이 있으면 이 아래에 붙여넣어주세요',
+    '',
+    '',
+    '────────────────────────────────────',
+    '위 자료를 참고해서 외주생산파트 주간 회의록 초안을 작성해줘.',
+    '형식: 날짜·참석자, 안건별 논의 내용 요약, Action Items 표(구분·내용·담당자·기한·상태)',
+  ].join('\n');
+  try {
+    await navigator.clipboard.writeText(prompt);
+    statusDiv.innerHTML = '✅ 복사됨! <b>claude.ai</b> 새 탭 → Ctrl+V → TTS 붙여넣기 후 전송 · 안건 ' + parsedOk + '개 포함';
+  } catch (e) {
+    statusDiv.innerHTML = '⚠️ 클립보드 복사 실패 — 아래 내용을 직접 복사하세요';
+    const pre = document.createElement('pre');
+    pre.style.cssText = 'white-space:pre-wrap;font-size:11px;margin-top:6px;padding:6px;background:#fff;border:1px solid #ccc;max-height:200px;overflow:auto';
+    pre.textContent = prompt;
+    statusDiv.appendChild(pre);
+  }
+}
+
 function dlFile(name,content,type) {
   const a=document.createElement('a');
   a.href=URL.createObjectURL(new Blob(['﻿'+content],{type}));

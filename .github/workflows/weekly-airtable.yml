@@ -51,6 +51,11 @@ jobs:
           AIRTABLE_SOURCES: ${{ vars.AIRTABLE_SOURCES }}
         run: node scripts/fetch_airtable_sources.mjs
 
+      - name: Fetch 회의자료 (주간 회의록 프롬프트 복사 버튼용 JSON)
+        env:
+          AIRTABLE_TOKEN: ${{ secrets.AIRTABLE_TOKEN }}
+        run: node scripts/fetch_meeting_agenda.mjs
+
       - name: Update parts price history (단가 변경 에폭 추가)
         run: node scripts/update_price_history.mjs
 
