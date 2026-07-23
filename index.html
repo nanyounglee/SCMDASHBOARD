@@ -568,7 +568,7 @@ a{color:var(--blue);text-decoration:none}
           <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
             <span id="prog-save-status" style="font-size:10px;color:var(--text3)"></span>
             <button onclick="openGhSettings()" id="gh-settings-btn" style="font-size:11px;padding:5px 12px;border:1px solid var(--border2);border-radius:var(--r-sm);background:var(--surface);cursor:pointer;white-space:nowrap">⚙ GitHub 연동 설정</button>
-            <button onclick="exportProgressNotes()" style="font-size:11px;padding:5px 12px;border:1px solid var(--border2);border-radius:var(--r-sm);background:var(--surface);cursor:pointer;white-space:nowrap">💾 비고 배포 파일 내보내기</button>
+            <button onclick="exportProgressNotes()" style="font-size:11px;padding:5px 12px;border:1px solid var(--border2);border-radius:var(--r-sm);background:var(--surface);cursor:pointer;white-space:nowrap">💾 비고 데이터 파일 저장 및 배포하기</button>
           </div>
         </div>
         <div id="prog-summary"></div>
@@ -656,11 +656,11 @@ a{color:var(--blue);text-decoration:none}
             <div class="card-title">고객인지이슈 목록</div>
             <div style="display:flex;align-items:center;gap:10px">
               <span id="ci-save-status" style="font-size:10px;color:var(--text3)"></span>
-              <button onclick="exportCIOverrides()" style="font-size:11px;padding:5px 12px;border:1px solid var(--border2);border-radius:var(--r-sm);background:var(--surface);cursor:pointer;white-space:nowrap">💾 배포 파일 내보내기</button>
+              <button onclick="exportCIOverrides()" style="font-size:11px;padding:5px 12px;border:1px solid var(--border2);border-radius:var(--r-sm);background:var(--surface);cursor:pointer;white-space:nowrap">💾 데이터 파일 저장 및 배포하기</button>
             </div>
           </div>
           <div class="tbl-wrap"><table class="tbl"><thead><tr><th>등록일</th><th>프로젝트</th><th>관련제품</th><th>작성자</th><th>이슈내용</th><th>상태</th><th style="width:70px">검출</th><th>대응내용</th><th style="min-width:130px">실패비용</th></tr></thead><tbody id="tb-ci"></tbody></table></div>
-          <div style="font-size:10px;color:var(--text3);margin-top:8px;padding:8px 10px;background:var(--surface2);border-radius:4px">✏️ 대응내용·실패비용은 입력 즉시 이 브라우저에 자동 저장됩니다 · "배포 파일 내보내기"로 받은 ci_overrides.json을 프로젝트의 data/ci_overrides.json 에 저장한 뒤 배포 스크립트(deploy_v12.ps1)를 실행하면 index.html(GitHub Pages)에도 반영됩니다.</div>
+          <div style="font-size:10px;color:var(--text3);margin-top:8px;padding:8px 10px;background:var(--surface2);border-radius:4px">✏️ 대응내용·실패비용은 입력 즉시 이 브라우저에 자동 저장됩니다 · ⚙ GitHub 연동 설정을 마쳤다면 이 버튼 없이도 입력 즉시 자동 배포됩니다 · 미설정 시 "데이터 파일 저장 및 배포하기"를 누르면 ci_overrides.json이 다운로드되고 GitHub 업로드 화면이 새 탭에 열립니다 — 그 화면에 파일을 끌어다 놓고 Commit하면 1~2분 내 index.html(GitHub Pages)에도 반영됩니다.</div>
         </div>
       </div>
     </div>
@@ -2101,6 +2101,45 @@ function setValue(id,v) { const el=document.getElementById(id); if(el) el.textCo
 // ===== ORDER TABS =====
 function momYoyBadge(cur,prev){if(!prev)return'<span style="color:var(--text3)">—</span>';const diff=cur-prev;const pct=prev?(diff/prev*100).toFixed(0):'0';const sign=diff>=0?'+':'';const c=diff>0?'var(--red)':diff<0?'var(--green)':'var(--text3)';return`<span style="color:${c};font-weight:600;font-size:11px">${sign}${pct}%</span>`;}
 function prodKey(r){ return r['산출물']||'[비스포크] '+r['발주번호']; }
+// v22.17: 굿즈명(산출물)은 같지만 구성옵션(인쇄제외)에 색상 옵션이 별도로 있는 제품(페이퍼링
+// 캘린더·에디트캘린더의 삼각대 그레이/블랙, 레더스킨다이어리·시그니처다이어리의 그레이/블랙 등)을
+// 분리 표기. 구성옵션을 쉼표로 나눠 "이 제품 자신의" 파츠 토큰만 색상 추출 대상으로 삼아
+// 밴드·링제본 등 부속품(주문마다 색이 달라도 제품 자체 색상과 무관)의 색상은 제외한다.
+// 1단계: "산출물핵심명_파츠명(색상)" 형태(파츠명이 산출물 핵심명으로 시작) 우선 탐색.
+// 2단계(1단계 미발견 시): "파츠명(산출물핵심명_색상)" 형태 — 산출물 핵심명이 괄호 안에 있는 경우.
+const COLOR_WORDS=['그레이','블랙','화이트','네이비','베이지','카키','실버','골드','레드','블루','옐로우','그린','브라운','핑크','퍼플','오렌지'];
+const COLOR_RE=new RegExp(COLOR_WORDS.join('|'));
+function coreProdName(base){ return base.replace(/\+인쇄$/,'').replace(/\s+/g,''); }
+function itemColor(r){
+  if(!(r['산출물']||'')) return ''; // 비스포크 행은 발주번호로 이미 개별 식별되어 변형 표기 불필요
+  const opt=r['구성옵션(인쇄제외)']||''; if(!opt) return '';
+  const core=coreProdName(prodKey(r)); if(!core) return '';
+  const toks=opt.split(',').map(t=>{
+    const m=t.match(/^\s*([^()]+)\(([^)]*)\)\s*$/);
+    return m?{part:m[1].replace(/\s+/g,''),content:m[2]}:null;
+  }).filter(Boolean);
+  for(const t of toks){
+    if(t.part.split('_')[0]===core){ const cm=t.content.match(COLOR_RE); if(cm) return cm[0]; }
+  }
+  for(const t of toks){
+    if(t.content.replace(/\s+/g,'').includes(core)){ const cm=t.content.match(COLOR_RE); if(cm) return cm[0]; }
+  }
+  return '';
+}
+// v22.17: 인쇄 방식(실크·UV·레이저각인 등)으로도 같은 굿즈명이 나뉘는 제품(도킹형 배터리·텀블러류 등)이
+// 있음 — 구성옵션(인쇄제외)은 이름 그대로 인쇄 정보를 빼놓기 때문에, 인쇄 방식은 산출물_옵션 필드의
+// 파츠 토큰 목록에서 찾는다(이 필드는 파츠명과 공정명이 한 리스트에 섞여 있어 색상처럼 소유 관계를
+// 따지지 않고 인정된 인쇄 공정 단어가 토큰으로 존재하면 그대로 채택)
+const PRINT_WORDS=['UV','실크','레이저각인','전사','승화전사','나염','패브릭디지털','디지털인쇄','자수','옵셋'];
+function printMethod(r){
+  if(!(r['산출물']||'')) return '';
+  const opt=r['산출물_옵션']||''; if(!opt) return '';
+  const toks=opt.split(',').map(t=>t.trim());
+  for(const w of PRINT_WORDS){ if(toks.some(t=>t===w||t.startsWith(w+'('))) return w; }
+  return '';
+}
+function variantTag(r){ const c=itemColor(r),p=printMethod(r); return c&&p?c+' · '+p:(c||p||''); }
+function rowGroupKey(r){ const v=variantTag(r); return v?prodKey(r)+'__'+v:prodKey(r); }
 // v12: 발주 현황 · 전체 제품 발주량 — 헤더 클릭 정렬(발주수량/월간발주빈도/공급가액) + 검색창 반영
 let ORD_TOP_SORT='qty';
 function sortOrdTop(key) {
@@ -2110,12 +2149,15 @@ function sortOrdTop(key) {
 function renderOrdTopTable() {
   if (!D.order||!SEL_MONTH||!SEL_DATE_RANGE) return;
   const q=getSearchQuery();
-  const f=D.order.filter(r=>inSelDateRange(r['과업지시일자'])&&!isStock(r)&&(!q||matchesSearch(r,q)));
+  // v22.17: 선택 기간이 2025년에 걸치면 D.orderPrevYear도 함께 집계 — 이전엔 당해(D.order)만 봐서
+  // 2025년에만 발주 이력이 있는 제품(예: 썸네일캘린더)이 기간을 2025년으로 잡아도 목록에서 사라졌음
+  const allOrders=[...D.order,...(D.orderPrevYear||[])];
+  const f=allOrders.filter(r=>inSelDateRange(r['과업지시일자'])&&!isStock(r)&&(!q||matchesSearch(r,q)));
   const byProd={};
   f.forEach(r=>{
     const prod=r['산출물']||'';
-    const key=prodKey(r);
-    if (!byProd[key]) byProd[key]={qty:0,amt:0,freq:0,mgr:r['과업담당자_이름']||'',isBespoke:!prod,pn:r['발주번호']||'',cust:0,bufC:0,bufD:0};
+    const key=rowGroupKey(r);
+    if (!byProd[key]) byProd[key]={qty:0,amt:0,freq:0,mgr:r['과업담당자_이름']||'',isBespoke:!prod,pn:r['발주번호']||'',cust:0,bufC:0,bufD:0,base:prodKey(r),variant:variantTag(r)};
     const oq=pa(r['발주지시수량']);
     byProd[key].qty+=oq;
     byProd[key].amt+=pa(r['공급가액']);
@@ -2127,21 +2169,30 @@ function renderOrdTopTable() {
     // 분할발주에서 같은 고객 구매수량이 행마다 반복 계상되던 불일치 해소
     if(cq>0&&oq>=cq&&!String(r['task_id']||'').includes('재제작')){ byProd[key].cust+=cq; byProd[key].bufC+=cq; byProd[key].bufD+=(oq-cq); }
   });
+  // v22.17: 같은 굿즈명에서 변형 값이 실제로 2종 이상 공존할 때만 분리 표기 — 변형 값이 하나뿐이면
+  // (예: 항상 "디지털인쇄") 나눠도 정보가 없고, 변형 필드가 없는 2025 아카이브와 키가 어긋나 YoY가
+  // 끊기기만 하므로 그런 경우는 원래 굿즈명 키로 되돌린다.
+  const baseKeyList={};
+  Object.entries(byProd).forEach(([k,v])=>{ (baseKeyList[v.base]=baseKeyList[v.base]||[]).push(k); });
+  const collapseTo={};
+  Object.entries(baseKeyList).forEach(([base,keys])=>{ if(keys.length===1&&keys[0]!==base) collapseTo[keys[0]]=base; });
+  Object.entries(collapseTo).forEach(([oldKey,base])=>{ byProd[base]=byProd[oldKey]; byProd[base].variant=''; delete byProd[oldKey]; });
+  function resolvedKey(r){ const k=rowGroupKey(r); return collapseTo[k]||k; }
   // 연간발주량합: 선택 기간이 속한 연도 기준 누계(검색 필터 동일 적용, 재고생산 제외)
   const selYear=SEL_MONTH.split('.')[0];
   const yearQty={};
-  D.order.filter(r=>!isStock(r)&&(!q||matchesSearch(r,q))&&(pOrderMonth(r['과업지시일자'])||'').startsWith(selYear+'.')).forEach(r=>{
-    yearQty[prodKey(r)]=(yearQty[prodKey(r)]||0)+pa(r['발주지시수량']);
+  allOrders.filter(r=>!isStock(r)&&(!q||matchesSearch(r,q))&&(pOrderMonth(r['과업지시일자'])||'').startsWith(selYear+'.')).forEach(r=>{
+    yearQty[resolvedKey(r)]=(yearQty[resolvedKey(r)]||0)+pa(r['발주지시수량']);
   });
   // 직전 기간(WoW/MoM/QoQ) 제품별 발주수량 — 기간지정은 직전 기간 개념이 없어 생략
   const adjRange=getAdjacentDateRange();
   const prevByProd={};
   // v22.2 감사 수정: 전기/전년 집계에도 검색 필터 적용 — 필터된 당기 vs 무필터 전기의 왜곡 비교 방지
-  if(adjRange) D.order.filter(r=>inDateRange(r['과업지시일자'],adjRange)&&!isStock(r)&&(!q||matchesSearch(r,q))).forEach(r=>{prevByProd[prodKey(r)]=(prevByProd[prodKey(r)]||0)+pa(r['발주지시수량']);});
+  if(adjRange) allOrders.filter(r=>inDateRange(r['과업지시일자'],adjRange)&&!isStock(r)&&(!q||matchesSearch(r,q))).forEach(r=>{prevByProd[resolvedKey(r)]=(prevByProd[resolvedKey(r)]||0)+pa(r['발주지시수량']);});
   // 전년 동기(YoY) 제품별 발주수량 — 2025 원본 row(D.orderPrevYear)가 있으면 정확한 일자로 집계
   const yoyRange=getYoyDateRange();
   const yoyByProd={};
-  if(yoyRange&&D.orderPrevYear) D.orderPrevYear.filter(r=>inDateRange(r['과업지시일자'],yoyRange)&&!isStock(r)&&(!q||matchesSearch(r,q))).forEach(r=>{yoyByProd[prodKey(r)]=(yoyByProd[prodKey(r)]||0)+pa(r['발주지시수량']);});
+  if(yoyRange&&D.orderPrevYear) D.orderPrevYear.filter(r=>inDateRange(r['과업지시일자'],yoyRange)&&!isStock(r)&&(!q||matchesSearch(r,q))).forEach(r=>{yoyByProd[resolvedKey(r)]=(yoyByProd[resolvedKey(r)]||0)+pa(r['발주지시수량']);});
   const adjTh=document.getElementById('th-ord-adjacent'), yoyTh=document.getElementById('th-ord-yoy');
   if(adjTh) adjTh.textContent=periodUnitAdjacentLabel()||'전기대비';
   if(yoyTh) yoyTh.textContent='YoY';
@@ -2156,7 +2207,9 @@ function renderOrdTopTable() {
     const yTotal=yearQty[k]||v.qty;
     const bufRate=v.bufC>0?(v.bufD/v.bufC*100):null;
     const bufHtml=bufRate===null?'<span style="color:var(--text3)">—</span>':`<span style="font-weight:600;color:${bufRate>=5?'var(--amber)':'var(--text)'}">${bufRate.toFixed(1)}%</span>`;
-    return `<tr><td class="rank">${i+1}</td><td>${v.isBespoke?`<span class="tag tag-gray">비스포크</span> <span class="mono">${esc(v.pn)}</span>`:`<span style="cursor:pointer;color:var(--blue);font-weight:600" title="클릭 시 제품 상세 발주 현황(이슈·여분·투자효과)" onclick="openProductOrderDetail('${esc(k).replace(/'/g,"\\'")}')">${esc(crop(k,30))}</span>`}</td><td class="num">${v.qty.toLocaleString()}</td><td class="num">${v.cust?v.cust.toLocaleString():'—'}</td><td class="num">${bufHtml}</td><td class="num">${momYoyBadge(v.qty,prevQty)}</td><td class="num">${momYoyBadge(v.qty,yoyQty)}</td><td class="num">${v.freq}</td><td class="num">${yTotal.toLocaleString()}</td><td class="num">${faFull(v.amt)}</td><td>${v.mgr||'—'}</td></tr>`;
+    // v22.17: 색상/인쇄방식 변형이 실제로 갈리는 제품만 굿즈명 뒤에 표기해 구분(예: "페이퍼링 캘린더 (그레이)")
+    const label=v.variant?`${v.base} (${v.variant})`:v.base;
+    return `<tr><td class="rank">${i+1}</td><td>${v.isBespoke?`<span class="tag tag-gray">비스포크</span> <span class="mono">${esc(v.pn)}</span>`:`<span style="cursor:pointer;color:var(--blue);font-weight:600" title="클릭 시 제품 상세 발주 현황(이슈·여분·투자효과)" onclick="openProductOrderDetail('${esc(v.base).replace(/'/g,"\\'")}')">${esc(crop(label,30))}</span>`}</td><td class="num">${v.qty.toLocaleString()}</td><td class="num">${v.cust?v.cust.toLocaleString():'—'}</td><td class="num">${bufHtml}</td><td class="num">${momYoyBadge(v.qty,prevQty)}</td><td class="num">${momYoyBadge(v.qty,yoyQty)}</td><td class="num">${v.freq}</td><td class="num">${yTotal.toLocaleString()}</td><td class="num">${faFull(v.amt)}</td><td>${v.mgr||'—'}</td></tr>`;
   }).join('');
   setTbody('tb-ord-top',topHTML||emptyRow(11,q?'검색 결과 없음':'발주 데이터 없음'));
   document.querySelectorAll('#tab-ord-top .th-sort').forEach(th=>{
@@ -2595,6 +2648,26 @@ function openProductOrderDetail(prod){
   } else {
     bufHtml=`<div style="font-size:11px;color:var(--text3);margin:10px 0">이슈 이력이 없어 여분 권장 산식 대상이 아닙니다 — 현재 관행 여분율만 참고하세요.</div>`;
   }
+  // v22.17: 건당 평균 발주수량·빅딜 기준 수량(평균 +10%↑)·집중 발주 시즌(월별 발주빈도 평균+표준편차 초과 월)
+  // — 당해+전년 전체 이력(재제작 제외) 기준. 이력이 적으면(6건 미만) 시즌 판단은 보류.
+  const nonReworkOrders=orders.filter(r=>!String(r['task_id']||'').includes('재제작'));
+  const avgQtyPerOrder=taskCnt>0?qty/taskCnt:0;
+  const bigDealQty=avgQtyPerOrder>0?Math.ceil(avgQtyPerOrder*1.1):0;
+  const bigDealOrders=bigDealQty>0?nonReworkOrders.filter(r=>pa(String(r['발주지시수량']||''))>=bigDealQty):[];
+  const monthCnt=Array(13).fill(0);
+  nonReworkOrders.forEach(r=>{ const d=parseAnyDate(r['과업지시일자']); if(d) monthCnt[d.getMonth()+1]++; });
+  const monthVals=monthCnt.slice(1);
+  const mMean=monthVals.reduce((a,b)=>a+b,0)/12;
+  const mStd=Math.sqrt(monthVals.reduce((a,b)=>a+(b-mMean)*(b-mMean),0)/12);
+  const peakMonths=[];
+  if(taskCnt>=6&&mMean>0){ for(let m=1;m<=12;m++){ if(monthCnt[m]>mMean+mStd) peakMonths.push(m); } }
+  const seasonTxt=taskCnt<6?'이력 부족(6건 미만) — 판단 보류':(peakMonths.length?peakMonths.join('·')+'월 집중':'특정 시즌 편중 없음');
+  const patternHtml=`<div class="card" style="margin:12px 0;padding:12px 16px">
+    <div style="font-size:12px;font-weight:700;margin-bottom:6px">발주 패턴 <span style="font-weight:400;font-size:10px;color:var(--text3)">— 당해+전년 전체 이력(재제작 제외) 기준</span></div>
+    <div style="font-size:12px;line-height:2">건당 평균 발주수량: <b>${avgQtyPerOrder?Math.round(avgQtyPerOrder).toLocaleString()+'개':'—'}</b>
+    · 빅딜 기준 수량(평균 대비 +10%↑): <b style="color:var(--blue)">${bigDealQty?bigDealQty.toLocaleString()+'개 이상':'—'}</b>${bigDealOrders.length?` <span style="font-size:11px;color:var(--text3)">(이력상 ${bigDealOrders.length}건 해당)</span>`:''}<br>
+    집중 발주 시즌: <b style="color:${peakMonths.length?'var(--amber)':'var(--text)'}">${seasonTxt}</b> <span style="font-size:10px;color:var(--text3)">(월별 발주횟수 평균 ${mMean.toFixed(1)}건·표준편차 ${mStd.toFixed(1)} — 평균+표준편차 초과 월을 집중 시즌으로 판정)</span></div>
+  </div>`;
   const recent=orders.slice().sort((a,c)=>{const da=parseAnyDate(a['과업지시일자']),dc=parseAnyDate(c['과업지시일자']);return (da&&dc)?dc-da:0;}).slice(0,30);
   const ordHtml=`<div style="font-size:12px;font-weight:700;margin:12px 0 6px">발주 이력 <span style="font-weight:400;font-size:10px;color:var(--text3)">(당해+전년 · 최근 30건 · 재고생산 제외)</span></div>
     <table class="tbl"><thead><tr><th class="rank">#</th><th>발주일</th><th>발주번호</th><th>협력사</th><th class="num">발주수량</th><th class="num">고객주문</th><th class="num">여분</th><th class="num">공급가액</th><th>구분</th></tr></thead><tbody>
@@ -2602,7 +2675,8 @@ function openProductOrderDetail(prod){
       const rw=String(r['task_id']||'').includes('재제작');
       const oq=pa(String(r['발주지시수량']||'')), cq=pa(String(r['고객주문수량']||''));
       const bf=(cq>0&&oq>=cq&&!rw)?oq-cq:null;
-      return `<tr><td class="rank">${i+1}</td><td style="font-size:11px">${esc(r['과업지시일자']||'—')}</td><td class="mono" style="font-size:11px">${esc(r['발주번호']||'—')}</td><td style="font-size:11px">${esc(r['수주처']||'—')}</td><td class="num">${oq.toLocaleString()}</td><td class="num">${cq?cq.toLocaleString():'—'}</td><td class="num">${bf!==null?bf.toLocaleString():'—'}</td><td class="num">${faFull(pa(r['공급가액']))}</td><td>${rw?'<span class="tag" style="background:var(--red-light);color:var(--red)">재제작</span>':''}</td></tr>`;
+      const isBigDeal=!rw&&bigDealQty>0&&oq>=bigDealQty;
+      return `<tr><td class="rank">${i+1}</td><td style="font-size:11px">${esc(r['과업지시일자']||'—')}</td><td class="mono" style="font-size:11px">${esc(r['발주번호']||'—')}</td><td style="font-size:11px">${esc(r['수주처']||'—')}</td><td class="num">${oq.toLocaleString()}</td><td class="num">${cq?cq.toLocaleString():'—'}</td><td class="num">${bf!==null?bf.toLocaleString():'—'}</td><td class="num">${faFull(pa(r['공급가액']))}</td><td>${rw?'<span class="tag" style="background:var(--red-light);color:var(--red)">재제작</span>':''}${isBigDeal?' <span class="tag" style="background:var(--blue-light);color:var(--blue)" title="건당 평균 발주수량 대비 +10% 이상">빅딜</span>':''}</td></tr>`;
     }).join('')}
     </tbody></table>`;
   const issHtml=`<div style="font-size:12px;font-weight:700;margin:14px 0 6px">제품 이슈 이력 <span style="font-weight:400;font-size:10px;color:var(--text3)">(당해+전년 · 여분 산식과 동일 매칭)</span></div>
@@ -2614,7 +2688,7 @@ function openProductOrderDetail(prod){
       return `<tr><td class="rank">${i+1}</td><td style="font-size:11px">${esc(getIssueDateStr(r)||'—')}</td><td>${catTags(r['이슈카테고리']||'')}</td><td style="font-size:11px">${esc(crop(r['품질이슈내용']||r['수량이슈내용']||r['운영이슈내용(by물류)']||'',50))}</td><td class="num" style="${short?'color:var(--red);font-weight:600':''}">${short?short.toLocaleString()+'개':'—'}</td><td style="font-size:11px;color:var(--text2)">${esc(crop(resp,40))||'—'}</td></tr>`;
     }).join('')}
     </tbody></table>`:'<div style="font-size:11px;color:var(--text3)">매칭된 이슈 없음</div>'}`;
-  body.innerHTML=`<div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:4px">${chips}</div>${bufHtml}${ordHtml}${issHtml}`;
+  body.innerHTML=`<div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:4px">${chips}</div>${bufHtml}${patternHtml}${ordHtml}${issHtml}`;
 }
 function renderOrderBuffer(){
   const tbody=document.getElementById('tb-ord-buffer'); if(!tbody) return;
@@ -2931,7 +3005,10 @@ function exportCIOverrides() {
   const a=document.createElement('a'); a.href=url; a.download='ci_overrides.json';
   document.body.appendChild(a); a.click(); document.body.removeChild(a);
   URL.revokeObjectURL(url);
-  alert('ci_overrides.json 파일이 다운로드되었습니다.\n\n이 파일을 프로젝트 폴더의 data/ci_overrides.json 위치에 저장한 뒤, 기존 배포 스크립트(deploy_v12.ps1)를 실행하면 대응내용·실패비용 입력값이 index.html(GitHub Pages)에도 반영됩니다.');
+  // v22.17: GitHub PAT 미설정 시에도 로컬 배포 스크립트 없이 반영할 수 있도록 — 다운로드 직후
+  // GitHub의 웹 업로드 화면(data/ 폴더)을 새 탭으로 띄워 드래그&드롭 커밋만으로 배포되게 함
+  window.open(`https://github.com/${GH_REPO}/upload/${GH_BRANCH}/data`,'_blank');
+  alert('ci_overrides.json 파일이 다운로드되었고, GitHub 업로드 화면을 새 탭에 열었습니다.\n\n방금 다운로드된 파일을 그 화면에 끌어다 놓고 하단의 "Commit changes"를 누르면 1~2분 내 index.html(GitHub Pages)에도 자동 반영됩니다.\n(⚙ GitHub 연동 설정으로 토큰을 등록하면 이 단계 자체가 필요 없어집니다.)');
 }
 // v12: 재제작 취득원가 월별 집계 — 세금계산서작성월 우선, 없으면 과업지시일자 월로 폴백(KPI 실패비용율 집계와 총액 일치 유지)
 function reworkCostByMonth(r) {
@@ -9977,7 +10054,10 @@ function exportProgressNotes(){
   const a=document.createElement('a'); a.href=url; a.download='progress_notes.json';
   document.body.appendChild(a); a.click(); document.body.removeChild(a);
   URL.revokeObjectURL(url);
-  alert('progress_notes.json 이 다운로드되었습니다.\n\n(GitHub 연동을 설정하면 이 단계 없이 저장 즉시 자동 커밋됩니다.)\n수동 반영: 프로젝트의 data/progress_notes.json 위치에 저장 후 배포 스크립트를 실행하세요.');
+  // v22.17: GitHub PAT 미설정 시에도 로컬 배포 스크립트 없이 반영할 수 있도록 — 다운로드 직후
+  // GitHub의 웹 업로드 화면(data/ 폴더)을 새 탭으로 띄워 드래그&드롭 커밋만으로 배포되게 함
+  window.open(`https://github.com/${GH_REPO}/upload/${GH_BRANCH}/data`,'_blank');
+  alert('progress_notes.json 이 다운로드되었고, GitHub 업로드 화면을 새 탭에 열었습니다.\n\n방금 다운로드된 파일을 그 화면에 끌어다 놓고 하단의 "Commit changes"를 누르면 1~2분 내 index.html(GitHub Pages)에도 자동 반영됩니다.\n(⚙ GitHub 연동 설정으로 토큰을 등록하면 이 단계 자체가 필요 없어집니다.)');
 }
 function progTaskId(r){ return (r['task_id']||r['발주번호']||'').trim(); }
 function progDue(r){
