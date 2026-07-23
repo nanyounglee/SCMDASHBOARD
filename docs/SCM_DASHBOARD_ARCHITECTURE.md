@@ -678,6 +678,53 @@ computeBufferRows():
 // 요약 표: allMonths.slice(-6) → slice(-13) — 1월부터 연간 전체 월 컬럼 표시(26.1 누락 수정), tbl-wrap 가로 스크롤.
 ```
 
+### 4-33. 외주생산파트 주간리포트 생성 — genWeeklyOutsource() (v22.16)
+
+```javascript
+// genWeeklyOutsource(): 리포트 생성 화면 "외주생산파트" 카드에서 호출.
+// 현재 ISO week 기준으로 7개 섹션의 .md 파일을 생성하고 다운로드.
+//
+// ─ 날짜/주차 계산 ─────────────────────────────────────────────
+// isoWeekOf(today) → {y, w} / prevIsoWeek(y,w) → 직전주
+// curLabel = "2026-W30" 형식, isoWeekMondayDate(wkLabel) → "2026.7.21" 반환
+// 집계구간: 전주 목 13:00 ~ 이번 주 목 12:59
+//
+// ─ 이슈 날짜 파싱 (v22.16 수정) ───────────────────────────────
+// issueInWeek(r, lbl): getIssueDateStr(r)이 "2026.7.21 11:08오전" 형식
+//   datetime 문자열을 반환할 때 getISOWeek()가 NaN을 반환하던 문제 수정.
+//   parseAnyDate()를 경유해 Date 객체를 얻은 뒤 "YYYY.M.D" 포맷으로 재조합.
+//
+// ─ 이슈 카테고리 집계 (v22.16 수정) ───────────────────────────
+// primaryCat(r): r['이슈카테고리'].split(',')[0].trim() — 첫 번째 토큰만 사용.
+// issuesByPrimary(issues, type): includes() 대신 primaryCat 기준으로 필터.
+//   → "수량이슈, 품질이슈" 레코드가 수량/품질 양쪽에 이중 집계되던 문제 해소.
+//   curQuality, curQty, curOp 및 최근 4주 추이 루프에 모두 적용.
+//
+// ─ 섹션 5-0: 협력사 품절 현황 ────────────────────────────────
+// MANUAL_STOCKOUT 배열(수동 관리)에서 PT코드 추출 → D.order 역조회.
+// supFromParts(parts): D.order 중 산출물/발주번호에 PT코드가 포함된 행을
+//   과업지시일자 내림차순으로 정렬, (파트너)발주협력사명 텍스트 우선 반환.
+//   D.sup에 등록된 협력사명과 교차검증(공급망 평가 포함 협력사 우선).
+//   수주처 필드는 개인명이 들어올 수 있어 최종 폴백으로만 사용.
+//
+// ─ 섹션 5-6: 재배치 검토표 ───────────────────────────────────
+// VC_CHANGE_CACHE(scm_vendor_change bank 실시간 데이터)에서
+//   confirmedDate 또는 completedDate가 curLabel 주차에 해당하는 건 자동 표시.
+//   포트폴리오 탭 로드 후 캐시가 채워지며, 미로드 시 안내 메시지 출력.
+//
+// ─ 섹션 6: 공급망 등급 분포 ─────────────────────────────────
+// D.quarter_eval의 2Q_공급망관리등급 기준.
+// gradeLabel: A→"Core (A등급)", B→"Performer (B등급)",
+//             C→"Developing (C등급)", D→"General (D등급)"
+//
+// ─ 섹션 7: 운영 전략 제안 ────────────────────────────────────
+// 3주 연속 이슈 협력사: allWeekIssueSups[1]∩[2]∩[3] (최근 3주 교집합).
+//   issueSnippet(sup): curIssues에서 해당 협력사 이슈를 최대 3건 요약.
+//   → 입고물품(최대 18자) + primaryCat (예: "수량", "품질").
+// 2주 연속 이슈 협력사: 3주 연속 협력사는 중복 제외(consec3Set 필터).
+// 실패비용: ytd 발주 중 재제작 건 집계, ytdTotalAmt 대비 0.3% 이상만 표시.
+```
+
 ---
 
 ## 5. UI 섹션 구조 (20개 페이지 · v21.2: 고객인지이슈→이슈 현황 서브탭, 매입 현황→협력사 현황 서브탭 통합)
