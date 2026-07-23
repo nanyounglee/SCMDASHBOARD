@@ -9282,10 +9282,15 @@ function computeVisitRecommendations(){
     });
   }
 
-  return Object.values(rec).sort((a,b)=>b.reasons.length-a.reasons.length);
+  // v23.1: 방문 우선순위 가중치 — 협력사 재고 품절·이슈 급증(품질·운영 리스크)을 매입 단순 변동보다 우선
+  const weight={품절:5,이슈급증:4,단가상승:3,매입급증:2,신제품:2,매입급감:1};
+  const scoreOf=v=>v.reasons.reduce((s,r)=>s+(weight[r.code]||1),0);
+  return Object.values(rec).sort((a,b)=>scoreOf(b)-scoreOf(a)||b.reasons.length-a.reasons.length);
 }
 function visitRecommendationHtml(){
-  const list=computeVisitRecommendations();
+  const all=computeVisitRecommendations();
+  const VISIT_CAP=5; // v23.1: 사용자 요청 — 월 방문 가능 곳(2~3곳)을 고려해 상위 5곳까지만 표시
+  const list=all.slice(0,VISIT_CAP);
   const reasonColor={매입급증:'var(--blue)',매입급감:'var(--red)',이슈급증:'var(--red)',품절:'var(--amber)',단가상승:'var(--amber)',신제품:'var(--green)'};
   if(!list.length){
     return `<div class="card" style="padding:16px 20px;margin-bottom:20px">
@@ -9294,7 +9299,7 @@ function visitRecommendationHtml(){
     </div>`;
   }
   return `<div class="card" style="padding:16px 20px;margin-bottom:20px">
-    <div class="card-title" style="margin-bottom:6px">📍 이번달 방문 추천 협력사 <span style="font-weight:400;font-size:11px;color:var(--text3)">(${SEL_MONTH||''} · 이슈 급증·매입 급증/급감·협력사 재고 품절·단가상승·신제품 중 해당 사유가 있는 협력사, 사유 많은 순)</span></div>
+    <div class="card-title" style="margin-bottom:6px">📍 이번달 방문 추천 협력사 <span style="font-weight:400;font-size:11px;color:var(--text3)">(${SEL_MONTH||''} · 상위 ${list.length}곳${all.length>list.length?` — 전체 해당 ${all.length}곳 중 우선순위(품절·이슈급증 우선) 상위`:''}, 이슈 급증·매입 급증/급감·협력사 재고 품절·단가상승·신제품 기준)</span></div>
     <div style="display:flex;flex-direction:column;gap:8px">
     ${list.map(v=>`<div style="padding:10px 12px;border:1px solid var(--border);border-radius:8px;display:flex;flex-wrap:wrap;align-items:center;gap:8px">
       <b style="cursor:pointer;color:var(--blue)" onclick="openSupplierDetailModal('${esc(v.name).replace(/'/g,"\\'")}')">${esc(v.name)}</b>
