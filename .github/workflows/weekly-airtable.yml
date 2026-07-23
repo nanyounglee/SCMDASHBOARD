@@ -8,6 +8,7 @@ name: weekly-airtable-progress
 #      — 덮어쓰기 전 이전 버전을 CSV_BANK로 자동 아카이브(협력사는 월간 스냅샷도)
 # 수동 실행(workflow_dispatch)도 가능 — 대시보드의 "지금 새로고침" 버튼도
 # 이 워크플로를 GitHub API로 직접 트리거한다(§9 참고).
+# ※ 회의자료(meeting_agenda.json)는 별도 weekly-meeting-agenda.yml (목요일 16:00 KST)에서 갱신
 on:
   schedule:
     - cron: '0 4 * * 4'
@@ -50,11 +51,6 @@ jobs:
           AIRTABLE_TOKEN: ${{ secrets.AIRTABLE_TOKEN }}
           AIRTABLE_SOURCES: ${{ vars.AIRTABLE_SOURCES }}
         run: node scripts/fetch_airtable_sources.mjs
-
-      - name: Fetch 회의자료 (주간 회의록 프롬프트 복사 버튼용 JSON)
-        env:
-          AIRTABLE_TOKEN: ${{ secrets.AIRTABLE_TOKEN }}
-        run: node scripts/fetch_meeting_agenda.mjs
 
       - name: Update parts price history (단가 변경 에폭 추가)
         run: node scripts/update_price_history.mjs

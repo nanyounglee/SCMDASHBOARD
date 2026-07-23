@@ -1,0 +1,46 @@
+name: weekly-meeting-agenda
+
+# 매주 목요일 16:00 KST (= 07:00 UTC) 회의 직후 회의자료를 최신화한다.
+# 회의 시간: 목요일 15~16시 → 16시 갱신으로 당일 최신 안건 반영
+on:
+  schedule:
+    - cron: '0 7 * * 4'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: weekly-meeting-agenda
+  cancel-in-progress: false
+
+jobs:
+  fetch-and-commit:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Fetch 회의자료 (주간 회의록 프롬프트 복사 버튼용 JSON)
+        env:
+          AIRTABLE_TOKEN: ${{ secrets.AIRTABLE_TOKEN }}
+        run: node scripts/fetch_meeting_agenda.mjs
+
+      - name: Commit & push if changed
+        run: |
+          git config user.name "airtable-bot"
+          git config user.email "actions@github.com"
+          git add CSV/meeting_agenda.json
+          if git diff --cached --quiet; then
+            echo "변경 없음 — 커밋 생략"
+          else
+            WK=$(TZ=Asia/Seoul date +%G-W%V)
+            git commit -m "chore: 주간 회의자료 JSON 자동 커밋 ($WK)"
+            git pull --rebase origin main
+            git push origin main
+          fi
