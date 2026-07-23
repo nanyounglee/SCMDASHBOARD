@@ -18,7 +18,7 @@ permissions:
   contents: write
 
 concurrency:
-  group: weekly-airtable
+  group: weekly-airtable-${{ github.event_name }}
   cancel-in-progress: false
 
 jobs:
