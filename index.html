@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1.0">
-<title>SCM 통합운영 대시보드 v22</title>
+<title>SCM 통합운영 대시보드 v23</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
 <style>
 :root{
@@ -227,7 +227,7 @@ a{color:var(--blue);text-decoration:none}
     </div>
     <div>
       <div class="sb-logo-text">SCM Dashboard</div>
-      <div class="sb-logo-sub">SCM실 통합운영 v22</div>
+      <div class="sb-logo-sub">SCM실 통합운영 v23</div>
     </div>
   </div>
   <div class="sb-divider"></div>
@@ -3018,20 +3018,29 @@ function ciFieldInput(idx,field,val) {
   if(field==='cost') renderCIFailCostPanel();
 }
 async function exportCIOverrides() {
-  // v22.17: GitHub PAT 미설정 시에도 로컬 배포 스크립트 없이 반영할 수 있도록 — GitHub의 웹 업로드
-  // 화면(data/ 폴더)을 새 탭으로 띄워 드래그&드롭 커밋만으로 배포되게 함. 팝업 차단 방지를 위해
-  // 클릭과 동시에(await 이전에) 먼저 연다.
-  window.open(`https://github.com/${GH_REPO}/upload/${GH_BRANCH}/data`,'_blank');
-  // v22.18: 다운로드할 내용도 배포본과 병합해서 만든다 — 이 브라우저가 직접 건드린 항목만 얹으므로
-  // 다른 사람이 이미 커밋한 항목을 이 파일로 덮어쓰지 않음
+  // v22.19: 파일 드래그 업로드 방식은 브라우저가 중복 다운로드에 자동으로 붙이는 "(1)" 접미사 때문에
+  // 두 차례 실제로 잘못된 경로에 커밋되는 사고가 발생(팀원 입력 미반영) — 대신 GitHub의 해당 파일
+  // "수정" 화면을 정확한 경로로 직접 열고 클립보드로 내용을 전달해 파일명 문제 자체를 없앤다.
+  // 팝업 차단 방지를 위해 클릭과 동시에(await 이전에) 먼저 연다.
+  window.open(`https://github.com/${GH_REPO}/edit/${GH_BRANCH}/data/ci_overrides.json`,'_blank');
+  // v22.18: 전달할 내용도 배포본과 병합 — 이 브라우저가 직접 건드린 항목만 얹으므로 다른 사람이
+  // 이미 커밋한 항목을 덮어쓰지 않음
   const merged=await mergeCIOverridesForSave();
   if(D.ci) { updateCITabs(); renderCIFailCostPanel(); }
-  const blob=new Blob([JSON.stringify(merged,null,2)],{type:'application/json'});
-  const url=URL.createObjectURL(blob);
-  const a=document.createElement('a'); a.href=url; a.download='ci_overrides.json';
-  document.body.appendChild(a); a.click(); document.body.removeChild(a);
-  URL.revokeObjectURL(url);
-  alert('ci_overrides.json 파일이 다운로드되었고, GitHub 업로드 화면을 새 탭에 열었습니다.\n\n(다른 사람이 이미 올린 항목은 자동으로 함께 포함됐습니다 — 이 파일로 다른 사람 입력을 덮어쓸 걱정은 없습니다.)\n\n⚠ 예전에도 같은 파일을 받은 적이 있으면 브라우저가 파일명 뒤에 "(1)" 같은 번호를 자동으로 붙입니다. GitHub 화면에 올리기 전에 다운로드 폴더에서 파일명이 정확히 ci_overrides.json인지 확인하거나(다르면 이름 바꾸기), 이미 올린 뒤라면 그 화면에서 파일명을 클릭해 ci_overrides.json으로 고쳐주세요 — 이름이 다르면 대시보드가 반영하지 못합니다.\n\n파일명 확인 후 그 화면에 끌어다 놓고 하단의 "Commit changes"를 누르면 1~2분 내 index.html(GitHub Pages)에도 자동 반영됩니다.\n(⚙ GitHub 연동 설정으로 토큰을 등록하면 이 단계 자체가 필요 없어집니다.)');
+  const text=JSON.stringify(merged,null,2);
+  let copied=false;
+  try { await navigator.clipboard.writeText(text); copied=true; } catch(e) {}
+  if(!copied){
+    const blob=new Blob([text],{type:'application/json'});
+    const url=URL.createObjectURL(blob);
+    const a=document.createElement('a'); a.href=url; a.download='ci_overrides.json';
+    document.body.appendChild(a); a.click(); document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  }
+  alert((copied
+    ? '전체 내용이 클립보드에 복사됐습니다.\n\n새 탭에 열린 GitHub 편집 화면에서 편집창을 클릭 → Ctrl+A(전체 선택) → Ctrl+V(붙여넣기)로 기존 내용을 교체한 뒤, 하단의 "Commit changes"를 누르면 1~2분 내 반영됩니다.'
+    : '클립보드 복사에 실패해 ci_overrides.json 파일을 대신 다운로드했습니다.\n\n새 탭에 열린 GitHub 편집 화면에서 편집창 내용을 전체 선택(Ctrl+A) 후 지우고, 다운로드된 파일을 열어 내용을 복사해 붙여넣은 뒤 "Commit changes"를 눌러주세요.'
+  )+'\n\n(다른 사람이 이미 커밋한 항목도 자동으로 함께 포함됐습니다 — 덮어쓸 걱정 없습니다.)\n(⚙ GitHub 연동 설정으로 토큰을 등록하면 이 단계 자체가 필요 없어집니다.)');
 }
 // v12: 재제작 취득원가 월별 집계 — 세금계산서작성월 우선, 없으면 과업지시일자 월로 폴백(KPI 실패비용율 집계와 총액 일치 유지)
 function reworkCostByMonth(r) {
@@ -9174,6 +9183,128 @@ function getEvaluatedPortfolioVendors() {
   return vendors;
 }
 
+// v22.19: 공급망 포트폴리오 — 이번달 방문 추천 협력사(사용자 요청). 아래 신호 중 하나라도 걸리면
+// 방문 후보로 추천: ① 이슈 급증 ② 협력사 소유 재고(선매입 아님) 제품 품절 ③ 매입금액 급증/급감
+// ④ 단가상승 공지(주간 파츠 감지) ⑤ 신제품 출시(연결된 협력사 추정 가능한 경우만).
+// 기준월은 화면 상단에서 선택한 SEL_MONTH, 비교 기준(평균)은 그 직전 3개월.
+function ptCodeOf19(s){ const m=String(s||'').match(/PT\d+/); return m?m[0]:''; }
+function buildPtSupplierMap19(){
+  const map={};
+  (D.parts||[]).forEach(r=>{
+    const pt=ptCodeOf19(r['파츠명 (Long ver)']); if(!pt) return;
+    const sup=(r['제작협력사']||'').trim(); if(sup) map[pt]=sup;
+  });
+  return map;
+}
+function prevMonthKeys19(monthKey,n){
+  const [y,m]=monthKey.split('.').map(Number);
+  const out=[];
+  for(let k=1;k<=n;k++){ let mm=m-k,yy=y; while(mm<=0){ mm+=12; yy--; } out.push(yy+'.'+mm); }
+  return out;
+}
+function computeVisitRecommendations(){
+  if(!D.order||!SEL_MONTH) return [];
+  const monthKey=SEL_MONTH;
+  const prevKeys=prevMonthKeys19(monthKey,3);
+  const avgOf=(byMonth)=>{ const s=prevKeys.reduce((a,k)=>a+(byMonth[k]||0),0); return s/prevKeys.length; };
+  const rec={}; // supName -> {reasons:[{code,label,detail}]}
+  const addReason=(sup,code,label,detail)=>{
+    if(!sup) return;
+    if(!rec[sup]) rec[sup]={name:sup,reasons:[]};
+    if(!rec[sup].reasons.some(r=>r.code===code)) rec[sup].reasons.push({code,label,detail});
+  };
+
+  // ① 매입금액 급증/급감 — 협력사×월 매입금액(재고생산 제외), 직전 3개월 평균과 비교
+  const supMonthAmt={};
+  (D.order||[]).filter(r=>!isStock(r)).forEach(r=>{
+    const sup=(r['수주처']||'').trim(); if(!sup) return;
+    const byM=purchaseByMonth(r);
+    if(!supMonthAmt[sup]) supMonthAmt[sup]={};
+    Object.entries(byM).forEach(([mk,amt])=>{ supMonthAmt[sup][mk]=(supMonthAmt[sup][mk]||0)+amt; });
+  });
+  // 매입 급감은 선택월이 이미 끝난 과거월일 때만 판정 — 진행 중인 이번달은 세금계산서 원본이
+  // 아직 다 안 들어와 항상 "급감"처럼 보이는 착시가 생김(월 매입금액 KPI의 MoM -70%도 같은 이유)
+  const nowD=new Date(); const realNowKey=(nowD.getFullYear())+'.'+(nowD.getMonth()+1);
+  const monthClosed=(monthKey!==realNowKey);
+  Object.entries(supMonthAmt).forEach(([sup,byM])=>{
+    const cur=byM[monthKey]||0, avg=avgOf(byM);
+    if(avg>=300000 && cur>=avg*1.5) addReason(sup,'매입급증','매입 급증',`이번달 ${faFull(cur)} · 직전 3개월 평균 ${faFull(Math.round(avg))}`);
+    if(monthClosed && avg>=300000 && cur<=avg*0.4) addReason(sup,'매입급감','매입 급감',`이번달 ${faFull(cur)} · 직전 3개월 평균 ${faFull(Math.round(avg))}`);
+  });
+
+  // ② 이슈 급증 — 협력사별 이슈 건수(정확 귀속 매핑 재사용), 직전 3개월 평균과 비교
+  if(D.issue){
+    const projMap=getProjKeySupplierMap(), mvMap=getMovementSupplierMap();
+    const supMonthIssue={};
+    D.issue.forEach(r=>{
+      const sup=issueSupplierOf(r,projMap,mvMap); if(!sup) return;
+      const mk=pIssueMonth(r); if(!mk) return;
+      if(!supMonthIssue[sup]) supMonthIssue[sup]={};
+      supMonthIssue[sup][mk]=(supMonthIssue[sup][mk]||0)+1;
+    });
+    Object.entries(supMonthIssue).forEach(([sup,byM])=>{
+      const cur=byM[monthKey]||0, avg=avgOf(byM);
+      if(cur>=2 && cur>=Math.max(2,avg*1.5)) addReason(sup,'이슈급증','이슈 급증',`이번달 ${cur}건 · 직전 3개월 평균 ${avg.toFixed(1)}건`);
+    });
+  }
+
+  // ③ 협력사 소유 재고(선매입 아님) 제품 품절 — stockout_list의 실측 재고소유구분 필드 사용
+  // (재고소유구분='협력사'만 대상 — '신시어리'·'생산'은 선매입/제작 대응이라 제외)
+  if(D.stockout_list){
+    const ptSup=buildPtSupplierMap19();
+    D.stockout_list.filter(r=>['일시품절','품절예정'].includes((r['판매상태']||'').trim())
+      && (r['재고소유구분 (from sync_parts)']||'').trim()==='협력사').forEach(r=>{
+      const chDate=(r['변경일(인터페이스용)']||'').trim();
+      const mk=pOrderMonth(chDate); if(mk!==monthKey) return;
+      const pt=ptCodeOf19(r['파츠명']); const sup=pt?ptSup[pt]:'';
+      if(sup) addReason(sup,'품절','협력사 재고 품절',`${(r['적용 굿즈명']||r['파츠명']||'').trim()} · ${(r['판매상태']||'').trim()}(${chDate})`);
+    });
+  }
+
+  // ④ 단가상승 공지 — 최근 주간 파츠 감지(CHANGE_LOG)의 part_price 유형 중 이번달·상승분만
+  if(typeof CHANGE_LOG!=='undefined' && CHANGE_LOG.length){
+    const ptSup=buildPtSupplierMap19();
+    CHANGE_LOG.filter(e=>e.type==='part_price' && (e.detail||'').includes('상승')).forEach(e=>{
+      const mk=pYMMonth(e.date); if(mk!==monthKey) return;
+      const pt=ptCodeOf19(e.id); const sup=pt?ptSup[pt]:'';
+      if(sup) addReason(sup,'단가상승','단가 상승 공지',`${e.name||pt} — ${e.detail}`);
+    });
+
+    // ⑤ 신제품 출시 — product_launched 중 이번달분, 제품명으로 최근 발주 협력사 추정(매칭 안 되면 skip)
+    CHANGE_LOG.filter(e=>e.type==='product_launched').forEach(e=>{
+      const mk=pYMMonth(e.date); if(mk!==monthKey) return;
+      const gname=(e.name||'').replace(/\s*\([^)]*\)\s*$/,'').trim(); if(!gname) return;
+      const matches=(D.order||[]).filter(r=>{ const p=(r['산출물']||'').trim(); return p && (p.includes(gname)||gname.includes(p)); });
+      if(!matches.length) return;
+      matches.sort((a,b)=>(b['과업지시일자']||'').localeCompare(a['과업지시일자']||''));
+      const sup=(matches[0]['수주처']||'').trim();
+      if(sup) addReason(sup,'신제품','신제품 출시',`${gname} (${e.date})`);
+    });
+  }
+
+  return Object.values(rec).sort((a,b)=>b.reasons.length-a.reasons.length);
+}
+function visitRecommendationHtml(){
+  const list=computeVisitRecommendations();
+  const reasonColor={매입급증:'var(--blue)',매입급감:'var(--red)',이슈급증:'var(--red)',품절:'var(--amber)',단가상승:'var(--amber)',신제품:'var(--green)'};
+  if(!list.length){
+    return `<div class="card" style="padding:16px 20px;margin-bottom:20px">
+      <div class="card-title" style="margin-bottom:6px">📍 이번달 방문 추천 협력사 <span style="font-weight:400;font-size:11px;color:var(--text3)">(${SEL_MONTH||''})</span></div>
+      <div style="font-size:12px;color:var(--text3)">이슈 급증·매입 급증·매입 급감·협력사 재고 품절·단가상승 공지·신제품 출시 — 해당하는 협력사가 이번달엔 없습니다.</div>
+    </div>`;
+  }
+  return `<div class="card" style="padding:16px 20px;margin-bottom:20px">
+    <div class="card-title" style="margin-bottom:6px">📍 이번달 방문 추천 협력사 <span style="font-weight:400;font-size:11px;color:var(--text3)">(${SEL_MONTH||''} · 이슈 급증·매입 급증/급감·협력사 재고 품절·단가상승·신제품 중 해당 사유가 있는 협력사, 사유 많은 순)</span></div>
+    <div style="display:flex;flex-direction:column;gap:8px">
+    ${list.map(v=>`<div style="padding:10px 12px;border:1px solid var(--border);border-radius:8px;display:flex;flex-wrap:wrap;align-items:center;gap:8px">
+      <b style="cursor:pointer;color:var(--blue)" onclick="openSupplierDetailModal('${esc(v.name).replace(/'/g,"\\'")}')">${esc(v.name)}</b>
+      ${v.reasons.map(r=>`<span class="chip" style="background:var(--surface2);color:${reasonColor[r.code]||'var(--text2)'};font-size:11px;padding:2px 8px;border-radius:20px" title="${esc(r.detail)}">${esc(r.label)}</span>`).join('')}
+    </div>`).join('')}
+    </div>
+    <div style="font-size:10px;color:var(--text3);margin-top:8px">※ "협력사 재고 품절"은 stockout_list의 재고소유구분(from sync_parts)='협력사'인 항목만 대상(선매입/자체 재고·생산대응 제외) · 급증·급감은 직전 3개월 평균 대비 · 재고소유구분 3단계 정식 분류체계는 차기 프로젝트 범위</div>
+  </div>`;
+}
+
 function renderPortfolio() {
   const el=document.getElementById('portfolio-content');
   if (!el) return;
@@ -9208,6 +9339,8 @@ function renderPortfolio() {
         </div>
       `).join('')}
     </div>
+
+    ${visitRecommendationHtml()}
 
     <div style="display:grid;grid-template-columns:2fr 1fr;gap:16px;margin-bottom:20px">
       <div class="card" style="padding:20px">
@@ -10087,19 +10220,29 @@ function persistProgressNotes(commit){
   }
 }
 async function exportProgressNotes(){
-  // v22.17: GitHub PAT 미설정 시에도 로컬 배포 스크립트 없이 반영할 수 있도록 — 팝업 차단 방지를 위해
-  // 클릭과 동시에(await 이전에) GitHub 웹 업로드 화면(data/ 폴더)을 먼저 새 탭으로 연다
-  window.open(`https://github.com/${GH_REPO}/upload/${GH_BRANCH}/data`,'_blank');
-  // v22.18: 다운로드할 내용도 배포본과 병합 — 이 브라우저가 직접 건드린 TASK만 얹으므로 다른 사람이
-  // 이미 커밋한 비고를 이 파일로 덮어쓰지 않음
+  // v22.19: 파일 드래그 업로드 방식은 브라우저가 중복 다운로드에 자동으로 붙이는 "(1)" 접미사 때문에
+  // 잘못된 경로에 커밋되는 사고가 발생 — 대신 GitHub의 해당 파일 "수정" 화면을 정확한 경로로 직접
+  // 열고 클립보드로 내용을 전달해 파일명 문제 자체를 없앤다. 팝업 차단 방지를 위해 클릭과 동시에
+  // (await 이전에) 먼저 연다.
+  window.open(`https://github.com/${GH_REPO}/edit/${GH_BRANCH}/data/progress_notes.json`,'_blank');
+  // v22.18: 전달할 내용도 배포본과 병합 — 이 브라우저가 직접 건드린 TASK만 얹으므로 다른 사람이
+  // 이미 커밋한 비고를 덮어쓰지 않음
   const merged=await mergeProgressNotesForSave();
   renderProgressSection();
-  const blob=new Blob([JSON.stringify(merged,null,2)],{type:'application/json'});
-  const url=URL.createObjectURL(blob);
-  const a=document.createElement('a'); a.href=url; a.download='progress_notes.json';
-  document.body.appendChild(a); a.click(); document.body.removeChild(a);
-  URL.revokeObjectURL(url);
-  alert('progress_notes.json 이 다운로드되었고, GitHub 업로드 화면을 새 탭에 열었습니다.\n\n(다른 사람이 이미 올린 비고는 자동으로 함께 포함됐습니다 — 이 파일로 다른 사람 입력을 덮어쓸 걱정은 없습니다.)\n\n⚠ 예전에도 같은 파일을 받은 적이 있으면 브라우저가 파일명 뒤에 "(1)" 같은 번호를 자동으로 붙입니다. GitHub 화면에 올리기 전에 다운로드 폴더에서 파일명이 정확히 progress_notes.json인지 확인하거나(다르면 이름 바꾸기), 이미 올린 뒤라면 그 화면에서 파일명을 클릭해 progress_notes.json으로 고쳐주세요 — 이름이 다르면 대시보드가 반영하지 못합니다.\n\n파일명 확인 후 그 화면에 끌어다 놓고 하단의 "Commit changes"를 누르면 1~2분 내 index.html(GitHub Pages)에도 자동 반영됩니다.\n(⚙ GitHub 연동 설정으로 토큰을 등록하면 이 단계 자체가 필요 없어집니다.)');
+  const text=JSON.stringify(merged,null,2);
+  let copied=false;
+  try { await navigator.clipboard.writeText(text); copied=true; } catch(e) {}
+  if(!copied){
+    const blob=new Blob([text],{type:'application/json'});
+    const url=URL.createObjectURL(blob);
+    const a=document.createElement('a'); a.href=url; a.download='progress_notes.json';
+    document.body.appendChild(a); a.click(); document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  }
+  alert((copied
+    ? '전체 내용이 클립보드에 복사됐습니다.\n\n새 탭에 열린 GitHub 편집 화면에서 편집창을 클릭 → Ctrl+A(전체 선택) → Ctrl+V(붙여넣기)로 기존 내용을 교체한 뒤, 하단의 "Commit changes"를 누르면 1~2분 내 반영됩니다.'
+    : '클립보드 복사에 실패해 progress_notes.json 파일을 대신 다운로드했습니다.\n\n새 탭에 열린 GitHub 편집 화면에서 편집창 내용을 전체 선택(Ctrl+A) 후 지우고, 다운로드된 파일을 열어 내용을 복사해 붙여넣은 뒤 "Commit changes"를 눌러주세요.'
+  )+'\n\n(다른 사람이 이미 커밋한 비고도 자동으로 함께 포함됐습니다 — 덮어쓸 걱정 없습니다.)\n(⚙ GitHub 연동 설정으로 토큰을 등록하면 이 단계 자체가 필요 없어집니다.)');
 }
 function progTaskId(r){ return (r['task_id']||r['발주번호']||'').trim(); }
 function progDue(r){
