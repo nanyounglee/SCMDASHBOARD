@@ -796,8 +796,9 @@ a{color:var(--blue);text-decoration:none}
         </div>
         <div class="report-grid">
           <button class="rep-btn" onclick="genWeeklyOutsource()"><div class="rep-btn-title">📝 주간 리포트 생성</div><div class="rep-btn-desc">7섹션 KPI·이슈·공급망 요약 → .md 다운로드</div></button>
-          <button class="rep-btn" onclick="genMeetingDraftFromAirtable()"><div class="rep-btn-title">📋 주간 회의록 프롬프트 복사</div><div class="rep-btn-desc">① 클릭(자동복사) → ② claude.ai 새 탭 → ③ Ctrl+V → ④ TTS 내용 붙여넣기 후 전송</div></button>
+          <button class="rep-btn" onclick="genMeetingDraftFromAirtable()"><div class="rep-btn-title">📋 주간 회의록 프롬프트 복사</div><div class="rep-btn-desc">매주 목요일 16:00 외주생산파트 회의실 기준<br>① 클릭(자동복사) → ② claude.ai 새 탭 → ③ Ctrl+V → ④ TTS 내용 붙여넣기 후 전송</div></button>
         </div>
+        <div style="margin-top:6px; font-size:11px; color:var(--text3)">💡 수동 업데이트: GitHub Actions → <code style="font-size:10px">weekly-meeting-agenda</code> → Run workflow</div>
         <div id="meeting-draft-status" style="display:none; margin-top:8px; padding:8px 10px; background:#f0f4f0; border-radius:4px; font-size:12px; color:#333; line-height:1.6;"></div>
       </div>
     </div>
