@@ -10052,7 +10052,8 @@ const AUTO_CSV_DEFAULT={
   quarter_eval:'quarter_eval.csv',
   proj_rev:'proj_rev.csv',
   check_answer:'check_answer.csv',
-  check_question:'check_question.csv'
+  check_question:'check_question.csv',
+  price_chg:'price_chg.csv'
 };
 function autoLoadRaw(){
   fetch('CSV/_manifest.json').then(r=>r.ok?r.json():null).catch(()=>null).then(man=>{
