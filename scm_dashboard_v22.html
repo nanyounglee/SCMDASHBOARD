@@ -1390,7 +1390,7 @@ function validateCSV(key,rows) {
 function showValidationBanner(key,rows,warns) {
   const area=document.getElementById('validation-area');
   if (!area) return;
-  area.style.display=(typeof CURRENT_SECTION==='undefined'||CURRENT_SECTION==='overview')?'flex':'none'; // v22.5: 종합현황 외에는 노출 안 함
+  area.style.display=((typeof CURRENT_SECTION==='undefined'||CURRENT_SECTION==='overview')&&uploadBarOpen)?'flex':'none'; // v22.5: 종합현황 외에는 노출 안 함 / v23.3: 업로드 바 펼침 상태에서만 노출
   let card=document.getElementById('vcard-'+key);
   if (!card) { card=document.createElement('div'); card.id='vcard-'+key; area.appendChild(card); }
   const hasWarn=warns.length>0;
@@ -1448,6 +1448,8 @@ function toggleUploadBar() {
   uploadBarOpen=!uploadBarOpen;
   document.getElementById('upload-detail').style.display=uploadBarOpen?'':'none';
   document.getElementById('upload-chevron').style.transform=uploadBarOpen?'rotate(180deg)':'';
+  const va=document.getElementById('validation-area');
+  if (va) va.style.display=(uploadBarOpen&&va.children.length&&(typeof CURRENT_SECTION==='undefined'||CURRENT_SECTION==='overview'))?'flex':'none'; // v23.3: 업로드 바와 함께 펼침/접힘
 }
 function updateUploadSummary() {
   const keys=Object.keys(D);
@@ -6409,7 +6411,7 @@ function nav(el,id) {
   const sec=document.getElementById('sec-'+id);
   if (sec) sec.style.display='';
   const up=document.getElementById('sec-upload'); if(up) up.style.display=(id==='overview')?'':'none'; // v22.5: 데이터 업로드는 종합현황에서만 노출
-  const va=document.getElementById('validation-area'); if(va) va.style.display=(id==='overview'&&va.children.length)?'flex':'none'; // v22.5: 업로드 검증 칩도 종합현황 전용
+  const va=document.getElementById('validation-area'); if(va) va.style.display=(id==='overview'&&va.children.length&&uploadBarOpen)?'flex':'none'; // v22.5: 업로드 검증 칩도 종합현황 전용 / v23.3: 업로드 바 펼침 상태에서만 노출
   document.querySelectorAll('.sb-item').forEach(i=>i.classList.remove('active'));
   if (el) el.classList.add('active');
   CURRENT_SECTION=id;
