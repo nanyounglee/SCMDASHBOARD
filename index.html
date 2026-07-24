@@ -3671,6 +3671,15 @@ function renderMonthlyNotice() {
   const gradAllRows=gradRows.concat(unlinkedRows);
   // v22.1: 신규/졸업/단가를 하나의 파츠 박스로 합치지 않고 각각 분리 표시 (사용자 요청)
   const partNewRows=byType('part_new'), partGradRows=byType('part_grad'), partPriceRows=byType('part_price');
+  // v22.15: 단가 변동 공지 — price_chg.csv(Airtable 업무요청_가격) 기반. parts.csv 스냅샷 diff(partPriceRows)는 파츠 탭에서 유지.
+  const priceChgRows = D.price_chg ? D.price_chg.filter(r => {
+    if((r['Confirmation']||'').trim()==='반려') return false;
+    const d=parseAnyDate((r['요청일자']||'').trim());
+    return d && d>=windowStart && d<=today;
+  }).sort((a,b)=>{
+    const da=parseAnyDate((a['요청일자']||'').trim()), db=parseAnyDate((b['요청일자']||'').trim());
+    return (da&&db)?db-da:0;
+  }) : [];
 
   // 3) 품절 제품 — stockout_list.csv 판매상태+변경일 기준(졸업 성격 제외) + 수동입력 보강. 기존 그대로 선택 기간 연동.
   let stockRows=[], manualStock=[];
@@ -3690,7 +3699,7 @@ function renderMonthlyNotice() {
   if(arrow) arrow.textContent=NOTICE_COLLAPSED?'▸':'▾';
   const summary=document.getElementById('notice-inline-summary');
   if(summary) summary.textContent=NOTICE_COLLAPSED
-    ? `— 🎓 ${D.goods_master?gradAllRows.length:'—'} · 🚀 ${D.goods_master?launchRows.length:'—'} · 🚫 ${D.stockout_list?stockRows.length+manualStock.length:'—'} · 🆕 ${D.sup?addedRows.length:'—'} · 🔚 ${D.sup?removedRows.length:'—'} · 🧩 ${D.parts?partNewRows.length:'—'} · ⚙️ ${D.parts?partGradRows.length:'—'} · 💲 ${D.parts?partPriceRows.length:'—'}`
+    ? `— 🎓 ${D.goods_master?gradAllRows.length:'—'} · 🚀 ${D.goods_master?launchRows.length:'—'} · 🚫 ${D.stockout_list?stockRows.length+manualStock.length:'—'} · 🆕 ${D.sup?addedRows.length:'—'} · 🔚 ${D.sup?removedRows.length:'—'} · 🧩 ${D.parts?partNewRows.length:'—'} · ⚙️ ${D.parts?partGradRows.length:'—'} · 💲 ${D.price_chg?priceChgRows.length:'—'}`
     : '';
   const foot=document.getElementById('notice-footnote');
   if(foot) foot.style.display=NOTICE_COLLAPSED?'none':'';
@@ -5777,7 +5786,19 @@ function genWeeklyOutsource() {
   // 섹션 2
   md += `## 2. 굿즈 품목별 이슈 리뷰 (품질/고객인지/수량/운영)\n\n`;
 
-  md += `### 2-1. 품질이슈\n\n`;
+  md += `### 2-1. 고객인지이슈\n\n`;
+  if (curCI.length) {
+    md += `| 품목 | 프로젝트명 | 이슈 내용 요약 | 발생원인 | SCM 대응 |\n`;
+    md += `|---|---|---|---|---|\n`;
+    curCI.forEach(r => {
+      md += `| ${r['관련제품']||'(확인필요)'} | ${r['프로젝트명']||''} | ${(r['이슈내용']||'').replace(/\n/g,' ').substring(0,60)} | ${(r['발생원인']||'').replace(/\n/g,' ').substring(0,40)} | ${(r['개선방안']||'').replace(/\n/g,' ').substring(0,40)} |\n`;
+    });
+  } else {
+    md += `> ${curLabel} 고객인지이슈 없음\n`;
+  }
+  md += '\n';
+
+  md += `### 2-2. 품질이슈\n\n`;
   if (curQuality.length) {
     const sortedQ = [...curQuality].sort((a, b) => {
       const aSin = (a['품질이슈대응방안_SCM']||a['품질이슈내용']||'').includes('신시어리') || (a['수주처']||'').includes('신시어리') ? 1 : 0;
@@ -5814,18 +5835,6 @@ function genWeeklyOutsource() {
     md += '\n';
   } else {
     md += `> ${curLabel} 품질이슈 없음\n`;
-  }
-  md += '\n';
-
-  md += `### 2-2. 고객인지이슈\n\n`;
-  if (curCI.length) {
-    md += `| 품목 | 프로젝트명 | 이슈 내용 요약 | 발생원인 | SCM 대응 |\n`;
-    md += `|---|---|---|---|---|\n`;
-    curCI.forEach(r => {
-      md += `| ${r['관련제품']||'(확인필요)'} | ${r['프로젝트명']||''} | ${(r['이슈내용']||'').replace(/\n/g,' ').substring(0,60)} | ${(r['발생원인']||'').replace(/\n/g,' ').substring(0,40)} | ${(r['개선방안']||'').replace(/\n/g,' ').substring(0,40)} |\n`;
-    });
-  } else {
-    md += `> ${curLabel} 고객인지이슈 없음\n`;
   }
   md += '\n';
 
@@ -6024,7 +6033,7 @@ function genWeeklyOutsource() {
   }
   md += '\n';
 
-  md += `### 5-1~5-5. 카테고리별 서술 (Tech/Drinkware/Stationery/Lifestyle/Bag&Pouch)\n\n`;
+  md += `### 5-1~5-5. 카테고리별 서술 (Tech/Drinkware/Stationery/Lifestyle/Fabric)\n\n`;
   md += `> [수동 입력 필요] — 대시보드 협력사유형별 제품군 탭 참조\n\n`;
 
   md += `### 5-6. 재배치 검토표\n\n`;
@@ -6067,7 +6076,7 @@ function genWeeklyOutsource() {
       }
     });
     const total = Object.values(gradeDist).reduce((s,v) => s+v, 0);
-    md += `### 6-1. 등급 분포 (2Q 기준)\n\n`;
+    md += `### 6-1. 등급 분포 (상반기 기준)\n\n`;
     md += `| 등급 | 건수 | 비율 | 주요 협력사 |\n`;
     md += `|---|---|---|---|\n`;
     const gradeLabel = {A:'Core (A등급)', B:'Performer (B등급)', C:'Developing (C등급)', D:'General (D등급)'};
@@ -6076,21 +6085,12 @@ function genWeeklyOutsource() {
       const extra = gradeSups[g].length > 5 ? ` 외 ${gradeSups[g].length-5}개사` : '';
       md += `| **${gradeLabel[g]}** | ${gradeDist[g]}개사 | ${total ? (gradeDist[g]/total*100).toFixed(1) : '0.0'}% | ${topS}${extra} |\n`;
     });
-    md += `\n> 3Q 평가 미착수, 2Q 등급 잠정 유지.\n`;
+    md += `\n> ※ 등급 평가 주기: 반기. 현재 상반기 기준 집계.\n`;
   } else {
     md += `> [quarter_eval.csv 미로드 — 대시보드 공급망 포트폴리오 탭 참조]\n`;
   }
   md += '\n';
 
-  md += `### 6-2. 카테고리별 핵심 공급망 리스크 요약\n\n`;
-  md += `| 카테고리 | 위험 수준 | 주요 리스크 사항 | 조치 우선순위 |\n`;
-  md += `| --- | :---: | --- | :---: |\n`;
-  md += `| **Tech** | | | |\n`;
-  md += `| **Drinkware** | | | |\n`;
-  md += `| **Stationery** | | | |\n`;
-  md += `| **Lifestyle** | | | |\n`;
-  md += `| **Bag&Pouch** | | | |\n`;
-  md += `\n> [담당자 작성 필요 — 이번 주 이슈·등급변동 기반으로 채워주세요]\n\n`;
 
   // 섹션 7
   md += `## 7. 운영 전략 제안\n\n`;
