@@ -15,6 +15,34 @@
       "detail": ""
     },
     {
+      "id": "part_price|PT1330|2026_W30",
+      "type": "part_price",
+      "name": "덮개박스(커스텀인쇄)_화이트+옵셋풀컬러_200-1",
+      "date": "2026-07-24",
+      "detail": "평균 4.1% 인하 · (주)청산인쇄"
+    },
+    {
+      "id": "part_price|PT2809|2026_W30",
+      "type": "part_price",
+      "name": "덮개박스(스탠다드)(FSC라벨삽입)_화이트",
+      "date": "2026-07-24",
+      "detail": "평균 19.7% 상승 · (주)청산인쇄"
+    },
+    {
+      "id": "part_price|PT2811|2026_W30",
+      "type": "part_price",
+      "name": "덮개박스(스탠다드)_블랙",
+      "date": "2026-07-24",
+      "detail": "평균 16.9% 상승 · (주)청산인쇄"
+    },
+    {
+      "id": "part_new|PT5577|2026_W30",
+      "type": "part_new",
+      "name": "PT5577-조립산출물_소프트그립블랙펜",
+      "date": "2026-07-24",
+      "detail": ""
+    },
+    {
       "id": "product_launched|TWKB|2026-07-23",
       "type": "product_launched",
       "name": "Window 스트랩 박스 (TWKB)",
@@ -2129,5 +2157,5 @@
       "detail": ""
     }
   ],
-  "updatedAt": "2026-07-22T08:38:04.904Z"
+  "updatedAt": "2026-07-24T07:32:45.277Z"
 }
