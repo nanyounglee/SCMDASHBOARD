@@ -3671,6 +3671,15 @@ function renderMonthlyNotice() {
   const gradAllRows=gradRows.concat(unlinkedRows);
   // v22.1: 신규/졸업/단가를 하나의 파츠 박스로 합치지 않고 각각 분리 표시 (사용자 요청)
   const partNewRows=byType('part_new'), partGradRows=byType('part_grad'), partPriceRows=byType('part_price');
+  // v22.15: 단가 변동 공지 — price_chg.csv(Airtable 업무요청_가격) 기반. parts.csv 스냅샷 diff(partPriceRows)는 파츠 탭에서 유지.
+  const priceChgRows = D.price_chg ? D.price_chg.filter(r => {
+    if((r['Confirmation']||'').trim()==='반려') return false;
+    const d=parseAnyDate((r['요청일자']||'').trim());
+    return d && d>=windowStart && d<=today;
+  }).sort((a,b)=>{
+    const da=parseAnyDate((a['요청일자']||'').trim()), db=parseAnyDate((b['요청일자']||'').trim());
+    return (da&&db)?db-da:0;
+  }) : [];
 
   // 3) 품절 제품 — stockout_list.csv 판매상태+변경일 기준(졸업 성격 제외) + 수동입력 보강. 기존 그대로 선택 기간 연동.
   let stockRows=[], manualStock=[];
@@ -3690,7 +3699,7 @@ function renderMonthlyNotice() {
   if(arrow) arrow.textContent=NOTICE_COLLAPSED?'▸':'▾';
   const summary=document.getElementById('notice-inline-summary');
   if(summary) summary.textContent=NOTICE_COLLAPSED
-    ? `— 🎓 ${D.goods_master?gradAllRows.length:'—'} · 🚀 ${D.goods_master?launchRows.length:'—'} · 🚫 ${D.stockout_list?stockRows.length+manualStock.length:'—'} · 🆕 ${D.sup?addedRows.length:'—'} · 🔚 ${D.sup?removedRows.length:'—'} · 🧩 ${D.parts?partNewRows.length:'—'} · ⚙️ ${D.parts?partGradRows.length:'—'} · 💲 ${D.parts?partPriceRows.length:'—'}`
+    ? `— 🎓 ${D.goods_master?gradAllRows.length:'—'} · 🚀 ${D.goods_master?launchRows.length:'—'} · 🚫 ${D.stockout_list?stockRows.length+manualStock.length:'—'} · 🆕 ${D.sup?addedRows.length:'—'} · 🔚 ${D.sup?removedRows.length:'—'} · 🧩 ${D.parts?partNewRows.length:'—'} · ⚙️ ${D.parts?partGradRows.length:'—'} · 💲 ${D.price_chg?priceChgRows.length:'—'}`
     : '';
   const foot=document.getElementById('notice-footnote');
   if(foot) foot.style.display=NOTICE_COLLAPSED?'none':'';
@@ -3707,7 +3716,13 @@ function renderMonthlyNotice() {
 
   const partNewHtml = D.parts ? noticeBox('🧩 신규 파츠',partNewRows.length,partNewRows.map(fmtEntry)) : noticeEmptyBox('신규 파츠','parts.csv 업로드 필요');
   const partGradHtml = D.parts ? noticeBox('⚙️ 파츠 졸업',partGradRows.length,partGradRows.map(fmtEntry)) : noticeEmptyBox('파츠 졸업','parts.csv 업로드 필요');
-  const partPriceHtml = D.parts ? noticeBox('💲 단가 변동',partPriceRows.length,partPriceRows.map(fmtEntry)) : noticeEmptyBox('단가 변동','parts.csv 업로드 필요');
+  const priceChgFmt = r => {
+    const name = esc((r['대상 굿즈명']||r['협력사 이름']||'(굿즈명 없음)').trim());
+    const why = esc((r['변동원인']||'').trim().substring(0,20));
+    const dateStr = esc((r['요청일자']||'').trim().replace(/\s.*$/,''));
+    return `${name}${why?` <span style="color:var(--text3)">(${why})</span>`:''} <span style="color:var(--text3)">· ${dateStr}</span>`;
+  };
+  const partPriceHtml = D.price_chg ? noticeBox('💲 단가 변동',priceChgRows.length,priceChgRows.map(priceChgFmt)) : noticeEmptyBox('단가 변동','price_chg.csv 업로드 필요');
 
   wrap.innerHTML=gradHtml+launchHtml+stockHtml+addedHtml+removedHtml+partNewHtml+partGradHtml+partPriceHtml+renderChangeHistoryToggle(allEntries);
 }

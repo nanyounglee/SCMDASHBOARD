@@ -3716,7 +3716,13 @@ function renderMonthlyNotice() {
 
   const partNewHtml = D.parts ? noticeBox('🧩 신규 파츠',partNewRows.length,partNewRows.map(fmtEntry)) : noticeEmptyBox('신규 파츠','parts.csv 업로드 필요');
   const partGradHtml = D.parts ? noticeBox('⚙️ 파츠 졸업',partGradRows.length,partGradRows.map(fmtEntry)) : noticeEmptyBox('파츠 졸업','parts.csv 업로드 필요');
-  const partPriceHtml = D.parts ? noticeBox('💲 단가 변동',partPriceRows.length,partPriceRows.map(fmtEntry)) : noticeEmptyBox('단가 변동','parts.csv 업로드 필요');
+  const priceChgFmt = r => {
+    const name = esc((r['대상 굿즈명']||r['협력사 이름']||'(굿즈명 없음)').trim());
+    const why = esc((r['변동원인']||'').trim().substring(0,20));
+    const dateStr = esc((r['요청일자']||'').trim().replace(/\s.*$/,''));
+    return `${name}${why?` <span style="color:var(--text3)">(${why})</span>`:''} <span style="color:var(--text3)">· ${dateStr}</span>`;
+  };
+  const partPriceHtml = D.price_chg ? noticeBox('💲 단가 변동',priceChgRows.length,priceChgRows.map(priceChgFmt)) : noticeEmptyBox('단가 변동','price_chg.csv 업로드 필요');
 
   wrap.innerHTML=gradHtml+launchHtml+stockHtml+addedHtml+removedHtml+partNewHtml+partGradHtml+partPriceHtml+renderChangeHistoryToggle(allEntries);
 }
