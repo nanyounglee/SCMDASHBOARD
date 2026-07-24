@@ -1,7 +1,8 @@
 # SCM 통합운영 대시보드 — 프로젝트 설계 아키텍처
 
-> 버전: v21.2 | 갱신일: 2026-07-20 | 작성: 이난영 / Claude AI  
-> 대상: 구매전략파트 · 외주생산파트 팀원 공유, 유지보수, 버그 대응
+> 버전: v23.4 | 갱신일: 2026-07-24 | 작성: 이난영 / Claude AI  
+> 대상: 구매전략파트 · 외주생산파트 팀원 공유, 유지보수, 버그 대응  
+> 이 문서는 팀 공유용 사용자가이드/로직설명(§8 참고)과 달리 버전별 변경 이력을 그대로 보존하는 기술 문서입니다 — 팀 공유용 최종본은 `SCM_DASHBOARD_사용자가이드_v23.pdf`·`SCM_DASHBOARD_로직설명_v23.pdf`, 배포별 요약은 `CHANGELOG_v23.md` 참고.
 
 ---
 
@@ -867,6 +868,11 @@ const FILE_SIGNATURES = {
 | **v19** | (로컬→PC 배포) | ① **이슈 분석 모듈**(`renderIssueAnalytics`) — 이슈 현황 상단에 기간 이슈/TASK/이슈율(전년 동기 %p 비교) KPI 3장 + 월별 이슈 추이 라인차트(품질/수량/운영) + **이슈율 2025 vs 2026 동기 비교 차트**(자동 로드되는 `D.order2025/D.issue2025` 원본 RAW로 월별 이슈÷TASK×100 산출). ② **발주 진행현황 주차 경고** — 표시 중인 progress 파일의 ISO 주차 < 현재 주차면 경고 배너(필요 파일명 안내); 주간 CSV는 자동 커밋 워크플로가 없어 수동 커밋 필요함을 명시. ③ **제품별 판매량 추이 검색 연동**(`renderProductTrend`에 matchesSearch 적용 + refreshAll 재렌더) + 제품별 발주 요약에서 주 제작처가 서울디지털인쇄협동조합인 제품 제외·제작 협력사 컬럼 추가. index.html 약 6,944줄. |
 | **v20** | (로컬→PC 배포) | ① **Airtable 자동 갱신 스케줄 변경**: `weekly-airtable.yml` cron을 월요일 09:00→**목요일 13:00 KST**(`0 4 * * 4`)로 변경. ② **"지금 새로고침" 버튼**(`refreshAirtableNow`) — 업로드 바에 추가, GitHub Actions `workflow_dispatch` REST API로 `weekly-airtable.yml`을 즉시 트리거하고 `pollAirtableRefresh`로 최대 10분간 15초 간격 폴링해 완료 시 `autoLoadRaw()` 자동 재실행. Contents 권한 토큰에 Actions:write 권한 추가 필요(GitHub 연동 설정 안내 갱신). ③ **변경 이력 시스템 신규**(`data/change_log.json`, §9) — 졸업/출시 제품(goods_master 날짜 그대로)·협력사 신규/거래종료(주간 `CSV_BANK/<연도>_W<주차>/sup.csv` 스냅샷 비교로 정밀화, 기존 월단위 비교보다 정밀)를 감지해 영구 기록. 월간 공지사항의 이 4개 섹션을 "선택 기간" → "오늘 기준 최근 30일 롤링"으로 전환(품절만 기존 유지), "전체 변경 이력 보기" 토글 추가. 토큰 없으면 로컬에만 쌓이고 토큰 보유자가 열람 시 병합·커밋(비고/CI 수기입력과 동일 패턴). 로드-감지 순서 경쟁 상태(데이터 로드 전에 이력 로드가 먼저 끝나는 경우) 발견·수정 — `CHANGE_LOG_DETECTED` 플래그로 재렌더마다 재시도. 더 이상 쓰이지 않는 월단위 협력사 비교 코드(`SUP_ROSTER_CACHE`/`loadSupRosterDiff`/`walkSupSnapshot` 등) 제거. index.html 약 7,081줄. |
 | **v20.x** | `3e9adbd`~`2ff8539` (원격 직접 푸시) | v20 배포 후 수정분. ① **prevYM() 복원**(`3e9adbd`): v20 정리 때 실수로 삭제되어 협력사 상세 모달·드릴다운이 전부 ReferenceError로 깨졌던 함수 복원 + 전체 제품 발주량 테이블 지표 가운데 정렬. ② **분기별평가 실데이터 반영**(`e38f828`): 사용자 제공 GSheets CSV를 정리해 `CSV/quarter_eval.csv` 생성·`AUTO_CSV_DEFAULT` 등록 — 관계 점수가 전 협력사 기본값(2점) 고정이던 것이 실데이터로 산출되어 Tier가 Core 6·Performer 4로 월간 리포트와 일치(Tier3/4 잔차는 협력사 모수 168 vs 136 범위 차이). ③ **포트폴리오 클릭 인터랙션**(`5335ff4`): Tier 카드 클릭→협력사별 상세 필터링(`clickPortfolioKpi`), 4분면 매트릭스 점 클릭→협력사 상세 모달. ④ **이슈현황 탭 버그 수정 + 미입하율 추이표**(`2ff8539`): `swTab()`이 인라인 display만 바꾸고 CSS `.tab-panel.active` 클래스를 토글하지 않아 전체 탭 외 모든 탭이 빈 화면이던 버그 수정, 월별 미입하율 추이표(전체TASK·미입하건수·미입하율·전년동월·YoY) 신규. |
+| **v23.4** | (로컬→PC 배포) | **사용자 요청 — 가이드 투어 신규.** 상단 "🎓 가이드 투어" 버튼(`startDashboardTour()`) — driver.js(MIT, CDN)를 html2pdf.js와 동일한 lazy-load 패턴(`loadDriverJs()`)으로 최초 클릭 시에만 로드해 15단계 스팟라이트 투어 실행. 사이드바·검색·기간선택 → 6개 핵심 화면(종합현황·재고운영·발주·이슈·공급망포트폴리오·AI어시스턴트) → 재고자산 SKU 상세·제품 상세 드릴다운·제품×협력사 이슈율 매트릭스·협력사 상세 4개 모달 단계까지 실제 데이터로 소개(§8 버전 규칙 아래 §9 참고). 처음 방문 시 `localStorage.tourSeenV1` 없으면 1회 자동 실행. 모달 단계는 `tourInvokeFirst()`가 화면에 실제 표시되는 첫 항목의 onclick 핸들러를 직접 호출(제품명·협력사명 하드코딩 없음, 주간 데이터 갱신에 견고). **구현 중 실측 버그 수정**: 모달을 여는 스텝에서 `el.click()`으로 실제 클릭 이벤트를 발생시키면 그 이벤트가 `document`까지 버블링돼 driver.js 전역 클릭 리스너(오버레이 바깥 클릭 감지)와 충돌해 다음 스텝 진행이 멈춤(모달 오픈 스텝 직후 전이만 재현) → 이벤트 디스패치 없이 `el.onclick.call(el)`로 핸들러만 실행하도록 교체, `tourGoto()`에는 대상 요소 `offsetHeight` 강제 읽기(리플로우)로 레이아웃 측정 어긋남 방지 안전장치 추가. 15단계 전체를 실데이터로 재검증(각 전이의 표시 내용·진행 순서 일치 확인). |
+| **v23.3** | (로컬→PC 배포) | **사용자 요청 — 종합 현황 CSV 검증 칩 목록 기본 숨김.** `validation-area`(파일별 ✅/⚠️+행수 칩 18종)가 "데이터 업로드" 한 줄 요약과 무관하게 항상 펼쳐져 있던 것을, 업로드 바가 펼쳐진(`uploadBarOpen`) 상태일 때만 함께 보이도록 변경(`showValidationBanner()`/`nav()`/`toggleUploadBar()`). 기본은 요약 한 줄만 노출, "▼ 데이터 업로드" 클릭 시 상세 칩·업로드 존 함께 펼침. |
+| **v23.2** | (로컬→PC 배포) | **사용자 요청 — 리포트 생성 화면 버튼 3개 테이블 → 1개로 통합.** "리포트 생성"/"구매전략파트"/"외주생산파트" 3개 카드를 카드 1개로 병합하고 ① 팀 주간 회의록·팀 주간 보고서 ② 외주생산파트 주간 리포트 생성·주간 회의록 프롬프트 복사 ③ 구매전략파트 기준 주차·특이사항 메모·주간 재고 리포트 생성 ④ 변경 이력 리포트 생성·변경 스냅샷 아카이브 순으로 재배치(각 버튼 링크·로직은 기존과 동일, DOM 위치만 이동). 옛 "주간 리포트 생성"(`genWeekly()`, 외주생산파트 리포트 도입 이전 구버전 요약본)·"월간 대시보드 열기"·"GitHub 저장소 열기" 3개 버튼 삭제, 우측 상단 기능 안내(`titles.report`)도 갱신. |
+| **v23** | (로컬→PC 배포) | **사용자 요청 — 동시편집 덮어쓰기 방지 + 배포 방식 개선 + 방문 추천 협력사.** ① 여러 사람이 동시에 저장하면 저장 시점 로컬 데이터 전체로 파일을 덮어써 다른 사람의 항목이 지워질 위험(실사례 확인) → `mergeCIOverridesForSave()`/`mergeProgressNotesForSave()`가 저장 직전 배포본을 다시 받아 이 브라우저가 직접 건드린 항목(`CI_DIRTY`/`PROG_DIRTY`)만 얹어 병합 후 커밋. ② 배포 버튼: 파일 드래그 업로드 방식이 브라우저의 중복 다운로드 자동 접미사("(6)" 등) 때문에 잘못된 경로로 2회 실제 커밋되는 사고 발생 → `github.com/{repo}/edit/{branch}/data/xxx.json`(해당 파일 GitHub 편집 화면) 직접 오픈 + 클립보드 전달 방식으로 교체, 파일명 오타 가능성 제거. ③ 공급망 포트폴리오에 `computeVisitRecommendations()` — "이번달 방문 추천 협력사" 카드 신규: 이슈 급증/매입 급증·급감(직전 3개월 평균 대비, 진행 중인 이번달은 매입 급감 판정 제외 — 세금계산서 반영 지연으로 인한 착시 방지)·협력사 소유 재고 품절(stockout_list 실측 필드 `재고소유구분 (from sync_parts)`='협력사'만 대상, 근사 아님)·단가상승 공지·신제품 출시(`data/change_log.json`을 PT코드/제품명으로 재조인해 협력사 추정) 6신호 중 해당하는 협력사를 사유와 함께 표시. ④ 팀원 동시 작업 중인 문서 충돌을 피하기 위해 스냅샷/배포 스크립트 파일명은 유지하고 화면 타이틀·로고만 v23으로 갱신(정식 파일명 이관은 이후 별도 진행). |
+| **v22.17** | (로컬→PC 배포) | **사용자 요청 — 발주현황 옵션 분리 표기 + 발주 패턴 카드 + 배포 버튼 개선.** ① `renderOrdTopTable()`이 당해(`D.order`)만 집계해 2025년 전용 제품(썸네일캘린더 등)이 목록에서 누락되던 것을 `D.orderPrevYear` 병합으로 해소. ② 같은 굿즈명·다른 옵션(색상·인쇄방식) 분리 — `구성옵션(인쇄제외)`(색상, "산출물핵심명_파츠명(색상)" 또는 "파츠명(산출물핵심명_색상)" 두 형태 모두 인식) + `산출물_옵션`(인쇄방식: UV·실크·레이저각인 등, 색상 필드는 이름대로 인쇄 정보를 배제하므로 별도 필드 사용) 기반 `itemColor()`/`printMethod()`/`variantTag()` 신규, `rowGroupKey()`가 이 태그를 굿즈명에 결합. **같은 선택 기간에 값이 실제로 2종 이상 공존할 때만 분리**(`baseKeyList`/`collapseTo` 후처리) — 값이 하나뿐인 제품까지 분리하면 옵션 필드가 없는 2025 아카이브와 키가 어긋나 YoY가 끊기는 부작용을 막음. ③ `openProductOrderDetail()`에 "발주 패턴" 카드 신규 — 건당 평균 발주수량, 빅딜 기준 수량(평균+10%↑), 집중 발주 시즌(월별 발주빈도 평균+표준편차 초과 월, 6건 미만은 판단 보류) + 발주 이력 표 "빅딜" 배지. ④ `exportCIOverrides()`/`exportProgressNotes()` — 파일 다운로드 후 GitHub 웹 업로드 화면(`${GH_REPO}` `data/` 폴더)을 새 탭으로 자동 오픈해 드래그&드롭 커밋만으로 배포 가능(로컬 배포 스크립트 불필요), 버튼명 "데이터 파일 저장 및 배포하기"로 변경. |
 | **v22.12** | (로컬→PC 배포) | **사용자 제보(화면 캡처) — AI 제품문의 카드 버그 2건.** ① `aiQaCard()`에서 질문(Q) 줄만 `color`를 명시하지 않아 AI 패널 기본 흰색 텍스트를 물려받아 밝은 카드 배경 위에서 안 보이던 버그(사용자가 "답변만 보인다"고 느낀 원인) 수정 — `color:var(--text)` 추가. ② v22.11에서 "커버리지 확대"로 기록한 수치가 실은 버그였음이 드러남 — `check_answer`·`check_question`이 같은 슬랙 문의를 중복으로 담고 있어(flattenCheckQuestion() 2,883건 중 2,865건이 check_answer와 중복, 순수 신규는 19건) 같은 Q&A가 두 번씩 표시되던 것을 `dedupKey()`(제품명+질문 앞 60자)로 제거, 리드타임 107→54건·단가 6→3건으로 정확한 수치 복귀. |
 | **v22.14** | (로컬→PC 배포) | **사용자 재제보 — 졸업 제품 "파츠 연결 해제" 오탐 227건 재발 차단.** v22.13 배포 후에도 parts.csv 마이그레이션이 진행 중인 상태에서 대시보드가 열려 "변경 이력 자동 갱신" 커밋이 추가로 발생, `detectPartsChanges()` 라이브 재실행 때마다 같은 224건 오탐이 `data/change_log.json`에 재적재됨을 확인(JSON 삭제만으론 근본 해결 불가). 졸업 제품 공지에서 `goods_unlinked` 병합을 임시 비활성화(표시 차단, `product_graduated`만 노출)하고, `detectPartsChanges()`에 급감 가드(이전 스냅샷 대비 파츠 행수 50% 미만 급감 시 굿즈 연결 해제 비교 건너뜀) 추가해 재발도 방지. parts.csv 마이그레이션 완결 후 표시 차단만 해제하면 정상 복구. |
 | **v22.13** | (로컬→PC 배포) | **사용자 요청 — 졸업 제품 수동 제외 + 실패비용 카드 전체금액 표기.** 포인트업 러그(PITU)·웹캠 커버(WCCV)가 goods_master.csv 졸업일 재입력으로 최근 30일 창에 재노출되던 것을 `MANUAL_GRAD_EXCLUDE` 하드코딩 배열로 제외(`MANUAL_VENDOR_TERMINATIONS`와 동일 패턴). "여분 투자 효과"·"여분(버퍼) 추천"·이슈현황 실패비용 카드 3곳의 `fa()`/`faFull()` 표기 불일치(같은 값인데 반올림 자리수 차이로 다른 숫자처럼 보임)를 `faFull()`로 통일. 같은 세션에서 발견한 parts.csv 마이그레이션발 "파츠 연결 해제" 오탐 224건·CSV/parts.csv 33행 축소는 담당자(seungmiyook)가 원본을 직접 복구 중이라 이번 배포 범위에서 제외(CSV/parts.csv·data/change_log.json 로컬 변경은 커밋 전 되돌림). |
@@ -903,35 +909,37 @@ const FILE_SIGNATURES = {
 ### 파일 구조
 ```
 SCMDASHBOARD/
-├── index.html                       ← 운영 원본 (GitHub Pages 직접 서빙 · v21 · 약 7,153줄)
-├── scm_dashboard_v21.html           ← 현행 버전 스냅샷 (index.html 복사본)
-├── archive/                         ← 이전 버전 스냅샷 (v3~v15)
+├── index.html                       ← 운영 원본 (GitHub Pages 직접 서빙 · 화면 타이틀 v23, 스냅샷 파일명은 v22 유지)
+├── scm_dashboard_v22.html           ← 현행 버전 스냅샷 (index.html 복사본 · 정식 v23 파일명 이관은 이후 별도 진행 예정, §8 v23 로그 참고)
+├── archive/                         ← 이전 버전 스냅샷
 ├── CSV/                             ← 자동 로드 대상 CSV
-│   ├── order.csv · issue.csv · sup.csv · ci.csv
-│   ├── stockout_list.csv · inv_weekly.csv · sales_monthly.csv
-│   ├── dashboard_period_summary.csv · dashboard_group_summary.csv · dashboard_sku_snapshot.csv  ← v10 신규
-│   ├── parts.csv                    ← v11 신규(코스트베이스, 수동 업로드 기본)
-│   ├── goods_master.csv             ← v14 신규(굿즈마스터, 월간 공지사항 졸업/출시 제품용, §4-24)
-│   ├── progress_연도_W주차.csv · project_연도_W주차.csv  ← v13 신규(발주 진행현황·주간 매출결산)
+│   ├── order.csv · issue.csv · sup.csv · ci.csv · stockout_list.csv
+│   ├── dashboard_period_summary.csv · dashboard_group_summary.csv · dashboard_sku_snapshot.csv · dashboard_sku_monthly.csv
+│   ├── raw_발주.csv · parts_master.csv        ← 입고예정금액·신제품/시즌 카드·EOQ 리드타임 실측
+│   ├── parts.csv                    ← 코스트베이스(DB원가비교 전용, 수동 업로드 기본)
+│   ├── goods_master.csv             ← 굿즈마스터(월간 공지사항 졸업/출시 제품)
+│   ├── quarter_eval.csv             ← 분기별평가(Tier 관계 점수 원천)
+│   ├── check_answer.csv · check_question.csv  ← AI 어시스턴트 제품 문의 검색(수동 교체)
+│   ├── progress_연도_W주차.csv · project_연도_W주차.csv  ← 발주 진행현황·주간 매출결산
 │   └── _manifest.json               ← key→파일명 매핑 (HTML 수정 없이 파일명 변경)
-│       ※ 한글 원본 CSV(SCM_발주_RAW(2026).csv 등)·S&OP 원본·RAW_CSV.zip은 v21에서 정리 —
-│         주간 자동 커밋이 고정 영문명 CSV를 직접 갱신하게 되면서 수동 복사용 원본이 불필요해짐
-│         (과거 버전은 git 이력·CSV_BANK 주간 아카이브로 보존)
-├── CSV_BANK/                        ← v13 신규(주간 progress/project 아카이브) · v14 확장 — archive_csv.ps1이 매달 저장하는 sup.csv 월간 스냅샷(§4-24 diff 대상)
-│   └── archive/{연도}/              ← v21 신규 — 전년도 order_{연도}.csv·issue_{연도}.csv 고정 보존 (loadPriorYearArchive()·yearly-archive.yml 대상)
+│       ※ inv_weekly.csv·sales_monthly.csv는 v22.8에서 완전 정리(사전집계 3종+dashboard_sku_monthly로 대체)
+├── CSV_BANK/                        ← 주간 progress/project 아카이브 + sup.csv 월간 스냅샷(변경 이력 diff 대상)
+│   └── archive/{연도}/              ← 전년도 order_{연도}.csv·issue_{연도}.csv 고정 보존 (loadPriorYearArchive()·yearly-archive.yml 대상)
 ├── data/                            ← 영구 임베딩 JSON
-│   ├── parts_master.json · data_2025.json · cost_db.json
-│   └── progress_notes.json · ci_overrides.json  ← v13 신규(GitHub 연동 자동 커밋 대상)
+│   ├── parts_master.json · data_2025.json · cost_db.json · parts_price_history.json
+│   └── progress_notes.json · ci_overrides.json · change_log.json  ← GitHub 연동 자동 커밋 대상(v23: 동시편집 병합 저장)
 ├── docs/
-│   ├── SCM_DASHBOARD_ARCHITECTURE.md       ← 이 파일 (v21 갱신)
-│   ├── CHANGELOG_v21.md                    ← 버전별 변경 내역 (팀 공유용)
-│   ├── purchase_dashboard_migration_strategy.md  ← 구매파트 Apps Script 이식 전략 (v10 반영 현황 기준, v11 이후는 범위 밖)
-│   ├── SCM_DASHBOARD_로직설명_v21.html  ← 로직 설명서 (v21 갱신)
-│   ├── SCM_DASHBOARD_사용자가이드_v21.html  ← 사용자 가이드 (v21 갱신)
+│   ├── SCM_DASHBOARD_ARCHITECTURE.md            ← 이 파일 (기술 아키텍처, 버전 이력 보존)
+│   ├── CHANGELOG_v23.md                         ← 버전별 변경 내역 (팀 공유용, v22→v23 이관)
+│   ├── SCM_DASHBOARD_로직설명_v23.pdf            ← 로직 설명서 (팀 공유용 최종본, PDF 전용)
+│   ├── SCM_DASHBOARD_사용자가이드_v23.pdf        ← 사용자 가이드 (팀 공유용 최종본, PDF 전용)
+│   ├── TFT_완결보고_및_차기계획_2026-07.html · SCM_TFT_완결보고_및_차기계획_2026-07.pdf  ← TFT 완결보고·차기 계획안
+│   ├── purchase_dashboard_migration_strategy.md  ← 구매파트 Apps Script 이식 전략(§ 반영 현황 갱신)
+│   ├── 유지보수_업데이트_일정.md · 품질관리_ToBE_할일.md · AIRTABLE_품질필드_추가명세.md
 │   ├── SCM_KPI_리포트_2026Q2.xlsx
-│   └── archive/                     ← 구버전 (v16 이하 로직설명/사용자가이드/CHANGELOG, V4_로직설명_v7.html 등)
-├── deploy_v21.ps1                   ← 배포 스크립트 (git 자가복구 + 버전 정리 + 안전 동기화 + 문서/구파일 정리)
-├── archive_csv.ps1                  ← v13 신규 — 주간 CSV(progress_/project_)는 최신 1개만 유지 후 CSV_BANK로 이동, v14 확장 — sup.csv 교체 직전 CSV_BANK/sup_YYYY_MM.csv로 월간 스냅샷 저장
+│   └── archive/                     ← 구버전(로직설명/사용자가이드 v14~v22 html, CHANGELOG v13~v21 등)
+├── deploy_v22.ps1                   ← 배포 스크립트 (git 자가복구 + 버전 정리 + 안전 동기화 + 문서/구파일 정리)
+├── archive_csv.ps1                  ← 주간 CSV(progress_/project_)는 최신 1개만 유지 후 CSV_BANK로 이동, sup.csv 교체 직전 월간 스냅샷 저장
 ├── .nojekyll                        ← Pages Jekyll 비활성화 (빌드 실패 방지)
 └── .claude/                         ← Claude 설정
 ```

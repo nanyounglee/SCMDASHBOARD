@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1.0">
-<title>SCM 통합운영 대시보드 v22</title>
+<title>SCM 통합운영 대시보드 v23</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
 <style>
 :root{
@@ -18,6 +18,13 @@
   --purple:#7c3aed;--purple-light:#ede9fe;
   --r:12px;--r-sm:8px;
 }
+/* 가이드 투어(driver.js, CDN lazy-load) — 대시보드 팔레트에 맞춘 최소 오버라이드 */
+.driver-popover{border-radius:var(--r);font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif}
+.driver-popover-title{font-size:14px;color:var(--text)}
+.driver-popover-description{font-size:12.5px;color:var(--text2);line-height:1.6}
+.driver-popover-next-btn,.driver-popover-done-btn{background:var(--blue)!important;color:#fff!important;text-shadow:none!important;border:none!important}
+.driver-popover-prev-btn{color:var(--text2)!important}
+.driver-popover-progress-text{color:var(--text3);font-size:11px}
 *{box-sizing:border-box;margin:0;padding:0}
 body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;background:var(--bg);color:var(--text);font-size:13px;line-height:1.5;overflow-x:hidden}
 a{color:var(--blue);text-decoration:none}
@@ -227,7 +234,7 @@ a{color:var(--blue);text-decoration:none}
     </div>
     <div>
       <div class="sb-logo-text">SCM Dashboard</div>
-      <div class="sb-logo-sub">SCM실 통합운영 v22</div>
+      <div class="sb-logo-sub">SCM실 통합운영 v23</div>
     </div>
   </div>
   <div class="sb-divider"></div>
@@ -345,6 +352,10 @@ a{color:var(--blue);text-decoration:none}
       <button class="topbar-btn" onclick="exportCurrentTables()" title="현재 화면에 보이는 표를 CSV로 다운로드">
         <svg width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M8 10V2M5 5l3-3 3 3M2 12v2h12v-2"/></svg>
         현재 화면 CSV
+      </button>
+      <button class="topbar-btn" onclick="startDashboardTour()" title="핵심 화면을 짧게 소개하는 가이드 투어를 다시 봅니다">
+        <svg width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="8" cy="8" r="6"/><path d="M6 6a2 2 0 013 1.7c0 1.3-1.5 1.5-1.5 2.8"/><circle cx="8" cy="11.3" r=".4" fill="currentColor" stroke="none"/></svg>
+        가이드 투어
       </button>
       <a class="topbar-btn primary" href="https://nanyounglee.github.io/SCMDASHBOARD/" target="_blank">
         <svg width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M8 3H3v10h10V8M8 8l5-5M10 3h3v3"/></svg>
@@ -568,7 +579,7 @@ a{color:var(--blue);text-decoration:none}
           <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
             <span id="prog-save-status" style="font-size:10px;color:var(--text3)"></span>
             <button onclick="openGhSettings()" id="gh-settings-btn" style="font-size:11px;padding:5px 12px;border:1px solid var(--border2);border-radius:var(--r-sm);background:var(--surface);cursor:pointer;white-space:nowrap">⚙ GitHub 연동 설정</button>
-            <button onclick="exportProgressNotes()" style="font-size:11px;padding:5px 12px;border:1px solid var(--border2);border-radius:var(--r-sm);background:var(--surface);cursor:pointer;white-space:nowrap">💾 비고 배포 파일 내보내기</button>
+            <button onclick="exportProgressNotes()" style="font-size:11px;padding:5px 12px;border:1px solid var(--border2);border-radius:var(--r-sm);background:var(--surface);cursor:pointer;white-space:nowrap">💾 비고 데이터 파일 저장 및 배포하기</button>
           </div>
         </div>
         <div id="prog-summary"></div>
@@ -656,11 +667,11 @@ a{color:var(--blue);text-decoration:none}
             <div class="card-title">고객인지이슈 목록</div>
             <div style="display:flex;align-items:center;gap:10px">
               <span id="ci-save-status" style="font-size:10px;color:var(--text3)"></span>
-              <button onclick="exportCIOverrides()" style="font-size:11px;padding:5px 12px;border:1px solid var(--border2);border-radius:var(--r-sm);background:var(--surface);cursor:pointer;white-space:nowrap">💾 배포 파일 내보내기</button>
+              <button onclick="exportCIOverrides()" style="font-size:11px;padding:5px 12px;border:1px solid var(--border2);border-radius:var(--r-sm);background:var(--surface);cursor:pointer;white-space:nowrap">💾 데이터 파일 저장 및 배포하기</button>
             </div>
           </div>
           <div class="tbl-wrap"><table class="tbl"><thead><tr><th>등록일</th><th>프로젝트</th><th>관련제품</th><th>작성자</th><th>이슈내용</th><th>상태</th><th style="width:70px">검출</th><th>대응내용</th><th style="min-width:130px">실패비용</th></tr></thead><tbody id="tb-ci"></tbody></table></div>
-          <div style="font-size:10px;color:var(--text3);margin-top:8px;padding:8px 10px;background:var(--surface2);border-radius:4px">✏️ 대응내용·실패비용은 입력 즉시 이 브라우저에 자동 저장됩니다 · "배포 파일 내보내기"로 받은 ci_overrides.json을 프로젝트의 data/ci_overrides.json 에 저장한 뒤 배포 스크립트(deploy_v12.ps1)를 실행하면 index.html(GitHub Pages)에도 반영됩니다.</div>
+          <div style="font-size:10px;color:var(--text3);margin-top:8px;padding:8px 10px;background:var(--surface2);border-radius:4px">✏️ 대응내용·실패비용은 입력 즉시 이 브라우저에 자동 저장됩니다 · ⚙ GitHub 연동 설정을 마쳤다면 이 버튼 없이도 입력 즉시 자동 배포됩니다 · 미설정 시 "데이터 파일 저장 및 배포하기"를 누르면 ci_overrides.json이 다운로드되고 GitHub 업로드 화면이 새 탭에 열립니다 — 그 화면에 파일을 끌어다 놓고 Commit하면 1~2분 내 index.html(GitHub Pages)에도 반영됩니다.</div>
         </div>
       </div>
     </div>
@@ -771,35 +782,20 @@ a{color:var(--blue);text-decoration:none}
       <div class="card">
         <div class="card-header"><div class="card-title">리포트 생성</div></div>
         <div class="report-grid">
-          <button class="rep-btn" onclick="genWeekly()"><div class="rep-btn-title">📝 주간 리포트 생성</div><div class="rep-btn-desc">이번 주 발주·이슈 요약 → .md 파일 다운로드</div></button>
-          <button class="rep-btn" onclick="window.open('https://nanyounglee.github.io/scm-monthly-report/','_blank')"><div class="rep-btn-title">📊 월간 대시보드 열기 ↗</div><div class="rep-btn-desc">GitHub Pages 배포된 월간 리포트</div></button>
           <button class="rep-btn" onclick="window.open('https://github.com/Sincerely-SCM/SCM-Archive/tree/main/Meeting-Records/04_Parts','_blank')"><div class="rep-btn-title">🗒 팀 주간 회의록 ↗</div><div class="rep-btn-desc">SCM-Archive GitHub · Meeting-Records/04_Parts</div></button>
           <button class="rep-btn" onclick="window.open('https://github.com/Sincerely-SCM/SCM-Archive/tree/main/Regular-Reports','_blank')"><div class="rep-btn-title">📑 팀 주간 보고서 ↗</div><div class="rep-btn-desc">SCM-Archive GitHub · Regular-Reports</div></button>
-          <button class="rep-btn" onclick="genChangeReport()"><div class="rep-btn-title">📋 변경 이력 리포트 생성</div><div class="rep-btn-desc">파츠 신규/졸업 · 단가 변동 · 협력사·제품 변경을 파트별 섹션으로 정리 → .md 다운로드 (주간 리포트·회의 원천 데이터)</div></button>
-          <button class="rep-btn" onclick="window.open('https://github.com/nanyounglee/SCMDASHBOARD/tree/main/CSV_BANK','_blank')"><div class="rep-btn-title">🗂 변경 스냅샷 아카이브 ↗</div><div class="rep-btn-desc">CSV_BANK — 주차별 스냅샷·연도 아카이브 원본 내역 확인</div></button>
-          <button class="rep-btn" onclick="window.open('https://github.com/nanyounglee/SCMDASHBOARD','_blank')"><div class="rep-btn-title">🚀 GitHub 저장소 열기 ↗</div><div class="rep-btn-desc">SCMDASHBOARD 레포지토리</div></button>
-        </div>
-      </div>
-      <div class="card">
-        <div class="card-header"><div class="card-title">구매전략파트</div></div>
-        <div id="psr-week-select-wrap" style="margin-bottom:10px"></div>
-        <textarea id="psr-memo-input" placeholder="특이사항 메모 (선택 — 데이터로는 알 수 없는 운영 판단·맥락) — 입력 시 5-1에 원문 그대로 추가됩니다" style="width:100%;min-height:56px;font-size:12px;padding:8px 10px;border:1px solid var(--border2);border-radius:var(--r-sm);background:var(--surface);margin-bottom:10px;resize:vertical;box-sizing:border-box"></textarea>
-        <div class="report-grid">
-          <button class="rep-btn" onclick="genWeeklyInventoryReport()"><div class="rep-btn-title">📦 주간 재고 리포트 생성</div><div class="rep-btn-desc">재고수준·재고구조·품절·장기미회전·이슈(규칙 기반 자동 판정) 요약 → .md 파일 다운로드</div></button>
-        </div>
-      </div>
-      <!-- 외주생산파트 -->
-      <div class="card" style="margin-top:12px">
-        <div class="card-header">
-          <div class="card-title">외주생산파트</div>
-          <div class="card-sub">ISO week 기준 · 집계구간: 전주 목13:00~해당주 목12:59</div>
-        </div>
-        <div class="report-grid">
-          <button class="rep-btn" onclick="genWeeklyOutsource()"><div class="rep-btn-title">📝 주간 리포트 생성</div><div class="rep-btn-desc">7섹션 KPI·이슈·공급망 요약 → .md 다운로드</div></button>
-          <button class="rep-btn" onclick="genMeetingDraftFromAirtable()"><div class="rep-btn-title">📋 주간 회의록 프롬프트 복사</div><div class="rep-btn-desc">매주 목요일 16:00 외주생산파트 회의실 기준<br>① 클릭(자동복사) → ② claude.ai 새 탭 → ③ Ctrl+V → ④ TTS 내용 붙여넣기 후 전송</div></button>
+          <button class="rep-btn" onclick="genWeeklyOutsource()"><div class="rep-btn-title">📝 외주생산파트 주간 리포트 생성</div><div class="rep-btn-desc">7섹션 KPI·이슈·공급망 요약 → .md 다운로드 (ISO week 기준 · 집계구간: 전주 목13:00~해당주 목12:59)</div></button>
+          <button class="rep-btn" onclick="genMeetingDraftFromAirtable()"><div class="rep-btn-title">📋 외주생산파트 주간 회의록 프롬프트 복사</div><div class="rep-btn-desc">매주 목요일 16:00 외주생산파트 회의실 기준<br>① 클릭(자동복사) → ② claude.ai 새 탭 → ③ Ctrl+V → ④ TTS 내용 붙여넣기 후 전송</div></button>
         </div>
         <div style="margin-top:6px; font-size:11px; color:var(--text3)">💡 수동 업데이트: GitHub Actions → <code style="font-size:10px">weekly-meeting-agenda</code> → Run workflow</div>
         <div id="meeting-draft-status" style="display:none; margin-top:8px; padding:8px 10px; background:#f0f4f0; border-radius:4px; font-size:12px; color:#333; line-height:1.6;"></div>
+        <div id="psr-week-select-wrap" style="margin-top:14px;margin-bottom:10px"></div>
+        <textarea id="psr-memo-input" placeholder="특이사항 메모 (선택 — 데이터로는 알 수 없는 운영 판단·맥락) — 입력 시 5-1에 원문 그대로 추가됩니다" style="width:100%;min-height:56px;font-size:12px;padding:8px 10px;border:1px solid var(--border2);border-radius:var(--r-sm);background:var(--surface);margin-bottom:10px;resize:vertical;box-sizing:border-box"></textarea>
+        <div class="report-grid">
+          <button class="rep-btn" onclick="genWeeklyInventoryReport()"><div class="rep-btn-title">📦 구매전략파트 주간 재고 리포트 생성</div><div class="rep-btn-desc">재고수준·재고구조·품절·장기미회전·이슈(규칙 기반 자동 판정) 요약 → .md 파일 다운로드</div></button>
+          <button class="rep-btn" onclick="genChangeReport()"><div class="rep-btn-title">📋 변경 이력 리포트 생성</div><div class="rep-btn-desc">파츠 신규/졸업 · 단가 변동 · 협력사·제품 변경을 파트별 섹션으로 정리 → .md 다운로드 (주간 리포트·회의 원천 데이터)</div></button>
+          <button class="rep-btn" onclick="window.open('https://github.com/nanyounglee/SCMDASHBOARD/tree/main/CSV_BANK','_blank')"><div class="rep-btn-title">🗂 변경 스냅샷 아카이브 ↗</div><div class="rep-btn-desc">CSV_BANK — 주차별 스냅샷·연도 아카이브 원본 내역 확인</div></button>
+        </div>
       </div>
     </div>
 
@@ -1405,7 +1401,7 @@ function validateCSV(key,rows) {
 function showValidationBanner(key,rows,warns) {
   const area=document.getElementById('validation-area');
   if (!area) return;
-  area.style.display=(typeof CURRENT_SECTION==='undefined'||CURRENT_SECTION==='overview')?'flex':'none'; // v22.5: 종합현황 외에는 노출 안 함
+  area.style.display=((typeof CURRENT_SECTION==='undefined'||CURRENT_SECTION==='overview')&&uploadBarOpen)?'flex':'none'; // v22.5: 종합현황 외에는 노출 안 함 / v23.3: 업로드 바 펼침 상태에서만 노출
   let card=document.getElementById('vcard-'+key);
   if (!card) { card=document.createElement('div'); card.id='vcard-'+key; area.appendChild(card); }
   const hasWarn=warns.length>0;
@@ -1463,6 +1459,8 @@ function toggleUploadBar() {
   uploadBarOpen=!uploadBarOpen;
   document.getElementById('upload-detail').style.display=uploadBarOpen?'':'none';
   document.getElementById('upload-chevron').style.transform=uploadBarOpen?'rotate(180deg)':'';
+  const va=document.getElementById('validation-area');
+  if (va) va.style.display=(uploadBarOpen&&va.children.length&&(typeof CURRENT_SECTION==='undefined'||CURRENT_SECTION==='overview'))?'flex':'none'; // v23.3: 업로드 바와 함께 펼침/접힘
 }
 function updateUploadSummary() {
   const keys=Object.keys(D);
@@ -2101,6 +2099,45 @@ function setValue(id,v) { const el=document.getElementById(id); if(el) el.textCo
 // ===== ORDER TABS =====
 function momYoyBadge(cur,prev){if(!prev)return'<span style="color:var(--text3)">—</span>';const diff=cur-prev;const pct=prev?(diff/prev*100).toFixed(0):'0';const sign=diff>=0?'+':'';const c=diff>0?'var(--red)':diff<0?'var(--green)':'var(--text3)';return`<span style="color:${c};font-weight:600;font-size:11px">${sign}${pct}%</span>`;}
 function prodKey(r){ return r['산출물']||'[비스포크] '+r['발주번호']; }
+// v22.17: 굿즈명(산출물)은 같지만 구성옵션(인쇄제외)에 색상 옵션이 별도로 있는 제품(페이퍼링
+// 캘린더·에디트캘린더의 삼각대 그레이/블랙, 레더스킨다이어리·시그니처다이어리의 그레이/블랙 등)을
+// 분리 표기. 구성옵션을 쉼표로 나눠 "이 제품 자신의" 파츠 토큰만 색상 추출 대상으로 삼아
+// 밴드·링제본 등 부속품(주문마다 색이 달라도 제품 자체 색상과 무관)의 색상은 제외한다.
+// 1단계: "산출물핵심명_파츠명(색상)" 형태(파츠명이 산출물 핵심명으로 시작) 우선 탐색.
+// 2단계(1단계 미발견 시): "파츠명(산출물핵심명_색상)" 형태 — 산출물 핵심명이 괄호 안에 있는 경우.
+const COLOR_WORDS=['그레이','블랙','화이트','네이비','베이지','카키','실버','골드','레드','블루','옐로우','그린','브라운','핑크','퍼플','오렌지'];
+const COLOR_RE=new RegExp(COLOR_WORDS.join('|'));
+function coreProdName(base){ return base.replace(/\+인쇄$/,'').replace(/\s+/g,''); }
+function itemColor(r){
+  if(!(r['산출물']||'')) return ''; // 비스포크 행은 발주번호로 이미 개별 식별되어 변형 표기 불필요
+  const opt=r['구성옵션(인쇄제외)']||''; if(!opt) return '';
+  const core=coreProdName(prodKey(r)); if(!core) return '';
+  const toks=opt.split(',').map(t=>{
+    const m=t.match(/^\s*([^()]+)\(([^)]*)\)\s*$/);
+    return m?{part:m[1].replace(/\s+/g,''),content:m[2]}:null;
+  }).filter(Boolean);
+  for(const t of toks){
+    if(t.part.split('_')[0]===core){ const cm=t.content.match(COLOR_RE); if(cm) return cm[0]; }
+  }
+  for(const t of toks){
+    if(t.content.replace(/\s+/g,'').includes(core)){ const cm=t.content.match(COLOR_RE); if(cm) return cm[0]; }
+  }
+  return '';
+}
+// v22.17: 인쇄 방식(실크·UV·레이저각인 등)으로도 같은 굿즈명이 나뉘는 제품(도킹형 배터리·텀블러류 등)이
+// 있음 — 구성옵션(인쇄제외)은 이름 그대로 인쇄 정보를 빼놓기 때문에, 인쇄 방식은 산출물_옵션 필드의
+// 파츠 토큰 목록에서 찾는다(이 필드는 파츠명과 공정명이 한 리스트에 섞여 있어 색상처럼 소유 관계를
+// 따지지 않고 인정된 인쇄 공정 단어가 토큰으로 존재하면 그대로 채택)
+const PRINT_WORDS=['UV','실크','레이저각인','전사','승화전사','나염','패브릭디지털','디지털인쇄','자수','옵셋'];
+function printMethod(r){
+  if(!(r['산출물']||'')) return '';
+  const opt=r['산출물_옵션']||''; if(!opt) return '';
+  const toks=opt.split(',').map(t=>t.trim());
+  for(const w of PRINT_WORDS){ if(toks.some(t=>t===w||t.startsWith(w+'('))) return w; }
+  return '';
+}
+function variantTag(r){ const c=itemColor(r),p=printMethod(r); return c&&p?c+' · '+p:(c||p||''); }
+function rowGroupKey(r){ const v=variantTag(r); return v?prodKey(r)+'__'+v:prodKey(r); }
 // v12: 발주 현황 · 전체 제품 발주량 — 헤더 클릭 정렬(발주수량/월간발주빈도/공급가액) + 검색창 반영
 let ORD_TOP_SORT='qty';
 function sortOrdTop(key) {
@@ -2110,12 +2147,15 @@ function sortOrdTop(key) {
 function renderOrdTopTable() {
   if (!D.order||!SEL_MONTH||!SEL_DATE_RANGE) return;
   const q=getSearchQuery();
-  const f=D.order.filter(r=>inSelDateRange(r['과업지시일자'])&&!isStock(r)&&(!q||matchesSearch(r,q)));
+  // v22.17: 선택 기간이 2025년에 걸치면 D.orderPrevYear도 함께 집계 — 이전엔 당해(D.order)만 봐서
+  // 2025년에만 발주 이력이 있는 제품(예: 썸네일캘린더)이 기간을 2025년으로 잡아도 목록에서 사라졌음
+  const allOrders=[...D.order,...(D.orderPrevYear||[])];
+  const f=allOrders.filter(r=>inSelDateRange(r['과업지시일자'])&&!isStock(r)&&(!q||matchesSearch(r,q)));
   const byProd={};
   f.forEach(r=>{
     const prod=r['산출물']||'';
-    const key=prodKey(r);
-    if (!byProd[key]) byProd[key]={qty:0,amt:0,freq:0,mgr:r['과업담당자_이름']||'',isBespoke:!prod,pn:r['발주번호']||'',cust:0,bufC:0,bufD:0};
+    const key=rowGroupKey(r);
+    if (!byProd[key]) byProd[key]={qty:0,amt:0,freq:0,mgr:r['과업담당자_이름']||'',isBespoke:!prod,pn:r['발주번호']||'',cust:0,bufC:0,bufD:0,base:prodKey(r),variant:variantTag(r)};
     const oq=pa(r['발주지시수량']);
     byProd[key].qty+=oq;
     byProd[key].amt+=pa(r['공급가액']);
@@ -2127,21 +2167,30 @@ function renderOrdTopTable() {
     // 분할발주에서 같은 고객 구매수량이 행마다 반복 계상되던 불일치 해소
     if(cq>0&&oq>=cq&&!String(r['task_id']||'').includes('재제작')){ byProd[key].cust+=cq; byProd[key].bufC+=cq; byProd[key].bufD+=(oq-cq); }
   });
+  // v22.17: 같은 굿즈명에서 변형 값이 실제로 2종 이상 공존할 때만 분리 표기 — 변형 값이 하나뿐이면
+  // (예: 항상 "디지털인쇄") 나눠도 정보가 없고, 변형 필드가 없는 2025 아카이브와 키가 어긋나 YoY가
+  // 끊기기만 하므로 그런 경우는 원래 굿즈명 키로 되돌린다.
+  const baseKeyList={};
+  Object.entries(byProd).forEach(([k,v])=>{ (baseKeyList[v.base]=baseKeyList[v.base]||[]).push(k); });
+  const collapseTo={};
+  Object.entries(baseKeyList).forEach(([base,keys])=>{ if(keys.length===1&&keys[0]!==base) collapseTo[keys[0]]=base; });
+  Object.entries(collapseTo).forEach(([oldKey,base])=>{ byProd[base]=byProd[oldKey]; byProd[base].variant=''; delete byProd[oldKey]; });
+  function resolvedKey(r){ const k=rowGroupKey(r); return collapseTo[k]||k; }
   // 연간발주량합: 선택 기간이 속한 연도 기준 누계(검색 필터 동일 적용, 재고생산 제외)
   const selYear=SEL_MONTH.split('.')[0];
   const yearQty={};
-  D.order.filter(r=>!isStock(r)&&(!q||matchesSearch(r,q))&&(pOrderMonth(r['과업지시일자'])||'').startsWith(selYear+'.')).forEach(r=>{
-    yearQty[prodKey(r)]=(yearQty[prodKey(r)]||0)+pa(r['발주지시수량']);
+  allOrders.filter(r=>!isStock(r)&&(!q||matchesSearch(r,q))&&(pOrderMonth(r['과업지시일자'])||'').startsWith(selYear+'.')).forEach(r=>{
+    yearQty[resolvedKey(r)]=(yearQty[resolvedKey(r)]||0)+pa(r['발주지시수량']);
   });
   // 직전 기간(WoW/MoM/QoQ) 제품별 발주수량 — 기간지정은 직전 기간 개념이 없어 생략
   const adjRange=getAdjacentDateRange();
   const prevByProd={};
   // v22.2 감사 수정: 전기/전년 집계에도 검색 필터 적용 — 필터된 당기 vs 무필터 전기의 왜곡 비교 방지
-  if(adjRange) D.order.filter(r=>inDateRange(r['과업지시일자'],adjRange)&&!isStock(r)&&(!q||matchesSearch(r,q))).forEach(r=>{prevByProd[prodKey(r)]=(prevByProd[prodKey(r)]||0)+pa(r['발주지시수량']);});
+  if(adjRange) allOrders.filter(r=>inDateRange(r['과업지시일자'],adjRange)&&!isStock(r)&&(!q||matchesSearch(r,q))).forEach(r=>{prevByProd[resolvedKey(r)]=(prevByProd[resolvedKey(r)]||0)+pa(r['발주지시수량']);});
   // 전년 동기(YoY) 제품별 발주수량 — 2025 원본 row(D.orderPrevYear)가 있으면 정확한 일자로 집계
   const yoyRange=getYoyDateRange();
   const yoyByProd={};
-  if(yoyRange&&D.orderPrevYear) D.orderPrevYear.filter(r=>inDateRange(r['과업지시일자'],yoyRange)&&!isStock(r)&&(!q||matchesSearch(r,q))).forEach(r=>{yoyByProd[prodKey(r)]=(yoyByProd[prodKey(r)]||0)+pa(r['발주지시수량']);});
+  if(yoyRange&&D.orderPrevYear) D.orderPrevYear.filter(r=>inDateRange(r['과업지시일자'],yoyRange)&&!isStock(r)&&(!q||matchesSearch(r,q))).forEach(r=>{yoyByProd[resolvedKey(r)]=(yoyByProd[resolvedKey(r)]||0)+pa(r['발주지시수량']);});
   const adjTh=document.getElementById('th-ord-adjacent'), yoyTh=document.getElementById('th-ord-yoy');
   if(adjTh) adjTh.textContent=periodUnitAdjacentLabel()||'전기대비';
   if(yoyTh) yoyTh.textContent='YoY';
@@ -2156,7 +2205,9 @@ function renderOrdTopTable() {
     const yTotal=yearQty[k]||v.qty;
     const bufRate=v.bufC>0?(v.bufD/v.bufC*100):null;
     const bufHtml=bufRate===null?'<span style="color:var(--text3)">—</span>':`<span style="font-weight:600;color:${bufRate>=5?'var(--amber)':'var(--text)'}">${bufRate.toFixed(1)}%</span>`;
-    return `<tr><td class="rank">${i+1}</td><td>${v.isBespoke?`<span class="tag tag-gray">비스포크</span> <span class="mono">${esc(v.pn)}</span>`:`<span style="cursor:pointer;color:var(--blue);font-weight:600" title="클릭 시 제품 상세 발주 현황(이슈·여분·투자효과)" onclick="openProductOrderDetail('${esc(k).replace(/'/g,"\\'")}')">${esc(crop(k,30))}</span>`}</td><td class="num">${v.qty.toLocaleString()}</td><td class="num">${v.cust?v.cust.toLocaleString():'—'}</td><td class="num">${bufHtml}</td><td class="num">${momYoyBadge(v.qty,prevQty)}</td><td class="num">${momYoyBadge(v.qty,yoyQty)}</td><td class="num">${v.freq}</td><td class="num">${yTotal.toLocaleString()}</td><td class="num">${faFull(v.amt)}</td><td>${v.mgr||'—'}</td></tr>`;
+    // v22.17: 색상/인쇄방식 변형이 실제로 갈리는 제품만 굿즈명 뒤에 표기해 구분(예: "페이퍼링 캘린더 (그레이)")
+    const label=v.variant?`${v.base} (${v.variant})`:v.base;
+    return `<tr><td class="rank">${i+1}</td><td>${v.isBespoke?`<span class="tag tag-gray">비스포크</span> <span class="mono">${esc(v.pn)}</span>`:`<span style="cursor:pointer;color:var(--blue);font-weight:600" title="클릭 시 제품 상세 발주 현황(이슈·여분·투자효과)" onclick="openProductOrderDetail('${esc(v.base).replace(/'/g,"\\'")}')">${esc(crop(label,30))}</span>`}</td><td class="num">${v.qty.toLocaleString()}</td><td class="num">${v.cust?v.cust.toLocaleString():'—'}</td><td class="num">${bufHtml}</td><td class="num">${momYoyBadge(v.qty,prevQty)}</td><td class="num">${momYoyBadge(v.qty,yoyQty)}</td><td class="num">${v.freq}</td><td class="num">${yTotal.toLocaleString()}</td><td class="num">${faFull(v.amt)}</td><td>${v.mgr||'—'}</td></tr>`;
   }).join('');
   setTbody('tb-ord-top',topHTML||emptyRow(11,q?'검색 결과 없음':'발주 데이터 없음'));
   document.querySelectorAll('#tab-ord-top .th-sort').forEach(th=>{
@@ -2595,6 +2646,26 @@ function openProductOrderDetail(prod){
   } else {
     bufHtml=`<div style="font-size:11px;color:var(--text3);margin:10px 0">이슈 이력이 없어 여분 권장 산식 대상이 아닙니다 — 현재 관행 여분율만 참고하세요.</div>`;
   }
+  // v22.17: 건당 평균 발주수량·빅딜 기준 수량(평균 +10%↑)·집중 발주 시즌(월별 발주빈도 평균+표준편차 초과 월)
+  // — 당해+전년 전체 이력(재제작 제외) 기준. 이력이 적으면(6건 미만) 시즌 판단은 보류.
+  const nonReworkOrders=orders.filter(r=>!String(r['task_id']||'').includes('재제작'));
+  const avgQtyPerOrder=taskCnt>0?qty/taskCnt:0;
+  const bigDealQty=avgQtyPerOrder>0?Math.ceil(avgQtyPerOrder*1.1):0;
+  const bigDealOrders=bigDealQty>0?nonReworkOrders.filter(r=>pa(String(r['발주지시수량']||''))>=bigDealQty):[];
+  const monthCnt=Array(13).fill(0);
+  nonReworkOrders.forEach(r=>{ const d=parseAnyDate(r['과업지시일자']); if(d) monthCnt[d.getMonth()+1]++; });
+  const monthVals=monthCnt.slice(1);
+  const mMean=monthVals.reduce((a,b)=>a+b,0)/12;
+  const mStd=Math.sqrt(monthVals.reduce((a,b)=>a+(b-mMean)*(b-mMean),0)/12);
+  const peakMonths=[];
+  if(taskCnt>=6&&mMean>0){ for(let m=1;m<=12;m++){ if(monthCnt[m]>mMean+mStd) peakMonths.push(m); } }
+  const seasonTxt=taskCnt<6?'이력 부족(6건 미만) — 판단 보류':(peakMonths.length?peakMonths.join('·')+'월 집중':'특정 시즌 편중 없음');
+  const patternHtml=`<div class="card" style="margin:12px 0;padding:12px 16px">
+    <div style="font-size:12px;font-weight:700;margin-bottom:6px">발주 패턴 <span style="font-weight:400;font-size:10px;color:var(--text3)">— 당해+전년 전체 이력(재제작 제외) 기준</span></div>
+    <div style="font-size:12px;line-height:2">건당 평균 발주수량: <b>${avgQtyPerOrder?Math.round(avgQtyPerOrder).toLocaleString()+'개':'—'}</b>
+    · 빅딜 기준 수량(평균 대비 +10%↑): <b style="color:var(--blue)">${bigDealQty?bigDealQty.toLocaleString()+'개 이상':'—'}</b>${bigDealOrders.length?` <span style="font-size:11px;color:var(--text3)">(이력상 ${bigDealOrders.length}건 해당)</span>`:''}<br>
+    집중 발주 시즌: <b style="color:${peakMonths.length?'var(--amber)':'var(--text)'}">${seasonTxt}</b> <span style="font-size:10px;color:var(--text3)">(월별 발주횟수 평균 ${mMean.toFixed(1)}건·표준편차 ${mStd.toFixed(1)} — 평균+표준편차 초과 월을 집중 시즌으로 판정)</span></div>
+  </div>`;
   const recent=orders.slice().sort((a,c)=>{const da=parseAnyDate(a['과업지시일자']),dc=parseAnyDate(c['과업지시일자']);return (da&&dc)?dc-da:0;}).slice(0,30);
   const ordHtml=`<div style="font-size:12px;font-weight:700;margin:12px 0 6px">발주 이력 <span style="font-weight:400;font-size:10px;color:var(--text3)">(당해+전년 · 최근 30건 · 재고생산 제외)</span></div>
     <table class="tbl"><thead><tr><th class="rank">#</th><th>발주일</th><th>발주번호</th><th>협력사</th><th class="num">발주수량</th><th class="num">고객주문</th><th class="num">여분</th><th class="num">공급가액</th><th>구분</th></tr></thead><tbody>
@@ -2602,7 +2673,8 @@ function openProductOrderDetail(prod){
       const rw=String(r['task_id']||'').includes('재제작');
       const oq=pa(String(r['발주지시수량']||'')), cq=pa(String(r['고객주문수량']||''));
       const bf=(cq>0&&oq>=cq&&!rw)?oq-cq:null;
-      return `<tr><td class="rank">${i+1}</td><td style="font-size:11px">${esc(r['과업지시일자']||'—')}</td><td class="mono" style="font-size:11px">${esc(r['발주번호']||'—')}</td><td style="font-size:11px">${esc(r['수주처']||'—')}</td><td class="num">${oq.toLocaleString()}</td><td class="num">${cq?cq.toLocaleString():'—'}</td><td class="num">${bf!==null?bf.toLocaleString():'—'}</td><td class="num">${faFull(pa(r['공급가액']))}</td><td>${rw?'<span class="tag" style="background:var(--red-light);color:var(--red)">재제작</span>':''}</td></tr>`;
+      const isBigDeal=!rw&&bigDealQty>0&&oq>=bigDealQty;
+      return `<tr><td class="rank">${i+1}</td><td style="font-size:11px">${esc(r['과업지시일자']||'—')}</td><td class="mono" style="font-size:11px">${esc(r['발주번호']||'—')}</td><td style="font-size:11px">${esc(r['수주처']||'—')}</td><td class="num">${oq.toLocaleString()}</td><td class="num">${cq?cq.toLocaleString():'—'}</td><td class="num">${bf!==null?bf.toLocaleString():'—'}</td><td class="num">${faFull(pa(r['공급가액']))}</td><td>${rw?'<span class="tag" style="background:var(--red-light);color:var(--red)">재제작</span>':''}${isBigDeal?' <span class="tag" style="background:var(--blue-light);color:var(--blue)" title="건당 평균 발주수량 대비 +10% 이상">빅딜</span>':''}</td></tr>`;
     }).join('')}
     </tbody></table>`;
   const issHtml=`<div style="font-size:12px;font-weight:700;margin:14px 0 6px">제품 이슈 이력 <span style="font-weight:400;font-size:10px;color:var(--text3)">(당해+전년 · 여분 산식과 동일 매칭)</span></div>
@@ -2614,7 +2686,7 @@ function openProductOrderDetail(prod){
       return `<tr><td class="rank">${i+1}</td><td style="font-size:11px">${esc(getIssueDateStr(r)||'—')}</td><td>${catTags(r['이슈카테고리']||'')}</td><td style="font-size:11px">${esc(crop(r['품질이슈내용']||r['수량이슈내용']||r['운영이슈내용(by물류)']||'',50))}</td><td class="num" style="${short?'color:var(--red);font-weight:600':''}">${short?short.toLocaleString()+'개':'—'}</td><td style="font-size:11px;color:var(--text2)">${esc(crop(resp,40))||'—'}</td></tr>`;
     }).join('')}
     </tbody></table>`:'<div style="font-size:11px;color:var(--text3)">매칭된 이슈 없음</div>'}`;
-  body.innerHTML=`<div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:4px">${chips}</div>${bufHtml}${ordHtml}${issHtml}`;
+  body.innerHTML=`<div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:4px">${chips}</div>${bufHtml}${patternHtml}${ordHtml}${issHtml}`;
 }
 function renderOrderBuffer(){
   const tbody=document.getElementById('tb-ord-buffer'); if(!tbody) return;
@@ -2893,6 +2965,10 @@ function updateCITabs() {
 }
 // v12: 고객인지이슈 대응내용/실패비용 수기 입력 — localStorage 저장 + data/ci_overrides.json 배포 파일 내보내기
 let CI_OVERRIDES={};
+// v22.18: 여러 사람이 각자 브라우저에서 동시에 입력 — 저장 시점의 로컬 CI_OVERRIDES 전체를 그대로 덮어쓰면
+// 그 사이 다른 사람이 커밋한 항목이 지워질 위험이 있어, 이 브라우저에서 "직접 건드린 항목(CI_DIRTY)"만
+// 배포본에 얹어 커밋한다 — 건드리지 않은 항목은 항상 배포본(deployed) 최신값을 그대로 둠
+const CI_DIRTY=new Set();
 function loadCIOverrides() {
   try { CI_OVERRIDES=JSON.parse(localStorage.getItem('ci_overrides_v1')||'{}'); } catch(e) { CI_OVERRIDES={}; }
   fetch('data/ci_overrides.json').then(r=>r.ok?r.json():null).catch(()=>null).then(deployed=>{
@@ -2903,6 +2979,16 @@ function loadCIOverrides() {
     if(D.ci) { updateCITabs(); renderCIFailCostPanel(); }
   });
 }
+// v22.18: 커밋/내보내기 직전에 배포본을 다시 받아, 이 브라우저가 직접 수정한 항목(CI_DIRTY)만 얹어
+// 병합 — 저장 버튼을 누른 시점과 실제 GitHub 반영 시점 사이 다른 사람의 변경을 덮어쓰지 않도록 함
+async function mergeCIOverridesForSave() {
+  let deployed=null;
+  try { const r=await fetch('data/ci_overrides.json?_='+Date.now()); if(r.ok) deployed=await r.json(); } catch(e){}
+  const merged=Object.assign({}, deployed||{});
+  CI_DIRTY.forEach(k=>{ if(CI_OVERRIDES[k]!==undefined) merged[k]=CI_OVERRIDES[k]; });
+  CI_OVERRIDES=merged; // 다른 사람의 항목도 화면에 함께 반영
+  return merged;
+}
 function persistCIOverrides() {
   localStorage.setItem('ci_overrides_v1',JSON.stringify(CI_OVERRIDES));
   const st=document.getElementById('ci-save-status');
@@ -2910,11 +2996,14 @@ function persistCIOverrides() {
   // v13: GitHub 토큰 등록 시 data/ci_overrides.json 자동 커밋 (디바운스 3초 — 타이핑 중 과다 커밋 방지)
   if(typeof ghToken==='function'&&ghToken()){
     clearTimeout(window._ciCommitTimer);
-    window._ciCommitTimer=setTimeout(()=>{
+    window._ciCommitTimer=setTimeout(async ()=>{
       if(st) st.textContent='GitHub 커밋 중...';
-      commitFileToGitHub('data/ci_overrides.json',JSON.stringify(CI_OVERRIDES,null,2),'고객인지이슈 대응·실패비용 업데이트 '+new Date().toISOString().slice(0,16).replace('T',' '))
-        .then(()=>{ if(st) st.textContent='✅ GitHub 커밋 완료 · '+new Date().toLocaleTimeString('ko-KR'); })
-        .catch(e=>{ if(st) st.textContent='⚠ 커밋 실패(HTTP '+(e.status||'?')+') — 로컬에는 저장됨'; });
+      try {
+        const merged=await mergeCIOverridesForSave();
+        await commitFileToGitHub('data/ci_overrides.json',JSON.stringify(merged,null,2),'고객인지이슈 대응·실패비용 업데이트 '+new Date().toISOString().slice(0,16).replace('T',' '));
+        if(st) st.textContent='✅ GitHub 커밋 완료 · '+new Date().toLocaleTimeString('ko-KR');
+        if(D.ci) { updateCITabs(); renderCIFailCostPanel(); }
+      } catch(e) { if(st) st.textContent='⚠ 커밋 실패(HTTP '+(e.status||'?')+') — 로컬에는 저장됨'; }
     },3000);
   }
 }
@@ -2922,16 +3011,34 @@ function ciFieldInput(idx,field,val) {
   if(!idx) return;
   if(!CI_OVERRIDES[idx]) CI_OVERRIDES[idx]={};
   CI_OVERRIDES[idx][field]=val;
+  CI_DIRTY.add(String(idx));
   persistCIOverrides();
   if(field==='cost') renderCIFailCostPanel();
 }
-function exportCIOverrides() {
-  const blob=new Blob([JSON.stringify(CI_OVERRIDES,null,2)],{type:'application/json'});
-  const url=URL.createObjectURL(blob);
-  const a=document.createElement('a'); a.href=url; a.download='ci_overrides.json';
-  document.body.appendChild(a); a.click(); document.body.removeChild(a);
-  URL.revokeObjectURL(url);
-  alert('ci_overrides.json 파일이 다운로드되었습니다.\n\n이 파일을 프로젝트 폴더의 data/ci_overrides.json 위치에 저장한 뒤, 기존 배포 스크립트(deploy_v12.ps1)를 실행하면 대응내용·실패비용 입력값이 index.html(GitHub Pages)에도 반영됩니다.');
+async function exportCIOverrides() {
+  // v22.19: 파일 드래그 업로드 방식은 브라우저가 중복 다운로드에 자동으로 붙이는 "(1)" 접미사 때문에
+  // 두 차례 실제로 잘못된 경로에 커밋되는 사고가 발생(팀원 입력 미반영) — 대신 GitHub의 해당 파일
+  // "수정" 화면을 정확한 경로로 직접 열고 클립보드로 내용을 전달해 파일명 문제 자체를 없앤다.
+  // 팝업 차단 방지를 위해 클릭과 동시에(await 이전에) 먼저 연다.
+  window.open(`https://github.com/${GH_REPO}/edit/${GH_BRANCH}/data/ci_overrides.json`,'_blank');
+  // v22.18: 전달할 내용도 배포본과 병합 — 이 브라우저가 직접 건드린 항목만 얹으므로 다른 사람이
+  // 이미 커밋한 항목을 덮어쓰지 않음
+  const merged=await mergeCIOverridesForSave();
+  if(D.ci) { updateCITabs(); renderCIFailCostPanel(); }
+  const text=JSON.stringify(merged,null,2);
+  let copied=false;
+  try { await navigator.clipboard.writeText(text); copied=true; } catch(e) {}
+  if(!copied){
+    const blob=new Blob([text],{type:'application/json'});
+    const url=URL.createObjectURL(blob);
+    const a=document.createElement('a'); a.href=url; a.download='ci_overrides.json';
+    document.body.appendChild(a); a.click(); document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  }
+  alert((copied
+    ? '전체 내용이 클립보드에 복사됐습니다.\n\n새 탭에 열린 GitHub 편집 화면에서 편집창을 클릭 → Ctrl+A(전체 선택) → Ctrl+V(붙여넣기)로 기존 내용을 교체한 뒤, 하단의 "Commit changes"를 누르면 1~2분 내 반영됩니다.'
+    : '클립보드 복사에 실패해 ci_overrides.json 파일을 대신 다운로드했습니다.\n\n새 탭에 열린 GitHub 편집 화면에서 편집창 내용을 전체 선택(Ctrl+A) 후 지우고, 다운로드된 파일을 열어 내용을 복사해 붙여넣은 뒤 "Commit changes"를 눌러주세요.'
+  )+'\n\n(다른 사람이 이미 커밋한 항목도 자동으로 함께 포함됐습니다 — 덮어쓸 걱정 없습니다.)\n(⚙ GitHub 연동 설정으로 토큰을 등록하면 이 단계 자체가 필요 없어집니다.)');
 }
 // v12: 재제작 취득원가 월별 집계 — 세금계산서작성월 우선, 없으면 과업지시일자 월로 폴백(KPI 실패비용율 집계와 총액 일치 유지)
 function reworkCostByMonth(r) {
@@ -6315,7 +6422,7 @@ function nav(el,id) {
   const sec=document.getElementById('sec-'+id);
   if (sec) sec.style.display='';
   const up=document.getElementById('sec-upload'); if(up) up.style.display=(id==='overview')?'':'none'; // v22.5: 데이터 업로드는 종합현황에서만 노출
-  const va=document.getElementById('validation-area'); if(va) va.style.display=(id==='overview'&&va.children.length)?'flex':'none'; // v22.5: 업로드 검증 칩도 종합현황 전용
+  const va=document.getElementById('validation-area'); if(va) va.style.display=(id==='overview'&&va.children.length&&uploadBarOpen)?'flex':'none'; // v22.5: 업로드 검증 칩도 종합현황 전용 / v23.3: 업로드 바 펼침 상태에서만 노출
   document.querySelectorAll('.sb-item').forEach(i=>i.classList.remove('active'));
   if (el) el.classList.add('active');
   CURRENT_SECTION=id;
@@ -6343,7 +6450,7 @@ function nav(el,id) {
     stock:'<b>확인 가능 지표:</b> 전체 품절수 · 비의도적 품절(납기지연/공급부족) · 의도적 품절(졸업/시즌/효율화) · 굿즈품절 | <b>필터:</b> 판매상태별(일시품절/품절예정/의도적 품절) | <b>테이블:</b> 파츠명/굿즈 · 판매상태 · 재고소유 · 품절성격/사유 · 변경일 · 경과일 · 굿즈품절여부 | <b>CSV:</b> 품절리스트',
     ai:'<b>사용법:</b> 제품명 입력 → 제품 정의서 링크 + 리드타임/제작기간·단가 문의 기존 답변(최신 3건, 답변 없으면 과거 슬랙 문의 텍스트로 폴백) — Check_standard_Answer(응답 완료) + Check_standard_Question(질문1~3·답변1~3 원본) 두 소스를 함께 검색해 커버리지 확대 | 협력사명 입력 → 발주현황/매입금액/3개월추이/품질이슈 분석 | 긴급 → 긴급발주 목록 | 미입하/task → 미입하현황 | 전월/매입 → 전월대비 비교 | 담당자명 → 개인 실적 | <b>CSV:</b> 제품문의답변이력(check_answer) + 제품문의원본(check_question) + 발주_RAW + 이슈_RAW + 공급망_RAW',
     quote:'<b>기능:</b> 패키지(박스) 자동 견적 산출 — 마닐라박스/C형/W형/슬리브형 | <b>로직:</b> 전개사이즈 → 지류단가(27지종×15규격, 0원 규격 자동상향) → 여분·연수 → 원단/인쇄/코팅/톰슨/접착/특수공정/골판지 → 관리비(10%·최소15만) → 마진(최소20만) | <b>이력:</b> localStorage 저장 · CSV 내보내기 | <b>기준:</b> 외주버전 v1.2.2 단가표',
-    report:'<b>기능:</b> 구매전략파트 주간 재고 리포트 .md 생성(재고수준·재고구조·품절·장기미회전·이슈 자동 요약, 주차 선택 가능) · 주간리포트 .md 생성(발주/이슈 자동 요약) · <b>변경 이력 리포트 .md 생성</b>(파츠 신규/졸업·단가 변동·협력사·제품 변경 — 주간 리포트/회의 원천 데이터) · <b>변경 스냅샷 아카이브(CSV_BANK) 바로가기</b> · 월간 대시보드 링크 · 팀 주간 회의록/보고서 바로가기(SCM-Archive) · GitHub 저장소 링크',
+    report:'<b>기능:</b> 팀 주간 회의록/보고서 바로가기(SCM-Archive) · 외주생산파트 주간 리포트·회의록 프롬프트 생성 · 구매전략파트 주간 재고 리포트 .md 생성(재고수준·재고구조·품절·장기미회전·이슈 자동 요약, 주차 선택 가능) · <b>변경 이력 리포트 .md 생성</b>(파츠 신규/졸업·단가 변동·협력사·제품 변경 — 주간 리포트/회의 원천 데이터) · <b>변경 스냅샷 아카이브(CSV_BANK) 바로가기</b>',
   };
   document.getElementById('page-title').innerHTML=`${titles[id]||id}<span class="topbar-badge" id="page-month-badge">${selPeriodLabel()}</span>`;
   renderPeriodBar();
@@ -6395,6 +6502,89 @@ function swTab(el,group,targetId) {
   if (targetId==='ord-tab-preveff') renderPreventionEffect();
   if (targetId==='ord-tab-fai') renderOrderFai();
 }
+
+// ===== 가이드 투어 (driver.js, CDN lazy-load — html2pdf와 동일 패턴) =====
+let _driverJsLoading=null;
+function loadDriverJs(){
+  if (window.driver && window.driver.js) return Promise.resolve();
+  if (_driverJsLoading) return _driverJsLoading;
+  _driverJsLoading=new Promise((res,rej)=>{
+    const css=document.createElement('link');
+    css.rel='stylesheet';
+    css.href='https://cdnjs.cloudflare.com/ajax/libs/driver.js/1.6.0/driver.css';
+    document.head.appendChild(css);
+    const s=document.createElement('script');
+    s.src='https://cdnjs.cloudflare.com/ajax/libs/driver.js/1.6.0/driver.js.iife.js';
+    s.onload=res;
+    s.onerror=()=>{_driverJsLoading=null;rej(new Error('driver.js CDN 로드 실패'));};
+    document.head.appendChild(s);
+  });
+  return _driverJsLoading;
+}
+function tourGoto(id){ // 사이드바 항목과 동일한 방식으로 화면 전환 후 앵커 반환 — 열려있던 모달은 항상 먼저 닫음
+  try{ closeModal(); }catch(e){}
+  const el=document.querySelector(`.sb-item[onclick*="'${id}'"]`);
+  nav(el,id);
+  const sec=document.getElementById('sec-'+id);
+  if (sec) void sec.offsetHeight; // 강제 리플로우 — driver.js가 최종 레이아웃을 측정하도록 보장(모달→화면 전환 시 위치 계산 어긋남 방지)
+  return sec;
+}
+function tourInvokeFirst(selector){ // 지금 화면에서 조건에 맞는 첫 요소의 onclick 핸들러만 실행 — 실제 클릭 이벤트(el.click())는
+  try{ closeModal(); }catch(e){}                        // document까지 버블링돼 driver.js의 전역 클릭 리스너(오버레이 바깥 클릭 감지)와
+  const el=document.querySelector(selector);             // 충돌해 다음 단계 진행이 멈추는 문제가 있어, 이벤트 디스패치 없이 핸들러만 호출
+  if (el && el.onclick) el.onclick.call(el);
+  const target=document.querySelector('.modal');
+  if (target) void target.offsetHeight; // 강제 리플로우
+  return el;
+}
+async function startDashboardTour(){
+  try{ await loadDriverJs(); }
+  catch(e){ alert('가이드 투어를 불러오지 못했습니다 — 인터넷 연결을 확인해주세요.'); return; }
+  const driver=window.driver.js.driver;
+  const tour=driver({
+    showProgress:true,
+    allowClose:true,
+    overlayOpacity:0.55,
+    nextBtnText:'다음',
+    prevBtnText:'이전',
+    doneBtnText:'완료',
+    progressText:'{{current}} / {{total}}',
+    onDestroyed:()=>{ try{ closeModal(); }catch(e){} try{ localStorage.setItem('tourSeenV1','1'); }catch(e){} },
+    steps:[
+      { popover:{ title:'👋 SCM 통합 대시보드에 오신 것을 환영합니다', description:'핵심 화면과 상세 모달까지 짧게 소개해드릴게요(약 2분). 오른쪽 위 "가이드 투어" 버튼을 누르면 언제든 다시 볼 수 있습니다.' } },
+      { element:'.sidebar', popover:{ title:'왼쪽 메뉴 — 8개 업무 영역', description:'대시보드 · 구매전략·S&OP 재고운영 · 외주생산(발주·이슈·공급망) · 구매조달(매출·KPI) · 운영 서비스로 나뉘어 있어요. 항목을 클릭하면 그 화면으로 바로 이동합니다.', side:'right' } },
+      { element:'.search-row', popover:{ title:'검색창', description:'협력사명·제품명·굿즈코드·발주번호를 입력하면 지금 화면의 KPI·차트·표가 실시간으로 필터링됩니다.', side:'bottom' } },
+      { element:'#period-bar', popover:{ title:'기간 선택', description:'주별/월별/분기별/기간지정 4가지 방식으로 조회 기간을 바꿀 수 있어요. 일부 화면은 아직 월 단위만 지원합니다.', side:'bottom' } },
+      { element:()=>tourGoto('overview'),
+        popover:{ title:'① 종합 현황', description:'핵심 KPI 5종, 전년 동기·전월 대비, 이번 달 졸업·출시·품절·협력사 변경 이력을 한 화면에서 확인합니다.' } },
+      { element:()=>tourGoto('inventory-ops'),
+        popover:{ title:'② 재고운영 현황 (구매전략)', description:'재고자산·회전율·품절율을 자동 계산하고, 입고예정금액·EOQ 발주알람으로 발주 타이밍을 미리 알려드려요.' } },
+      { element:()=>{ closeModal(); openModal('inventoryAsset'); const m=document.querySelector('.modal'); if(m) void m.offsetHeight; return m; },
+        popover:{ title:'🔍 재고자산 KPI 클릭 → SKU별 상세', description:'재고자산 카드를 클릭하면 이렇게 SKU마다 카테고리·조달유형·재고수량·재고금액·3개월 회전율까지 한 번에 비교할 수 있어요(정렬 가능).' } },
+      { element:()=>tourGoto('order'),
+        popover:{ title:'③ 발주 현황 (외주생산)', description:'전체 제품 발주량, DB원가 비교, 여분(버퍼) 추천까지 — 제품명을 클릭하면 상세 분석이 열립니다.' } },
+      { element:()=>{ tourInvokeFirst('#sec-order [onclick^="openProductOrderDetail("]'); return document.querySelector('.modal'); },
+        popover:{ title:'🔍 제품명 클릭 → 제품 상세 드릴다운', description:'권장 여분 수량과 예방비용 vs 실패비용 비교, 발주 패턴(빅딜·집중 시즌), 발주 이력과 이슈 이력까지 이 제품 하나로 전부 확인할 수 있어요.' } },
+      { element:()=>tourGoto('issue'),
+        popover:{ title:'④ 이슈 현황', description:'검수 유출률, 이슈→협력사 정확 귀속, 재발 이슈까지 — 품질 문제를 숫자로 추적합니다.' } },
+      { element:()=>{ tourInvokeFirst('#sec-issue [onclick*="tab-iss-px"]'); const t=document.getElementById('tab-iss-px'); if(t) void t.offsetHeight; return t; },
+        popover:{ title:'🔍 제품×협력사 이슈율 매트릭스', description:'제품과 협력사 조합별로 이슈율(이슈건수÷발주건수)을 계산해서 보여줘요. 발주 코드와 이슈 코드 표기가 다른 일부 건은 "발주매칭없음"으로 표시됩니다 — 알려진 매칭 한계예요.' } },
+      { element:()=>tourGoto('portfolio'),
+        popover:{ title:'⑤ 공급망 포트폴리오', description:'QCD×관계 Tier로 협력사를 분류하고, "이번 달 방문 추천 협력사"를 사유와 함께 알려줍니다.' } },
+      { element:()=>{ tourInvokeFirst('#sec-portfolio [onclick^="openSupplierDetailModal("]'); return document.querySelector('.modal'); },
+        popover:{ title:'🔍 협력사명 클릭 → 협력사 상세', description:'전년 동기 비교(발주·매입·이슈 YoY), 월별 매입추이, 이 협력사가 만든 전체 제품 목록까지 확인할 수 있어요. PDF 저장·분석 리포트 버튼도 여기 있습니다.' } },
+      { element:()=>tourGoto('ai'),
+        popover:{ title:'⑥ AI 어시스턴트', description:'제품명을 입력하면 제품 정의서 링크와 리드타임·단가 관련 과거 답변을 바로 찾아줍니다.' } },
+      { popover:{ title:'투어 끝! 🎉', description:'더 자세한 내용은 배포된 사용자 가이드 PDF를 참고하시고, 궁금한 점은 언제든 팀에 물어봐 주세요.' } },
+    ]
+  });
+  tour.drive();
+}
+function maybeAutoStartTour(){
+  try{ if(localStorage.getItem('tourSeenV1')) return; }catch(e){ return; }
+  setTimeout(()=>{ startDashboardTour(); }, 1200);
+}
+
 // v21.1: 재발 이슈 뷰 — 같은 제품×협력사 조합의 이슈가 연도 불문 2회 이상이면 자동 추출.
 // 근본원인 분류 필드가 아직 없어 '동일 원인' 판정은 불가 — 같은 조합의 반복 발생을 재발 신호로 사용.
 // 전년 이슈 귀속은 전년도 발주 RAW로 project 코드→협력사 맵을 따로 구성해 매칭(§3-28과 동일 패턴).
@@ -9074,6 +9264,133 @@ function getEvaluatedPortfolioVendors() {
   return vendors;
 }
 
+// v22.19: 공급망 포트폴리오 — 이번달 방문 추천 협력사(사용자 요청). 아래 신호 중 하나라도 걸리면
+// 방문 후보로 추천: ① 이슈 급증 ② 협력사 소유 재고(선매입 아님) 제품 품절 ③ 매입금액 급증/급감
+// ④ 단가상승 공지(주간 파츠 감지) ⑤ 신제품 출시(연결된 협력사 추정 가능한 경우만).
+// 기준월은 화면 상단에서 선택한 SEL_MONTH, 비교 기준(평균)은 그 직전 3개월.
+function ptCodeOf19(s){ const m=String(s||'').match(/PT\d+/); return m?m[0]:''; }
+function buildPtSupplierMap19(){
+  const map={};
+  (D.parts||[]).forEach(r=>{
+    const pt=ptCodeOf19(r['파츠명 (Long ver)']); if(!pt) return;
+    const sup=(r['제작협력사']||'').trim(); if(sup) map[pt]=sup;
+  });
+  return map;
+}
+function prevMonthKeys19(monthKey,n){
+  const [y,m]=monthKey.split('.').map(Number);
+  const out=[];
+  for(let k=1;k<=n;k++){ let mm=m-k,yy=y; while(mm<=0){ mm+=12; yy--; } out.push(yy+'.'+mm); }
+  return out;
+}
+function computeVisitRecommendations(){
+  if(!D.order||!SEL_MONTH) return [];
+  const monthKey=SEL_MONTH;
+  const prevKeys=prevMonthKeys19(monthKey,3);
+  const avgOf=(byMonth)=>{ const s=prevKeys.reduce((a,k)=>a+(byMonth[k]||0),0); return s/prevKeys.length; };
+  const rec={}; // supName -> {reasons:[{code,label,detail}]}
+  const addReason=(sup,code,label,detail)=>{
+    if(!sup) return;
+    if(!rec[sup]) rec[sup]={name:sup,reasons:[]};
+    if(!rec[sup].reasons.some(r=>r.code===code)) rec[sup].reasons.push({code,label,detail});
+  };
+
+  // ① 매입금액 급증/급감 — 협력사×월 매입금액(재고생산 제외), 직전 3개월 평균과 비교
+  const supMonthAmt={};
+  (D.order||[]).filter(r=>!isStock(r)).forEach(r=>{
+    const sup=(r['수주처']||'').trim(); if(!sup) return;
+    const byM=purchaseByMonth(r);
+    if(!supMonthAmt[sup]) supMonthAmt[sup]={};
+    Object.entries(byM).forEach(([mk,amt])=>{ supMonthAmt[sup][mk]=(supMonthAmt[sup][mk]||0)+amt; });
+  });
+  // 매입 급감은 선택월이 이미 끝난 과거월일 때만 판정 — 진행 중인 이번달은 세금계산서 원본이
+  // 아직 다 안 들어와 항상 "급감"처럼 보이는 착시가 생김(월 매입금액 KPI의 MoM -70%도 같은 이유)
+  const nowD=new Date(); const realNowKey=(nowD.getFullYear())+'.'+(nowD.getMonth()+1);
+  const monthClosed=(monthKey!==realNowKey);
+  Object.entries(supMonthAmt).forEach(([sup,byM])=>{
+    const cur=byM[monthKey]||0, avg=avgOf(byM);
+    if(avg>=300000 && cur>=avg*1.5) addReason(sup,'매입급증','매입 급증',`이번달 ${faFull(cur)} · 직전 3개월 평균 ${faFull(Math.round(avg))}`);
+    if(monthClosed && avg>=300000 && cur<=avg*0.4) addReason(sup,'매입급감','매입 급감',`이번달 ${faFull(cur)} · 직전 3개월 평균 ${faFull(Math.round(avg))}`);
+  });
+
+  // ② 이슈 급증 — 협력사별 이슈 건수(정확 귀속 매핑 재사용), 직전 3개월 평균과 비교
+  if(D.issue){
+    const projMap=getProjKeySupplierMap(), mvMap=getMovementSupplierMap();
+    const supMonthIssue={};
+    D.issue.forEach(r=>{
+      const sup=issueSupplierOf(r,projMap,mvMap); if(!sup) return;
+      const mk=pIssueMonth(r); if(!mk) return;
+      if(!supMonthIssue[sup]) supMonthIssue[sup]={};
+      supMonthIssue[sup][mk]=(supMonthIssue[sup][mk]||0)+1;
+    });
+    Object.entries(supMonthIssue).forEach(([sup,byM])=>{
+      const cur=byM[monthKey]||0, avg=avgOf(byM);
+      if(cur>=2 && cur>=Math.max(2,avg*1.5)) addReason(sup,'이슈급증','이슈 급증',`이번달 ${cur}건 · 직전 3개월 평균 ${avg.toFixed(1)}건`);
+    });
+  }
+
+  // ③ 협력사 소유 재고(선매입 아님) 제품 품절 — stockout_list의 실측 재고소유구분 필드 사용
+  // (재고소유구분='협력사'만 대상 — '신시어리'·'생산'은 선매입/제작 대응이라 제외)
+  if(D.stockout_list){
+    const ptSup=buildPtSupplierMap19();
+    D.stockout_list.filter(r=>['일시품절','품절예정'].includes((r['판매상태']||'').trim())
+      && (r['재고소유구분 (from sync_parts)']||'').trim()==='협력사').forEach(r=>{
+      const chDate=(r['변경일(인터페이스용)']||'').trim();
+      const mk=pOrderMonth(chDate); if(mk!==monthKey) return;
+      const pt=ptCodeOf19(r['파츠명']); const sup=pt?ptSup[pt]:'';
+      if(sup) addReason(sup,'품절','협력사 재고 품절',`${(r['적용 굿즈명']||r['파츠명']||'').trim()} · ${(r['판매상태']||'').trim()}(${chDate})`);
+    });
+  }
+
+  // ④ 단가상승 공지 — 최근 주간 파츠 감지(CHANGE_LOG)의 part_price 유형 중 이번달·상승분만
+  if(typeof CHANGE_LOG!=='undefined' && CHANGE_LOG.length){
+    const ptSup=buildPtSupplierMap19();
+    CHANGE_LOG.filter(e=>e.type==='part_price' && (e.detail||'').includes('상승')).forEach(e=>{
+      const mk=pYMMonth(e.date); if(mk!==monthKey) return;
+      const pt=ptCodeOf19(e.id); const sup=pt?ptSup[pt]:'';
+      if(sup) addReason(sup,'단가상승','단가 상승 공지',`${e.name||pt} — ${e.detail}`);
+    });
+
+    // ⑤ 신제품 출시 — product_launched 중 이번달분, 제품명으로 최근 발주 협력사 추정(매칭 안 되면 skip)
+    CHANGE_LOG.filter(e=>e.type==='product_launched').forEach(e=>{
+      const mk=pYMMonth(e.date); if(mk!==monthKey) return;
+      const gname=(e.name||'').replace(/\s*\([^)]*\)\s*$/,'').trim(); if(!gname) return;
+      const matches=(D.order||[]).filter(r=>{ const p=(r['산출물']||'').trim(); return p && (p.includes(gname)||gname.includes(p)); });
+      if(!matches.length) return;
+      matches.sort((a,b)=>(b['과업지시일자']||'').localeCompare(a['과업지시일자']||''));
+      const sup=(matches[0]['수주처']||'').trim();
+      if(sup) addReason(sup,'신제품','신제품 출시',`${gname} (${e.date})`);
+    });
+  }
+
+  // v23.1: 방문 우선순위 가중치 — 협력사 재고 품절·이슈 급증(품질·운영 리스크)을 매입 단순 변동보다 우선
+  const weight={품절:5,이슈급증:4,단가상승:3,매입급증:2,신제품:2,매입급감:1};
+  const scoreOf=v=>v.reasons.reduce((s,r)=>s+(weight[r.code]||1),0);
+  return Object.values(rec).sort((a,b)=>scoreOf(b)-scoreOf(a)||b.reasons.length-a.reasons.length);
+}
+function visitRecommendationHtml(){
+  const all=computeVisitRecommendations();
+  const VISIT_CAP=5; // v23.1: 사용자 요청 — 월 방문 가능 곳(2~3곳)을 고려해 상위 5곳까지만 표시
+  const list=all.slice(0,VISIT_CAP);
+  const reasonColor={매입급증:'var(--blue)',매입급감:'var(--red)',이슈급증:'var(--red)',품절:'var(--amber)',단가상승:'var(--amber)',신제품:'var(--green)'};
+  if(!list.length){
+    return `<div class="card" style="padding:16px 20px;margin-bottom:20px">
+      <div class="card-title" style="margin-bottom:6px">📍 이번달 방문 추천 협력사 <span style="font-weight:400;font-size:11px;color:var(--text3)">(${SEL_MONTH||''})</span></div>
+      <div style="font-size:12px;color:var(--text3)">이슈 급증·매입 급증·매입 급감·협력사 재고 품절·단가상승 공지·신제품 출시 — 해당하는 협력사가 이번달엔 없습니다.</div>
+    </div>`;
+  }
+  return `<div class="card" style="padding:16px 20px;margin-bottom:20px">
+    <div class="card-title" style="margin-bottom:6px">📍 이번달 방문 추천 협력사 <span style="font-weight:400;font-size:11px;color:var(--text3)">(${SEL_MONTH||''} · 상위 ${list.length}곳${all.length>list.length?` — 전체 해당 ${all.length}곳 중 우선순위(품절·이슈급증 우선) 상위`:''}, 이슈 급증·매입 급증/급감·협력사 재고 품절·단가상승·신제품 기준)</span></div>
+    <div style="display:flex;flex-direction:column;gap:8px">
+    ${list.map(v=>`<div style="padding:10px 12px;border:1px solid var(--border);border-radius:8px;display:flex;flex-wrap:wrap;align-items:center;gap:8px">
+      <b style="cursor:pointer;color:var(--blue)" onclick="openSupplierDetailModal('${esc(v.name).replace(/'/g,"\\'")}')">${esc(v.name)}</b>
+      ${v.reasons.map(r=>`<span class="chip" style="background:var(--surface2);color:${reasonColor[r.code]||'var(--text2)'};font-size:11px;padding:2px 8px;border-radius:20px" title="${esc(r.detail)}">${esc(r.label)}</span>`).join('')}
+    </div>`).join('')}
+    </div>
+    <div style="font-size:10px;color:var(--text3);margin-top:8px">※ "협력사 재고 품절"은 stockout_list의 재고소유구분(from sync_parts)='협력사'인 항목만 대상(선매입/자체 재고·생산대응 제외) · 급증·급감은 직전 3개월 평균 대비 · 재고소유구분 3단계 정식 분류체계는 차기 프로젝트 범위</div>
+  </div>`;
+}
+
 function renderPortfolio() {
   const el=document.getElementById('portfolio-content');
   if (!el) return;
@@ -9108,6 +9425,8 @@ function renderPortfolio() {
         </div>
       `).join('')}
     </div>
+
+    ${visitRecommendationHtml()}
 
     <div style="display:grid;grid-template-columns:2fr 1fr;gap:16px;margin-bottom:20px">
       <div class="card" style="padding:20px">
@@ -9929,6 +10248,9 @@ function fetchLatestWeekly(prefix,lookback){
 let PROGRESS_WEEK=null, PROGRESS_PREV_WEEK=null;
 let PROG_MGR_FILTER=null, PROG_STATUS_FILTER=null;
 let PROGRESS_NOTES={}; const PROG_NOTE_EDITING=new Set();
+// v22.18: 고객인지이슈와 동일한 이유 — 여러 사람이 각자 브라우저에서 비고를 입력하므로, 저장 시
+// 이 브라우저가 직접 건드린 TASK만 배포본에 얹어 커밋(다른 사람의 비고를 덮어쓰지 않음)
+const PROG_DIRTY=new Set();
 function loadProgressData(){
   fetchLatestWeekly('progress',12).then(cur=>{
     if(!cur){ renderProgressSection(); return; }
@@ -9956,6 +10278,16 @@ function loadProgressNotes(){
     renderProgressSection();
   });
 }
+// v22.18: 커밋/내보내기 직전에 배포본을 다시 받아, 이 브라우저가 직접 수정한 TASK(PROG_DIRTY)만
+// 얹어 병합 — 저장 시점과 실제 GitHub 반영 시점 사이 다른 사람의 비고를 덮어쓰지 않도록 함
+async function mergeProgressNotesForSave() {
+  let deployed=null;
+  try { const r=await fetch('data/progress_notes.json?_='+Date.now()); if(r.ok) deployed=await r.json(); } catch(e){}
+  const merged=Object.assign({}, deployed||{});
+  PROG_DIRTY.forEach(k=>{ if(PROGRESS_NOTES[k]!==undefined) merged[k]=PROGRESS_NOTES[k]; });
+  PROGRESS_NOTES=merged; // 다른 사람의 비고도 화면에 함께 반영
+  return merged;
+}
 function persistProgressNotes(commit){
   localStorage.setItem('progress_notes_v1',JSON.stringify(PROGRESS_NOTES));
   const st=document.getElementById('prog-save-status');
@@ -9963,21 +10295,40 @@ function persistProgressNotes(commit){
   if(commit){
     if(ghToken()){
       if(st) st.textContent='GitHub 커밋 중...';
-      commitFileToGitHub('data/progress_notes.json',JSON.stringify(PROGRESS_NOTES,null,2),'비고 업데이트 '+new Date().toISOString().slice(0,16).replace('T',' '))
-        .then(()=>{ if(st) st.textContent='✅ GitHub 커밋 완료 · '+new Date().toLocaleTimeString('ko-KR')+' (1~2분 후 배포 반영)'; })
+      mergeProgressNotesForSave().then(merged=>
+        commitFileToGitHub('data/progress_notes.json',JSON.stringify(merged,null,2),'비고 업데이트 '+new Date().toISOString().slice(0,16).replace('T',' '))
+      )
+        .then(()=>{ if(st) st.textContent='✅ GitHub 커밋 완료 · '+new Date().toLocaleTimeString('ko-KR')+' (1~2분 후 배포 반영)'; renderProgressSection(); })
         .catch(e=>{ if(st) st.textContent='⚠ 커밋 실패(HTTP '+(e.status||'?')+') — ⚙에서 토큰·권한 확인 · 로컬에는 저장됨'; });
     } else {
       if(st) st.textContent='저장됨(이 브라우저) · ⚙ GitHub 연동 설정 시 자동 커밋되어 팀 공유';
     }
   }
 }
-function exportProgressNotes(){
-  const blob=new Blob([JSON.stringify(PROGRESS_NOTES,null,2)],{type:'application/json'});
-  const url=URL.createObjectURL(blob);
-  const a=document.createElement('a'); a.href=url; a.download='progress_notes.json';
-  document.body.appendChild(a); a.click(); document.body.removeChild(a);
-  URL.revokeObjectURL(url);
-  alert('progress_notes.json 이 다운로드되었습니다.\n\n(GitHub 연동을 설정하면 이 단계 없이 저장 즉시 자동 커밋됩니다.)\n수동 반영: 프로젝트의 data/progress_notes.json 위치에 저장 후 배포 스크립트를 실행하세요.');
+async function exportProgressNotes(){
+  // v22.19: 파일 드래그 업로드 방식은 브라우저가 중복 다운로드에 자동으로 붙이는 "(1)" 접미사 때문에
+  // 잘못된 경로에 커밋되는 사고가 발생 — 대신 GitHub의 해당 파일 "수정" 화면을 정확한 경로로 직접
+  // 열고 클립보드로 내용을 전달해 파일명 문제 자체를 없앤다. 팝업 차단 방지를 위해 클릭과 동시에
+  // (await 이전에) 먼저 연다.
+  window.open(`https://github.com/${GH_REPO}/edit/${GH_BRANCH}/data/progress_notes.json`,'_blank');
+  // v22.18: 전달할 내용도 배포본과 병합 — 이 브라우저가 직접 건드린 TASK만 얹으므로 다른 사람이
+  // 이미 커밋한 비고를 덮어쓰지 않음
+  const merged=await mergeProgressNotesForSave();
+  renderProgressSection();
+  const text=JSON.stringify(merged,null,2);
+  let copied=false;
+  try { await navigator.clipboard.writeText(text); copied=true; } catch(e) {}
+  if(!copied){
+    const blob=new Blob([text],{type:'application/json'});
+    const url=URL.createObjectURL(blob);
+    const a=document.createElement('a'); a.href=url; a.download='progress_notes.json';
+    document.body.appendChild(a); a.click(); document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  }
+  alert((copied
+    ? '전체 내용이 클립보드에 복사됐습니다.\n\n새 탭에 열린 GitHub 편집 화면에서 편집창을 클릭 → Ctrl+A(전체 선택) → Ctrl+V(붙여넣기)로 기존 내용을 교체한 뒤, 하단의 "Commit changes"를 누르면 1~2분 내 반영됩니다.'
+    : '클립보드 복사에 실패해 progress_notes.json 파일을 대신 다운로드했습니다.\n\n새 탭에 열린 GitHub 편집 화면에서 편집창 내용을 전체 선택(Ctrl+A) 후 지우고, 다운로드된 파일을 열어 내용을 복사해 붙여넣은 뒤 "Commit changes"를 눌러주세요.'
+  )+'\n\n(다른 사람이 이미 커밋한 비고도 자동으로 함께 포함됐습니다 — 덮어쓸 걱정 없습니다.)\n(⚙ GitHub 연동 설정으로 토큰을 등록하면 이 단계 자체가 필요 없어집니다.)');
 }
 function progTaskId(r){ return (r['task_id']||r['발주번호']||'').trim(); }
 function progDue(r){
@@ -10044,6 +10395,7 @@ function saveProgNote(id){
   if(!text){ renderProgressSection(); return; }
   if(!PROGRESS_NOTES[id]) PROGRESS_NOTES[id]={text,date:stamp,edits:[]};
   else { if(!PROGRESS_NOTES[id].edits) PROGRESS_NOTES[id].edits=[]; PROGRESS_NOTES[id].edits.push({text,date:stamp}); }
+  PROG_DIRTY.add(id);
   persistProgressNotes(true);
   renderProgressSection();
 }
@@ -10206,6 +10558,7 @@ window.addEventListener('load',()=>{
   buildMonthChips();
   buildSalesMonthChips();
   autoLoadRaw();
+  maybeAutoStartTour();
 });
 </script>
 </body>
