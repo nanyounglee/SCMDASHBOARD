@@ -771,35 +771,20 @@ a{color:var(--blue);text-decoration:none}
       <div class="card">
         <div class="card-header"><div class="card-title">리포트 생성</div></div>
         <div class="report-grid">
-          <button class="rep-btn" onclick="genWeekly()"><div class="rep-btn-title">📝 주간 리포트 생성</div><div class="rep-btn-desc">이번 주 발주·이슈 요약 → .md 파일 다운로드</div></button>
-          <button class="rep-btn" onclick="window.open('https://nanyounglee.github.io/scm-monthly-report/','_blank')"><div class="rep-btn-title">📊 월간 대시보드 열기 ↗</div><div class="rep-btn-desc">GitHub Pages 배포된 월간 리포트</div></button>
           <button class="rep-btn" onclick="window.open('https://github.com/Sincerely-SCM/SCM-Archive/tree/main/Meeting-Records/04_Parts','_blank')"><div class="rep-btn-title">🗒 팀 주간 회의록 ↗</div><div class="rep-btn-desc">SCM-Archive GitHub · Meeting-Records/04_Parts</div></button>
           <button class="rep-btn" onclick="window.open('https://github.com/Sincerely-SCM/SCM-Archive/tree/main/Regular-Reports','_blank')"><div class="rep-btn-title">📑 팀 주간 보고서 ↗</div><div class="rep-btn-desc">SCM-Archive GitHub · Regular-Reports</div></button>
-          <button class="rep-btn" onclick="genChangeReport()"><div class="rep-btn-title">📋 변경 이력 리포트 생성</div><div class="rep-btn-desc">파츠 신규/졸업 · 단가 변동 · 협력사·제품 변경을 파트별 섹션으로 정리 → .md 다운로드 (주간 리포트·회의 원천 데이터)</div></button>
-          <button class="rep-btn" onclick="window.open('https://github.com/nanyounglee/SCMDASHBOARD/tree/main/CSV_BANK','_blank')"><div class="rep-btn-title">🗂 변경 스냅샷 아카이브 ↗</div><div class="rep-btn-desc">CSV_BANK — 주차별 스냅샷·연도 아카이브 원본 내역 확인</div></button>
-          <button class="rep-btn" onclick="window.open('https://github.com/nanyounglee/SCMDASHBOARD','_blank')"><div class="rep-btn-title">🚀 GitHub 저장소 열기 ↗</div><div class="rep-btn-desc">SCMDASHBOARD 레포지토리</div></button>
-        </div>
-      </div>
-      <div class="card">
-        <div class="card-header"><div class="card-title">구매전략파트</div></div>
-        <div id="psr-week-select-wrap" style="margin-bottom:10px"></div>
-        <textarea id="psr-memo-input" placeholder="특이사항 메모 (선택 — 데이터로는 알 수 없는 운영 판단·맥락) — 입력 시 5-1에 원문 그대로 추가됩니다" style="width:100%;min-height:56px;font-size:12px;padding:8px 10px;border:1px solid var(--border2);border-radius:var(--r-sm);background:var(--surface);margin-bottom:10px;resize:vertical;box-sizing:border-box"></textarea>
-        <div class="report-grid">
-          <button class="rep-btn" onclick="genWeeklyInventoryReport()"><div class="rep-btn-title">📦 주간 재고 리포트 생성</div><div class="rep-btn-desc">재고수준·재고구조·품절·장기미회전·이슈(규칙 기반 자동 판정) 요약 → .md 파일 다운로드</div></button>
-        </div>
-      </div>
-      <!-- 외주생산파트 -->
-      <div class="card" style="margin-top:12px">
-        <div class="card-header">
-          <div class="card-title">외주생산파트</div>
-          <div class="card-sub">ISO week 기준 · 집계구간: 전주 목13:00~해당주 목12:59</div>
-        </div>
-        <div class="report-grid">
-          <button class="rep-btn" onclick="genWeeklyOutsource()"><div class="rep-btn-title">📝 주간 리포트 생성</div><div class="rep-btn-desc">7섹션 KPI·이슈·공급망 요약 → .md 다운로드</div></button>
-          <button class="rep-btn" onclick="genMeetingDraftFromAirtable()"><div class="rep-btn-title">📋 주간 회의록 프롬프트 복사</div><div class="rep-btn-desc">매주 목요일 16:00 외주생산파트 회의실 기준<br>① 클릭(자동복사) → ② claude.ai 새 탭 → ③ Ctrl+V → ④ TTS 내용 붙여넣기 후 전송</div></button>
+          <button class="rep-btn" onclick="genWeeklyOutsource()"><div class="rep-btn-title">📝 외주생산파트 주간 리포트 생성</div><div class="rep-btn-desc">7섹션 KPI·이슈·공급망 요약 → .md 다운로드 (ISO week 기준 · 집계구간: 전주 목13:00~해당주 목12:59)</div></button>
+          <button class="rep-btn" onclick="genMeetingDraftFromAirtable()"><div class="rep-btn-title">📋 외주생산파트 주간 회의록 프롬프트 복사</div><div class="rep-btn-desc">매주 목요일 16:00 외주생산파트 회의실 기준<br>① 클릭(자동복사) → ② claude.ai 새 탭 → ③ Ctrl+V → ④ TTS 내용 붙여넣기 후 전송</div></button>
         </div>
         <div style="margin-top:6px; font-size:11px; color:var(--text3)">💡 수동 업데이트: GitHub Actions → <code style="font-size:10px">weekly-meeting-agenda</code> → Run workflow</div>
         <div id="meeting-draft-status" style="display:none; margin-top:8px; padding:8px 10px; background:#f0f4f0; border-radius:4px; font-size:12px; color:#333; line-height:1.6;"></div>
+        <div id="psr-week-select-wrap" style="margin-top:14px;margin-bottom:10px"></div>
+        <textarea id="psr-memo-input" placeholder="특이사항 메모 (선택 — 데이터로는 알 수 없는 운영 판단·맥락) — 입력 시 5-1에 원문 그대로 추가됩니다" style="width:100%;min-height:56px;font-size:12px;padding:8px 10px;border:1px solid var(--border2);border-radius:var(--r-sm);background:var(--surface);margin-bottom:10px;resize:vertical;box-sizing:border-box"></textarea>
+        <div class="report-grid">
+          <button class="rep-btn" onclick="genWeeklyInventoryReport()"><div class="rep-btn-title">📦 구매전략파트 주간 재고 리포트 생성</div><div class="rep-btn-desc">재고수준·재고구조·품절·장기미회전·이슈(규칙 기반 자동 판정) 요약 → .md 파일 다운로드</div></button>
+          <button class="rep-btn" onclick="genChangeReport()"><div class="rep-btn-title">📋 변경 이력 리포트 생성</div><div class="rep-btn-desc">파츠 신규/졸업 · 단가 변동 · 협력사·제품 변경을 파트별 섹션으로 정리 → .md 다운로드 (주간 리포트·회의 원천 데이터)</div></button>
+          <button class="rep-btn" onclick="window.open('https://github.com/nanyounglee/SCMDASHBOARD/tree/main/CSV_BANK','_blank')"><div class="rep-btn-title">🗂 변경 스냅샷 아카이브 ↗</div><div class="rep-btn-desc">CSV_BANK — 주차별 스냅샷·연도 아카이브 원본 내역 확인</div></button>
+        </div>
       </div>
     </div>
 
@@ -6452,7 +6437,7 @@ function nav(el,id) {
     stock:'<b>확인 가능 지표:</b> 전체 품절수 · 비의도적 품절(납기지연/공급부족) · 의도적 품절(졸업/시즌/효율화) · 굿즈품절 | <b>필터:</b> 판매상태별(일시품절/품절예정/의도적 품절) | <b>테이블:</b> 파츠명/굿즈 · 판매상태 · 재고소유 · 품절성격/사유 · 변경일 · 경과일 · 굿즈품절여부 | <b>CSV:</b> 품절리스트',
     ai:'<b>사용법:</b> 제품명 입력 → 제품 정의서 링크 + 리드타임/제작기간·단가 문의 기존 답변(최신 3건, 답변 없으면 과거 슬랙 문의 텍스트로 폴백) — Check_standard_Answer(응답 완료) + Check_standard_Question(질문1~3·답변1~3 원본) 두 소스를 함께 검색해 커버리지 확대 | 협력사명 입력 → 발주현황/매입금액/3개월추이/품질이슈 분석 | 긴급 → 긴급발주 목록 | 미입하/task → 미입하현황 | 전월/매입 → 전월대비 비교 | 담당자명 → 개인 실적 | <b>CSV:</b> 제품문의답변이력(check_answer) + 제품문의원본(check_question) + 발주_RAW + 이슈_RAW + 공급망_RAW',
     quote:'<b>기능:</b> 패키지(박스) 자동 견적 산출 — 마닐라박스/C형/W형/슬리브형 | <b>로직:</b> 전개사이즈 → 지류단가(27지종×15규격, 0원 규격 자동상향) → 여분·연수 → 원단/인쇄/코팅/톰슨/접착/특수공정/골판지 → 관리비(10%·최소15만) → 마진(최소20만) | <b>이력:</b> localStorage 저장 · CSV 내보내기 | <b>기준:</b> 외주버전 v1.2.2 단가표',
-    report:'<b>기능:</b> 구매전략파트 주간 재고 리포트 .md 생성(재고수준·재고구조·품절·장기미회전·이슈 자동 요약, 주차 선택 가능) · 주간리포트 .md 생성(발주/이슈 자동 요약) · <b>변경 이력 리포트 .md 생성</b>(파츠 신규/졸업·단가 변동·협력사·제품 변경 — 주간 리포트/회의 원천 데이터) · <b>변경 스냅샷 아카이브(CSV_BANK) 바로가기</b> · 월간 대시보드 링크 · 팀 주간 회의록/보고서 바로가기(SCM-Archive) · GitHub 저장소 링크',
+    report:'<b>기능:</b> 팀 주간 회의록/보고서 바로가기(SCM-Archive) · 외주생산파트 주간 리포트·회의록 프롬프트 생성 · 구매전략파트 주간 재고 리포트 .md 생성(재고수준·재고구조·품절·장기미회전·이슈 자동 요약, 주차 선택 가능) · <b>변경 이력 리포트 .md 생성</b>(파츠 신규/졸업·단가 변동·협력사·제품 변경 — 주간 리포트/회의 원천 데이터) · <b>변경 스냅샷 아카이브(CSV_BANK) 바로가기</b>',
   };
   document.getElementById('page-title').innerHTML=`${titles[id]||id}<span class="topbar-badge" id="page-month-badge">${selPeriodLabel()}</span>`;
   renderPeriodBar();
