@@ -8347,6 +8347,14 @@ function renderGraduation() {
 // ===== 3-9. 원가 분석 =====
 let COST_SEL_PROJECT='';
 let COST_VIEW='monthly';
+let COST_PROJ_LIST=[]; // renderCostByProject()가 채움 — 프로젝트 검색(onCostProjSearch)이 참조
+function onCostProjSearch(val){
+  const v=(val||'').trim();
+  if(!v || !COST_PROJ_LIST.length) return;
+  const exact=COST_PROJ_LIST.find(p=>p.name===v);
+  const hit=exact || COST_PROJ_LIST.find(p=>p.name.toLowerCase().includes(v.toLowerCase()));
+  if(hit){ COST_SEL_PROJECT=hit.name; renderCostProjectDetail(); }
+}
 // v21.13: 프로젝트별 총매출액(proj_rev.csv, Airtable CX_매출결산) — 실제 청구 매출 기준.
 // 기존 R) 판매가(최종) 합산은 근사치라, proj_rev가 로드되면 이것을 매출 원본으로 사용(미매칭은 근사 폴백).
 let PROJ_REV_MAP=null, PROJ_REV_SRC=null;
@@ -8512,14 +8520,18 @@ function renderCostByProject(el, tabHtml) {
   });
   const projList=Object.values(projects).filter(p=>p.revenue>0||p.taskCost>0).sort((a,b)=>b.revenue-a.revenue);
   if(!COST_SEL_PROJECT&&projList.length) COST_SEL_PROJECT=projList[0].name;
+  COST_PROJ_LIST=projList; // onCostProjSearch()가 검색 대상으로 참조
 
   el.innerHTML=tabHtml+`
     <div class="card">
       <div class="card-header">
         <div class="card-title">프로젝트 원가 상세 분석</div>
-        <select id="cost-proj-sel" onchange="COST_SEL_PROJECT=this.value;renderCostProjectDetail()" style="font-size:12px;padding:4px 8px;border:1px solid var(--border2);border-radius:var(--r-sm);max-width:300px">
-          ${projList.map(p=>`<option value="${esc(p.name)}" ${p.name===COST_SEL_PROJECT?'selected':''}>${esc(crop(p.name,40))} — ${fmtW(p.revenue)}</option>`).join('')}
-        </select>
+        <input id="cost-proj-sel" list="cost-proj-datalist" value="${esc(COST_SEL_PROJECT||'')}" placeholder="프로젝트명·번호 검색"
+          oninput="onCostProjSearch(this.value)"
+          style="font-size:12px;padding:4px 8px;border:1px solid var(--border2);border-radius:var(--r-sm);max-width:300px">
+        <datalist id="cost-proj-datalist">
+          ${projList.map(p=>`<option value="${esc(p.name)}">${esc(crop(p.name,40))} — ${fmtW(p.revenue)}</option>`).join('')}
+        </datalist>
       </div>
       <div id="cost-project-detail"></div>
     </div>
