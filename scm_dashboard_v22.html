@@ -3991,7 +3991,7 @@ function renderMfgChart() {
     if(!amt) return;
     let key;
     if(viewType==='biz') key=bizMap2[r['수주처']]||'기타';
-    else if(viewType==='cat') key=goodsCode(r)||'기타';
+    else if(viewType==='cat') { const gc=goodsCode(r),gm=getGcCatMap(); key=(gc&&gm[gc]&&gm[gc].size)?[...gm[gc]][0]:'기타'; }
     else key=mfgMap[r['수주처']]||'기타';
     byGroup[key]=(byGroup[key]||0)+amt;
   });
