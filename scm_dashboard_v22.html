@@ -18,6 +18,13 @@
   --purple:#7c3aed;--purple-light:#ede9fe;
   --r:12px;--r-sm:8px;
 }
+/* 가이드 투어(driver.js, CDN lazy-load) — 대시보드 팔레트에 맞춘 최소 오버라이드 */
+.driver-popover{border-radius:var(--r);font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif}
+.driver-popover-title{font-size:14px;color:var(--text)}
+.driver-popover-description{font-size:12.5px;color:var(--text2);line-height:1.6}
+.driver-popover-next-btn,.driver-popover-done-btn{background:var(--blue)!important;color:#fff!important;text-shadow:none!important;border:none!important}
+.driver-popover-prev-btn{color:var(--text2)!important}
+.driver-popover-progress-text{color:var(--text3);font-size:11px}
 *{box-sizing:border-box;margin:0;padding:0}
 body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;background:var(--bg);color:var(--text);font-size:13px;line-height:1.5;overflow-x:hidden}
 a{color:var(--blue);text-decoration:none}
@@ -345,6 +352,10 @@ a{color:var(--blue);text-decoration:none}
       <button class="topbar-btn" onclick="exportCurrentTables()" title="현재 화면에 보이는 표를 CSV로 다운로드">
         <svg width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M8 10V2M5 5l3-3 3 3M2 12v2h12v-2"/></svg>
         현재 화면 CSV
+      </button>
+      <button class="topbar-btn" onclick="startDashboardTour()" title="핵심 화면을 짧게 소개하는 가이드 투어를 다시 봅니다">
+        <svg width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="8" cy="8" r="6"/><path d="M6 6a2 2 0 013 1.7c0 1.3-1.5 1.5-1.5 2.8"/><circle cx="8" cy="11.3" r=".4" fill="currentColor" stroke="none"/></svg>
+        가이드 투어
       </button>
       <a class="topbar-btn primary" href="https://nanyounglee.github.io/SCMDASHBOARD/" target="_blank">
         <svg width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M8 3H3v10h10V8M8 8l5-5M10 3h3v3"/></svg>
@@ -6491,6 +6502,89 @@ function swTab(el,group,targetId) {
   if (targetId==='ord-tab-preveff') renderPreventionEffect();
   if (targetId==='ord-tab-fai') renderOrderFai();
 }
+
+// ===== 가이드 투어 (driver.js, CDN lazy-load — html2pdf와 동일 패턴) =====
+let _driverJsLoading=null;
+function loadDriverJs(){
+  if (window.driver && window.driver.js) return Promise.resolve();
+  if (_driverJsLoading) return _driverJsLoading;
+  _driverJsLoading=new Promise((res,rej)=>{
+    const css=document.createElement('link');
+    css.rel='stylesheet';
+    css.href='https://cdnjs.cloudflare.com/ajax/libs/driver.js/1.6.0/driver.css';
+    document.head.appendChild(css);
+    const s=document.createElement('script');
+    s.src='https://cdnjs.cloudflare.com/ajax/libs/driver.js/1.6.0/driver.js.iife.js';
+    s.onload=res;
+    s.onerror=()=>{_driverJsLoading=null;rej(new Error('driver.js CDN 로드 실패'));};
+    document.head.appendChild(s);
+  });
+  return _driverJsLoading;
+}
+function tourGoto(id){ // 사이드바 항목과 동일한 방식으로 화면 전환 후 앵커 반환 — 열려있던 모달은 항상 먼저 닫음
+  try{ closeModal(); }catch(e){}
+  const el=document.querySelector(`.sb-item[onclick*="'${id}'"]`);
+  nav(el,id);
+  const sec=document.getElementById('sec-'+id);
+  if (sec) void sec.offsetHeight; // 강제 리플로우 — driver.js가 최종 레이아웃을 측정하도록 보장(모달→화면 전환 시 위치 계산 어긋남 방지)
+  return sec;
+}
+function tourInvokeFirst(selector){ // 지금 화면에서 조건에 맞는 첫 요소의 onclick 핸들러만 실행 — 실제 클릭 이벤트(el.click())는
+  try{ closeModal(); }catch(e){}                        // document까지 버블링돼 driver.js의 전역 클릭 리스너(오버레이 바깥 클릭 감지)와
+  const el=document.querySelector(selector);             // 충돌해 다음 단계 진행이 멈추는 문제가 있어, 이벤트 디스패치 없이 핸들러만 호출
+  if (el && el.onclick) el.onclick.call(el);
+  const target=document.querySelector('.modal');
+  if (target) void target.offsetHeight; // 강제 리플로우
+  return el;
+}
+async function startDashboardTour(){
+  try{ await loadDriverJs(); }
+  catch(e){ alert('가이드 투어를 불러오지 못했습니다 — 인터넷 연결을 확인해주세요.'); return; }
+  const driver=window.driver.js.driver;
+  const tour=driver({
+    showProgress:true,
+    allowClose:true,
+    overlayOpacity:0.55,
+    nextBtnText:'다음',
+    prevBtnText:'이전',
+    doneBtnText:'완료',
+    progressText:'{{current}} / {{total}}',
+    onDestroyed:()=>{ try{ closeModal(); }catch(e){} try{ localStorage.setItem('tourSeenV1','1'); }catch(e){} },
+    steps:[
+      { popover:{ title:'👋 SCM 통합 대시보드에 오신 것을 환영합니다', description:'핵심 화면과 상세 모달까지 짧게 소개해드릴게요(약 2분). 오른쪽 위 "가이드 투어" 버튼을 누르면 언제든 다시 볼 수 있습니다.' } },
+      { element:'.sidebar', popover:{ title:'왼쪽 메뉴 — 8개 업무 영역', description:'대시보드 · 구매전략·S&OP 재고운영 · 외주생산(발주·이슈·공급망) · 구매조달(매출·KPI) · 운영 서비스로 나뉘어 있어요. 항목을 클릭하면 그 화면으로 바로 이동합니다.', side:'right' } },
+      { element:'.search-row', popover:{ title:'검색창', description:'협력사명·제품명·굿즈코드·발주번호를 입력하면 지금 화면의 KPI·차트·표가 실시간으로 필터링됩니다.', side:'bottom' } },
+      { element:'#period-bar', popover:{ title:'기간 선택', description:'주별/월별/분기별/기간지정 4가지 방식으로 조회 기간을 바꿀 수 있어요. 일부 화면은 아직 월 단위만 지원합니다.', side:'bottom' } },
+      { element:()=>tourGoto('overview'),
+        popover:{ title:'① 종합 현황', description:'핵심 KPI 5종, 전년 동기·전월 대비, 이번 달 졸업·출시·품절·협력사 변경 이력을 한 화면에서 확인합니다.' } },
+      { element:()=>tourGoto('inventory-ops'),
+        popover:{ title:'② 재고운영 현황 (구매전략)', description:'재고자산·회전율·품절율을 자동 계산하고, 입고예정금액·EOQ 발주알람으로 발주 타이밍을 미리 알려드려요.' } },
+      { element:()=>{ closeModal(); openModal('inventoryAsset'); const m=document.querySelector('.modal'); if(m) void m.offsetHeight; return m; },
+        popover:{ title:'🔍 재고자산 KPI 클릭 → SKU별 상세', description:'재고자산 카드를 클릭하면 이렇게 SKU마다 카테고리·조달유형·재고수량·재고금액·3개월 회전율까지 한 번에 비교할 수 있어요(정렬 가능).' } },
+      { element:()=>tourGoto('order'),
+        popover:{ title:'③ 발주 현황 (외주생산)', description:'전체 제품 발주량, DB원가 비교, 여분(버퍼) 추천까지 — 제품명을 클릭하면 상세 분석이 열립니다.' } },
+      { element:()=>{ tourInvokeFirst('#sec-order [onclick^="openProductOrderDetail("]'); return document.querySelector('.modal'); },
+        popover:{ title:'🔍 제품명 클릭 → 제품 상세 드릴다운', description:'권장 여분 수량과 예방비용 vs 실패비용 비교, 발주 패턴(빅딜·집중 시즌), 발주 이력과 이슈 이력까지 이 제품 하나로 전부 확인할 수 있어요.' } },
+      { element:()=>tourGoto('issue'),
+        popover:{ title:'④ 이슈 현황', description:'검수 유출률, 이슈→협력사 정확 귀속, 재발 이슈까지 — 품질 문제를 숫자로 추적합니다.' } },
+      { element:()=>{ tourInvokeFirst('#sec-issue [onclick*="tab-iss-px"]'); const t=document.getElementById('tab-iss-px'); if(t) void t.offsetHeight; return t; },
+        popover:{ title:'🔍 제품×협력사 이슈율 매트릭스', description:'제품과 협력사 조합별로 이슈율(이슈건수÷발주건수)을 계산해서 보여줘요. 발주 코드와 이슈 코드 표기가 다른 일부 건은 "발주매칭없음"으로 표시됩니다 — 알려진 매칭 한계예요.' } },
+      { element:()=>tourGoto('portfolio'),
+        popover:{ title:'⑤ 공급망 포트폴리오', description:'QCD×관계 Tier로 협력사를 분류하고, "이번 달 방문 추천 협력사"를 사유와 함께 알려줍니다.' } },
+      { element:()=>{ tourInvokeFirst('#sec-portfolio [onclick^="openSupplierDetailModal("]'); return document.querySelector('.modal'); },
+        popover:{ title:'🔍 협력사명 클릭 → 협력사 상세', description:'전년 동기 비교(발주·매입·이슈 YoY), 월별 매입추이, 이 협력사가 만든 전체 제품 목록까지 확인할 수 있어요. PDF 저장·분석 리포트 버튼도 여기 있습니다.' } },
+      { element:()=>tourGoto('ai'),
+        popover:{ title:'⑥ AI 어시스턴트', description:'제품명을 입력하면 제품 정의서 링크와 리드타임·단가 관련 과거 답변을 바로 찾아줍니다.' } },
+      { popover:{ title:'투어 끝! 🎉', description:'더 자세한 내용은 배포된 사용자 가이드 PDF를 참고하시고, 궁금한 점은 언제든 팀에 물어봐 주세요.' } },
+    ]
+  });
+  tour.drive();
+}
+function maybeAutoStartTour(){
+  try{ if(localStorage.getItem('tourSeenV1')) return; }catch(e){ return; }
+  setTimeout(()=>{ startDashboardTour(); }, 1200);
+}
+
 // v21.1: 재발 이슈 뷰 — 같은 제품×협력사 조합의 이슈가 연도 불문 2회 이상이면 자동 추출.
 // 근본원인 분류 필드가 아직 없어 '동일 원인' 판정은 불가 — 같은 조합의 반복 발생을 재발 신호로 사용.
 // 전년 이슈 귀속은 전년도 발주 RAW로 project 코드→협력사 맵을 따로 구성해 매칭(§3-28과 동일 패턴).
@@ -10464,6 +10558,7 @@ window.addEventListener('load',()=>{
   buildMonthChips();
   buildSalesMonthChips();
   autoLoadRaw();
+  maybeAutoStartTour();
 });
 </script>
 </body>
