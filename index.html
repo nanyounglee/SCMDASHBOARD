@@ -8205,15 +8205,15 @@ function renderStockoutDetailFull_(){
       '</div>' +
       '<div class="sh-kpis" id="sh-kpis"></div>' +
       '<div class="sh-panel">' +
-        '<div class="sh-ph"><h3>품절 추이</h3><span class="sh-hint">막대 클릭 시 해당 기간 품절 목록 보기 · 각 기간 기말 시점</span></div>' +
-        '<div class="sh-lgd"><span><i style="background:var(--sh-red)"></i>비의도적</span></div>' +
-        '<div class="sh-chart-wrap" id="sh-chart"></div>' +
+        '<div class="sh-ph"><h3>굿즈품절율 추이</h3><span class="sh-hint">목표선 1~3Q 3%↓ · 4Q 5%↓ · 분모는 현재 판매중 굿즈 수(근사)</span></div>' +
+        '<div class="sh-lgd"><span><i style="background:var(--sh-crimson)"></i>굿즈품절율</span><span><i class="ln" style="background:var(--sh-amber)"></i>목표선</span></div>' +
+        '<div class="sh-chart-wrap" id="sh-gschart"></div>' +
       '</div>' +
       '<div class="sh-grid2">' +
         '<div class="sh-panel">' +
-          '<div class="sh-ph"><h3>굿즈품절율 추이</h3><span class="sh-hint">목표선 1~3Q 3%↓ · 4Q 5%↓ · 분모는 현재 판매중 굿즈 수(근사)</span></div>' +
-          '<div class="sh-lgd"><span><i style="background:var(--sh-crimson)"></i>굿즈품절율</span><span><i class="ln" style="background:var(--sh-amber)"></i>목표선</span></div>' +
-          '<div class="sh-chart-wrap" id="sh-gschart"></div>' +
+          '<div class="sh-ph"><h3>비의도적품절 추이 (SKU수 기준)</h3><span class="sh-hint">막대 클릭 시 해당 기간 품절 목록 보기 · 각 기간 기말 시점</span></div>' +
+          '<div class="sh-lgd"><span><i style="background:var(--sh-red)"></i>비의도적</span></div>' +
+          '<div class="sh-chart-wrap" id="sh-chart"></div>' +
         '</div>' +
         '<div class="sh-panel"><div class="sh-ph"><h3>품절 사유</h3><span class="sh-hint" id="sh-czhint"></span></div>' +
           '<div class="sh-subnote" style="padding:6px 19px 4px;">비의도적</div>' +
@@ -8302,12 +8302,12 @@ function renderStockoutDetailFull_(){
     const gsRate = (late && activeGoodsCount) ? (gsGoodsCount/activeGoodsCount*100) : null;
     const gsRatePrev = (P && late && activeGoodsCount) ? (shGoodsSet_(P.gs).size/activeGoodsCount*100) : null;
     const kpiDefs = [
-     ['un', '비의도적 품절','<em>기말</em>',S.un.length,ow(S.un),'var(--sh-red)',P?P.un.length:null],
-     ['itn','의도적 품절','<em>기말</em>',S.itn.length,ow(S.itn),'var(--sh-amber)',P?P.itn.length:null],
-     ['lng','장기품절 60일+','<em>기말</em>',S.lng.length,`비의도적 <em>${S.lng.filter(r=>r.it==='비의도적').length}</em> · 의도적 <em>${S.lng.filter(r=>r.it==='의도적').length}</em>`,'var(--sh-purple)',P?P.lng.length:null],
      ['gs', '굿즈품절율','<em>기말</em>',S.gs.length,
        !late ? '입력 시작 전 기간' : (activeGoodsCount ? `영향 굿즈 <em>${gsGoodsCount}</em> / 판매중 <em>${activeGoodsCount}</em>개` : 'goods_master 업로드 필요'),
-       'var(--sh-crimson)',P?P.gs.length:null]
+       'var(--sh-crimson)',P?P.gs.length:null],
+     ['un', '비의도적 품절','<em>기말</em>',S.un.length,ow(S.un),'var(--sh-red)',P?P.un.length:null],
+     ['itn','의도적 품절','<em>기말</em>',S.itn.length,ow(S.itn),'var(--sh-amber)',P?P.itn.length:null],
+     ['lng','장기품절 60일+','<em>기말</em>',S.lng.length,`비의도적 <em>${S.lng.filter(r=>r.it==='비의도적').length}</em> · 의도적 <em>${S.lng.filter(r=>r.it==='의도적').length}</em>`,'var(--sh-purple)',P?P.lng.length:null]
     ];
     $('#sh-kpis').innerHTML = kpiDefs.map(([k,l,e,v,s,c,pv]) => {
       const valHtml = k==='gs'
