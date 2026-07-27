@@ -6503,7 +6503,7 @@ function nav(el,id) {
   const titles={overview:'종합 현황','inventory-ops':'재고운영 현황','stockout-detail':'품절 상세','purchase-review':'매입 검토','season-plan':'시즌재고 계획',eoq:'EOQ · 발주알람',graduation:'졸업 검토',order:'발주 현황',progress:'발주 진행현황','cost-analysis':'원가 분석',issue:'이슈 현황',sales:'매출/마진 분석','product-trend':'제품별 판매량 추이',supplier:'협력사 · 매입 현황','supplier-product':'협력사유형별 제품군',kpi:'KPI 목표·트래킹',portfolio:'공급망 포트폴리오',qms:'품질 현황',subcontract:'하도급법 위험',ai:'AI 어시스턴트',report:'리포트 생성',stock:'재고 현황',quote:'견적계산기'};
   const guides={
     overview:'<b>확인 가능 지표:</b> 월간 공지사항(졸업/출시/품절 제품, 선택 월 기준 자동집계) · 발주TASK(프로젝트/재고생산/긴급) · 월매입금액 · 이슈건수(품질/수량/운영) · 긴급발주 · 고객인지이슈 — 모든 KPI에 전년 동기(YoY) 비교 표시 | <b>차트:</b> 매입추이(월별/주별·합산/협력사/업태/굿즈코드) · 이슈유형 도넛 · 담당자별 발주 · 월별이슈추이 · 제조유형 매입비중(업태/카테고리 전환) | <b>클릭:</b> KPI 카드 클릭 시 상세 모달 · 차트 월 클릭 시 Top5 모달 | <b>CSV:</b> 발주_RAW + 이슈_RAW + 공급망_RAW + 고객인지이슈_RAW + 굿즈마스터(졸업/출시) + 품절리스트',
-    'inventory-ops':'<b>확인 가능 지표:</b> 재고자산평가액 · 재고회전율(1M/3M/YTD) · 품절률 · 운영밴드 상태(분기별) | <b>차트:</b> 재고금액 추이(최근12주, 밴드 상/하한 표시) · 카테고리별 재고비중/SKU수/회전율 | <b>클릭:</b> 재고자산/회전율 KPI → SKU별 상세 모달(정렬 가능, 회전율 클릭 시 월별 판매추이 바차트+회의이력) | <b>CSV:</b> 재고 SKU 스냅샷(dashboard_sku_snapshot) + 재고 그룹 요약(dashboard_group_summary)',
+    'inventory-ops':'<b>확인 가능 지표:</b> 재고자산평가액 · 재고회전율(1M/3M/YTD) · 선매입재고품절율 · 운영밴드 상태(분기별) | <b>차트:</b> 재고금액 추이(최근12주, 밴드 상/하한 표시) · 카테고리별 재고비중/SKU수/회전율 | <b>클릭:</b> 재고자산/회전율 KPI → SKU별 상세 모달(정렬 가능, 회전율 클릭 시 월별 판매추이 바차트+회의이력) | <b>CSV:</b> 재고 SKU 스냅샷(dashboard_sku_snapshot) + 재고 그룹 요약(dashboard_group_summary)',
     'stockout-detail':'<b>확인 가능 지표:</b> 관리대상 SKU · 비의도적/일시 품절 건수 · 장기품절(30일+/60일+) | <b>테이블:</b> 판매상태 분포 · 품절 상세(품절일수 내림차순) | <b>CSV:</b> 재고 SKU 스냅샷(dashboard_sku_snapshot)',
     'purchase-review':'<b>확인 가능 지표:</b> 전체 검토건수 · 미확정 계획금액 · 확정 매입금액 | <b>필터:</b> 전체/미확정/확정 상태 전환 | <b>테이블:</b> 파츠명·번호 · 재고수량 · 계획/확정 수량 · 결정상태/사항 · 회의명 | <b>CSV:</b> 매입검토현황 (S&OP purchase_review)',
     'season-plan':'<b>확인 가능 지표:</b> 구매팀 희망금액 · S&OP 확정금액 · 확정 입력률 | <b>탭:</b> 전체요약 + 계획구분별 탭(국내생산/직소싱/중개소싱 등) | <b>테이블:</b> 굿즈명 · 옵션 · 24Q4/25Q4/26Q4예상 판매 · 매입희망수량 · S&OP 확정(입력 가능, localStorage 저장) · 단가 | <b>CSV:</b> 시즌재고계획 (시즌매입_파츠연결)',
@@ -6632,7 +6632,7 @@ async function startDashboardTour(){
       { element:()=>tourGoto('overview'),
         popover:{ title:'① 종합 현황', description:'핵심 KPI 5종, 전년 동기·전월 대비, 이번 달 졸업·출시·품절·협력사 변경 이력을 한 화면에서 확인합니다.' } },
       { element:()=>tourGoto('inventory-ops'),
-        popover:{ title:'② 재고운영 현황 (구매전략)', description:'재고자산·회전율·품절율을 자동 계산하고, 입고예정금액·EOQ 발주알람으로 발주 타이밍을 미리 알려드려요.' } },
+        popover:{ title:'② 재고운영 현황 (구매전략)', description:'재고자산·회전율·선매입재고품절율을 자동 계산하고, 입고예정금액·EOQ 발주알람으로 발주 타이밍을 미리 알려드려요.' } },
       { element:()=>{ closeModal(); openModal('inventoryAsset'); const m=document.querySelector('.modal'); if(m) void m.offsetHeight; return m; },
         popover:{ title:'🔍 재고자산 KPI 클릭 → SKU별 상세', description:'재고자산 카드를 클릭하면 이렇게 SKU마다 카테고리·조달유형·재고수량·재고금액·3개월 회전율까지 한 번에 비교할 수 있어요(정렬 가능).' } },
       { element:()=>tourGoto('order'),
@@ -7483,7 +7483,7 @@ function psrRenderSection5_(L, unit, key, baseDate, periodRow, totalInv, memoTex
   L.push('## 5. 주요 이슈 및 우선순위'); L.push('');
   L.push('### 5-1. 주간 변동 요약'); L.push('');
   const stockoutRate = toNum(periodRow.stockout_rate);
-  L.push('- 품절율: '+(stockoutRate*100).toFixed(1)+'% (비의도적 품절 '+toNum(periodRow.stockout_count).toLocaleString()+'건 / 관리대상 '+toNum(periodRow.managed_count).toLocaleString()+'건)');
+  L.push('- 선매입재고품절율: '+(stockoutRate*100).toFixed(1)+'% (비의도적 품절 '+toNum(periodRow.stockout_count).toLocaleString()+'건 / 관리대상 '+toNum(periodRow.managed_count).toLocaleString()+'건)');
   const skuRowsForCounts = getAggSkuRows(unit,key);
   const longStockout30 = skuRowsForCounts.filter(r=>isAggManaged(r)&&isAggStockout(r)&&aggStockoutDays(r)>=30).length;
   const longStockout60 = skuRowsForCounts.filter(r=>isAggManaged(r)&&isAggStockout(r)&&aggStockoutDays(r)>=60).length;
@@ -7974,7 +7974,7 @@ function openAggInventoryModal(kind){
   if(kind==='band'){
     title.textContent='운영밴드 상세 · '+aggPeriodLabel(p);
     body.innerHTML=`<div style="display:flex;gap:10px;margin-bottom:12px;flex-wrap:wrap"><span class="tag tag-gray">${band.q} 기준밴드 ${fmtW(band.min)}~${fmtW(band.max)}</span><span class="tag ${String(p.band_status||'').includes('정상')?'tag-ok':'tag-n'}">${esc(p.band_status||'운영밴드 미확인')}</span></div>
-    <table class="tbl"><thead><tr><th>기간</th><th class="num">재고금액</th><th class="num">1M회전율</th><th class="num">3M회전율</th><th class="num">YTD회전율</th><th class="num">품절율</th><th>상태</th></tr></thead><tbody>
+    <table class="tbl"><thead><tr><th>기간</th><th class="num">재고금액</th><th class="num">1M회전율</th><th class="num">3M회전율</th><th class="num">YTD회전율</th><th class="num">선매입재고품절율</th><th>상태</th></tr></thead><tbody>
     ${trend.map(r=>`<tr><td>${esc(r.period_key||'')}</td><td class="num">${fmtW(toNum(r.inv_amount))}</td><td class="num">${fmtTurn(toNum(r.turnover_1m))}</td><td class="num">${fmtTurn(toNum(r.turnover_3m))}</td><td class="num">${fmtTurn(toNum(r.turnover_ytd))}</td><td class="num">${fmtPct(toNum(r.stockout_rate))}</td><td>${esc(r.band_status||'')}</td></tr>`).join('')}
     </tbody></table>`;
     return;
@@ -8024,7 +8024,7 @@ function renderInventoryOpsFromAgg(){
     <div class="kpi-row">
       <div class="kpi-card c-blue" onclick="openModal('inventoryAsset')" style="cursor:pointer"><div class="kpi-label">재고자산 평가액</div><div class="kpi-val">${fmtW(inv)}</div><div class="kpi-sub">SKU 상세 보기</div></div>
       <div class="kpi-card c-green" onclick="openModal('inventoryAsset')" style="cursor:pointer"><div class="kpi-label">재고회전율</div><div class="kpi-val">${fmtTurn(toNum(p.turnover_3m))}</div><div class="kpi-sub">1M ${fmtTurn(toNum(p.turnover_1m))} · 3M ${fmtTurn(toNum(p.turnover_3m))} · YTD ${fmtTurn(toNum(p.turnover_ytd))}</div></div>
-      <div class="kpi-card c-red" onclick="openAggInventoryModal('stockout')" style="cursor:pointer"><div class="kpi-label">품절율</div><div class="kpi-val">${fmtPct(toNum(p.stockout_rate))}</div><div class="kpi-sub">비의도적 ${fmtN(toNum(p.stockout_count)||stockout.length)} / 관리대상 ${fmtN(toNum(p.managed_count)||managed.length)} · 30일+ ${long30.length} · 60일+ ${long60.length}</div></div>
+      <div class="kpi-card c-red" onclick="openAggInventoryModal('stockout')" style="cursor:pointer"><div class="kpi-label">선매입재고품절율</div><div class="kpi-val">${fmtPct(toNum(p.stockout_rate))}</div><div class="kpi-sub">비의도적 ${fmtN(toNum(p.stockout_count)||stockout.length)} / 관리대상 ${fmtN(toNum(p.managed_count)||managed.length)} · 30일+ ${long30.length} · 60일+ ${long60.length}</div></div>
       <div class="kpi-card c-amber" onclick="openAggInventoryModal('band')" style="cursor:pointer"><div class="kpi-label">운영밴드</div><div class="kpi-val" style="color:${bsc};font-size:20px">${esc(bandStatus)}</div><div class="kpi-sub">${band.q} ${fmtW(band.min)}~${fmtW(band.max)}</div></div>
       <div class="kpi-card c-purple" onclick="openIncomingOrdersModal()" style="cursor:pointer"><div class="kpi-label">입고예정금액</div><div class="kpi-val" style="font-size:20px">${incoming?fmtW(incoming.totalAmount):'데이터 없음'}</div><div class="kpi-sub">${incoming?`SKU ${fmtN(incoming.skuCount)} · 미입하 ${fmtN(incoming.orderCount)}건 · 입고 후 ${fmtW(incomingAfter)}`:'raw_발주 + parts_master 필요'}</div></div>
     </div>
@@ -8082,7 +8082,7 @@ function renderInventoryOpsFromAgg(){
     <div style="font-size:15px;font-weight:700;margin:18px 0 10px">5. 흐름 분석</div>
     <div class="grid-2">
       <div class="card"><div class="card-header"><div class="card-title">재고금액 추이</div><div class="card-sub">최근 12주 · 집계 CSV</div></div><div class="ch" style="height:240px"><canvas id="ch-inv-trend"></canvas></div></div>
-      <div class="card"><div class="card-header"><div class="card-title">회전율/품절율 추이</div><div class="card-sub">3M 회전율 · 품절율</div></div><div class="ch" style="height:240px"><canvas id="ch-agg-turn-stock"></canvas></div></div>
+      <div class="card"><div class="card-header"><div class="card-title">회전율/선매입재고품절율 추이</div><div class="card-sub">3M 회전율 · 선매입재고품절율</div></div><div class="ch" style="height:240px"><canvas id="ch-agg-turn-stock"></canvas></div></div>
     </div>`;
   dc('ch-inv-trend'); dc('ch-agg-turn-stock');
   renderAggInventoryDonut('ch-agg-prod-donut',prodRows);
@@ -8091,7 +8091,7 @@ function renderInventoryOpsFromAgg(){
   const ctx1=getCtx('ch-inv-trend');
   if(ctx1) CHARTS['ch-inv-trend']=new Chart(ctx1,{type:'line',data:{labels:trend.map(r=>String(r.period_key||'').slice(5)),datasets:[{label:'재고금액',data:trend.map(r=>toNum(r.inv_amount)),borderColor:'#1d4ed8',backgroundColor:'rgba(29,78,216,.08)',fill:true,tension:.35,pointRadius:3,borderWidth:2},{label:'밴드 상한',data:trend.map(()=>band.max),borderColor:'#dc2626',borderDash:[4,4],borderWidth:1,pointRadius:0},{label:'밴드 하한',data:trend.map(()=>band.min),borderColor:'#d97706',borderDash:[4,4],borderWidth:1,pointRadius:0}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{position:'bottom',labels:{font:{size:10}}}},scales:{y:{ticks:{callback:v=>fmtW(v),font:{size:10}}}}}});
   const ctx2=getCtx('ch-agg-turn-stock');
-  if(ctx2) CHARTS['ch-agg-turn-stock']=new Chart(ctx2,{type:'line',data:{labels:trend.map(r=>String(r.period_key||'').slice(5)),datasets:[{label:'3M 회전율',data:trend.map(r=>toNum(r.turnover_3m)),borderColor:'#059669',backgroundColor:'rgba(5,150,105,.08)',yAxisID:'y',tension:.35,pointRadius:3,borderWidth:2},{label:'품절율(%)',data:trend.map(r=>toNum(r.stockout_rate)*100),borderColor:'#dc2626',backgroundColor:'rgba(220,38,38,.06)',yAxisID:'y1',tension:.35,pointRadius:3,borderWidth:2}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{position:'bottom',labels:{font:{size:10}}}},scales:{y:{position:'left',ticks:{font:{size:10}}},y1:{position:'right',grid:{drawOnChartArea:false},ticks:{callback:v=>v+'%',font:{size:10}}}}}});
+  if(ctx2) CHARTS['ch-agg-turn-stock']=new Chart(ctx2,{type:'line',data:{labels:trend.map(r=>String(r.period_key||'').slice(5)),datasets:[{label:'3M 회전율',data:trend.map(r=>toNum(r.turnover_3m)),borderColor:'#059669',backgroundColor:'rgba(5,150,105,.08)',yAxisID:'y',tension:.35,pointRadius:3,borderWidth:2},{label:'선매입재고품절율(%)',data:trend.map(r=>toNum(r.stockout_rate)*100),borderColor:'#dc2626',backgroundColor:'rgba(220,38,38,.06)',yAxisID:'y1',tension:.35,pointRadius:3,borderWidth:2}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{position:'bottom',labels:{font:{size:10}}}},scales:{y:{position:'left',ticks:{font:{size:10}}},y1:{position:'right',grid:{drawOnChartArea:false},ticks:{callback:v=>v+'%',font:{size:10}}}}}});
 }
 
 // ===== 3-3b. 품절 상세 — sales_status_history 전체 이력 기반 =====
