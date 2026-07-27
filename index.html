@@ -8193,7 +8193,9 @@ function renderStockoutDetailFull_(){
           '<span class="m-chip" data-g="week">주별</span><span class="m-chip" data-g="month">월별</span><span class="m-chip" data-g="quarter">분기별</span>' +
         '</span>' +
         '<span class="filter-label" style="margin-left:12px">조회기간</span>' +
-        '<button class="sh-nb" id="sh-prev">&#8249;</button><b id="sh-plab" style="min-width:96px;text-align:center;display:inline-block;font-size:13px;font-weight:800;letter-spacing:-.02em"></b><button class="sh-nb" id="sh-next">&#8250;</button>' +
+        '<button class="sh-nb" id="sh-prev">&#8249;</button>' +
+        '<select id="sh-psel" style="font-size:12px;padding:5px 9px;border:1px solid var(--border2);border-radius:var(--r-sm);background:var(--surface);min-width:110px;text-align:center"></select>' +
+        '<button class="sh-nb" id="sh-next">&#8250;</button>' +
         '<span class="sh-rng" id="sh-prng"></span>' +
       '</div>' +
       '<div class="sh-guide">' +
@@ -8283,7 +8285,8 @@ function renderStockoutDetailFull_(){
     const L = PS[G]; I = Math.max(0, Math.min(I, L.length - 1));
     const p = L[I], S = snap(p.e), P = I > 0 ? snap(L[I-1].e) : null;
     $('#sh-seg').querySelectorAll('span').forEach(e => e.classList.toggle('active', e.dataset.g === G));
-    $('#sh-plab').textContent = p.id; $('#sh-prng').textContent = `${p.s} ~ ${p.e}`;
+    $('#sh-psel').innerHTML = L.map(pp => `<option value="${pp.id}"${pp.id===p.id?' selected':''}>${pp.id}</option>`).join('');
+    $('#sh-prng').textContent = `${p.s} ~ ${p.e}`;
     $('#sh-prev').disabled = I === 0; $('#sh-next').disabled = I === L.length - 1;
 
     $('#sh-totline').innerHTML = `<span class="sh-tot">전체 품절 ${S.so.length}건</span>
@@ -8501,6 +8504,10 @@ function renderStockoutDetailFull_(){
   });
   $('#sh-prev').onclick = () => { I--; render(); };
   $('#sh-next').onclick = () => { I++; render(); };
+  $('#sh-psel').onchange = () => {
+    const idx = PS[G].findIndex(pp => pp.id === $('#sh-psel').value);
+    if (idx >= 0) { I = idx; render(); }
+  };
   render();
 }
 
