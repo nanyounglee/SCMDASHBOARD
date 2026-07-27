@@ -1094,6 +1094,25 @@ let PRICE_HISTORY=null;
 function loadPriceHistory(){
   fetch('data/parts_price_history.json').then(r=>r.ok?r.json():null).catch(()=>null).then(j=>{ if(j) PRICE_HISTORY=j; });
 }
+// v23.6: 완제품 1개에 여러 개가 들어가는 부품성 파츠(BOM 구성 파츠) — 발주지시수량은 낱개 기준,
+// 고객주문수량은 세트 기준으로 기록되어 그대로 비교하면 여분율이 배수만큼 부풀려짐(예: AA건전지
+// 오프너1개당4개 → 여분 300%로 오표시). data/parts_bom_multiplier.json에 파츠번호별 배수를 등록해두고
+// 여분(버퍼) 계산에서 고객주문수량 × 배수로 낱개 단위를 맞춘 뒤 비교한다.
+let BOM_MULT=null;
+function loadBomMultiplier(){
+  fetch('data/parts_bom_multiplier.json').then(r=>r.ok?r.json():null).catch(()=>null).then(j=>{ if(j) BOM_MULT=j; });
+}
+function partCode(r){
+  const s=r['parts']||r['sync_itemdb']||r['산출물_파츠코드']||'';
+  const m=String(s).match(/PT\d+/);
+  return m?m[0]:'';
+}
+function bomMultiplier(r){
+  if(!BOM_MULT) return 1;
+  const pc=partCode(r);
+  const e=pc&&BOM_MULT[pc];
+  return (e&&e.multiplier>0)?e.multiplier:1;
+}
 const PRICE_TIER_STEPS=[1,50,100,300,500,1000,3000,5000,10000,30000];
 // v22.2 감사 수정: 0값 구간은 미기재로 스킵 (partTierCost·getCostTierValue와 규칙 통일)
 function tierPickArr(arr,qty){
@@ -2230,7 +2249,7 @@ function renderOrdTopTable() {
     byProd[key].freq++;
     // v21.9: 고객주문수량(고객이 실제 구매한 수량) 합계 + 현재 여분 발주율 — v21.7 관행 산식과 동일
     // (여분율 분모·분자는 고객주문>0 & 발주≥고객 행만: 분할발주 음수·재제작 행 제외)
-    const cq=pa(String(r['고객주문수량']||''));
+    const cq=pa(String(r['고객주문수량']||''))*bomMultiplier(r);
     // v22.2 감사 수정: 고객주문수량 합계도 여분율과 동일 규칙(분할발주 발주<고객·재제작 제외) —
     // 분할발주에서 같은 고객 구매수량이 행마다 반복 계상되던 불일치 해소
     if(cq>0&&oq>=cq&&!String(r['task_id']||'').includes('재제작')){ byProd[key].cust+=cq; byProd[key].bufC+=cq; byProd[key].bufD+=(oq-cq); }
@@ -2308,7 +2327,7 @@ function computePreventionEffect(){
     const isRework=String(r['task_id']||'').includes('재제작');
     if(p&&!prods[p]) prods[p]={prod:p,prevCost:0,bufUnits:0,custQty:0,reworkCnt:0,failCost:0,shortCnt:0,avoided:0};
     if(isRework){ if(p){prods[p].reworkCnt++; prods[p].failCost+=pa(r['취득원가']);} return; }
-    const oq=pa(String(r['발주지시수량']||'')), cq=pa(String(r['고객주문수량']||'')), amt=pa(r['공급가액']);
+    const oq=pa(String(r['발주지시수량']||'')), cq=pa(String(r['고객주문수량']||''))*bomMultiplier(r), amt=pa(r['공급가액']);
     const buf=(cq>0&&oq>cq)?oq-cq:0;
     const unit=(oq>0&&amt>0)?amt/oq:0;
     const pc=buf*unit;
@@ -2480,7 +2499,7 @@ function computeBufferRows(){
     g.taskCnt++; g.qty+=oq; g.amt+=pa(r['공급가액']);
     // v21.7: 현재 관행 여분 — 고객주문수량(고객이 실제 구매한 수량) 대비 발주지시수량 초과분.
     // 발주<고객(분할발주 등 음수)은 여분 판단 불가라 관행 집계에서 제외, 여분 0인 행은 포함
-    const cq=pa(String(r['고객주문수량']||''));
+    const cq=pa(String(r['고객주문수량']||''))*bomMultiplier(r);
     g.orderRows.push({qty:oq,amt:pa(r['공급가액']),buf:(cq>0&&oq>=cq)?oq-cq:null}); // v21.8 구간별 + v21.18 구간 관행 여분
     if(hasNoReceipt(r)) g.noRecv++;
     if(cq>0&&oq>=cq){ g.custQty+=cq; g.bufGiven+=(oq-cq); g.bufRows++; }
@@ -2679,7 +2698,7 @@ function openProductOrderDetail(prod){
   orders.forEach(r=>{
     if(String(r['task_id']||'').includes('재제작')){ rework++; reworkCost+=pa(r['취득원가']); return; }
     const oq=pa(String(r['발주지시수량']||'')); taskCnt++; qty+=oq; amt+=pa(r['공급가액']);
-    const cq=pa(String(r['고객주문수량']||''));
+    const cq=pa(String(r['고객주문수량']||''))*bomMultiplier(r);
     if(cq>0&&oq>=cq){ cust+=cq; buf+=(oq-cq); }
   });
   const bufPct=cust>0?(buf/cust*100):null;
@@ -2739,7 +2758,7 @@ function openProductOrderDetail(prod){
     <table class="tbl"><thead><tr><th class="rank">#</th><th>발주일</th><th>발주번호</th><th>협력사</th><th class="num">발주수량</th><th class="num">고객주문</th><th class="num">여분</th><th class="num">공급가액</th><th>구분</th></tr></thead><tbody>
     ${recent.map((r,i)=>{
       const rw=String(r['task_id']||'').includes('재제작');
-      const oq=pa(String(r['발주지시수량']||'')), cq=pa(String(r['고객주문수량']||''));
+      const oq=pa(String(r['발주지시수량']||'')), cq=pa(String(r['고객주문수량']||''))*bomMultiplier(r);
       const bf=(cq>0&&oq>=cq&&!rw)?oq-cq:null;
       const isBigDeal=!rw&&bigDealQty>0&&oq>=bigDealQty;
       return `<tr><td class="rank">${i+1}</td><td style="font-size:11px">${esc(r['과업지시일자']||'—')}</td><td class="mono" style="font-size:11px">${esc(r['발주번호']||'—')}</td><td style="font-size:11px">${esc(r['수주처']||'—')}</td><td class="num">${oq.toLocaleString()}</td><td class="num">${cq?cq.toLocaleString():'—'}</td><td class="num">${bf!==null?bf.toLocaleString():'—'}</td><td class="num">${faFull(pa(r['공급가액']))}</td><td>${rw?'<span class="tag" style="background:var(--red-light);color:var(--red)">재제작</span>':''}${isBigDeal?' <span class="tag" style="background:var(--blue-light);color:var(--blue)" title="건당 평균 발주수량 대비 +10% 이상">빅딜</span>':''}</td></tr>`;
@@ -3156,7 +3175,7 @@ function renderCIFailCostPanel() {
   // (전년 라인용으로 전년 발주 포함 · v21.10 예방비용 카드와 동일 산식)
   [D.order,D.orderPrevYear].forEach(list=>(list||[]).forEach(r=>{
     if(isStock(r)||String(r['task_id']||'').includes('재제작')) return;
-    const oq=pa(String(r['발주지시수량']||'')), cq=pa(String(r['고객주문수량']||'')), amt=pa(r['공급가액']);
+    const oq=pa(String(r['발주지시수량']||'')), cq=pa(String(r['고객주문수량']||''))*bomMultiplier(r), amt=pa(r['공급가액']);
     if(!(cq>0&&oq>cq&&amt>0)) return;
     const mo=pOrderMonth(r['과업지시일자']); if(!mo) return;
     prevCostByMonth[mo]=(prevCostByMonth[mo]||0)+(oq-cq)*(amt/oq);
@@ -9281,8 +9300,12 @@ function renderCostProjectDetail() {
   const costRate=revenue>0?(totalCost/revenue*100):0;
 
   // Standard cost from 공정DB
-  const gc=goodsCode(taskRows[0]||{});
-  const procs=gc?getProcessesForGoods(gc):[];
+  // v23.6 fix: a project can mix multiple distinct 산출물(goods) — gc must be
+  // derived per task row, not once from taskRows[0], or every row silently
+  // gets matched against whichever goods happened to be first (e.g. 에코컵
+  // 표준단가 leaking onto 하이킹폴딩방석 rows when both share tc==='A1').
+  const allGc=[...new Set(taskRows.map(r=>goodsCode(r)).filter(Boolean))];
+  const procs=allGc.length?COST_DB.process.filter(p=>allGc.includes(p.gc)):[];
 
   el.innerHTML=`
     <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin:14px 0">
@@ -9310,7 +9333,8 @@ function renderCostProjectDetail() {
       // Standard from 공정DB or 파츠마스터
       const taskId=(r['task_id']||'').split('_');
       const tc=taskId[taskId.length-1]||'';
-      const proc=procs.find(p=>p.tc===tc);
+      const rowGc=goodsCode(r);
+      const proc=procs.find(p=>p.tc===tc&&(!rowGc||p.gc===rowGc));
       const od=parseAnyDate(r['과업지시일자']); const stdCost=proc?getProcStdUnit(proc,qty,od?fmtISODate(od):null):0; // v21.17: 발주일 시점 단가
       const diff=stdCost>0&&unitCost>0?((unitCost-stdCost)/stdCost*100):null;
       const diffBadge=diff===null?'<span style="color:var(--text3)">—</span>':diff<=0?`<span style="color:var(--green);font-weight:600">${diff.toFixed(1)}%</span>`:`<span style="color:var(--red);font-weight:600">+${diff.toFixed(1)}%</span>`;
@@ -9331,9 +9355,9 @@ function renderCostProjectDetail() {
     </tbody></table></div>`:''}
 
     ${procs.length?`
-    <div style="font-size:11px;font-weight:600;color:var(--text3);text-transform:uppercase;letter-spacing:.04em;margin:16px 0 6px">공정DB 표준 원가 참조 (${gc})</div>
-    <div class="tbl-wrap"><table class="tbl"><thead><tr><th>공정</th><th>협력사</th><th>제조유형</th><th>재고공정</th><th class="num">100개</th><th class="num">500개</th><th class="num">1000개</th></tr></thead><tbody>
-    ${procs.map(p=>`<tr><td style="font-size:11px">${esc(p.id)}</td><td style="font-size:11px">${esc(p.sup||'')}</td><td><span class="tag tag-gray">${esc(p.mfg||'')}</span></td><td>${p.isStock==='Y'?'<span class="tag tag-n">재고</span>':'—'}</td><td class="num">${p.c100?p.c100.toLocaleString()+'원':'—'}</td><td class="num">${p.c500?p.c500.toLocaleString()+'원':'—'}</td><td class="num">${p.c1000?p.c1000.toLocaleString()+'원':'—'}</td></tr>`).join('')}
+    <div style="font-size:11px;font-weight:600;color:var(--text3);text-transform:uppercase;letter-spacing:.04em;margin:16px 0 6px">공정DB 표준 원가 참조 (${allGc.join(', ')})</div>
+    <div class="tbl-wrap"><table class="tbl"><thead><tr><th>굿즈</th><th>공정</th><th>협력사</th><th>제조유형</th><th>재고공정</th><th class="num">100개</th><th class="num">500개</th><th class="num">1000개</th></tr></thead><tbody>
+    ${procs.map(p=>`<tr><td style="font-size:11px">${esc(p.gc||'')}</td><td style="font-size:11px">${esc(p.id)}</td><td style="font-size:11px">${esc(p.sup||'')}</td><td><span class="tag tag-gray">${esc(p.mfg||'')}</span></td><td>${p.isStock==='Y'?'<span class="tag tag-n">재고</span>':'—'}</td><td class="num">${p.c100?p.c100.toLocaleString()+'원':'—'}</td><td class="num">${p.c500?p.c500.toLocaleString()+'원':'—'}</td><td class="num">${p.c1000?p.c1000.toLocaleString()+'원':'—'}</td></tr>`).join('')}
     </tbody></table></div>`:''}
 
     <div style="background:var(--surface2);border-left:3px solid var(--border2);border-radius:0 var(--r-sm) var(--r-sm) 0;padding:10px 14px;font-size:11px;color:var(--text3);margin-top:14px;line-height:1.6">
@@ -11265,6 +11289,7 @@ window.addEventListener('load',()=>{
   loadPriorYearArchive();
   loadCostDB();
   loadPriceHistory();
+  loadBomMultiplier();
   // v22: 협력사·매입 현황(sec-supplier) / 협력사유형별 제품군(sec-supplier-product) 섹션을
   // 공급망 포트폴리오 서브탭 패널로 입양 — 렌더러들이 내부 id(tb-sup-pur 등)를 대상으로 하므로
   // DOM만 옮기면 그대로 동작. sec- 접두 id는 nav의 전체 숨김 대상이라 입양 시 id 교체.
