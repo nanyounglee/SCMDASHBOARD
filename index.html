@@ -254,6 +254,8 @@ a{color:var(--blue);text-decoration:none}
 .sh-grid2 { display:grid; grid-template-columns:1fr 1fr; gap:16px; }
 @media(max-width:1000px) { .sh-grid2 { grid-template-columns:1fr; } }
 .sh-grid2 > .sh-panel { margin-bottom:0; }
+.sh-cz2col { display:grid; grid-template-columns:1fr 1fr; gap:0 8px; }
+@media(max-width:700px) { .sh-cz2col { grid-template-columns:1fr; } }
 .sh-root table { width:100%; border-collapse:collapse; font-size:13px; }
 .sh-root th { text-align:left; font-size:11px; color:var(--sh-ink3); font-weight:700; padding:9px 19px; border-top:1px solid var(--sh-line2); border-bottom:1px solid var(--sh-line2); background:#FAFBFC; white-space:nowrap; }
 .sh-root th.r, .sh-root td.r { text-align:right; }
@@ -8209,19 +8211,17 @@ function renderStockoutDetailFull_(){
         '<div class="sh-lgd"><span><i style="background:var(--sh-crimson)"></i>굿즈품절율</span><span><i class="ln" style="background:var(--sh-amber)"></i>목표선</span></div>' +
         '<div class="sh-chart-wrap" id="sh-gschart"></div>' +
       '</div>' +
-      '<div class="sh-grid2">' +
-        '<div class="sh-panel">' +
-          '<div class="sh-ph"><h3>비의도적품절 추이 (SKU수 기준)</h3><span class="sh-hint">막대 클릭 시 해당 기간 품절 목록 보기 · 각 기간 기말 시점</span></div>' +
-          '<div class="sh-lgd"><span><i style="background:var(--sh-red)"></i>비의도적</span></div>' +
-          '<div class="sh-chart-wrap" id="sh-chart"></div>' +
+      '<div class="sh-panel">' +
+        '<div class="sh-ph"><h3>비의도적품절 추이 (SKU수 기준)</h3><span class="sh-hint">막대 클릭 시 해당 기간 품절 목록 보기 · 각 기간 기말 시점</span></div>' +
+        '<div class="sh-lgd"><span><i style="background:var(--sh-red)"></i>비의도적</span></div>' +
+        '<div class="sh-chart-wrap" id="sh-chart"></div>' +
+      '</div>' +
+      '<div class="sh-panel"><div class="sh-ph"><h3>품절 사유</h3><span class="sh-hint" id="sh-czhint"></span></div>' +
+        '<div class="sh-cz2col">' +
+          '<div><div class="sh-subnote" style="padding:6px 19px 4px;">비의도적</div><div class="sh-bars" id="sh-czbars"></div></div>' +
+          '<div><div class="sh-subnote" style="padding:6px 19px 4px;">의도적</div><div class="sh-bars" id="sh-czbars2"></div></div>' +
         '</div>' +
-        '<div class="sh-panel"><div class="sh-ph"><h3>품절 사유</h3><span class="sh-hint" id="sh-czhint"></span></div>' +
-          '<div class="sh-subnote" style="padding:6px 19px 4px;">비의도적</div>' +
-          '<div class="sh-bars" id="sh-czbars"></div>' +
-          '<div class="sh-subnote" style="padding:10px 19px 4px;">의도적</div>' +
-          '<div class="sh-bars" id="sh-czbars2"></div>' +
-          '<div class="sh-subnote" id="sh-cznote"></div>' +
-        '</div>' +
+        '<div class="sh-subnote" id="sh-cznote"></div>' +
       '</div>' +
       '<div class="sh-grid2">' +
         '<div class="sh-panel"><div class="sh-ph"><h3>협력사재고 품절 상세</h3><span class="sh-hint" id="sh-cohint"></span></div>' +
