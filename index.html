@@ -8207,7 +8207,7 @@ function renderStockoutDetailFull_(){
       '</div>' +
       '<div class="sh-kpis" id="sh-kpis"></div>' +
       '<div class="sh-panel">' +
-        '<div class="sh-ph"><h3>굿즈품절율 추이</h3><span class="sh-hint">목표선 1~3Q 3%↓ · 4Q 5%↓ · 분모는 현재 판매중 굿즈 수(근사) · 점 클릭 시 해당 기간 목록</span></div>' +
+        '<div class="sh-ph"><h3>굿즈품절율 추이</h3><span class="sh-hint">목표선 1~3Q 3%↓ · 4Q 5%↓ · 분모는 그 시점 출시일~졸업일 기준 운영중 굿즈 수 · 점 클릭 시 해당 기간 목록</span></div>' +
         '<div class="ch" style="height:220px;padding:4px 14px 12px"><canvas id="sh-gschart-cv"></canvas></div>' +
       '</div>' +
       '<div class="sh-panel">' +
@@ -8278,6 +8278,22 @@ function renderStockoutDetailFull_(){
     list.forEach(r => { String(r.gd||'').split(',').forEach(g => { const t = g.trim(); if (t) set.add(t); }); });
     return set;
   }
+  // 그 시점(dateStr) 기준 "운영 중"이던 굿즈 수 — 출시일≤기준일<졸업일로 판정.
+  // 졸업일이 있으면 그걸로 확정 판단(가장 신뢰), 없으면 굿즈 Status='졸업'만으로도 제외,
+  // 출시일도 없는 경우(메타데이터 자체가 없는 행)는 이력 재구성이 불가능해 현재 Status로만 판단.
+  function shGoodsActiveAt_(dateStr) {
+    const t = new Date(dateStr);
+    return (D.goods_master||[]).filter(r => {
+      const status = String(r['굿즈 Status']||'').trim();
+      const launch = shParseDate_(r['출시일']);
+      const grad = shParseDate_(r['졸업일']);
+      if (launch && new Date(launch) > t) return false;
+      if (grad) return new Date(grad) > t;
+      if (status === '졸업') return false;
+      if (!launch) return status === '판매중';
+      return true;
+    }).length;
+  }
 
   function render() {
     const L = PS[G]; I = Math.max(0, Math.min(I, L.length - 1));
@@ -8296,13 +8312,14 @@ function renderStockoutDetailFull_(){
 
     const ow = arr => ['협력사','신시어리','생산'].map(o => { const n = arr.filter(r => r.ow === o).length;
       return n ? `${o==='신시어리'?'선매입':o} <em>${n}</em>` : ''; }).filter(Boolean).join(' · ') || '없음';
-    const activeGoodsCount = (D.goods_master||[]).filter(r => String(r['굿즈 Status']||'').trim()==='판매중').length;
+    const activeGoodsCount = shGoodsActiveAt_(p.e);
     const gsGoodsCount = shGoodsSet_(S.gs).size;
     const gsRate = (late && activeGoodsCount) ? (gsGoodsCount/activeGoodsCount*100) : null;
-    const gsRatePrev = (P && late && activeGoodsCount) ? (shGoodsSet_(P.gs).size/activeGoodsCount*100) : null;
+    const prevActiveGoodsCount = I > 0 ? shGoodsActiveAt_(L[I-1].e) : 0;
+    const gsRatePrev = (P && late && prevActiveGoodsCount) ? (shGoodsSet_(P.gs).size/prevActiveGoodsCount*100) : null;
     const kpiDefs = [
      ['gs', '굿즈품절율','<em>기말</em>',S.gs.length,
-       !late ? '입력 시작 전 기간' : (activeGoodsCount ? `영향 굿즈 <em>${gsGoodsCount}</em> / 판매중 <em>${activeGoodsCount}</em>개` : 'goods_master 업로드 필요'),
+       !late ? '입력 시작 전 기간' : (activeGoodsCount ? `영향 굿즈 <em>${gsGoodsCount}</em> / 그 시점 운영중 <em>${activeGoodsCount}</em>개` : 'goods_master 업로드 필요'),
        'var(--sh-crimson)',P?P.gs.length:null],
      ['un', '비의도적 품절','<em>기말</em>',S.un.length,ow(S.un),'var(--sh-red)',P?P.un.length:null],
      ['itn','의도적 품절','<em>기말</em>',S.itn.length,ow(S.itn),'var(--sh-amber)',P?P.itn.length:null],
@@ -8390,11 +8407,11 @@ function renderStockoutDetailFull_(){
     });
   }
   function gsChart(L, cp) {
-    const activeGoodsCount = (D.goods_master||[]).filter(r => String(r['굿즈 Status']||'').trim()==='판매중').length;
     const N = G==='quarter' ? L.length : (G==='month' ? 24 : 26);
     const sl = L.slice(Math.max(0, I-N+1), I+1);
     const data = sl.map(p => { const s = snap(p.e);
       const goodsCount = shGoodsSet_(s.gs).size;
+      const activeGoodsCount = shGoodsActiveAt_(p.e);
       const rate = activeGoodsCount ? goodsCount/activeGoodsCount*100 : 0;
       return { id:p.id, rate, target: shTargetPct_(p.e) }; });
     dc('sh-gschart-cv');
