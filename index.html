@@ -5648,6 +5648,9 @@ function genWeeklyOutsource() {
   const mondayDate = parseAnyDate(mondayStr);
   const thursDate = new Date(mondayDate); thursDate.setDate(mondayDate.getDate() + 3);
   const prevThursDate = new Date(thursDate); prevThursDate.setDate(thursDate.getDate() - 7);
+  const nextMondayDate = new Date(mondayDate); nextMondayDate.setDate(mondayDate.getDate() + 7);
+  const {y: ny, w: nw} = isoWeekOf(nextMondayDate);
+  const nextLabel = ny + '-W' + String(nw).padStart(2, '0');
   const fmtMMDD = d => String(d.getMonth()+1).padStart(2,'0') + String(d.getDate()).padStart(2,'0');
   const fmtShort = d => (d.getMonth()+1) + '.' + String(d.getDate()).padStart(2,'0');
   const fmtYMD = d => d.getFullYear() + '-' + String(d.getMonth()+1).padStart(2,'0') + '-' + String(d.getDate()).padStart(2,'0');
@@ -5798,6 +5801,17 @@ function genWeeklyOutsource() {
     const a = (r['품질등급최초판정']||'').trim(), b = (r['품질등급의견_SCM']||'').trim();
     return a && b && a !== b;
   }).length;
+
+  // 단가 변동 데이터 (섹션 4-1 및 5 카테고리별 서술에서 공통 사용)
+  // 요청일자 iso week +-1주 OR 변동사항 적용 시점 iso week -1~해당주
+  const priceChanges = D.price_chg ? D.price_chg.filter(r => {
+    if ((r['Confirmation']||'').trim() === '반려') return false;
+    const reqWk = getISOWeek((r['요청일자']||'').trim());
+    if (reqWk && (reqWk === prevLabel || reqWk === curLabel || reqWk === nextLabel)) return true;
+    const applyWk = getISOWeek((r['변동사항 적용 시점']||'').trim());
+    if (applyWk && (applyWk === prevLabel || applyWk === curLabel)) return true;
+    return false;
+  }) : [];
 
   // --- 마크다운 생성 ---
   let md = '';
@@ -5998,28 +6012,25 @@ function genWeeklyOutsource() {
   // 섹션 4
   md += `## 4. 원가 관리 지표\n\n`;
   md += `### 4-1. 단가 변동 현황\n\n`;
-  if (D.price_chg && D.price_chg.length) {
-    const priceChanges = D.price_chg.filter(r => {
-      const d = (r['요청일자']||r['변동사항 적용 시점']||'').trim();
-      return d.startsWith(String(curYear)) && (r['Confirmation']||'').trim() !== '반려';
-    });
+  // priceChanges: 요청일자 iso week +-1주 OR 변동사항 적용 시점 iso week -1~해당주 (함수 스코프에서 계산)
+  if (D.price_chg) {
     if (priceChanges.length) {
-      md += `| 협력사 | 품목 | 변동내용 | 적용시점 | 변동원인 |\n`;
+      md += `| 협력사 | 품목 | 변동 내용 | 적용시점 | 변동원인 |\n`;
       md += `|---|---|---|---|---|\n`;
       priceChanges.forEach(r => {
         const sup = (r['협력사 이름']||'').trim();
-        const item = (r['대상 굿즈명']||r['대상 파츠명']||'').substring(0,30);
-        const change = (r['변동사항']||'').substring(0,40);
+        const item = (r['대상 굿즈명']||r['대상 파츠명 (Shift+Space)']||'').replace(/\n/g,' ').substring(0,30);
+        const change = (r['변동사항 (Shift+Space로 전체 내용을 확인하세요)']||r['변동사항']||'').replace(/\n/g,' ').substring(0,80);
         const when = (r['변동사항 적용 시점']||'').trim();
         const why = (r['변동원인']||'').substring(0,30);
         md += `| ${sup} | ${item} | ${change} | ${when} | ${why} |\n`;
       });
-      md += `\n> ${curYear}년 단가 변동 ${priceChanges.length}건 (price_chg.csv 기준)\n\n`;
+      md += `\n> 해당 기간(${prevLabel}~${curLabel}) 단가 변동 ${priceChanges.length}건 (요청일자 ±1주 또는 적용시점 기준)\n\n`;
     } else {
-      md += `> ${curYear}년 단가 변동 없음 (price_chg.csv 기준)\n\n`;
+      md += `> 해당 기간(${prevLabel}~${curLabel}) 단가 변동 없음\n\n`;
     }
   } else {
-    md += `| 협력사 | 품목 | 변동내용 | 적용시점 | 비고 |\n`;
+    md += `| 협력사 | 품목 | 변동 내용 | 적용시점 | 비고 |\n`;
     md += `|---|---|---|---|---|\n`;
     md += `> [price_chg.csv 미로드 — SCMDASHBOARD-main/price_chg.csv 를 CSV/ 폴더에 복사 후 업로드 또는 수동 입력]\n\n`;
   }
@@ -6081,22 +6092,27 @@ function genWeeklyOutsource() {
     const fallback = cleanSup(matches[0]['(파트너)발주협력사명 텍스트']||matches[0]['수주처']||'');
     return fallback;
   };
-  md += `**협력사 품절 현황**${manualSOMonth ? ' (' + manualSOMonth + ' 기준)' : ''}\n`;
+  md += `**협력사 품절 현황**${manualSOMonth ? ' (' + manualSOMonth + ' 기준)' : ''}\n\n`;
   if (manualSO.length) {
     md += `| 파츠명 | 판매상태 | 협력사 |\n`;
     md += `|---|---|---|\n`;
     manualSO.forEach(r => {
-      const supName = supFromParts(r.parts) || '—';
+      const ptCode = (r.parts.match(/^(PT\d+)/) || [])[1] || '';
+      const partInfo = ptCode ? PARTS_MAP[ptCode] : getPartInfo(r.parts);
+      const supName = (partInfo && partInfo.supplier) || supFromParts(r.parts) || '—';
       md += `| ${r.parts} | ${r.status} | ${supName} |\n`;
     });
     md += `\n> 총 ${manualSO.length}건 (대시보드 수동 등록 목록 기준)\n`;
   } else if (D.stockout_list) {
     const stockouts = D.stockout_list.filter(r => ['일시품절','품절예정'].includes((r['판매상태']||'').trim()));
     if (stockouts.length) {
-      md += `| 파츠명 | 판매상태 | 변경일 |\n`;
-      md += `|---|---|---|\n`;
+      md += `| 파츠명 | 판매상태 | 협력사 | 변경일 |\n`;
+      md += `|---|---|---|---|\n`;
       stockouts.slice(0, 10).forEach(r => {
-        md += `| ${r['파츠명']||''} | ${r['판매상태']||''} | ${r['변경일(인터페이스용)']||''} |\n`;
+        const ptCode = ((r['파츠번호']||r['파츠명']||'').match(/^(PT\d+)/) || [])[1] || '';
+        const partInfo = ptCode ? PARTS_MAP[ptCode] : getPartInfo(r['파츠명']||'');
+        const supName = (partInfo && partInfo.supplier) || '—';
+        md += `| ${r['파츠명']||''} | ${r['판매상태']||''} | ${supName} | ${r['변경일(인터페이스용)']||''} |\n`;
       });
       if (stockouts.length > 10) md += `\n> 외 ${stockouts.length - 10}건 — 대시보드 품절 현황 탭 참조\n`;
     } else {
@@ -6108,23 +6124,74 @@ function genWeeklyOutsource() {
   md += '\n';
 
   md += `### 5-1~5-5. 카테고리별 서술 (Tech/Drinkware/Stationery/Lifestyle/Fabric)\n\n`;
-  md += `> [수동 입력 필요] — 대시보드 협력사유형별 제품군 탭 참조\n\n`;
+  {
+    // 이슈 및 가격 변동 품목을 parts_master 굿즈카테고리 기준으로 그루핑
+    const catData = {}; // goodsCat → { issues: [], priceChgs: [] }
+    const getGoodsCatForItem = name => {
+      if (!name) return null;
+      const ptMatch = name.match(/^PT\d+/);
+      if (ptMatch) { const info = PARTS_MAP[ptMatch[0]]; if (info && info.goodsCat) return info.goodsCat; }
+      const info = getPartInfo(name);
+      return info ? info.goodsCat : null;
+    };
+    curIssues.forEach(r => {
+      const itemName = ((r['item (통합) (from order)']||r['입고물품']||'')).trim();
+      const cat = getGoodsCatForItem(itemName) || '기타';
+      if (!catData[cat]) catData[cat] = {issues:[], priceChgs:[]};
+      catData[cat].issues.push(r);
+    });
+    priceChanges.forEach(r => {
+      const rawParts = (r['대상 파츠명 (Shift+Space)']||r['대상 파츠명']||'').trim();
+      const ptCodes = rawParts.match(/PT\d+/g) || [];
+      let cat = null;
+      for (const code of ptCodes) {
+        const info = PARTS_MAP[code];
+        if (info && info.goodsCat) { cat = info.goodsCat; break; }
+      }
+      if (!cat) cat = getGoodsCatForItem(r['대상 굿즈명']||'') || '기타';
+      if (!catData[cat]) catData[cat] = {issues:[], priceChgs:[]};
+      catData[cat].priceChgs.push(r);
+    });
+    const catOrder = ['Tech','Drinkware','Stationery','Lifestyle','Fabric','기타'];
+    let hasCatContent = false;
+    catOrder.forEach(cat => {
+      const d = catData[cat];
+      if (!d || (!d.issues.length && !d.priceChgs.length)) return;
+      hasCatContent = true;
+      md += `**[${cat}]**\n\n`;
+      if (d.issues.length) {
+        const snippets = d.issues.slice(0,3).map(r => {
+          const item = (r['item (통합) (from order)']||r['입고물품']||'').trim().substring(0,18);
+          return `${item}(${primaryCat(r).replace('이슈','')})`;
+        });
+        md += `- 이슈: ${snippets.join(', ')}${d.issues.length>3 ? ` 외 ${d.issues.length-3}건` : ''}\n`;
+      }
+      if (d.priceChgs.length) {
+        const snippets = d.priceChgs.slice(0,3).map(r => {
+          const sup = (r['협력사 이름']||'').trim();
+          const item = (r['대상 굿즈명']||'').substring(0,15);
+          return `${sup} ${item}`.trim();
+        });
+        md += `- 단가 변동: ${snippets.join(', ')}${d.priceChgs.length>3 ? ` 외 ${d.priceChgs.length-3}건` : ''}\n`;
+      }
+      md += '\n';
+    });
+    if (!hasCatContent) md += `> 이번 기간 이슈 및 단가 변동 없음 — parts_master 매핑 기반 자동 분류\n\n`;
+  }
 
   md += `### 5-6. 재배치 검토표\n\n`;
   const vcData = (typeof VC_CHANGE_CACHE !== 'undefined' && VC_CHANGE_CACHE) ? (VC_CHANGE_CACHE.reports || []) : [];
-  const vcThisWeek = vcData.filter(r => {
-    const confWk = r.confirmedDate ? getISOWeek(r.confirmedDate) : null;
-    const compWk = r.completedDate ? getISOWeek(r.completedDate) : null;
-    return confWk === curLabel || compWk === curLabel;
-  });
-  if (vcThisWeek.length) {
+  // 전환 검토중·확정·완료 모든 상태 포함, 상태 진행도 역순(완료→확정→검토중) 정렬
+  const vcAll = vcData.filter(r => ['전환 검토중','확정','완료'].includes(r.workflowStatus))
+    .sort((a, b) => vcStatusRank(b.workflowStatus) - vcStatusRank(a.workflowStatus));
+  if (vcAll.length) {
     md += `| 제품 | AS-IS 협력사 | TO-BE 협력사 | 진행 상태 | 확정일 | 완료일 |\n`;
     md += `|---|---|---|---|---|---|\n`;
-    vcThisWeek.forEach(r => {
+    vcAll.forEach(r => {
       md += `| ${r.goods||'—'} | ${r.asSup||'—'} | ${r.tbSup||'—'} | ${r.workflowStatus||'—'} | ${r.confirmedDate||'—'} | ${r.completedDate||'—'} |\n`;
     });
   } else {
-    md += `> 이번 주(${curLabel}) 확정 또는 완료된 재배치 건 없음`;
+    md += `> 재배치 검토 건 없음`;
     if (!vcData.length) md += ` — 대시보드 공급망 포트폴리오 탭 열람 후 재생성 시 연동됨`;
     md += '\n';
   }
@@ -6249,24 +6316,20 @@ function genWeeklyOutsource() {
     }
   }
 
-  // 단가 인상 협력사 재배치 제안
-  if (D.price_chg && D.price_chg.length) {
-    const recentPriceChg = D.price_chg.filter(r => {
-      const d = (r['변동사항 적용 시점']||r['요청일자']||'').trim();
-      return d.startsWith(String(curYear)) && (r['Confirmation']||'').trim() !== '반려';
+  // 단가 변동 협력사 대응 전략 (해당 기간 priceChanges 기반)
+  if (priceChanges.length) {
+    sc++;
+    md += `**${sc}. 단가 변동 협력사 대응 전략** 🟠\n`;
+    priceChanges.slice(0,5).forEach(r => {
+      const sup = (r['협력사 이름']||'').trim();
+      const item = (r['대상 굿즈명']||'').substring(0,25);
+      const change = (r['변동사항 (Shift+Space로 전체 내용을 확인하세요)']||r['변동사항']||'').replace(/\n/g,' ').substring(0,40);
+      const when = (r['변동사항 적용 시점']||'').trim();
+      const why = (r['변동원인']||'').substring(0,20);
+      md += `- 🟠 ${sup} (${item}): ${change}${when ? ' / 적용 '+when : ''}${why ? ' / 원인: '+why : ''}\n`;
+      md += `  → 대응 방안: (비용 구조 및 대안 검토 후 담당자 기재)\n`;
     });
-    if (recentPriceChg.length) {
-      sc++;
-      md += `**${sc}. 단가 인상 협력사 대응 전략 (${curYear})** 🟠\n`;
-      recentPriceChg.slice(0,5).forEach(r => {
-        const sup = (r['협력사 이름']||'').trim();
-        const item = (r['대상 굿즈명']||'').substring(0,25);
-        const change = (r['변동사항']||'').substring(0,30);
-        const when = (r['변동사항 적용 시점']||'').trim();
-        md += `- 🟠 ${sup} (${item}): ${change} / 적용 ${when} → 대체 협력사 검토 권고\n`;
-      });
-      md += '\n';
-    }
+    md += '\n';
   }
 
   md += `---\n`;
