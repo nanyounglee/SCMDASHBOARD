@@ -230,11 +230,6 @@ a{color:var(--blue);text-decoration:none}
 .sh-root .mono { font-variant-numeric: tabular-nums; }
 .sh-top { display:flex; align-items:center; gap:12px; flex-wrap:wrap; margin-bottom:14px; }
 .sh-top h2 { font-size:16px; margin:0; }
-.sh-seg { display:flex; background:#EDEFF5; border-radius:9px; padding:3px; }
-.sh-seg span { padding:5px 15px; font-size:12.5px; font-weight:600; color:var(--sh-ink2); border-radius:7px; cursor:pointer; }
-.sh-seg span.on { background:#fff; color:var(--sh-blue); box-shadow:0 1px 2px rgba(16,24,40,.09); }
-.sh-nav { margin-left:auto; display:flex; align-items:center; gap:8px; }
-.sh-nav b { font-size:14px; font-weight:800; min-width:104px; text-align:center; letter-spacing:-.02em; }
 .sh-nb { border:1px solid var(--sh-line); background:#fff; border-radius:8px; width:30px; height:30px; font-size:14px; color:#4B5563; cursor:pointer; line-height:1; }
 .sh-nb:disabled { opacity:.35; cursor:default; }
 .sh-rng { font-size:11.5px; color:var(--sh-ink3); margin-left:2px; }
@@ -8191,8 +8186,15 @@ function renderStockoutDetailFull_(){
     '<div class="sh-root">' +
       '<div class="sh-top">' +
         '<h2>품절 상세</h2>' +
-        '<div class="sh-seg" id="sh-seg"><span data-g="week">주별</span><span data-g="month">월별</span><span data-g="quarter">분기별</span></div>' +
-        '<div class="sh-nav"><button class="sh-nb" id="sh-prev">&#8249;</button><b id="sh-plab"></b><button class="sh-nb" id="sh-next">&#8250;</button><span class="sh-rng" id="sh-prng"></span></div>' +
+      '</div>' +
+      '<div class="filter-row" style="margin:0 0 14px;padding:10px 12px;background:var(--surface);border:1px solid var(--border);border-radius:var(--r)">' +
+        '<span class="filter-label">기간 단위</span>' +
+        '<span id="sh-seg" style="display:inline-flex;gap:8px">' +
+          '<span class="m-chip" data-g="week">주별</span><span class="m-chip" data-g="month">월별</span><span class="m-chip" data-g="quarter">분기별</span>' +
+        '</span>' +
+        '<span class="filter-label" style="margin-left:12px">조회기간</span>' +
+        '<button class="sh-nb" id="sh-prev">&#8249;</button><b id="sh-plab" style="min-width:96px;text-align:center;display:inline-block;font-size:13px;font-weight:800;letter-spacing:-.02em"></b><button class="sh-nb" id="sh-next">&#8250;</button>' +
+        '<span class="sh-rng" id="sh-prng"></span>' +
       '</div>' +
       '<div class="sh-guide">' +
         '<span id="sh-totline"></span>' +
@@ -8280,7 +8282,7 @@ function renderStockoutDetailFull_(){
   function render() {
     const L = PS[G]; I = Math.max(0, Math.min(I, L.length - 1));
     const p = L[I], S = snap(p.e), P = I > 0 ? snap(L[I-1].e) : null;
-    $('#sh-seg').querySelectorAll('span').forEach(e => e.classList.toggle('on', e.dataset.g === G));
+    $('#sh-seg').querySelectorAll('span').forEach(e => e.classList.toggle('active', e.dataset.g === G));
     $('#sh-plab').textContent = p.id; $('#sh-prng').textContent = `${p.s} ~ ${p.e}`;
     $('#sh-prev').disabled = I === 0; $('#sh-next').disabled = I === L.length - 1;
 
