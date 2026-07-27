@@ -8207,14 +8207,12 @@ function renderStockoutDetailFull_(){
       '</div>' +
       '<div class="sh-kpis" id="sh-kpis"></div>' +
       '<div class="sh-panel">' +
-        '<div class="sh-ph"><h3>굿즈품절율 추이</h3><span class="sh-hint">목표선 1~3Q 3%↓ · 4Q 5%↓ · 분모는 현재 판매중 굿즈 수(근사)</span></div>' +
-        '<div class="sh-lgd"><span><i style="background:var(--sh-crimson)"></i>굿즈품절율</span><span><i class="ln" style="background:var(--sh-amber)"></i>목표선</span></div>' +
-        '<div class="sh-chart-wrap" id="sh-gschart"></div>' +
+        '<div class="sh-ph"><h3>굿즈품절율 추이</h3><span class="sh-hint">목표선 1~3Q 3%↓ · 4Q 5%↓ · 분모는 현재 판매중 굿즈 수(근사) · 점 클릭 시 해당 기간 목록</span></div>' +
+        '<div class="ch" style="height:220px;padding:4px 14px 12px"><canvas id="sh-gschart-cv"></canvas></div>' +
       '</div>' +
       '<div class="sh-panel">' +
-        '<div class="sh-ph"><h3>비의도적품절 추이 (SKU수 기준)</h3><span class="sh-hint">막대 클릭 시 해당 기간 품절 목록 보기 · 각 기간 기말 시점</span></div>' +
-        '<div class="sh-lgd"><span><i style="background:var(--sh-red)"></i>비의도적</span></div>' +
-        '<div class="sh-chart-wrap" id="sh-chart"></div>' +
+        '<div class="sh-ph"><h3>비의도적품절 추이 (SKU수 기준)</h3><span class="sh-hint">점 클릭 시 해당 기간 품절 목록 보기 · 각 기간 기말 시점</span></div>' +
+        '<div class="ch" style="height:220px;padding:4px 14px 12px"><canvas id="sh-chart-cv"></canvas></div>' +
       '</div>' +
       '<div class="sh-panel"><div class="sh-ph"><h3>품절 사유</h3><span class="sh-hint" id="sh-czhint"></span></div>' +
         '<div class="sh-cz2col">' +
@@ -8373,27 +8371,22 @@ function renderStockoutDetailFull_(){
   function chart(L, cp) {
     const N = G==='quarter' ? L.length : (G==='month' ? 24 : 26);
     const sl = L.slice(Math.max(0, I-N+1), I+1);
-    const data = sl.map(p => { const s = snap(p.e);
-      return { id:p.id, un:s.un.length, sel:p.id===cp.id }; });
-    const W=1100, H=190, PL=34, PB=26, PT=8;
-    const maxB = Math.max(4, ...data.map(d=>d.un));
-    const bw = (W-PL-8)/data.length, iw = Math.min(bw*.62, 26);
-    let g='', b='', lb='';
-    for (let i=0;i<=3;i++) { const y=PT+(H-PT-PB)*i/3;
-      g += `<line x1="${PL}" x2="${W-4}" y1="${y}" y2="${y}" stroke="#EEF0F4"/><text x="${PL-6}" y="${y+3.5}" text-anchor="end" font-size="9.5" fill="#9CA3AF">${Math.round(maxB*(1-i/3))}</text>`; }
-    const every = data.length>18 ? Math.ceil(data.length/13) : 1;
-    data.forEach((d,i) => {
-      if (d.sel) b += `<rect x="${PL+bw*i}" y="${PT-4}" width="${bw}" height="${H-PB-PT+4}" fill="var(--sh-ink)" opacity=".045" rx="4"/>`;
-      const x = PL+bw*i+(bw-iw)/2;
-      const h=(H-PT-PB)*d.un/maxB, y=H-PB-h;
-      if (d.un) b += `<rect x="${x}" y="${y}" width="${iw}" height="${Math.max(h,1)}" fill="var(--sh-red)" opacity="${d.sel?1:.7}" rx="1.5"/>`;
-      if (i%every===0 || d.sel) lb += `<text x="${x+iw/2}" y="${H-8}" text-anchor="middle" font-size="9.5" fill="${d.sel?'var(--sh-ink)':'#9CA3AF'}" font-weight="${d.sel?700:400}">${G==='week'?d.id.slice(5):d.id}</text>`;
-      b += `<rect class="sh-hit" data-id="${d.id}" x="${PL+bw*i}" y="0" width="${bw}" height="${H}" fill="transparent" style="cursor:pointer"><title>${d.id} · 비의도적 ${d.un}</title></rect>`;
-    });
-    $('#sh-chart').innerHTML = `<svg viewBox="0 0 ${W} ${H}" style="width:100%;height:auto">${g}${b}${lb}</svg>`;
-    $('#sh-chart').querySelectorAll('.sh-hit').forEach(e => e.onclick = () => {
-      const bp = L.find(p => p.id === e.dataset.id);
-      if (bp) shOpenCardModal_('un', snap(bp.e), bp);
+    const data = sl.map(p => ({ id:p.id, un: snap(p.e).un.length }));
+    dc('sh-chart-cv');
+    const ctx = getCtx('sh-chart-cv');
+    if (!ctx) return;
+    CHARTS['sh-chart-cv'] = new Chart(ctx, {
+      type:'line',
+      data:{ labels: data.map(d => G==='week' ? d.id.slice(5) : d.id),
+        datasets:[{ label:'비의도적 품절(SKU)', data: data.map(d=>d.un),
+          borderColor:'#dc2626', backgroundColor:'rgba(220,38,38,.08)',
+          fill:true, tension:.35, pointRadius:2, pointHoverRadius:4, borderWidth:2 }] },
+      options:{ responsive:true, maintainAspectRatio:false,
+        plugins:{ legend:{ display:false },
+          tooltip:{ callbacks:{ label:c => `비의도적 품절 ${c.parsed.y}건` } } },
+        onClick:(evt, els) => { if (!els.length) return; const bp = sl[els[0].index]; if (bp) shOpenCardModal_('un', snap(bp.e), bp); },
+        scales:{ x:{ ticks:{ font:{size:10}, maxRotation:0, autoSkip:true } },
+          y:{ beginAtZero:true, ticks:{ font:{size:10}, precision:0 } } } }
     });
   }
   function gsChart(L, cp) {
@@ -8403,28 +8396,26 @@ function renderStockoutDetailFull_(){
     const data = sl.map(p => { const s = snap(p.e);
       const goodsCount = shGoodsSet_(s.gs).size;
       const rate = activeGoodsCount ? goodsCount/activeGoodsCount*100 : 0;
-      return { id:p.id, goodsCount, activeGoodsCount, rate, target:shTargetPct_(p.e), sel:p.id===cp.id }; });
-    const W=1100, H=190, PL=34, PB=26, PT=8;
-    const maxB = Math.max(4, ...data.map(d=>Math.max(d.rate,d.target))) * 1.15;
-    const bw = (W-PL-8)/data.length, iw = Math.min(bw*.62, 26);
-    let g='', b='', lb='', pts=[];
-    for (let i=0;i<=3;i++) { const y=PT+(H-PT-PB)*i/3;
-      g += `<line x1="${PL}" x2="${W-4}" y1="${y}" y2="${y}" stroke="#EEF0F4"/><text x="${PL-6}" y="${y+3.5}" text-anchor="end" font-size="9.5" fill="#9CA3AF">${(maxB*(1-i/3)).toFixed(1)}%</text>`; }
-    const every = data.length>18 ? Math.ceil(data.length/13) : 1;
-    data.forEach((d,i) => {
-      if (d.sel) b += `<rect x="${PL+bw*i}" y="${PT-4}" width="${bw}" height="${H-PB-PT+4}" fill="var(--sh-ink)" opacity=".045" rx="4"/>`;
-      const x = PL+bw*i+(bw-iw)/2;
-      const h=(H-PT-PB)*d.rate/maxB, y=H-PB-h;
-      if (d.rate) b += `<rect x="${x}" y="${y}" width="${iw}" height="${Math.max(h,1)}" fill="var(--sh-crimson)" opacity="${d.sel?1:.7}" rx="1.5"/>`;
-      pts.push([x+iw/2, H-PB-(H-PT-PB)*d.target/maxB]);
-      if (i%every===0 || d.sel) lb += `<text x="${x+iw/2}" y="${H-8}" text-anchor="middle" font-size="9.5" fill="${d.sel?'var(--sh-ink)':'#9CA3AF'}" font-weight="${d.sel?700:400}">${G==='week'?d.id.slice(5):d.id}</text>`;
-      b += `<rect class="sh-hit" data-id="${d.id}" x="${PL+bw*i}" y="0" width="${bw}" height="${H}" fill="transparent" style="cursor:pointer"><title>${d.id} · 굿즈품절율 ${d.rate.toFixed(1)}% (목표 ${d.target.toFixed(0)}%↓) · ${d.goodsCount}/${d.activeGoodsCount}개</title></rect>`;
-    });
-    const ln = `<polyline points="${pts.map(p=>p.join(',')).join(' ')}" fill="none" stroke="var(--sh-amber)" stroke-width="1.6" stroke-dasharray="5,4" stroke-linejoin="round"/>`;
-    $('#sh-gschart').innerHTML = `<svg viewBox="0 0 ${W} ${H}" style="width:100%;height:auto">${g}${b}${ln}${lb}</svg>`;
-    $('#sh-gschart').querySelectorAll('.sh-hit').forEach(e => e.onclick = () => {
-      const bp = L.find(p => p.id === e.dataset.id);
-      if (bp) shOpenCardModal_('gs', snap(bp.e), bp);
+      return { id:p.id, rate, target: shTargetPct_(p.e) }; });
+    dc('sh-gschart-cv');
+    const ctx = getCtx('sh-gschart-cv');
+    if (!ctx) return;
+    CHARTS['sh-gschart-cv'] = new Chart(ctx, {
+      type:'line',
+      data:{ labels: data.map(d => G==='week' ? d.id.slice(5) : d.id),
+        datasets:[
+          { label:'굿즈품절율', data: data.map(d=>d.rate),
+            borderColor:'#A8324A', backgroundColor:'rgba(168,50,74,.08)',
+            fill:true, tension:.35, pointRadius:2, pointHoverRadius:4, borderWidth:2 },
+          { label:'목표선', data: data.map(d=>d.target),
+            borderColor:'#d97706', borderDash:[4,4], borderWidth:1.5, pointRadius:0 }
+        ] },
+      options:{ responsive:true, maintainAspectRatio:false,
+        plugins:{ legend:{ position:'bottom', labels:{ font:{size:10}, boxWidth:12 } },
+          tooltip:{ callbacks:{ label:c => `${c.dataset.label} ${c.parsed.y.toFixed(1)}%` } } },
+        onClick:(evt, els) => { if (!els.length) return; const bp = sl[els[0].index]; if (bp) shOpenCardModal_('gs', snap(bp.e), bp); },
+        scales:{ x:{ ticks:{ font:{size:10}, maxRotation:0, autoSkip:true } },
+          y:{ ticks:{ callback:v=>v+'%', font:{size:10} } } } }
     });
   }
 
