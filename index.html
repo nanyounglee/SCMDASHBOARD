@@ -6101,12 +6101,14 @@ function genWeeklyOutsource() {
 
   // --- D.parts_master 기반 조회 헬퍼 (수주처/굿즈카테고리/굿즈연결) ---
   const pmRows = D.parts_master || [];
-  const pmByCode = {}, pmByName = {};
+  const pmByCode = {}, pmByName = {}, pmByGoods = {};
   pmRows.forEach(r => {
     const code = (r['파츠번호']||'').trim();
     const name = (r['파츠명']||'').trim();
+    const goods = (r['굿즈연결']||'').trim();
     if (code) pmByCode[code] = r;
     if (name) pmByName[name] = r;
+    if (goods && !pmByGoods[goods]) pmByGoods[goods] = r;
   });
   const pmLookup = str => {
     if (!str) return null;
@@ -6115,7 +6117,11 @@ function genWeeklyOutsource() {
     if (m && pmByCode[m[0]]) return pmByCode[m[0]];
     if (pmByCode[s]) return pmByCode[s];
     if (pmByName[s]) return pmByName[s];
-    return pmRows.find(r => { const n=(r['파츠명']||'').trim(); return n&&(n===s||n.includes(s)||s.includes(n)); })||null;
+    if (pmByGoods[s]) return pmByGoods[s];
+    return pmRows.find(r => {
+      const n=(r['파츠명']||'').trim(), g=(r['굿즈연결']||'').trim();
+      return (n&&s.length>=4&&(n.includes(s)||s.includes(n)))||(g&&s.length>=4&&(g===s||g.includes(s)||s.includes(g)));
+    })||null;
   };
   const pmSup  = str => { const r=pmLookup(str); return r?(r['수주처']||'').trim()||'—':'—'; };
   const pmCat  = str => { const r=pmLookup(str); return r?(r['굿즈카테고리']||'').trim()||null:null; };
@@ -6123,28 +6129,26 @@ function genWeeklyOutsource() {
 
   md += `**협력사 품절 현황**${manualSOMonth ? ' (' + manualSOMonth + ' 기준)' : ''}\n\n`;
   if (manualSO.length) {
-    md += `| 파츠명 | 굿즈명 | 카테고리 | 수주처 | 판매상태 |\n`;
-    md += `|---|---|---|---|---|\n`;
+    md += `| 파츠명 | 카테고리 | 수주처 | 판매상태 |\n`;
+    md += `|---|---|---|---|\n`;
     manualSO.forEach(r => {
       const pm = pmLookup(r.parts);
       const supName = pm ? (pm['수주처']||'').trim()||'—' : supFromParts(r.parts)||'—';
-      const goodsNm = pm ? (pm['굿즈연결']||'').trim()||'—' : '—';
       const cat = pm ? (pm['굿즈카테고리']||'').trim()||'—' : '—';
-      md += `| ${r.parts} | ${goodsNm} | ${cat} | ${supName} | ${r.status} |\n`;
+      md += `| ${r.parts} | ${cat} | ${supName} | ${r.status} |\n`;
     });
     md += `\n> 총 ${manualSO.length}건 (대시보드 수동 등록 목록 기준)\n`;
   } else if (D.stockout_list) {
     const stockouts = D.stockout_list.filter(r => ['일시품절','품절예정'].includes((r['판매상태']||'').trim()));
     if (stockouts.length) {
-      md += `| 파츠명 | 굿즈명 | 카테고리 | 수주처 | 판매상태 | 변경일 |\n`;
-      md += `|---|---|---|---|---|---|\n`;
+      md += `| 파츠명 | 카테고리 | 수주처 | 판매상태 | 변경일 |\n`;
+      md += `|---|---|---|---|---|\n`;
       stockouts.slice(0, 10).forEach(r => {
         const partsNm = r['파츠명']||'';
         const pm = pmLookup(partsNm);
         const supName = pm ? (pm['수주처']||'').trim()||'—' : '—';
-        const goodsNm = pm ? (pm['굿즈연결']||'').trim()||'—' : '—';
         const cat = pm ? (pm['굿즈카테고리']||'').trim()||'—' : '—';
-        md += `| ${partsNm} | ${goodsNm} | ${cat} | ${supName} | ${r['판매상태']||''} | ${r['변경일(인터페이스용)']||''} |\n`;
+        md += `| ${partsNm} | ${cat} | ${supName} | ${r['판매상태']||''} | ${r['변경일(인터페이스용)']||''} |\n`;
       });
       if (stockouts.length > 10) md += `\n> 외 ${stockouts.length - 10}건 — 대시보드 품절 현황 탭 참조\n`;
     } else {
@@ -6161,7 +6165,8 @@ function genWeeklyOutsource() {
     const catData = {}; // goodsCat → { issues: [], priceChgs: [] }
     curIssues.forEach(r => {
       const itemName = ((r['item (통합) (from order)']||r['파츠명 (from order)']||r['입고물품']||'')).trim();
-      const cat = pmCat(itemName) || '기타';
+      const goodsName = (r['goods_Name(from. order)']||'').trim();
+      const cat = pmCat(itemName) || pmCat(goodsName) || '기타';
       if (!catData[cat]) catData[cat] = {issues:[], priceChgs:[]};
       catData[cat].issues.push(r);
     });
@@ -6176,7 +6181,11 @@ function genWeeklyOutsource() {
       if (!catData[cat]) catData[cat] = {issues:[], priceChgs:[]};
       catData[cat].priceChgs.push(r);
     });
-    const catOrder = ['Tech','Drinkware','Stationery','Lifestyle','Fabric','기타'];
+    // catOrder: parts_master 전체 카테고리 동적 수집 (고정 순서 우선)
+    const fixedCats = ['Tech','Drinkware','Stationery','Lifestyle','Fabric','Bag&pouch'];
+    const allPmCats = [...new Set(pmRows.map(r=>(r['굿즈카테고리']||'').trim()).filter(Boolean))];
+    const extraCats = allPmCats.filter(c => !fixedCats.includes(c));
+    const catOrder = [...fixedCats, ...extraCats.sort(), '기타'];
     let hasCatContent = false;
     catOrder.forEach(cat => {
       const d = catData[cat];
