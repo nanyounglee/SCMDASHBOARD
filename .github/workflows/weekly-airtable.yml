@@ -8,6 +8,7 @@ name: weekly-airtable-progress
 #      — 덮어쓰기 전 이전 버전을 CSV_BANK로 자동 아카이브(협력사는 월간 스냅샷도)
 # 수동 실행(workflow_dispatch)도 가능 — 대시보드의 "지금 새로고침" 버튼도
 # 이 워크플로를 GitHub API로 직접 트리거한다(§9 참고).
+# ※ 회의자료(meeting_agenda.json)는 별도 weekly-meeting-agenda.yml (목요일 16:00 KST)에서 갱신
 on:
   schedule:
     - cron: '0 4 * * 4'
@@ -17,7 +18,7 @@ permissions:
   contents: write
 
 concurrency:
-  group: weekly-airtable
+  group: weekly-airtable-${{ github.event_name }}
   cancel-in-progress: false
 
 jobs:
