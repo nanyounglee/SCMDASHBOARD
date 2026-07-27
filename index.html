@@ -3018,9 +3018,12 @@ function updateCITabs() {
         <div class="kpi-card c-red"><div class="kpi-label">검수 유출률</div><div class="kpi-val">${rate===null?'—':rate.toFixed(1)+'%'}</div><div class="kpi-sub">유출 ${escCnt}건 — 내부 이슈 기록 없이 고객이 먼저 발견 (판정 가능 ${judged.length}건 기준)</div></div>`;
     }
   }
+  const _firstIdxByProj={};
+  D.ci.forEach(r=>{ const k=(r['프로젝트명']||'').split('-')[0].trim(); const n=Number(r['idx_issue']||0); if(!k||!n) return; if(_firstIdxByProj[k]===undefined||n<_firstIdxByProj[k]) _firstIdxByProj[k]=n; });
   const html=D.ci.map(r=>{
     const idx=r['idx_issue']||'';
-    const auto=getReworkCostForProject(r['프로젝트명']);
+    const _projKey=(r['프로젝트명']||'').split('-')[0].trim();
+    const auto=_projKey&&Number(idx)&&_firstIdxByProj[_projKey]===Number(idx)?getReworkCostForProject(r['프로젝트명']):0;
     const ov=CI_OVERRIDES[idx]||{};
     const respVal=ov.resp||'';
     const costVal=ov.cost||'';
@@ -4285,7 +4288,10 @@ function openModal(type,extra) {
     let f=SEL_MONTH?D.ci.filter(r=>{ const d=r['등록일자']||''; const m=d.match(/(\d+)\.(\d+)\./); return m&&inSelPeriod(`${m[1]}.${parseInt(m[2])}`); }):D.ci;
     if(cq) f=f.filter(r=>matchesSearch(r,cq));
     const ciExtraCost=r=>{ const idx=r['idx_issue']; const ov=idx?CI_OVERRIDES[idx]:null; return ov&&ov.cost?pa(String(ov.cost)):0; };
-    const totalRework=f.reduce((s,r)=>s+getReworkCostForProject(r['프로젝트명'])+ciExtraCost(r),0);
+    const _fIdxByProj={};
+    f.forEach(r=>{ const k=(r['프로젝트명']||'').split('-')[0].trim(); const n=Number(r['idx_issue']||0); if(!k||!n) return; if(_fIdxByProj[k]===undefined||n<_fIdxByProj[k]) _fIdxByProj[k]=n; });
+    const _autoPerRow=f.map(r=>{ const k=(r['프로젝트명']||'').split('-')[0].trim(); const n=Number(r['idx_issue']||0); if(!k||!n||_fIdxByProj[k]!==n) return 0; return getReworkCostForProject(r['프로젝트명']); });
+    const totalRework=f.reduce((s,r,i)=>s+_autoPerRow[i]+ciExtraCost(r),0);
     body.innerHTML=`
       <div style="display:flex;gap:12px;margin-bottom:12px;font-size:12px;flex-wrap:wrap">
         <span style="background:var(--purple-light);color:var(--purple);padding:4px 10px;border-radius:20px;font-weight:600">전체 ${f.length}건</span>
@@ -4294,7 +4300,7 @@ function openModal(type,extra) {
       <table class="tbl"><thead><tr><th class="rank">#</th><th>등록일</th><th>프로젝트</th><th>관련제품</th><th>작성자</th><th>이슈내용</th><th class="num">실패비용</th></tr></thead><tbody>`
       +f.map((r,i)=>{
         const proj=(r['프로젝트명']||'').trim();
-        const rework=getReworkCostForProject(proj)+ciExtraCost(r);
+        const rework=_autoPerRow[i]+ciExtraCost(r);
         return `<tr><td class="rank">${i+1}</td><td>${r['등록일자']||'—'}</td><td style="font-size:11px">${esc(proj)}</td><td style="font-size:11px">${esc(crop(r['관련제품']||'',25))}</td><td>${esc(r['작성자명']||'')}</td><td style="font-size:11px;max-width:220px">${esc(crop(r['이슈내용']||'',70))}</td><td class="num" style="${rework>0?'color:var(--red);font-weight:600':''}">${rework>0?faFull(rework):'0'}</td></tr>`;
       }).join('')+`</tbody></table>
       <div style="font-size:10px;color:var(--text3);margin-top:8px">실패비용 = 동일 프로젝트 내 task_id에 '재제작' 포함 행의 취득원가 합계 + 고객인지이슈 수기입력 추가 실패비용</div>`;
@@ -6092,27 +6098,53 @@ function genWeeklyOutsource() {
     const fallback = cleanSup(matches[0]['(파트너)발주협력사명 텍스트']||matches[0]['수주처']||'');
     return fallback;
   };
+
+  // --- D.parts_master 기반 조회 헬퍼 (수주처/굿즈카테고리/굿즈연결) ---
+  const pmRows = D.parts_master || [];
+  const pmByCode = {}, pmByName = {};
+  pmRows.forEach(r => {
+    const code = (r['파츠번호']||'').trim();
+    const name = (r['파츠명']||'').trim();
+    if (code) pmByCode[code] = r;
+    if (name) pmByName[name] = r;
+  });
+  const pmLookup = str => {
+    if (!str) return null;
+    const s = String(str).trim();
+    const m = s.match(/PT\d+/);
+    if (m && pmByCode[m[0]]) return pmByCode[m[0]];
+    if (pmByCode[s]) return pmByCode[s];
+    if (pmByName[s]) return pmByName[s];
+    return pmRows.find(r => { const n=(r['파츠명']||'').trim(); return n&&(n===s||n.includes(s)||s.includes(n)); })||null;
+  };
+  const pmSup  = str => { const r=pmLookup(str); return r?(r['수주처']||'').trim()||'—':'—'; };
+  const pmCat  = str => { const r=pmLookup(str); return r?(r['굿즈카테고리']||'').trim()||null:null; };
+  const pmGoods= str => { const r=pmLookup(str); return r?(r['굿즈연결']||'').trim():''; };
+
   md += `**협력사 품절 현황**${manualSOMonth ? ' (' + manualSOMonth + ' 기준)' : ''}\n\n`;
   if (manualSO.length) {
-    md += `| 파츠명 | 판매상태 | 협력사 |\n`;
-    md += `|---|---|---|\n`;
+    md += `| 파츠명 | 굿즈명 | 카테고리 | 수주처 | 판매상태 |\n`;
+    md += `|---|---|---|---|---|\n`;
     manualSO.forEach(r => {
-      const ptCode = (r.parts.match(/^(PT\d+)/) || [])[1] || '';
-      const partInfo = ptCode ? PARTS_MAP[ptCode] : getPartInfo(r.parts);
-      const supName = (partInfo && partInfo.supplier) || supFromParts(r.parts) || '—';
-      md += `| ${r.parts} | ${r.status} | ${supName} |\n`;
+      const pm = pmLookup(r.parts);
+      const supName = pm ? (pm['수주처']||'').trim()||'—' : supFromParts(r.parts)||'—';
+      const goodsNm = pm ? (pm['굿즈연결']||'').trim()||'—' : '—';
+      const cat = pm ? (pm['굿즈카테고리']||'').trim()||'—' : '—';
+      md += `| ${r.parts} | ${goodsNm} | ${cat} | ${supName} | ${r.status} |\n`;
     });
     md += `\n> 총 ${manualSO.length}건 (대시보드 수동 등록 목록 기준)\n`;
   } else if (D.stockout_list) {
     const stockouts = D.stockout_list.filter(r => ['일시품절','품절예정'].includes((r['판매상태']||'').trim()));
     if (stockouts.length) {
-      md += `| 파츠명 | 판매상태 | 협력사 | 변경일 |\n`;
-      md += `|---|---|---|---|\n`;
+      md += `| 파츠명 | 굿즈명 | 카테고리 | 수주처 | 판매상태 | 변경일 |\n`;
+      md += `|---|---|---|---|---|---|\n`;
       stockouts.slice(0, 10).forEach(r => {
-        const ptCode = ((r['파츠번호']||r['파츠명']||'').match(/^(PT\d+)/) || [])[1] || '';
-        const partInfo = ptCode ? PARTS_MAP[ptCode] : getPartInfo(r['파츠명']||'');
-        const supName = (partInfo && partInfo.supplier) || '—';
-        md += `| ${r['파츠명']||''} | ${r['판매상태']||''} | ${supName} | ${r['변경일(인터페이스용)']||''} |\n`;
+        const partsNm = r['파츠명']||'';
+        const pm = pmLookup(partsNm);
+        const supName = pm ? (pm['수주처']||'').trim()||'—' : '—';
+        const goodsNm = pm ? (pm['굿즈연결']||'').trim()||'—' : '—';
+        const cat = pm ? (pm['굿즈카테고리']||'').trim()||'—' : '—';
+        md += `| ${partsNm} | ${goodsNm} | ${cat} | ${supName} | ${r['판매상태']||''} | ${r['변경일(인터페이스용)']||''} |\n`;
       });
       if (stockouts.length > 10) md += `\n> 외 ${stockouts.length - 10}건 — 대시보드 품절 현황 탭 참조\n`;
     } else {
@@ -6125,18 +6157,11 @@ function genWeeklyOutsource() {
 
   md += `### 5-1~5-5. 카테고리별 서술 (Tech/Drinkware/Stationery/Lifestyle/Fabric)\n\n`;
   {
-    // 이슈 및 가격 변동 품목을 parts_master 굿즈카테고리 기준으로 그루핑
+    // D.parts_master 굿즈카테고리 기준 그루핑
     const catData = {}; // goodsCat → { issues: [], priceChgs: [] }
-    const getGoodsCatForItem = name => {
-      if (!name) return null;
-      const ptMatch = name.match(/^PT\d+/);
-      if (ptMatch) { const info = PARTS_MAP[ptMatch[0]]; if (info && info.goodsCat) return info.goodsCat; }
-      const info = getPartInfo(name);
-      return info ? info.goodsCat : null;
-    };
     curIssues.forEach(r => {
-      const itemName = ((r['item (통합) (from order)']||r['입고물품']||'')).trim();
-      const cat = getGoodsCatForItem(itemName) || '기타';
+      const itemName = ((r['item (통합) (from order)']||r['파츠명 (from order)']||r['입고물품']||'')).trim();
+      const cat = pmCat(itemName) || '기타';
       if (!catData[cat]) catData[cat] = {issues:[], priceChgs:[]};
       catData[cat].issues.push(r);
     });
@@ -6145,10 +6170,9 @@ function genWeeklyOutsource() {
       const ptCodes = rawParts.match(/PT\d+/g) || [];
       let cat = null;
       for (const code of ptCodes) {
-        const info = PARTS_MAP[code];
-        if (info && info.goodsCat) { cat = info.goodsCat; break; }
+        if (pmByCode[code] && pmByCode[code]['굿즈카테고리']) { cat = pmByCode[code]['굿즈카테고리'].trim(); break; }
       }
-      if (!cat) cat = getGoodsCatForItem(r['대상 굿즈명']||'') || '기타';
+      if (!cat) cat = pmCat(r['대상 굿즈명']||'') || '기타';
       if (!catData[cat]) catData[cat] = {issues:[], priceChgs:[]};
       catData[cat].priceChgs.push(r);
     });
@@ -6160,21 +6184,35 @@ function genWeeklyOutsource() {
       hasCatContent = true;
       md += `**[${cat}]**\n\n`;
       if (d.issues.length) {
-        const snippets = d.issues.slice(0,3).map(r => {
-          const item = (r['item (통합) (from order)']||r['입고물품']||'').trim().substring(0,18);
-          return `${item}(${primaryCat(r).replace('이슈','')})`;
+        md += `- **이슈** (${d.issues.length}건)\n\n`;
+        md += `| 굿즈명 | 수주처 | 유형 | 주요 내용 | SCM 대응방안 |\n`;
+        md += `|---|---|---|---|---|\n`;
+        d.issues.slice(0, 5).forEach(r => {
+          const itemName = (r['item (통합) (from order)']||r['파츠명 (from order)']||r['입고물품']||'').trim();
+          const goodsNm = pmGoods(itemName) || (r['goods_Name(from. order)']||'').trim() || itemName.substring(0, 15);
+          const sup = cleanSup(supOfIssue(r)) || pmSup(itemName);
+          const type = primaryCat(r).replace('이슈', '');
+          const content = (r['품질이슈내용']||r['운영이슈내용(by물류)']||r['수량이슈내용']||'').replace(/\n/g,' ').trim().substring(0, 30);
+          const response = (r['품질이슈대응방안_SCM']||r['운영이슈개선방안_SCM']||r['수량이슈대응방안_SCM']||'').replace(/\n/g,' ').trim().substring(0, 30);
+          md += `| ${goodsNm||'—'} | ${sup||'—'} | ${type||'—'} | ${content||'—'} | ${response||'확인 필요'} |\n`;
         });
-        md += `- 이슈: ${snippets.join(', ')}${d.issues.length>3 ? ` 외 ${d.issues.length-3}건` : ''}\n`;
+        if (d.issues.length > 5) md += `\n> 외 ${d.issues.length-5}건\n`;
+        md += '\n';
       }
       if (d.priceChgs.length) {
-        const snippets = d.priceChgs.slice(0,3).map(r => {
-          const sup = (r['협력사 이름']||'').trim();
-          const item = (r['대상 굿즈명']||'').substring(0,15);
-          return `${sup} ${item}`.trim();
+        md += `- **단가 변동** (${d.priceChgs.length}건)\n\n`;
+        md += `| 굿즈명 | 협력사 | 변동원인 | 변동 내용 |\n`;
+        md += `|---|---|---|---|\n`;
+        d.priceChgs.slice(0, 5).forEach(r => {
+          const goodsNm = (r['대상 굿즈명']||'').trim().substring(0, 20);
+          const sup = (r['협력사 이름']||r['협력사']||'').trim();
+          const reason = (r['변동원인']||'—').trim().substring(0, 20);
+          const detail = (r['변동사항 (Shift+Space로 전체 내용을 확인하세요)']||r['변동사항']||'—').replace(/\n/g,' ').trim().substring(0, 35);
+          md += `| ${goodsNm||'—'} | ${sup||'—'} | ${reason} | ${detail} |\n`;
         });
-        md += `- 단가 변동: ${snippets.join(', ')}${d.priceChgs.length>3 ? ` 외 ${d.priceChgs.length-3}건` : ''}\n`;
+        if (d.priceChgs.length > 5) md += `\n> 외 ${d.priceChgs.length-5}건\n`;
+        md += '\n';
       }
-      md += '\n';
     });
     if (!hasCatContent) md += `> 이번 기간 이슈 및 단가 변동 없음 — parts_master 매핑 기반 자동 분류\n\n`;
   }
