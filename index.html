@@ -8071,7 +8071,7 @@ function renderInventoryOpsFromAgg(){
         <div class="ch" style="height:260px"><canvas id="ch-agg-cat-donut"></canvas></div>
       </div>
     </div>
-    <div style="font-size:15px;font-weight:700;margin:18px 0 10px">4. 품절현황</div>
+    <div style="font-size:15px;font-weight:700;margin:18px 0 10px">4. 선매입재고 품절현황</div>
     <div class="grid-2" style="margin-top:16px">
       <div class="card"><div class="card-header"><div class="card-title">판매상태 요약</div><div class="card-sub">행 클릭 시 상태별 SKU 상세</div></div><div class="tbl-wrap"><table class="tbl"><thead><tr><th>판매상태</th><th class="num">SKU</th></tr></thead><tbody>${Object.entries(statuses).sort((a,b)=>b[1]-a[1]).map(([s,c])=>`<tr onclick="openAggStatusDetail('${encArg(s)}')" style="cursor:pointer"><td>${aggStatusTag(s)}</td><td class="num">${c}</td></tr>`).join('')||emptyRow(2,'데이터 없음')}</tbody></table></div></div>
       <div class="card" onclick="openAggInventoryModal('stockout')" style="cursor:pointer"><div class="card-header"><div class="card-title">장기품절</div><div class="card-sub">30일 이상 품절 · 클릭 시 전체 품절 상세</div></div>
