@@ -216,6 +216,82 @@ a{color:var(--blue);text-decoration:none}
 .empty{text-align:center;padding:40px 20px;color:var(--text3);font-size:13px}
 /* Chart wrapper */
 .ch{position:relative}
+/* ── 품절 상세 (sales_status_history 전체 이력 기반) — 전부 .sh-root 안에서만 적용 ── */
+.sh-root { --sh-blue:#4F6BED; --sh-red:#E5484D; --sh-amber:#E09F3E; --sh-purple:#7C5CE0;
+  --sh-green:#2F9E6B; --sh-teal:#1B6E8C; --sh-violet:#6B5B95; --sh-crimson:#A8324A;
+  --sh-ink:#111827; --sh-ink2:#6B7280; --sh-ink3:#9CA3AF; --sh-line:#E9EBF0; --sh-line2:#F1F2F6; }
+.sh-root .mono { font-variant-numeric: tabular-nums; }
+.sh-top { display:flex; align-items:center; gap:12px; flex-wrap:wrap; margin-bottom:14px; }
+.sh-top h2 { font-size:16px; margin:0; }
+.sh-seg { display:flex; background:#EDEFF5; border-radius:9px; padding:3px; }
+.sh-seg span { padding:5px 15px; font-size:12.5px; font-weight:600; color:var(--sh-ink2); border-radius:7px; cursor:pointer; }
+.sh-seg span.on { background:#fff; color:var(--sh-blue); box-shadow:0 1px 2px rgba(16,24,40,.09); }
+.sh-nav { margin-left:auto; display:flex; align-items:center; gap:8px; }
+.sh-nav b { font-size:14px; font-weight:800; min-width:104px; text-align:center; letter-spacing:-.02em; }
+.sh-nb { border:1px solid var(--sh-line); background:#fff; border-radius:8px; width:30px; height:30px; font-size:14px; color:#4B5563; cursor:pointer; line-height:1; }
+.sh-nb:disabled { opacity:.35; cursor:default; }
+.sh-rng { font-size:11.5px; color:var(--sh-ink3); margin-left:2px; }
+.sh-guide { background:#fff; border:1px solid var(--sh-line); border-radius:9px; padding:11px 15px; font-size:12px; color:var(--sh-ink2); margin-bottom:16px; display:flex; gap:9px; align-items:baseline; flex-wrap:wrap; }
+.sh-guide b { color:var(--sh-ink); }
+.sh-tot { font-size:13px; font-weight:800; color:var(--sh-ink); letter-spacing:-.02em; }
+.sh-warn { margin-left:auto; font-size:11.5px; color:#9A6A17; background:#FFF8EC; border:1px solid #F3E2C2; border-radius:6px; padding:3px 9px; }
+.sh-kpis { display:grid; grid-template-columns:repeat(auto-fit,minmax(196px,1fr)); gap:14px; margin-bottom:16px; }
+.sh-kpi { background:#fff; border:1px solid var(--sh-line); border-radius:11px; padding:16px 18px; border-top:3px solid var(--sh-blue); box-shadow:0 1px 2px rgba(16,24,40,.04); }
+.sh-kpi .l { font-size:12.5px; color:#4B5563; font-weight:600; }
+.sh-kpi .l em { font-style:normal; font-size:10.5px; color:var(--sh-ink3); font-weight:600; margin-left:4px; }
+.sh-kpi .v { font-size:30px; font-weight:800; letter-spacing:-.045em; margin-top:4px; line-height:1.1; }
+.sh-kpi .v small { font-size:14px; font-weight:700; color:var(--sh-ink3); margin-left:3px; }
+.sh-kpi .s { font-size:11.5px; color:var(--sh-ink3); margin-top:5px; }
+.sh-kpi .s em { font-style:normal; color:var(--sh-ink2); font-weight:600; }
+.sh-dt { font-size:11.5px; font-weight:800; padding:1px 6px; border-radius:5px; margin-left:5px; }
+.sh-up { background:#FDECEC; color:var(--sh-red); } .sh-dn { background:#E7F6EE; color:var(--sh-green); } .sh-fl { background:#F1F2F6; color:var(--sh-ink3); }
+.sh-panel { background:#fff; border:1px solid var(--sh-line); border-radius:11px; overflow:hidden; box-shadow:0 1px 2px rgba(16,24,40,.04); margin-bottom:16px; }
+.sh-ph { padding:16px 19px 12px; display:flex; align-items:baseline; gap:9px; flex-wrap:wrap; }
+.sh-ph h3 { font-size:15.5px; font-weight:700; letter-spacing:-.02em; margin:0; }
+.sh-ph .sh-hint { font-size:11.5px; color:var(--sh-ink3); margin-left:auto; }
+.sh-grid2 { display:grid; grid-template-columns:1fr 1fr; gap:16px; }
+@media(max-width:1000px) { .sh-grid2 { grid-template-columns:1fr; } }
+.sh-grid2 > .sh-panel { margin-bottom:0; }
+.sh-root table { width:100%; border-collapse:collapse; font-size:13px; }
+.sh-root th { text-align:left; font-size:11px; color:var(--sh-ink3); font-weight:700; padding:9px 19px; border-top:1px solid var(--sh-line2); border-bottom:1px solid var(--sh-line2); background:#FAFBFC; white-space:nowrap; }
+.sh-root th.r, .sh-root td.r { text-align:right; }
+.sh-root td { padding:10px 19px; border-bottom:1px solid var(--sh-line2); vertical-align:middle; }
+.sh-root tbody tr:hover { background:#FBFCFE; }
+.sh-bdg { display:inline-block; padding:3px 9px; border-radius:14px; font-size:11px; font-weight:700; white-space:nowrap; }
+.sh-b-tmp { background:#FDECEC; color:var(--sh-red); } .sh-b-int { background:#FDF3E2; color:#B5791F; }
+.sh-b-soon { background:#F1F2F6; color:#6B7280; }
+.sh-gsb { display:inline-block; padding:1px 6px; border-radius:4px; font-size:10px; font-weight:800; background:#FBE9EC; color:var(--sh-crimson); border:1px solid #F0CFD6; }
+.sh-cz { display:inline-block; padding:2px 8px; border-radius:5px; font-size:11px; font-weight:700; white-space:nowrap; }
+.sh-c-risk { background:#FBEDF0; color:var(--sh-crimson); } .sh-c-qty { background:#E8F3F7; color:var(--sh-teal); }
+.sh-c-time { background:#EFEDF6; color:var(--sh-violet); } .sh-c-none { background:#F1F2F6; color:var(--sh-ink3); }
+.sh-pt { font-weight:600; font-size:12.5px; letter-spacing:-.01em; }
+.sh-pc { font-size:11px; color:var(--sh-ink3); margin-top:1px; }
+.sh-days { font-weight:800; font-size:15px; letter-spacing:-.02em; }
+.sh-days.hot { color:var(--sh-red); } .sh-days.warm { color:var(--sh-amber); }
+.sh-dsub { font-size:10.5px; color:var(--sh-ink3); margin-top:1px; }
+.sh-eta { font-size:11.5px; font-weight:700; }
+.sh-eta.n { color:var(--sh-red); } .sh-eta.s { color:var(--sh-teal); } .sh-eta.u { color:var(--sh-ink3); font-weight:400; }
+.sh-dash { color:#D1D5DB; }
+.sh-chart-wrap { padding:4px 12px 14px; }
+.sh-lgd { display:flex; gap:14px; flex-wrap:wrap; padding:0 19px 10px; font-size:11px; color:var(--sh-ink2); }
+.sh-lgd i { display:inline-block; width:8px; height:8px; border-radius:2px; margin-right:4px; }
+.sh-lgd i.ln { width:14px; height:2px; border-radius:1px; vertical-align:3px; }
+.sh-bars { padding:2px 19px 8px; }
+.sh-brow { display:flex; align-items:center; gap:10px; margin-top:9px; }
+.sh-blab { width:112px; font-size:12px; color:#4B5563; font-weight:600; }
+.sh-btrack { flex:1; height:9px; background:var(--sh-line2); border-radius:5px; overflow:hidden; display:flex; }
+.sh-bseg { height:100%; }
+.sh-bnum { width:30px; text-align:right; font-size:11.5px; color:var(--sh-ink2); font-weight:700; }
+.sh-subnote { padding:10px 19px 16px; font-size:11.5px; color:var(--sh-ink3); line-height:1.5; }
+.sh-subnote b { color:var(--sh-ink2); }
+.sh-alert { margin:0 19px 14px; background:#FFF8EC; border:1px solid #F3E2C2; border-radius:8px; padding:11px 14px; font-size:12px; color:#7A5518; line-height:1.5; }
+.sh-alert b { color:#5C3E0D; }
+.sh-tabs { display:flex; gap:6px; padding:0 19px 13px; flex-wrap:wrap; }
+.sh-tab { border:1px solid var(--sh-line); background:#fff; border-radius:7px; padding:5px 13px; font-size:12px; color:var(--sh-ink2); cursor:pointer; }
+.sh-tab.on { background:var(--sh-ink); border-color:var(--sh-ink); color:#fff; font-weight:600; }
+.sh-foot { font-size:11.5px; color:var(--sh-ink3); padding:12px 19px; border-top:1px solid var(--sh-line2); background:#FAFBFC; }
+.sh-empty { padding:34px; text-align:center; color:var(--sh-ink3); font-size:12.5px; }
+.sh-scroll { max-height:380px; overflow:auto; }
 </style>
 </head>
 <body>
@@ -915,7 +991,7 @@ a{color:var(--blue);text-decoration:none}
 
 <script>
 // ===== DATA =====
-const D = {order:null,issue:null,sup:null,ci:null,stockout_list:null,sales:null,purchase_review:null,season_plan:null,qms_raw:null,cost_reduction:null,quarter_eval:null,dashboard_period_summary:null,dashboard_group_summary:null,dashboard_sku_snapshot:null,dashboard_sku_detail:null,dashboard_sku_monthly:null,raw_purchase:null,parts_master:null,parts:null,proj_rev:null,check_answer:null,check_question:null};
+const D = {order:null,issue:null,sup:null,ci:null,stockout_list:null,sales_status_history:null,sales:null,purchase_review:null,season_plan:null,qms_raw:null,cost_reduction:null,quarter_eval:null,dashboard_period_summary:null,dashboard_group_summary:null,dashboard_sku_snapshot:null,dashboard_sku_detail:null,dashboard_sku_monthly:null,raw_purchase:null,parts_master:null,parts:null,proj_rev:null,check_answer:null,check_question:null};
 // Legacy keys kept as computed views (not uploaded)
 Object.defineProperty(D,'task',{get(){return D.order;},set(){}});
 Object.defineProperty(D,'subcontract',{get(){return null;},set(){}});
@@ -1357,6 +1433,7 @@ const FIELD_HINTS = {
   sup:   { required:['협력사 이름','1. 제조유형'] },
   ci:    { required:['등록일자','이슈내용'] },
   stockout_list: { required:['파츠명','판매상태','품절 성격'] },
+  sales_status_history: { required:['파츠명','판매상태','변경일(인터페이스용)','end time','end time(인터페이스용)'] },
   sales: { required:['제품명','주문수량','판매단가','소계'] },
   purchase_review:{required:['REVIEW_ID','파츠번호','결정상태']},
   season_plan:{required:['굿즈명','옵션','계획구분']},
@@ -1369,7 +1446,7 @@ const FIELD_HINTS = {
 };
 const KEY_LABELS = {
   order:'발주_RAW',issue:'이슈_RAW',sup:'공급망_RAW',ci:'고객인지이슈_RAW',
-  stockout_list:'품절리스트',sales:'판매주문',
+  stockout_list:'품절리스트',sales_status_history:'품절 이력(전체)',sales:'판매주문',
   purchase_review:'매입검토현황',season_plan:'시즌재고계획',qms_raw:'QMS_품질데이터',cost_reduction:'원가절감실적',parts:'코스트베이스(파츠리스트)',goods_master:'굿즈마스터(졸업/출시)',check_answer:'제품문의답변이력',check_question:'제품문의원본(질문1~3)'
 };
 function validateCSV(key,rows) {
@@ -1415,6 +1492,7 @@ const UPLOAD_SLOTS=[
   {key:'dashboard_period_summary',icon:'📊',label:'재고 KPI 요약',src:'GSheets S&OP → dashboard_period_summary',fields:'period_unit, period_key, inv_amount, turnover_3m',row:'buy'},
   {key:'dashboard_group_summary',icon:'🧩',label:'재고 그룹 요약',src:'GSheets S&OP → dashboard_group_summary',fields:'group_type, group_name, inv_amount, turnover_3m',row:'buy'},
   {key:'dashboard_sku_snapshot',icon:'📦',label:'재고 SKU 스냅샷',src:'GSheets S&OP → dashboard_sku_snapshot',fields:'parts_no, parts_name, inv_amount, turnover_3m',row:'buy'},
+  {key:'sales_status_history',icon:'🕒',label:'품절 이력(전체)',src:'GSheets S&OP → sales_status_history',fields:'파츠명, 판매상태, 변경일(인터페이스용), end time',row:'buy'},
   {key:'purchase_review',icon:'🔍',label:'매입검토현황',src:'GSheets S&OP → purchase_review',fields:'REVIEW_ID, 파츠번호, 결정상태',row:'buy'},
   {key:'season_plan',icon:'🗓️',label:'시즌재고계획',src:'GSheets S&OP → 시즌매입_파츠연결',fields:'굿즈명, 옵션, 계획구분',row:'buy'},
   // 공통 · 선택
@@ -1483,6 +1561,7 @@ const FILE_SIGNATURES={
   qms_raw:        {must:['발생일','이슈유형'],not:['이슈카테고리']},
   cost_reduction: {must:['절감액','항목']},
   stockout_list:  {must:['파츠명','판매상태','품절 성격']},
+  sales_status_history: {must:['파츠명','판매상태','변경일(인터페이스용)','end time','end time(인터페이스용)']},
   sales:          {must:['제품명','주문수량','판매단가','소계']},
   ci:             {must:['등록일자','이슈내용','프로젝트명'],not:['이슈카테고리']},
   sup:            {must:['협력사 이름','1. 제조유형']},
@@ -6981,6 +7060,347 @@ function renderInventoryOpsFromAgg(){
   if(ctx2) CHARTS['ch-agg-turn-stock']=new Chart(ctx2,{type:'line',data:{labels:trend.map(r=>String(r.period_key||'').slice(5)),datasets:[{label:'3M 회전율',data:trend.map(r=>toNum(r.turnover_3m)),borderColor:'#059669',backgroundColor:'rgba(5,150,105,.08)',yAxisID:'y',tension:.35,pointRadius:3,borderWidth:2},{label:'품절율(%)',data:trend.map(r=>toNum(r.stockout_rate)*100),borderColor:'#dc2626',backgroundColor:'rgba(220,38,38,.06)',yAxisID:'y1',tension:.35,pointRadius:3,borderWidth:2}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{position:'bottom',labels:{font:{size:10}}}},scales:{y:{position:'left',ticks:{font:{size:10}}},y1:{position:'right',grid:{drawOnChartArea:false},ticks:{callback:v=>v+'%',font:{size:10}}}}}});
 }
 
+// ===== 3-3b. 품절 상세 — sales_status_history 전체 이력 기반 =====
+// .clasp S&OP 대시보드 "품절 상세" 탭 로직 이식(구간 재구성 + 자동 태깅 + 주/월/분기 탐색).
+// sales_status_history CSV가 아직 없으면 아래 renderStockoutDetailFromAgg()(현재 스냅샷 전용)로 폴백.
+function shParseDate_(v){
+  var t=String(v||'').trim(); if(!t) return '';
+  var m=t.match(/^(\d{4})[.\-\/](\d{1,2})[.\-\/](\d{1,2})/);
+  if(!m) return '';
+  return m[1]+'-'+('0'+m[2]).slice(-2)+'-'+('0'+m[3]).slice(-2);
+}
+var SH_INIT_TX_=['','정보 최초 입력','최초등록','최초 등록'];
+var SH_BIGDEAL_RE_=/대량건|대량\s?주문|대량\s?발주|빅딜|대량\s?진행|대량\s?수주|PNA\d+|발주\s?확정|인입건|진행\s?예정인\s?건|진행\s?확정|\d{1,3},\d{3}\s?개/;
+var SH_BIGDEAL_EX_RE_=/대량\s?문의|있다면|있으면|해주세요|해주시/;
+var SH_CAUSE_RULES_=[
+  ['리스크','공급중단',/거래\s?종료|공급\s?중단|공급중단|단종|생산\s?종료|철수|폐업/],
+  ['리스크','품질',/품질|불량|하자|재생산\s?필요|리콜|퀄리티|오류|고장|색상\s?차이/],
+  ['리스크','기타',/연락.{0,4}되지\s?않|연락두절|전산.{0,3}실재고|오차|담당자/],
+  ['수량','수요초과',SH_BIGDEAL_RE_],
+  ['수량','공급부족',/재고\s?소진|소진|재고\s?부족|재고\s?없|품절/],
+  ['시점','납기지연',/입고\s?지연|생산\s?지연|지연|미뤄/],
+];
+var SH_CAUSE_PRIORITY_={'리스크':1,'수량':2,'시점':3};
+var SH_ETA_NONE_RE_=/미정|일정\s?없|알\s?수\s?없|추후|확인되면|확인\s?후/;
+var SH_ETA_SET_RE_=/재입고|입하|판매\s?재개|판매재개|입고\s?예정|입고예정|\d{1,2}\s?월|\d{1,2}\/\d{1,2}/;
+var SH_INTENT_RE_=/시즌\s?종료|시즌종료|리뉴얼|졸업|재고\s?효율|리스크\s?대비|포트폴리오/;
+function shTagCause_(tx){
+  var text=String(tx||'').trim();
+  var bigdeal=SH_BIGDEAL_RE_.test(text)&&!SH_BIGDEAL_EX_RE_.test(text);
+  if(SH_INIT_TX_.indexOf(text)>=0) return {cz:'-',bg:bigdeal};
+  var matched=[];
+  SH_CAUSE_RULES_.forEach(function(rule,i){ if(rule[2].test(text)) matched.push({cat:rule[0],sub:rule[1],order:i}); });
+  if(!matched.length) return {cz:'-',bg:bigdeal};
+  matched.sort(function(a,b){ var pa=SH_CAUSE_PRIORITY_[a.cat],pb=SH_CAUSE_PRIORITY_[b.cat]; return pa!==pb?pa-pb:a.order-b.order; });
+  return {cz:matched[0].cat+'_'+matched[0].sub,bg:bigdeal};
+}
+function shTagEta_(tx){ var text=String(tx||'').trim();
+  if(SH_ETA_NONE_RE_.test(text)) return '미정';
+  if(SH_ETA_SET_RE_.test(text)) return '일정확정';
+  return '불명'; }
+function shTagIntent_(st,tx){ if(st==='의도적 품절') return '의도적'; if(SH_INTENT_RE_.test(String(tx||''))) return '의도적'; return '비의도적'; }
+function shBuildIntervals_(){
+  var rows=D.sales_status_history||[];
+  var out=[];
+  rows.forEach(function(r){
+    var pt=String(r['파츠명']||'').trim(); if(!pt) return;
+    var s=shParseDate_(r['변경일(인터페이스용)']); if(!s) return;
+    var isOpen=String(r['end time']||'').trim()==='';
+    var e=isOpen?null:shParseDate_(r['end time(인터페이스용)']);
+    var tx=String(r['판매상태 변경사유']||'').trim();
+    var st=String(r['판매상태']||'').trim();
+    var tagged=shTagCause_(tx);
+    var cz=tagged.cz;
+    var measured=String(r['품절 사유']||'').trim();
+    if(measured && SH_INIT_TX_.indexOf(measured)<0) cz=measured;
+    out.push({
+      pt:pt,
+      gd:String(r['적용 굿즈명']||'').trim(),
+      ow:String(r['재고소유구분 (from sync_parts)']||'').trim(),
+      pk:String(r['파츠 유형 (from 파츠명)']||'').trim(),
+      st:st, s:s, e:e||null,
+      cz:cz, et:shTagEta_(tx), it:shTagIntent_(st,tx),
+      gs:String(r['굿즈품절여부']||'').trim().toLowerCase()==='checked',
+      bg:tagged.bg, tx:tx
+    });
+  });
+  return out;
+}
+function shDaysAdd_(date,days){ var d=new Date(date.getTime()); d.setDate(d.getDate()+days); return d; }
+function shFmtDateKey_(date){ return date.getFullYear()+'-'+('0'+(date.getMonth()+1)).slice(-2)+'-'+('0'+date.getDate()).slice(-2); }
+function shISOWeek_(date){
+  var d=new Date(Date.UTC(date.getFullYear(),date.getMonth(),date.getDate()));
+  var dayNum=d.getUTCDay()||7; d.setUTCDate(d.getUTCDate()+4-dayNum);
+  var yearStart=new Date(Date.UTC(d.getUTCFullYear(),0,1));
+  var weekNo=Math.ceil((((d-yearStart)/86400000)+1)/7);
+  return {year:d.getUTCFullYear(),week:weekNo};
+}
+function shBuildPeriods_(unit,today){
+  var start=new Date('2023-06-01T00:00:00'); var periods=[]; var cursor=start;
+  while(cursor<=today){
+    var naturalEnd,id;
+    if(unit==='week'){ var weekday=(cursor.getDay()+6)%7; var monday=shDaysAdd_(cursor,-weekday); naturalEnd=shDaysAdd_(monday,6); var info=shISOWeek_(monday); id=info.year+'-W'+('0'+info.week).slice(-2); }
+    else if(unit==='month'){ naturalEnd=new Date(cursor.getFullYear(),cursor.getMonth()+1,0); id=cursor.getFullYear()+'-'+('0'+(cursor.getMonth()+1)).slice(-2); }
+    else { var q=Math.floor(cursor.getMonth()/3); naturalEnd=new Date(cursor.getFullYear(),q*3+3,0); id=cursor.getFullYear()+'-Q'+(q+1); }
+    var periodEnd = naturalEnd>today?today:naturalEnd;
+    periods.push({id:id,s:shFmtDateKey_(cursor),e:shFmtDateKey_(periodEnd)});
+    cursor=shDaysAdd_(periodEnd,1);
+  }
+  return periods;
+}
+function renderStockoutDetailFull_(){
+  const el=document.getElementById('sec-stockout-detail');
+  el.innerHTML =
+    '<div class="sh-root">' +
+      '<div class="sh-top">' +
+        '<h2>품절 상세</h2>' +
+        '<div class="sh-seg" id="sh-seg"><span data-g="week">주별</span><span data-g="month">월별</span><span data-g="quarter">분기별</span></div>' +
+        '<div class="sh-nav"><button class="sh-nb" id="sh-prev">&#8249;</button><b id="sh-plab"></b><button class="sh-nb" id="sh-next">&#8250;</button><span class="sh-rng" id="sh-prng"></span></div>' +
+      '</div>' +
+      '<div class="sh-guide">' +
+        '<span id="sh-totline"></span>' +
+        '<span style="color:var(--sh-ink3)">기말 시점(기간 마지막 날) 기준 · 제품 철수(졸업) 제외</span>' +
+        '<span class="sh-warn" id="sh-gswarn"></span>' +
+      '</div>' +
+      '<div class="sh-kpis" id="sh-kpis"></div>' +
+      '<div class="sh-panel">' +
+        '<div class="sh-ph"><h3>품절 추이</h3><span class="sh-hint">막대 클릭 시 해당 기간 품절 목록 보기 · 각 기간 기말 시점</span></div>' +
+        '<div class="sh-lgd"><span><i style="background:var(--sh-red)"></i>비의도적</span></div>' +
+        '<div class="sh-chart-wrap" id="sh-chart"></div>' +
+      '</div>' +
+      '<div class="sh-panel">' +
+        '<div class="sh-ph"><h3>품절 사유</h3><span class="sh-hint" id="sh-czhint"></span></div>' +
+        '<div class="sh-subnote" style="padding:6px 19px 4px;">비의도적</div>' +
+        '<div class="sh-bars" id="sh-czbars"></div>' +
+        '<div class="sh-subnote" style="padding:10px 19px 4px;">의도적</div>' +
+        '<div class="sh-bars" id="sh-czbars2"></div>' +
+        '<div class="sh-subnote" id="sh-cznote"></div>' +
+      '</div>' +
+      '<div class="sh-grid2">' +
+        '<div class="sh-panel"><div class="sh-ph"><h3>협력사재고 품절 상세</h3><span class="sh-hint" id="sh-cohint"></span></div>' +
+          '<div class="sh-alert" id="sh-alert"></div>' +
+          '<div class="sh-scroll"><table><thead><tr><th>파츠</th><th class="r">경과일</th><th>사유</th><th>해소전망</th></tr></thead>' +
+          '<tbody id="sh-ptb"></tbody></table><div class="sh-empty" id="sh-pemp" style="display:none">해당 기간 협력사재고 품절 없음</div></div></div>' +
+        '<div class="sh-panel"><div class="sh-ph"><h3>선매입재고 품절 상세</h3><span class="sh-hint" id="sh-suhint"></span></div>' +
+          '<div class="sh-alert" id="sh-sualert"></div>' +
+          '<div class="sh-scroll"><table><thead><tr><th>파츠</th><th class="r">경과일</th><th>사유</th><th>해소전망</th></tr></thead>' +
+          '<tbody id="sh-sutb"></tbody></table><div class="sh-empty" id="sh-suemp" style="display:none">해당 기간 선매입재고 품절 없음</div></div></div>' +
+      '</div>' +
+      '<div class="sh-panel">' +
+        '<div class="sh-ph"><h3>품절 상세</h3><span class="sh-hint">경과일 내림차순</span></div>' +
+        '<div class="sh-tabs" id="sh-tabs"></div>' +
+        '<div class="sh-scroll"><table><thead><tr><th>#</th><th>파츠명</th><th>소유</th><th>구분</th><th>판매상태</th>' +
+        '<th class="r">품절일수</th><th>대표사유</th><th>해소전망</th><th>변경사유 원문</th></tr></thead>' +
+        '<tbody id="sh-mtb"></tbody></table><div class="sh-empty" id="sh-memp" style="display:none">해당 없음</div></div>' +
+        '<div class="sh-foot" id="sh-foot"></div>' +
+      '</div>' +
+    '</div>';
+
+  const $ = s => document.querySelector(s);
+  const IV = shBuildIntervals_();
+  IV.forEach(r => { r._s = new Date(r.s); r._e = r.e ? new Date(r.e) : null; });
+  const today = new Date();
+  const PS = { week: shBuildPeriods_('week', today), month: shBuildPeriods_('month', today), quarter: shBuildPeriods_('quarter', today) };
+  const OUT = ['일시품절', '의도적 품절'], DEAD = '제품 철수(졸업)';
+  const OWNC = { '신시어리': 'var(--sh-green)', '협력사': 'var(--sh-blue)', '생산': 'var(--sh-purple)' };
+  const GS_FROM = new Date('2026-03-27');
+  let G = 'week', I = PS.week.length - 1, F = null;
+
+  function snap(dstr) {
+    const t = new Date(dstr);
+    const a = IV.filter(r => r._s <= t && (!r._e || r._e > t) && r.st !== DEAD);
+    const dd = r => Math.round((t - r._s) / 864e5);
+    const so = a.filter(r => OUT.includes(r.st));
+    return { t, dd, so,
+      un:  so.filter(r => r.it === '비의도적'),
+      itn: so.filter(r => r.it === '의도적'),
+      lng: so.filter(r => dd(r) >= 60),
+      gs:  so.filter(r => r.gs),
+      soon: a.filter(r => r.st === '품절예정') };
+  }
+  function delta(c, pv) {
+    if (pv === null || pv === undefined) return '';
+    const d = c - pv; if (!d) return '<span class="sh-dt sh-fl">–</span>';
+    return `<span class="sh-dt ${d>0?'sh-up':'sh-dn'}">${d>0?'+':''}${d}</span>`;
+  }
+
+  function render() {
+    const L = PS[G]; I = Math.max(0, Math.min(I, L.length - 1));
+    const p = L[I], S = snap(p.e), P = I > 0 ? snap(L[I-1].e) : null;
+    $('#sh-seg').querySelectorAll('span').forEach(e => e.classList.toggle('on', e.dataset.g === G));
+    $('#sh-plab').textContent = p.id; $('#sh-prng').textContent = `${p.s} ~ ${p.e}`;
+    $('#sh-prev').disabled = I === 0; $('#sh-next').disabled = I === L.length - 1;
+
+    $('#sh-totline').innerHTML = `<span class="sh-tot">전체 품절 ${S.so.length}건</span>
+      <span style="color:var(--sh-ink3);margin-left:6px">= 비의도적 ${S.un.length} + 의도적 ${S.itn.length}</span>
+      <span style="color:var(--sh-ink3);margin-left:6px">· 품절예정 ${S.soon.length}건 별도</span>`;
+    const late = S.t >= GS_FROM;
+    $('#sh-gswarn').textContent = late ? '' : '굿즈품절여부는 2026-03-27부터 입력 시작 · 이전 기간은 0으로 표시됨';
+    $('#sh-gswarn').style.display = late ? 'none' : 'inline-block';
+
+    const ow = arr => ['협력사','신시어리','생산'].map(o => { const n = arr.filter(r => r.ow === o).length;
+      return n ? `${o==='신시어리'?'선매입':o} <em>${n}</em>` : ''; }).filter(Boolean).join(' · ') || '없음';
+    const kpiDefs = [
+     ['un', '비의도적 품절','<em>기말</em>',S.un.length,ow(S.un),'var(--sh-red)',P?P.un.length:null],
+     ['itn','의도적 품절','<em>기말</em>',S.itn.length,ow(S.itn),'var(--sh-amber)',P?P.itn.length:null],
+     ['lng','장기품절 60일+','<em>기말</em>',S.lng.length,`비의도적 <em>${S.lng.filter(r=>r.it==='비의도적').length}</em> · 의도적 <em>${S.lng.filter(r=>r.it==='의도적').length}</em>`,'var(--sh-purple)',P?P.lng.length:null],
+     ['gs', '굿즈품절','<em>기말</em>',S.gs.length,late?(S.gs.length?ow(S.gs):'해당 없음'):'입력 시작 전 기간','var(--sh-crimson)',P?P.gs.length:null]
+    ];
+    $('#sh-kpis').innerHTML = kpiDefs.map(([k,l,e,v,s,c,pv]) => `<div class="sh-kpi" data-kind="${k}" style="border-top-color:${c};cursor:pointer;">
+      <div class="l">${l}${e}</div>
+      <div class="v">${v}<small>건</small>${delta(v,pv)}</div><div class="s">${s}</div></div>`).join('');
+    $('#sh-kpis').querySelectorAll('.sh-kpi').forEach(el2 => {
+      el2.onclick = () => shOpenCardModal_(el2.dataset.kind, S, p);
+    });
+
+    chart(L, p); causes(S, p); coop(S); detail(S);
+  }
+
+  function shModalRows_(title, subtitle, rows, dd) {
+    const ov = document.getElementById('modal-overlay');
+    const t = document.getElementById('modal-title');
+    const b = document.getElementById('modal-body');
+    const tabsEl = document.getElementById('modal-tabs-el');
+    ov.classList.add('open');
+    tabsEl.innerHTML = '';
+    t.textContent = title;
+    b.innerHTML = `<div style="font-size:11.5px;color:var(--text3);margin-bottom:12px">${esc(subtitle)}</div>` + (rows.length
+      ? `<div class="sh-root"><div class="sh-scroll" style="max-height:60vh"><table><thead><tr><th>#</th><th>파츠명</th><th>소유</th><th>구분</th><th>판매상태</th>
+          <th class="r">품절일수</th><th>대표사유</th><th>해소전망</th><th>변경사유 원문</th></tr></thead>
+          <tbody>${rows.map((r, i) => { const d = dd(r); return `<tr>
+            <td>${i+1}</td>
+            <td><div class="sh-pt">${esc(r.pt)}</div><div class="sh-pc">${esc(r.gd||'')}${r.bg?' · <b style="color:#B5791F">대량건</b>':''}${r.gs?' <span class="sh-gsb">굿즈품절</span>':''}</div></td>
+            <td>${r.ow==='신시어리'?'선매입':esc(r.ow)}</td>
+            <td>${r.pk ? esc(r.pk) : '<span class="sh-dash">—</span>'}</td>
+            <td><span class="sh-bdg ${stB[r.st]||''}">${esc(r.st)}</span></td>
+            <td class="r"><span class="sh-days mono ${dcl(d)}">${d}</span></td>
+            <td>${czEl(r.cz)}</td><td>${etaEl(r.et)}</td>
+            <td style="font-size:12px;max-width:280px;">${r.tx ? esc(r.tx) : '<span class="sh-dash">—</span>'}</td>
+          </tr>`; }).join('')}</tbody></table></div></div>`
+      : '<div class="empty">해당 항목이 없습니다.</div>');
+  }
+
+  function shOpenCardModal_(kind, S, p) {
+    const titles = { un:'비의도적 품절 상세', itn:'의도적 품절 상세', lng:'장기품절 60일+ 상세', gs:'굿즈품절 상세' };
+    const rows = (S[kind] || []).slice().sort((a, b) => S.dd(b) - S.dd(a));
+    shModalRows_(titles[kind] || '품절 상세',
+      `${p.id} 기말(${p.e}) 기준 · ${rows.length}건 · 경과일 내림차순`, rows, S.dd);
+  }
+
+  function shOpenCauseModal_(kind, czKey, S, p) {
+    const kindLabel = kind === 'itn' ? '의도적' : '비의도적';
+    const rows = (S[kind] || []).filter(r => (r.cz==='-'?'미분류':r.cz) === czKey)
+      .slice().sort((a, b) => S.dd(b) - S.dd(a));
+    shModalRows_(`${czKey} · ${kindLabel} 품절 상세`,
+      `${p.id} 기말(${p.e}) 기준 · ${rows.length}건 · 경과일 내림차순`, rows, S.dd);
+  }
+
+  function chart(L, cp) {
+    const N = G==='quarter' ? L.length : (G==='month' ? 24 : 26);
+    const sl = L.slice(Math.max(0, I-N+1), I+1);
+    const data = sl.map(p => { const s = snap(p.e);
+      return { id:p.id, un:s.un.length, sel:p.id===cp.id }; });
+    const W=1100, H=190, PL=34, PB=26, PT=8;
+    const maxB = Math.max(4, ...data.map(d=>d.un));
+    const bw = (W-PL-8)/data.length, iw = Math.min(bw*.62, 26);
+    let g='', b='', lb='';
+    for (let i=0;i<=3;i++) { const y=PT+(H-PT-PB)*i/3;
+      g += `<line x1="${PL}" x2="${W-4}" y1="${y}" y2="${y}" stroke="#EEF0F4"/><text x="${PL-6}" y="${y+3.5}" text-anchor="end" font-size="9.5" fill="#9CA3AF">${Math.round(maxB*(1-i/3))}</text>`; }
+    const every = data.length>18 ? Math.ceil(data.length/13) : 1;
+    data.forEach((d,i) => {
+      if (d.sel) b += `<rect x="${PL+bw*i}" y="${PT-4}" width="${bw}" height="${H-PB-PT+4}" fill="var(--sh-ink)" opacity=".045" rx="4"/>`;
+      const x = PL+bw*i+(bw-iw)/2;
+      const h=(H-PT-PB)*d.un/maxB, y=H-PB-h;
+      if (d.un) b += `<rect x="${x}" y="${y}" width="${iw}" height="${Math.max(h,1)}" fill="var(--sh-red)" opacity="${d.sel?1:.7}" rx="1.5"/>`;
+      if (i%every===0 || d.sel) lb += `<text x="${x+iw/2}" y="${H-8}" text-anchor="middle" font-size="9.5" fill="${d.sel?'var(--sh-ink)':'#9CA3AF'}" font-weight="${d.sel?700:400}">${G==='week'?d.id.slice(5):d.id}</text>`;
+      b += `<rect class="sh-hit" data-id="${d.id}" x="${PL+bw*i}" y="0" width="${bw}" height="${H}" fill="transparent" style="cursor:pointer"><title>${d.id} · 비의도적 ${d.un}</title></rect>`;
+    });
+    $('#sh-chart').innerHTML = `<svg viewBox="0 0 ${W} ${H}" style="width:100%;height:auto">${g}${b}${lb}</svg>`;
+    $('#sh-chart').querySelectorAll('.sh-hit').forEach(e => e.onclick = () => {
+      const bp = L.find(p => p.id === e.dataset.id);
+      if (bp) shOpenCardModal_('un', snap(bp.e), bp);
+    });
+  }
+
+  const czEl = c => { const m = (c||'-').split('_')[0];
+    return `<span class="sh-cz ${({'리스크':'sh-c-risk','수량':'sh-c-qty','시점':'sh-c-time'})[m]||'sh-c-none'}">${c==='-'?'미분류':c.replace('_',' · ')}</span>`; };
+  const etaEl = e => `<span class="sh-eta ${e==='미정'?'n':e==='일정확정'?'s':'u'}">${e}</span>`;
+  const dcl = d => d>=60?'hot':(d>=30?'warm':'');
+  const stB = { '일시품절':'sh-b-tmp', '의도적 품절':'sh-b-int', '품절예정':'sh-b-soon' };
+
+  function causeBarsHtml_(list, emptyText, kind) {
+    if (!list.length) return `<div class="sh-empty">${emptyText}</div>`;
+    const g = {};
+    list.forEach(r => { const k = r.cz==='-'?'미분류':r.cz;
+      (g[k]=g[k]||{n:0,o:{}}).n++; g[k].o[r.ow]=(g[k].o[r.ow]||0)+1; });
+    const mx = Math.max(...Object.values(g).map(v=>v.n));
+    return Object.entries(g).sort((a,b)=>b[1].n-a[1].n).map(([k,v]) => {
+      const segs = ['신시어리','협력사','생산'].map(o => v.o[o] ? `<div class="sh-bseg" style="width:${v.o[o]/mx*100}%;background:${OWNC[o]}"></div>` : '').join('');
+      return `<div class="sh-brow" data-kind="${kind}" data-cz="${esc(k)}" style="cursor:pointer"><span class="sh-blab">${czEl(k)}</span><span class="sh-btrack">${segs}</span><span class="sh-bnum mono">${v.n}</span></div>`;
+    }).join('');
+  }
+
+  function causes(S, p) {
+    $('#sh-czhint').textContent = `비의도적 ${S.un.length}건 · 의도적 ${S.itn.length}건`;
+    $('#sh-czbars').innerHTML  = causeBarsHtml_(S.un,  '해당 기간 비의도적 품절 없음', 'un');
+    $('#sh-czbars2').innerHTML = causeBarsHtml_(S.itn, '해당 기간 의도적 품절 없음', 'itn');
+    $('#sh-cznote').innerHTML = `<b>색상</b> <span style="color:var(--sh-green)">■</span> 선매입
+      <span style="color:var(--sh-blue)">■</span> 협력사 <span style="color:var(--sh-purple)">■</span> 생산`;
+    [$('#sh-czbars'), $('#sh-czbars2')].forEach(el2 => {
+      el2.querySelectorAll('.sh-brow').forEach(row => {
+        row.onclick = () => shOpenCauseModal_(row.dataset.kind, row.dataset.cz, S, p);
+      });
+    });
+  }
+
+  function ownerStockoutPanel_(S, owner, ids) {
+    const label = owner === '신시어리' ? '선매입' : owner;
+    const rs = S.so.filter(r => r.ow===owner).sort((a,b) => S.dd(b)-S.dd(a));
+    $(ids.hint).textContent = `기말 기준 ${rs.length}건`;
+    const ints = rs.filter(r => r.it==='의도적').length;
+    $(ids.alert).style.display = ints ? 'block' : 'none';
+    $(ids.alert).innerHTML = `<b>${label} 의도적 품절 ${ints}건이 종료일 없이 열려 있습니다.</b> 판매중단 결정은 끝났으나 구간이 닫히지 않은 건으로, 졸업 처리 대상인지 확인이 필요합니다.`;
+    $(ids.empty).style.display = rs.length ? 'none' : 'block';
+    $(ids.body).innerHTML = rs.map(r => { const d = S.dd(r); return `<tr>
+      <td><div class="sh-pt">${esc(r.pt)}</div><div class="sh-pc">${esc(r.gd||'')} <span class="sh-bdg ${stB[r.st]}" style="padding:1px 7px;font-size:10px">${esc(r.st)}</span>${r.gs?' <span class="sh-gsb">굿즈품절</span>':''}</div></td>
+      <td class="r"><div class="sh-days mono ${dcl(d)}">${d}일</div><div class="sh-dsub mono">${esc(r.s)}~</div></td>
+      <td>${czEl(r.cz)}</td><td>${etaEl(r.et)}</td></tr>`; }).join('');
+  }
+
+  function coop(S) {
+    ownerStockoutPanel_(S, '협력사',  { hint:'#sh-cohint', alert:'#sh-alert',  body:'#sh-ptb',  empty:'#sh-pemp' });
+    ownerStockoutPanel_(S, '신시어리', { hint:'#sh-suhint', alert:'#sh-sualert', body:'#sh-sutb', empty:'#sh-suemp' });
+  }
+
+  function detail(S) {
+    const all = S.so.concat(S.soon);
+    const sets = { '전체':all, '비의도적':S.un, '의도적':S.itn, '장기 60일+':S.lng, '굿즈품절':S.gs };
+    $('#sh-tabs').innerHTML = Object.entries(sets).map(([l,v]) =>
+      `<span class="sh-tab ${F===l||(!F&&l==='전체')?'on':''}" data-t="${l}">${l} ${v.length}</span>`).join('');
+    $('#sh-tabs').querySelectorAll('.sh-tab').forEach(e => e.onclick = () => { F = e.dataset.t==='전체'?null:e.dataset.t; detail(S); });
+    const rs = [...(sets[F]||all)].sort((a,b) => S.dd(b)-S.dd(a));
+    $('#sh-memp').style.display = rs.length ? 'none' : 'block';
+    $('#sh-mtb').innerHTML = rs.map((r,i) => { const d = S.dd(r); return `<tr>
+      <td class="mono" style="color:var(--sh-ink3)">${i+1}</td>
+      <td><div class="sh-pt">${esc(r.pt)}</div><div class="sh-pc">${esc(r.gd||'')}${r.bg?' · <b style="color:#B5791F">대량건</b>':''}${r.gs?' <span class="sh-gsb">굿즈품절</span>':''}</div></td>
+      <td style="color:var(--sh-ink2)">${r.ow==='신시어리'?'선매입':esc(r.ow)}</td>
+      <td style="color:var(--sh-ink2);font-size:11.5px">${r.pk?esc(r.pk):'<span class="sh-dash">—</span>'}</td>
+      <td><span class="sh-bdg ${stB[r.st]||''}">${esc(r.st)}</span></td>
+      <td class="r"><span class="sh-days mono ${dcl(d)}">${d}</span><div class="sh-dsub mono">${esc(r.s)}~</div></td>
+      <td>${czEl(r.cz)}</td><td>${etaEl(r.et)}</td>
+      <td style="font-size:11px;color:var(--sh-ink2);max-width:270px">${r.tx?esc(r.tx):'<span class="sh-dash">—</span>'}</td></tr>`; }).join('');
+    $('#sh-foot').innerHTML = `${rs.length}건 · 품절일수는 sales_status_history 구간에서 산출 · 대표사유는 룰 자동 분류(2026년분은 실측 태깅 우선) · 굿즈품절여부는 2026-03-27부터 입력`;
+  }
+
+  $('#sh-seg').querySelectorAll('span').forEach(e => e.onclick = () => {
+    const old = PS[G][I].e; G = e.dataset.g;
+    const n = PS[G].findIndex(p=>p.e>=old); I = n<0?PS[G].length-1:n; render();
+  });
+  $('#sh-prev').onclick = () => { I--; render(); };
+  $('#sh-next').onclick = () => { I++; render(); };
+  render();
+}
+
 function renderStockoutDetailFromAgg(){
   const el=document.getElementById('sec-stockout-detail');
   const p=getSelectedAggPeriod(); if(!p){ el.innerHTML='<div class="card empty">dashboard_sku_snapshot CSV 데이터가 없습니다.</div>'; return; }
@@ -7047,6 +7467,7 @@ function renderInventoryOps() {
 // ===== 3-3. 품절 상세 =====
 function renderStockoutDetail() {
   const el=document.getElementById('sec-stockout-detail');
+  if(D.sales_status_history && D.sales_status_history.length) { renderStockoutDetailFull_(); return; }
   if(hasAggInventoryData()) { renderStockoutDetailFromAgg(); return; }
   el.innerHTML='<div class="card empty">dashboard_sku_snapshot CSV 데이터가 없습니다.</div>';
 }
@@ -8867,6 +9288,7 @@ const AUTO_CSV_DEFAULT={
   sup:'sup.csv',
   ci:'ci.csv',
   stockout_list:'stockout_list.csv',
+  sales_status_history:'sales_status_history.csv',
   dashboard_period_summary:'dashboard_period_summary.csv',
   dashboard_group_summary:'dashboard_group_summary.csv',
   dashboard_sku_snapshot:'dashboard_sku_snapshot.csv',
