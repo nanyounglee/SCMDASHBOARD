@@ -15,6 +15,83 @@
       "detail": ""
     },
     {
+      "id": "part_new|PT5582|2026_W31",
+      "type": "part_new",
+      "name": "PT5582-실크1도_전면_90x90_개미기획",
+      "date": "2026-07-27",
+      "detail": "개미기획"
+    },
+    {
+      "id": "part_new|PT5585|2026_W31",
+      "type": "part_new",
+      "name": "PT5585-샘플(실크1도)_개미기획",
+      "date": "2026-07-27",
+      "detail": "개미기획"
+    },
+    {
+      "id": "part_new|PT5333|2026_W31",
+      "type": "part_new",
+      "name": "PT5333-덮개박스(전용)(16인치)_블랙",
+      "date": "2026-07-27",
+      "detail": "\"GUANGZHOU KINGSONS BAGS TECHNOLOGY CO., LTD\""
+    },
+    {
+      "id": "part_new|PT5332|2026_W31",
+      "type": "part_new",
+      "name": "PT5332-덮개박스(전용)(14인치)_블랙",
+      "date": "2026-07-27",
+      "detail": "\"GUANGZHOU KINGSONS BAGS TECHNOLOGY CO., LTD\""
+    },
+    {
+      "id": "part_price|PT1332|2026_W31",
+      "type": "part_price",
+      "name": "사각스티커(커스텀인쇄)_화이트+디지털풀컬러_000-69",
+      "date": "2026-07-27",
+      "detail": "평균 73.2% 상승 · 서울디지털인쇄협동조합"
+    },
+    {
+      "id": "part_new|PT5583|2026_W31",
+      "type": "part_new",
+      "name": "PT5583-사각스티커(커스텀인쇄)_+디지털풀컬러",
+      "date": "2026-07-27",
+      "detail": "서울디지털인쇄협동조합"
+    },
+    {
+      "id": "part_new|PT5584|2026_W31",
+      "type": "part_new",
+      "name": "PT5584-웰컴페이퍼(커스텀인쇄)_반투명+블랙인쇄",
+      "date": "2026-07-27",
+      "detail": "서울디지털인쇄협동조합"
+    },
+    {
+      "id": "part_price|PT1093|2026_W31",
+      "type": "part_price",
+      "name": "유광덮개파우치_투명_000-3",
+      "date": "2026-07-27",
+      "detail": "평균 60.4% 인하 · 착한포장"
+    },
+    {
+      "id": "part_new|PT5330|2026_W31",
+      "type": "part_new",
+      "name": "PT5330-노트북슬리브(14인치)",
+      "date": "2026-07-27",
+      "detail": "\"GUANGZHOU KINGSONS BAGS TECHNOLOGY CO., LTD\""
+    },
+    {
+      "id": "part_new|PT5331|2026_W31",
+      "type": "part_new",
+      "name": "PT5331-노트북슬리브(16인치)",
+      "date": "2026-07-27",
+      "detail": "\"GUANGZHOU KINGSONS BAGS TECHNOLOGY CO., LTD\""
+    },
+    {
+      "id": "part_new|PT5586|2026_W31",
+      "type": "part_new",
+      "name": "PT5586-노트북슬리브_추상적산출물",
+      "date": "2026-07-27",
+      "detail": "개미기획"
+    },
+    {
       "id": "part_price|PT1330|2026_W30",
       "type": "part_price",
       "name": "덮개박스(커스텀인쇄)_화이트+옵셋풀컬러_200-1",
@@ -2171,5 +2248,5 @@
       "detail": ""
     }
   ],
-  "updatedAt": "2026-07-24T08:04:42.129Z"
+  "updatedAt": "2026-07-27T05:34:27.987Z"
 }
