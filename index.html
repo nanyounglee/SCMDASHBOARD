@@ -8205,8 +8205,8 @@ function renderStockoutDetailFull_(){
       '</div>' +
       '<div class="sh-kpis" id="sh-kpis"></div>' +
       '<div class="sh-panel">' +
-        '<div class="sh-ph"><h3>품절 추이</h3><span class="sh-hint">막대 클릭 시 해당 기간 품절 목록 보기 · 각 기간 기말 시점</span></div>' +
-        '<div class="sh-lgd"><span><i style="background:var(--sh-red)"></i>비의도적</span></div>' +
+        '<div class="sh-ph"><h3>품절율 추이</h3><span class="sh-hint">막대 클릭 시 해당 기간 품절 목록 보기 · 비율=비의도적품절/추적중 파츠 수(근사치) · 각 기간 기말 시점</span></div>' +
+        '<div class="sh-lgd"><span><i style="background:var(--sh-red)"></i>비의도적 품절율</span><span><i class="ln" style="background:var(--sh-amber)"></i>목표선(1~3Q 3%↓ · 4Q 5%↓)</span></div>' +
         '<div class="sh-chart-wrap" id="sh-chart"></div>' +
       '</div>' +
       '<div class="sh-panel">' +
@@ -8252,7 +8252,7 @@ function renderStockoutDetailFull_(){
     const a = IV.filter(r => r._s <= t && (!r._e || r._e > t) && r.st !== DEAD);
     const dd = r => Math.round((t - r._s) / 864e5);
     const so = a.filter(r => OUT.includes(r.st));
-    return { t, dd, so,
+    return { t, dd, so, tot: a.length,
       un:  so.filter(r => r.it === '비의도적'),
       itn: so.filter(r => r.it === '의도적'),
       lng: so.filter(r => dd(r) >= 60),
@@ -8357,27 +8357,36 @@ function renderStockoutDetailFull_(){
       `${p.id} 기말(${p.e}) 기준 · ${rows.length}건 · 경과일 내림차순`, rows, S.dd);
   }
 
+  function shTargetPct_(dateStr) {
+    const m = Number(String(dateStr||'').slice(5,7));
+    const q = m ? Math.ceil(m/3) : 1;
+    const lv = (typeof EOQ_SERVICE_LEVEL!=='undefined' && EOQ_SERVICE_LEVEL[q]) ? EOQ_SERVICE_LEVEL[q].level : (q===4?0.95:0.97);
+    return (1-lv)*100;
+  }
   function chart(L, cp) {
     const N = G==='quarter' ? L.length : (G==='month' ? 24 : 26);
     const sl = L.slice(Math.max(0, I-N+1), I+1);
     const data = sl.map(p => { const s = snap(p.e);
-      return { id:p.id, un:s.un.length, sel:p.id===cp.id }; });
+      const rate = s.tot ? s.un.length/s.tot*100 : 0;
+      return { id:p.id, un:s.un.length, tot:s.tot, rate, target:shTargetPct_(p.e), sel:p.id===cp.id }; });
     const W=1100, H=190, PL=34, PB=26, PT=8;
-    const maxB = Math.max(4, ...data.map(d=>d.un));
+    const maxB = Math.max(4, ...data.map(d=>Math.max(d.rate,d.target))) * 1.15;
     const bw = (W-PL-8)/data.length, iw = Math.min(bw*.62, 26);
-    let g='', b='', lb='';
+    let g='', b='', lb='', pts=[];
     for (let i=0;i<=3;i++) { const y=PT+(H-PT-PB)*i/3;
-      g += `<line x1="${PL}" x2="${W-4}" y1="${y}" y2="${y}" stroke="#EEF0F4"/><text x="${PL-6}" y="${y+3.5}" text-anchor="end" font-size="9.5" fill="#9CA3AF">${Math.round(maxB*(1-i/3))}</text>`; }
+      g += `<line x1="${PL}" x2="${W-4}" y1="${y}" y2="${y}" stroke="#EEF0F4"/><text x="${PL-6}" y="${y+3.5}" text-anchor="end" font-size="9.5" fill="#9CA3AF">${(maxB*(1-i/3)).toFixed(1)}%</text>`; }
     const every = data.length>18 ? Math.ceil(data.length/13) : 1;
     data.forEach((d,i) => {
       if (d.sel) b += `<rect x="${PL+bw*i}" y="${PT-4}" width="${bw}" height="${H-PB-PT+4}" fill="var(--sh-ink)" opacity=".045" rx="4"/>`;
       const x = PL+bw*i+(bw-iw)/2;
-      const h=(H-PT-PB)*d.un/maxB, y=H-PB-h;
-      if (d.un) b += `<rect x="${x}" y="${y}" width="${iw}" height="${Math.max(h,1)}" fill="var(--sh-red)" opacity="${d.sel?1:.7}" rx="1.5"/>`;
+      const h=(H-PT-PB)*d.rate/maxB, y=H-PB-h;
+      if (d.rate) b += `<rect x="${x}" y="${y}" width="${iw}" height="${Math.max(h,1)}" fill="var(--sh-red)" opacity="${d.sel?1:.7}" rx="1.5"/>`;
+      pts.push([x+iw/2, H-PB-(H-PT-PB)*d.target/maxB]);
       if (i%every===0 || d.sel) lb += `<text x="${x+iw/2}" y="${H-8}" text-anchor="middle" font-size="9.5" fill="${d.sel?'var(--sh-ink)':'#9CA3AF'}" font-weight="${d.sel?700:400}">${G==='week'?d.id.slice(5):d.id}</text>`;
-      b += `<rect class="sh-hit" data-id="${d.id}" x="${PL+bw*i}" y="0" width="${bw}" height="${H}" fill="transparent" style="cursor:pointer"><title>${d.id} · 비의도적 ${d.un}</title></rect>`;
+      b += `<rect class="sh-hit" data-id="${d.id}" x="${PL+bw*i}" y="0" width="${bw}" height="${H}" fill="transparent" style="cursor:pointer"><title>${d.id} · 비의도적 품절율 ${d.rate.toFixed(1)}% (목표 ${d.target.toFixed(0)}%↓) · ${d.un}/${d.tot}건</title></rect>`;
     });
-    $('#sh-chart').innerHTML = `<svg viewBox="0 0 ${W} ${H}" style="width:100%;height:auto">${g}${b}${lb}</svg>`;
+    const ln = `<polyline points="${pts.map(p=>p.join(',')).join(' ')}" fill="none" stroke="var(--sh-amber)" stroke-width="1.6" stroke-dasharray="5,4" stroke-linejoin="round"/>`;
+    $('#sh-chart').innerHTML = `<svg viewBox="0 0 ${W} ${H}" style="width:100%;height:auto">${g}${b}${ln}${lb}</svg>`;
     $('#sh-chart').querySelectorAll('.sh-hit').forEach(e => e.onclick = () => {
       const bp = L.find(p => p.id === e.dataset.id);
       if (bp) shOpenCardModal_('un', snap(bp.e), bp);
