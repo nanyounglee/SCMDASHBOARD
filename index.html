@@ -8264,6 +8264,16 @@ function renderStockoutDetailFull_(){
     const d = c - pv; if (!d) return '<span class="sh-dt sh-fl">–</span>';
     return `<span class="sh-dt ${d>0?'sh-up':'sh-dn'}">${d>0?'+':''}${d}</span>`;
   }
+  function deltaPct(c, pv) {
+    if (c === null || pv === null || pv === undefined) return '';
+    const d = c - pv; if (Math.abs(d) < 0.05) return '<span class="sh-dt sh-fl">–</span>';
+    return `<span class="sh-dt ${d>0?'sh-up':'sh-dn'}">${d>0?'+':''}${d.toFixed(1)}%p</span>`;
+  }
+  function shGoodsSet_(list) {
+    const set = new Set();
+    list.forEach(r => { String(r.gd||'').split(',').forEach(g => { const t = g.trim(); if (t) set.add(t); }); });
+    return set;
+  }
 
   function render() {
     const L = PS[G]; I = Math.max(0, Math.min(I, L.length - 1));
@@ -8281,15 +8291,26 @@ function renderStockoutDetailFull_(){
 
     const ow = arr => ['협력사','신시어리','생산'].map(o => { const n = arr.filter(r => r.ow === o).length;
       return n ? `${o==='신시어리'?'선매입':o} <em>${n}</em>` : ''; }).filter(Boolean).join(' · ') || '없음';
+    const activeGoodsCount = (D.goods_master||[]).filter(r => String(r['굿즈 Status']||'').trim()==='판매중').length;
+    const gsGoodsCount = shGoodsSet_(S.gs).size;
+    const gsRate = (late && activeGoodsCount) ? (gsGoodsCount/activeGoodsCount*100) : null;
+    const gsRatePrev = (P && late && activeGoodsCount) ? (shGoodsSet_(P.gs).size/activeGoodsCount*100) : null;
     const kpiDefs = [
      ['un', '비의도적 품절','<em>기말</em>',S.un.length,ow(S.un),'var(--sh-red)',P?P.un.length:null],
      ['itn','의도적 품절','<em>기말</em>',S.itn.length,ow(S.itn),'var(--sh-amber)',P?P.itn.length:null],
      ['lng','장기품절 60일+','<em>기말</em>',S.lng.length,`비의도적 <em>${S.lng.filter(r=>r.it==='비의도적').length}</em> · 의도적 <em>${S.lng.filter(r=>r.it==='의도적').length}</em>`,'var(--sh-purple)',P?P.lng.length:null],
-     ['gs', '굿즈품절','<em>기말</em>',S.gs.length,late?(S.gs.length?ow(S.gs):'해당 없음'):'입력 시작 전 기간','var(--sh-crimson)',P?P.gs.length:null]
+     ['gs', '굿즈품절율','<em>기말</em>',S.gs.length,
+       !late ? '입력 시작 전 기간' : (activeGoodsCount ? `영향 굿즈 <em>${gsGoodsCount}</em> / 판매중 <em>${activeGoodsCount}</em>개` : 'goods_master 업로드 필요'),
+       'var(--sh-crimson)',P?P.gs.length:null]
     ];
-    $('#sh-kpis').innerHTML = kpiDefs.map(([k,l,e,v,s,c,pv]) => `<div class="sh-kpi" data-kind="${k}" style="border-top-color:${c};cursor:pointer;">
+    $('#sh-kpis').innerHTML = kpiDefs.map(([k,l,e,v,s,c,pv]) => {
+      const valHtml = k==='gs'
+        ? (gsRate!==null ? `${gsRate.toFixed(1)}<small>%</small>${deltaPct(gsRate,gsRatePrev)}` : `—<small>%</small>`)
+        : `${v}<small>건</small>${delta(v,pv)}`;
+      return `<div class="sh-kpi" data-kind="${k}" style="border-top-color:${c};cursor:pointer;">
       <div class="l">${l}${e}</div>
-      <div class="v">${v}<small>건</small>${delta(v,pv)}</div><div class="s">${s}</div></div>`).join('');
+      <div class="v">${valHtml}</div><div class="s">${s}</div></div>`;
+    }).join('');
     $('#sh-kpis').querySelectorAll('.sh-kpi').forEach(el2 => {
       el2.onclick = () => shOpenCardModal_(el2.dataset.kind, S, p);
     });
