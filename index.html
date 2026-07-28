@@ -1262,6 +1262,19 @@ function parseCSVLine(l) {
 
 // ===== AMOUNT UTILS =====
 function pa(s) { return parseFloat((s||'').replace(/[₩,\s]/g,''))||0; }
+// v23.7: 고객주문수량 전용 파서 — 샘플 등으로 한 행에 수량이 "50, 8"처럼 콤마+공백으로
+// 나열된 경우, pa()가 콤마·공백을 모두 제거해 "50"+"8"을 "508"로 이어붙여버리는 오파싱이
+// 있었다(사용자 제보, 2026-07-27). ", "(콤마+공백) 뒤에 오는 값은 별개 수량 나열로 보고
+// 그중 가장 큰 값을 채택 — 콤마만 있고 공백이 없는 일반 천단위 구분("1,234")은 pa()로 정상 처리.
+function pCustQty(s){
+  s=(s||'').trim();
+  if(!s) return 0;
+  if(/,\s+/.test(s)){
+    const nums=s.split(',').map(p=>pa(p)).filter(n=>n>0);
+    return nums.length?Math.max(...nums):0;
+  }
+  return pa(s);
+}
 function fa(n) {
   if (n>=100000000) return (n/100000000).toFixed(1)+'억';
   if (n>=10000000) return (n/10000000).toFixed(1)+'천만';
@@ -2215,7 +2228,7 @@ function itemColor(r){
 // 있음 — 구성옵션(인쇄제외)은 이름 그대로 인쇄 정보를 빼놓기 때문에, 인쇄 방식은 산출물_옵션 필드의
 // 파츠 토큰 목록에서 찾는다(이 필드는 파츠명과 공정명이 한 리스트에 섞여 있어 색상처럼 소유 관계를
 // 따지지 않고 인정된 인쇄 공정 단어가 토큰으로 존재하면 그대로 채택)
-const PRINT_WORDS=['UV','실크','레이저각인','전사','승화전사','나염','패브릭디지털','디지털인쇄','자수','옵셋'];
+const PRINT_WORDS=['UV','실크','레이저각인','전사','승화전사','나염','패브릭디지털','디지털인쇄','디지털','자수','옵셋'];
 function printMethod(r){
   if(!(r['산출물']||'')) return '';
   const opt=r['산출물_옵션']||''; if(!opt) return '';
@@ -2249,7 +2262,7 @@ function renderOrdTopTable() {
     byProd[key].freq++;
     // v21.9: 고객주문수량(고객이 실제 구매한 수량) 합계 + 현재 여분 발주율 — v21.7 관행 산식과 동일
     // (여분율 분모·분자는 고객주문>0 & 발주≥고객 행만: 분할발주 음수·재제작 행 제외)
-    const cq=pa(String(r['고객주문수량']||''))*bomMultiplier(r);
+    const cq=pCustQty(r['고객주문수량'])*bomMultiplier(r);
     // v22.2 감사 수정: 고객주문수량 합계도 여분율과 동일 규칙(분할발주 발주<고객·재제작 제외) —
     // 분할발주에서 같은 고객 구매수량이 행마다 반복 계상되던 불일치 해소
     if(cq>0&&oq>=cq&&!String(r['task_id']||'').includes('재제작')){ byProd[key].cust+=cq; byProd[key].bufC+=cq; byProd[key].bufD+=(oq-cq); }
@@ -2327,7 +2340,7 @@ function computePreventionEffect(){
     const isRework=String(r['task_id']||'').includes('재제작');
     if(p&&!prods[p]) prods[p]={prod:p,prevCost:0,bufUnits:0,custQty:0,reworkCnt:0,failCost:0,shortCnt:0,avoided:0};
     if(isRework){ if(p){prods[p].reworkCnt++; prods[p].failCost+=pa(r['취득원가']);} return; }
-    const oq=pa(String(r['발주지시수량']||'')), cq=pa(String(r['고객주문수량']||''))*bomMultiplier(r), amt=pa(r['공급가액']);
+    const oq=pa(String(r['발주지시수량']||'')), cq=pCustQty(r['고객주문수량'])*bomMultiplier(r), amt=pa(r['공급가액']);
     const buf=(cq>0&&oq>cq)?oq-cq:0;
     const unit=(oq>0&&amt>0)?amt/oq:0;
     const pc=buf*unit;
@@ -2499,7 +2512,7 @@ function computeBufferRows(){
     g.taskCnt++; g.qty+=oq; g.amt+=pa(r['공급가액']);
     // v21.7: 현재 관행 여분 — 고객주문수량(고객이 실제 구매한 수량) 대비 발주지시수량 초과분.
     // 발주<고객(분할발주 등 음수)은 여분 판단 불가라 관행 집계에서 제외, 여분 0인 행은 포함
-    const cq=pa(String(r['고객주문수량']||''))*bomMultiplier(r);
+    const cq=pCustQty(r['고객주문수량'])*bomMultiplier(r);
     g.orderRows.push({qty:oq,amt:pa(r['공급가액']),buf:(cq>0&&oq>=cq)?oq-cq:null}); // v21.8 구간별 + v21.18 구간 관행 여분
     if(hasNoReceipt(r)) g.noRecv++;
     if(cq>0&&oq>=cq){ g.custQty+=cq; g.bufGiven+=(oq-cq); g.bufRows++; }
@@ -2698,10 +2711,30 @@ function openProductOrderDetail(prod){
   orders.forEach(r=>{
     if(String(r['task_id']||'').includes('재제작')){ rework++; reworkCost+=pa(r['취득원가']); return; }
     const oq=pa(String(r['발주지시수량']||'')); taskCnt++; qty+=oq; amt+=pa(r['공급가액']);
-    const cq=pa(String(r['고객주문수량']||''))*bomMultiplier(r);
+    const cq=pCustQty(r['고객주문수량'])*bomMultiplier(r);
     if(cq>0&&oq>=cq){ cust+=cq; buf+=(oq-cq); }
   });
   const bufPct=cust>0?(buf/cust*100):null;
+  // v23.7: 옵션별(색상·인쇄방식 등) 발주량 breakdown — 같은 산출물이라도 옵션(variantTag)이
+  // 2종 이상 섞여있으면(예: 포시즌 티셔츠 나염/디지털) 합산 수치만으론 옵션별 비중을 알 수 없어
+  // 사용자 요청으로 추가(2026-07-27). 옵션이 1종뿐이면 breakdown이 무의미해 표시하지 않음.
+  const variantGroups={};
+  orders.forEach(r=>{
+    if(String(r['task_id']||'').includes('재제작')) return;
+    const vt=variantTag(r)||'(옵션 미상)';
+    if(!variantGroups[vt]) variantGroups[vt]={taskCnt:0,qty:0,cust:0};
+    const oq2=pa(String(r['발주지시수량']||''));
+    const cq2=pCustQty(r['고객주문수량'])*bomMultiplier(r);
+    variantGroups[vt].taskCnt++; variantGroups[vt].qty+=oq2;
+    if(cq2>0&&oq2>=cq2) variantGroups[vt].cust+=cq2;
+  });
+  const variantEntries=Object.entries(variantGroups).sort((a,b)=>b[1].qty-a[1].qty);
+  const variantHtml=variantEntries.length>1?`<div class="card" style="margin:12px 0;padding:12px 16px">
+    <div style="font-size:12px;font-weight:700;margin-bottom:6px">옵션별 발주량 <span style="font-weight:400;font-size:10px;color:var(--text3)">— 당해+전년 전체 이력(재제작 제외)</span></div>
+    <table class="tbl"><thead><tr><th>옵션</th><th class="num">TASK</th><th class="num">발주수량</th><th class="num">고객주문</th></tr></thead><tbody>
+    ${variantEntries.map(([vt,g])=>`<tr><td style="font-size:11px">${esc(vt)}</td><td class="num">${g.taskCnt}</td><td class="num">${g.qty.toLocaleString()}</td><td class="num">${g.cust?g.cust.toLocaleString():'—'}</td></tr>`).join('')}
+    </tbody></table>
+  </div>`:'';
   const b=computeBufferRows().find(r=>r.prod===prod)||null;
   const pset=new Set([prod]);
   const issues=[...(D.issue||[]),...(D.issuePrevYear||[])].filter(r=>bufferIssueProductKey(r,pset)===prod)
@@ -2758,7 +2791,7 @@ function openProductOrderDetail(prod){
     <table class="tbl"><thead><tr><th class="rank">#</th><th>발주일</th><th>발주번호</th><th>협력사</th><th class="num">발주수량</th><th class="num">고객주문</th><th class="num">여분</th><th class="num">공급가액</th><th>구분</th></tr></thead><tbody>
     ${recent.map((r,i)=>{
       const rw=String(r['task_id']||'').includes('재제작');
-      const oq=pa(String(r['발주지시수량']||'')), cq=pa(String(r['고객주문수량']||''))*bomMultiplier(r);
+      const oq=pa(String(r['발주지시수량']||'')), cq=pCustQty(r['고객주문수량'])*bomMultiplier(r);
       const bf=(cq>0&&oq>=cq&&!rw)?oq-cq:null;
       const isBigDeal=!rw&&bigDealQty>0&&oq>=bigDealQty;
       return `<tr><td class="rank">${i+1}</td><td style="font-size:11px">${esc(r['과업지시일자']||'—')}</td><td class="mono" style="font-size:11px">${esc(r['발주번호']||'—')}</td><td style="font-size:11px">${esc(r['수주처']||'—')}</td><td class="num">${oq.toLocaleString()}</td><td class="num">${cq?cq.toLocaleString():'—'}</td><td class="num">${bf!==null?bf.toLocaleString():'—'}</td><td class="num">${faFull(pa(r['공급가액']))}</td><td>${rw?'<span class="tag" style="background:var(--red-light);color:var(--red)">재제작</span>':''}${isBigDeal?' <span class="tag" style="background:var(--blue-light);color:var(--blue)" title="건당 평균 발주수량 대비 +10% 이상">빅딜</span>':''}</td></tr>`;
@@ -2773,7 +2806,9 @@ function openProductOrderDetail(prod){
       return `<tr><td class="rank">${i+1}</td><td style="font-size:11px">${esc(getIssueDateStr(r)||'—')}</td><td>${catTags(r['이슈카테고리']||'')}</td><td style="font-size:11px">${esc(crop(r['품질이슈내용']||r['수량이슈내용']||r['운영이슈내용(by물류)']||'',50))}</td><td class="num" style="${short?'color:var(--red);font-weight:600':''}">${short?short.toLocaleString()+'개':'—'}</td><td style="font-size:11px;color:var(--text2)">${esc(crop(resp,40))||'—'}</td></tr>`;
     }).join('')}
     </tbody></table>`:'<div style="font-size:11px;color:var(--text3)">매칭된 이슈 없음</div>'}`;
-  body.innerHTML=`<div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:4px">${chips}</div>${bufHtml}${patternHtml}${ordHtml}${issHtml}`;
+  body.innerHTML=`<div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:4px">${chips}</div>
+    <div style="font-size:10px;color:var(--text3);margin:4px 0 8px">※ 위 수치는 <b>당해+전년 전체 발주 이력</b> 기준(재고생산 제외) — 발주 현황 상단 표는 현재 선택된 기간(${SEL_MONTH||'—'}) 기준이라 서로 범위가 달라 숫자가 다를 수 있습니다.</div>
+    ${variantHtml}${bufHtml}${patternHtml}${ordHtml}${issHtml}`;
 }
 function renderOrderBuffer(){
   const tbody=document.getElementById('tb-ord-buffer'); if(!tbody) return;
@@ -3175,7 +3210,7 @@ function renderCIFailCostPanel() {
   // (전년 라인용으로 전년 발주 포함 · v21.10 예방비용 카드와 동일 산식)
   [D.order,D.orderPrevYear].forEach(list=>(list||[]).forEach(r=>{
     if(isStock(r)||String(r['task_id']||'').includes('재제작')) return;
-    const oq=pa(String(r['발주지시수량']||'')), cq=pa(String(r['고객주문수량']||''))*bomMultiplier(r), amt=pa(r['공급가액']);
+    const oq=pa(String(r['발주지시수량']||'')), cq=pCustQty(r['고객주문수량'])*bomMultiplier(r), amt=pa(r['공급가액']);
     if(!(cq>0&&oq>cq&&amt>0)) return;
     const mo=pOrderMonth(r['과업지시일자']); if(!mo) return;
     prevCostByMonth[mo]=(prevCostByMonth[mo]||0)+(oq-cq)*(amt/oq);
@@ -9444,21 +9479,32 @@ function renderProductTrend() {
   const bucketCmp=bucketMode==='month'?monthCmp:undefined; // week/quarter 키는 사전순 정렬로 충분
   const unitLabel={week:'주간',month:'월간',quarter:'분기'}[bucketMode];
   const avgLabel={week:'주평균',month:'월평균',quarter:'분기평균'}[bucketMode];
-  const byProduct={};
-  // v21.12: 파츠유형에 Product Parts가 없는 행(인쇄·포장 전용 발주)은 제외 — 같은 제품이 본품 발주와
-  // 인쇄 발주(박·실크 등)로 나뉘어 수량이 중복 집계되는 것을 방지. 단 수주처가 신시어리웨일즈 주식회사인
-  // 행은 예외(자사 제작 건은 인쇄 파츠 행이 곧 제품 발주 기록이라 제외하면 그 제품이 통째로 사라짐)
+  // v23.7: 빅딜(한 발주 건이 그 제품 전체 발주수량의 80% 이상을 차지) 제외 — 사용자 요청(2026-07-27).
+  // 일회성 대량 발주 한 건이 추이 평균을 크게 왜곡하므로, 제품별 전체 발주 건 대비 80% 이상인
+  // 단일 건은 추이·합계에서 빼고 별도로 "빅딜 제외 수량"만 표기한다. 발주 건이 1건뿐인 제품은
+  // (비교 대상이 없어 "왜곡"이라 볼 수 없으므로) 제외 대상에서 뺀다.
+  const rowsByProduct={};
   D.order.filter(r=>!isStock(r)&&(!q||matchesSearch(r,q)||catTokenMatch(getOrderRowCategoryStr(r),nq))
     &&(!isCustom||inSelDateRange(r['과업지시일자']))
     &&(partsType(r).includes('Product Parts')||(r['수주처']||'').trim()==='신시어리웨일즈 주식회사')).forEach(r=>{
     const name=(r['산출물']||'').trim(); if(!name) return; // 비스포크(산출물 없음)는 반복성 없어 제외
     const mk=bucketOf(r['과업지시일자']); if(!mk) return;
     const qty=pa(r['발주지시수량']);
-    if(!byProduct[name]) byProduct[name]={name,total:0,months:{},supCnt:{}};
-    byProduct[name].months[mk]=(byProduct[name].months[mk]||0)+qty;
-    byProduct[name].total+=qty;
     const s=(r['수주처']||'').trim();
-    if(s) byProduct[name].supCnt[s]=(byProduct[name].supCnt[s]||0)+1;
+    (rowsByProduct[name]=rowsByProduct[name]||[]).push({mk,qty,s});
+  });
+  const byProduct={};
+  Object.entries(rowsByProduct).forEach(([name,rows])=>{
+    const naiveTotal=rows.reduce((s,x)=>s+x.qty,0);
+    const bigDealCut=rows.length>1?naiveTotal*0.8:Infinity;
+    const v={name,total:0,months:{},supCnt:{},bigDealQty:0,bigDealCnt:0};
+    rows.forEach(x=>{
+      if(naiveTotal>0&&x.qty>=bigDealCut){ v.bigDealQty+=x.qty; v.bigDealCnt++; return; }
+      v.months[x.mk]=(v.months[x.mk]||0)+x.qty;
+      v.total+=x.qty;
+      if(x.s) v.supCnt[x.s]=(v.supCnt[x.s]||0)+1;
+    });
+    byProduct[name]=v;
   });
   const mainSup=v=>Object.entries(v.supCnt).sort((a,b)=>b[1]-a[1])[0]?.[0]||'';
   const sorted=Object.entries(byProduct).sort((a,b)=>b[1].total-a[1].total);
@@ -9476,11 +9522,12 @@ function renderProductTrend() {
   el.innerHTML=`
     <div class="card"><div class="card-header"><div class="card-title">제품별 ${unitLabel} 발주수량 추이 (Top 10)</div><div class="card-sub">총 ${sorted.length}개 제품 · 발주지시수량 기준 · 재고생산 제외 · ${periodNote} · <b>파츠유형 Product Parts 포함 발주만</b>(인쇄·포장 전용 발주 행 제외로 중복 집계 방지, 신시어리웨일즈 제작 건은 예외) · 검색창에 <b>Goods Category</b>(예: Drinkware, Stationery)를 입력하면 해당 카테고리 제품 전체 표시${q?' · <b>검색 필터 적용</b>':''}</div></div>
     <div class="ch" style="height:320px"><canvas id="ch-prod-trend"></canvas></div></div>
-    <div class="card" style="margin-top:12px"><div class="card-header"><div class="card-title">제품별 발주 요약 <span style="font-weight:400;font-size:11px;color:var(--text3)">(${URGENT_EXCLUDE_SUP} 제작 제품 제외${q?' · 검색 필터 적용':''})</span></div></div>
+    <div class="card" style="margin-top:12px"><div class="card-header"><div class="card-title">제품별 발주 요약 <span style="font-weight:400;font-size:11px;color:var(--text3)">(${URGENT_EXCLUDE_SUP} 제작 제품 제외${q?' · 검색 필터 적용':''} · 한 건이 그 제품 전체의 80% 이상을 차지하는 빅딜 건은 추이·합계에서 제외하고 별도 표기)</span></div></div>
     <div class="tbl-wrap"><table class="tbl"><thead><tr><th class="rank">#</th><th>제품명</th><th>제작 협력사</th><th class="num">누적 발주수량</th><th class="num">${avgLabel}</th>${shownMonths.map(m=>`<th class="num" style="font-size:10px">${shownLbl(m)}</th>`).join('')}</tr></thead><tbody>
     ${summarySorted.slice(0,20).map(([k,v],i)=>{
       const avg=allMonths.length>0?Math.round(v.total/allMonths.length):0;
-      return `<tr><td class="rank">${i+1}</td><td>${esc(v.name||k)}</td><td style="font-size:11px;color:var(--text3)">${esc(crop(mainSup(v),16))}</td><td class="num">${fmtN(v.total)}</td><td class="num">${fmtN(avg)}</td>${shownMonths.map(m=>`<td class="num">${v.months[m]?fmtN(v.months[m]):'—'}</td>`).join('')}</tr>`;
+      const bigDealBadge=v.bigDealQty>0?` <span class="tag tag-gray" style="font-size:9px" title="추이·합계에서 제외됨">빅딜 제외 ${fmtN(v.bigDealQty)}개(${v.bigDealCnt}건)</span>`:'';
+      return `<tr><td class="rank">${i+1}</td><td>${esc(v.name||k)}</td><td style="font-size:11px;color:var(--text3)">${esc(crop(mainSup(v),16))}</td><td class="num">${fmtN(v.total)}${bigDealBadge}</td><td class="num">${fmtN(avg)}</td>${shownMonths.map(m=>`<td class="num">${v.months[m]?fmtN(v.months[m]):'—'}</td>`).join('')}</tr>`;
     }).join('')||emptyRow(5,q?'검색 결과 없음':'데이터 없음')}
     </tbody></table></div></div>`;
 
