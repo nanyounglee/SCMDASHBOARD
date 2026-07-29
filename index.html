@@ -299,6 +299,36 @@ a{color:var(--blue);text-decoration:none}
 </style>
 </head>
 <body>
+<!-- v23.7: 첫 진입 시 비밀번호 게이트 — 사용자 요청(2026-07-29, 외부 사이트 접근 차단 목적).
+     주의: GitHub Pages 정적 사이트라 클라이언트 JS로만 막는 화면 가림일 뿐, 실제 접근 제어가
+     아니다(페이지 소스에 비밀번호가 그대로 노출되고, CSV/JSON 데이터 파일도 직접 URL로 그대로
+     받아갈 수 있음) — 우연한 방문자를 막는 용도로만 쓸 것. localStorage에 인증 상태를 저장해
+     한 번 입력하면 같은 브라우저에서는 다시 묻지 않는다. -->
+<div id="pwgate" style="position:fixed;inset:0;z-index:2147483647;background:#0f172a;display:flex;align-items:center;justify-content:center;flex-direction:column;gap:16px;color:#fff;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif">
+  <div style="font-size:19px;font-weight:700">SCM 통합운영 대시보드</div>
+  <div style="font-size:13px;color:#94a3b8">비밀번호를 입력해주세요</div>
+  <div style="display:flex;gap:8px">
+    <input id="pwgate-input" type="password" placeholder="비밀번호" autocomplete="off" style="padding:10px 14px;border-radius:8px;border:1px solid #334155;background:#1e293b;color:#fff;font-size:14px;width:220px;outline:none">
+    <button id="pwgate-btn" style="padding:10px 18px;border-radius:8px;border:none;background:#2563eb;color:#fff;font-weight:600;cursor:pointer;font-size:14px">확인</button>
+  </div>
+  <div id="pwgate-err" style="font-size:12px;color:#f87171;display:none">비밀번호가 올바르지 않습니다</div>
+</div>
+<script>
+(function(){
+  var PW='sincerely.one';
+  var gate=document.getElementById('pwgate');
+  if(localStorage.getItem('scm_auth_v1')==='1'){ gate.style.display='none'; return; }
+  var input=document.getElementById('pwgate-input');
+  var err=document.getElementById('pwgate-err');
+  function tryUnlock(){
+    if(input.value===PW){ localStorage.setItem('scm_auth_v1','1'); gate.style.display='none'; }
+    else { err.style.display='block'; input.value=''; input.focus(); }
+  }
+  document.getElementById('pwgate-btn').addEventListener('click',tryUnlock);
+  input.addEventListener('keydown',function(e){ if(e.key==='Enter') tryUnlock(); });
+  input.focus();
+})();
+</script>
 <div class="shell">
 <aside class="sidebar">
   <div class="sb-logo">
@@ -9432,6 +9462,7 @@ function getOrderRowCategoryStr(r){
   if(gc&&gm[gc]) gm[gc].forEach(c=>cats.add(c));
   (extractPartsCodes(r)||[]).forEach(code=>{
     const p=PARTS_MAP[code];
+    if(p&&p.type==='Package Parts') return; // v23.7: 포장재(OPP·박스 등)는 여러 카테고리 제품에 공용으로 쓰여 goodsCat이 다중값 — 제품 카테고리 판단에서 제외(예: 데코스티커가 OPP 공용 포장재 때문에 Fabric으로도 잡히던 문제, 사용자 제보)
     if(p&&p.goodsCat) String(p.goodsCat).split(',').forEach(x=>{ x=x.trim(); if(x) cats.add(x); });
   });
   const s=normCat([...cats].join('|'));
@@ -9483,6 +9514,9 @@ function renderProductTrend() {
   // 일회성 대량 발주 한 건이 추이 평균을 크게 왜곡하므로, 제품별 전체 발주 건 대비 80% 이상인
   // 단일 건은 추이·합계에서 빼고 별도로 "빅딜 제외 수량"만 표기한다. 발주 건이 1건뿐인 제품은
   // (비교 대상이 없어 "왜곡"이라 볼 수 없으므로) 제외 대상에서 뺀다.
+  // (2026-07-29 재검토: 시점 버킷 기준·중앙값 배수 기준도 시도했으나, 전자는 반복 대량발주 고객
+  // 건이 누락되고 후자는 UV펜 등 정상 고매출 제품까지 과도하게 걸러내 원복 — 정확한 기준은
+  // 사용자와 재협의 필요.)
   const rowsByProduct={};
   D.order.filter(r=>!isStock(r)&&(!q||matchesSearch(r,q)||catTokenMatch(getOrderRowCategoryStr(r),nq))
     &&(!isCustom||inSelDateRange(r['과업지시일자']))
