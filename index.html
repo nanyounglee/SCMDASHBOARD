@@ -319,6 +319,12 @@ a{color:var(--blue);text-decoration:none}
 // 저장하던 이전 방식은 화면만 가릴 뿐 데이터 자체는 그대로 노출됐던 문제가 있었음.
 (function(){
   var gate=document.getElementById('pwgate');
+  // v23.7c: /api/login·/api/data는 Vercel 배포에만 존재 — GitHub Pages(nanyounglee.github.io,
+  // 순수 정적 호스팅, 서버리스 함수 없음)에서 게이트를 그대로 켜두면 로그인 API가 없어
+  // 영원히 잠긴 채로 못 들어가게 된다(2026-07-29 실사고: 이 문제로 GitHub Pages 접속 자체가
+  // 끊겼음). Vercel 도메인(.vercel.app)에서만 게이트를 활성화하고, 그 외(GitHub Pages 등)는
+  // 이관 완료 전까지 기존처럼 게이트 없이 그대로 접근 가능하게 둔다.
+  if(!location.hostname.endsWith('.vercel.app')){ gate.style.display='none'; return; }
   var input=document.getElementById('pwgate-input');
   var err=document.getElementById('pwgate-err');
   var btn=document.getElementById('pwgate-btn');
@@ -1304,10 +1310,18 @@ function parseCSVLine(l) {
   r.push(c); return r;
 }
 
-// v23.7: CSV/CSV_BANK는 별도 private repo(nanyounglee/-private-repo)로 이관하고, 이 앱은
-// Vercel 서버리스 프록시(/api/data/...)를 통해서만 그 데이터를 받아온다 — 로그인 세션 쿠키가
-// 없으면 401. data/*.json(cost_db 등)은 이번 이관 범위에 포함되지 않아 그대로 상대경로 사용.
-function dataUrl(p){ return '/api/data?path='+encodeURIComponent(p); }
+// v23.7: CSV/CSV_BANK는 별도 private repo(nanyounglee/-private-repo)로 이관하고, Vercel
+// 배포에서는 서버리스 프록시(/api/data?path=...)를 통해서만 그 데이터를 받아온다 — 로그인
+// 세션 쿠키가 없으면 401. data/*.json(cost_db 등)은 이번 이관 범위에 포함되지 않아 그대로
+// 상대경로 사용.
+// v23.7c: /api는 Vercel(.vercel.app)에만 존재 — GitHub Pages(nanyounglee.github.io)는
+// 여전히 CSV/CSV_BANK 원본이 이 저장소에 그대로 남아있는 과도기라, 거기서는 예전처럼 직접
+// 상대경로로 받는다. Vercel 이관이 검증되고 이 저장소의 CSV/CSV_BANK 원본을 제거하면
+// GitHub Pages 쪽 폴백은 자연히 의미가 없어짐(그때 이 분기도 정리 예정).
+function dataUrl(p){
+  if(location.hostname.endsWith('.vercel.app')) return '/api/data?path='+encodeURIComponent(p);
+  return p;
+}
 
 // ===== AMOUNT UTILS =====
 function pa(s) { return parseFloat((s||'').replace(/[₩,\s]/g,''))||0; }
