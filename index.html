@@ -4437,7 +4437,8 @@ function openModal(type,extra) {
     if (D.dashboard_sku_snapshot) {
       const p=getSelectedAggPeriod()||getLatestAggPeriod('weekly');
       const rows=p?getAggSkuRows(p.period_unit||SEL_INV_PERIOD,p.period_key):D.dashboard_sku_snapshot;
-      const skuData=rows.filter(r=>!D.dashboard_period_summary || isAggManaged(r)).map(aggSkuToInvModalRow);
+      const skuDetailMap=getSkuDetailMap_();
+      const skuData=rows.filter(r=>!D.dashboard_period_summary || isAggManaged(r)).map(r=>aggSkuToInvModalRow(r,skuDetailMap));
       INV_MODAL_DATA=skuData;
       INV_MODAL_SORT='invDesc';
       tabsEl.innerHTML=`<div style="display:flex;gap:6px;padding:8px 8px 0;align-items:center;font-size:11px;color:var(--text3)">
@@ -5463,12 +5464,24 @@ function invTurnoverCell(row,idx) {
   return `<span style="cursor:pointer;${turnColor};font-weight:600;text-decoration:underline;text-decoration-style:dotted" onclick="toggleInvTurnover(${idx},'${pn}')">${fmtTurn(row.turnover)} ▾</span>`;
 }
 
-function aggSkuToInvModalRow(r) {
+// dashboard_sku_detail(파츠번호·굿즈연결·출시일·최근입하일·최근입하수량) 파츠번호별 조회 맵.
+function getSkuDetailMap_() {
+  const map = {};
+  (D.dashboard_sku_detail||[]).forEach(r=>{
+    const no = String(r['파츠번호']||'').trim();
+    if(no) map[no] = r;
+  });
+  return map;
+}
+
+function aggSkuToInvModalRow(r, detailMap) {
   const invAmt=toNum(r.inv_amount);
   const qty=toNum(r.inv_qty);
   const up=toNum(r.unit_price)||(qty>0?invAmt/qty:0);
+  const pn=String(r.parts_no||'').trim();
+  const detail=(detailMap||{})[pn]||{};
   return {
-    pn:String(r.parts_no||'').trim(),
+    pn,
     name:r.parts_name||r.parts_no,
     cat:r.category||'',
     subcat:aggRealSubcategory(r),
@@ -5480,12 +5493,15 @@ function aggSkuToInvModalRow(r) {
     invAmt,
     turnover:toNum(r.turnover_3m),
     s3:toNum(r.sales_3m),
-    launchDate:r.launch_date||''
+    launchDate:String(detail['출시일']||'').trim(),
+    lastReceiptDate:String(detail['최근입하일']||'').trim(),
+    lastReceiptQty:toNum(detail['최근입하수량']||0)
   };
 }
 
 function renderAggSkuDetailRows(rows,kind='group') {
-  INV_MODAL_DATA=rows.map(aggSkuToInvModalRow);
+  const skuDetailMap=getSkuDetailMap_();
+  INV_MODAL_DATA=rows.map(r=>aggSkuToInvModalRow(r,skuDetailMap));
   INV_EXPANDED.clear();
   return INV_MODAL_DATA.map((row,i)=>{
     let html='';
@@ -5549,6 +5565,7 @@ function buildInvAccordion(r,idx) {
       <div style="display:flex;gap:12px;align-items:center;margin-bottom:10px;flex-wrap:wrap">
         <span style="font-size:12px;font-weight:600">${esc(r.name)}</span>
         ${r.launchDate?`<span style="font-size:11px;color:var(--purple);background:var(--purple-light);padding:2px 8px;border-radius:10px">출시일 ${esc(r.launchDate)}</span>`:''}
+        ${r.lastReceiptDate?`<span style="font-size:11px;color:var(--green);background:var(--green-light);padding:2px 8px;border-radius:10px">마지막입고 ${esc(r.lastReceiptDate)} · ${fmtN(r.lastReceiptQty)}개</span>`:''}
         <span style="font-size:11px;color:var(--text3)">월평균 판매 <strong style="color:var(--text)">${avgQty}개</strong></span>
         <span style="font-size:11px;color:var(--text3)">3M판매 <strong style="color:var(--text)">${fmtN(r.s3)}개</strong></span>
       </div>
