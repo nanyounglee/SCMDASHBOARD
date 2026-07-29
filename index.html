@@ -6833,7 +6833,7 @@ function nav(el,id) {
     'purchase-review':'<b>확인 가능 지표:</b> 전체 검토건수 · 미확정 계획금액 · 확정 매입금액 | <b>필터:</b> 전체/미확정/확정 상태 전환 | <b>테이블:</b> 파츠명·번호 · 재고수량 · 계획/확정 수량 · 결정상태/사항 · 회의명 | <b>CSV:</b> 매입검토현황 (S&OP purchase_review)',
     'season-plan':'<b>확인 가능 지표:</b> 구매팀 희망금액 · S&OP 확정금액 · 확정 입력률 | <b>탭:</b> 전체요약 + 계획구분별 탭(국내생산/직소싱/중개소싱 등) | <b>테이블:</b> 굿즈명 · 옵션 · 24Q4/25Q4/26Q4예상 판매 · 매입희망수량 · S&OP 확정(입력 가능, localStorage 저장) · 단가 | <b>CSV:</b> 시즌재고계획 (시즌매입_파츠연결)',
     eoq:'<b>확인 가능 지표:</b> 발주필요 SKU수 · 긴급발주 대상수 · 평균EOQ · EOQ 산출 제외 SKU수(3개월 판매실적 없음) | <b>테이블:</b> 파츠별 현재고 · 조달유형(국내생산/국내소싱/직소싱/중개소싱, 필터 가능) · 일평균수요(최근 3개월 판매량÷90일) · EOQ(경제적발주량) · ROP(재발주점) · 안전재고 · 리드타임(파츠별 실측 우선) · ROP도달까지 일수 | <b>파라미터:</b> 1회발주비용(기본5만) · 보관비율(20%) · 안전재고 = 목표서비스수준(1~3분기 97%·4분기 95%) × 일별수요표준편차 × √리드타임(Z-score, dashboard_sku_monthly 판매이력 기반) · 이력 부족 SKU만 안전재고일수(7일) 근사 폴백 · 리드타임은 parts_master 파츠별 실측치 우선, 없으면 기본 14일 | <b>CSV:</b> 재고 SKU 스냅샷(dashboard_sku_snapshot) + 파츠별 월별 판매(dashboard_sku_monthly) + 파츠 마스터(parts_master, 리드타임)',
-    graduation:'<b>확인 가능 지표:</b> 장기미회전 후보 품목수 · 해당 재고금액 | <b>조건:</b> 3M회전율 < 0.1 + 관리대상 Product Parts | <b>테이블:</b> 파츠명 · 카테고리 · 조달유형 · 잔여재고 · 재고금액 · 3M매출 · 회전율 · 권장조치(운영종료/졸업/모니터링) | <b>CSV:</b> 재고 SKU 스냅샷(dashboard_sku_snapshot)',
+    graduation:'<b>확인 가능 지표:</b> 장기미회전 후보 품목수 · 해당 재고금액 | <b>조건:</b> 3M회전율 < 0.1 + 관리대상 Product Parts + 출시 3개월 이상(출시일 미기재 시 신제품으로 간주해 제외) | <b>테이블:</b> 파츠명 · 카테고리 · 조달유형 · 잔여재고 · 재고금액 · 3M매출 · 회전율 · 권장조치(운영종료/졸업/모니터링) | <b>CSV:</b> 재고 SKU 스냅샷(dashboard_sku_snapshot)',
     order:'<b>확인 가능 지표:</b> 전체 제품 발주량(발주수량·월간발주빈도·연간발주량합, 헤더 클릭 정렬) + MoM(전월대비) + YoY(전년대비) 증감률 · 검색창 연동 · 재고생산(굿즈코드 STCK 포함) 제외 | <b>여분(버퍼) 발주수량 추천:</b> 제품별 이슈 이력(수량부족률·품질불량률·미입하율) 기반 권장 버퍼%·여분수량 · 예방비용 vs 실패비용(재제작) 차액 비교 · 행 클릭 시 버퍼% 시나리오별 비교 | <b>CSV:</b> 발주_RAW + 이슈_RAW',
     progress:'<b>확인 가능 지표:</b> 담당자별 진행중/신규/완료(전주 대비) TASK 요약 · TASK별 진행률(입하예정일 기준 %) · 지연 표시 | <b>비고:</b> 특이사항·협력사 입하현황 수기 입력 — 저장/수정 시 이력 병기, GitHub 연동(⚙) 시 자동 커밋·배포 | <b>CSV:</b> 매주 월요일 09:00 에어테이블 진행현황 뷰 → CSV/progress_연도_W주차.csv 커밋 (전주 파일과 자동 비교, 지난 파일은 CSV_BANK 아카이브)',
     'cost-analysis':'<b>월별 요약:</b> 매출/원가 추이 바차트 · 원가율 추이 라인차트 · 월별 매출/원가/원가율/마진 테이블 | <b>프로젝트별 상세:</b> 프로젝트 선택 → 매출/투입원가/원가율 KPI · TASK별 실제단가 vs 공정DB 표준단가 비교(표준대비%) · Movement 재고투입 · 공정DB 참조 테이블 | <b>CSV:</b> 발주_RAW + (선택)원가/Movement | <b>임베딩:</b> cost_db.json 공정DB',
@@ -7495,18 +7495,23 @@ function psrLaunchDateMap_(){
   return map;
 }
 
+// 출시일이 비어있으면 "아직 출시 안 된 신제품"으로 간주 → 장기미회전 판정에서 제외.
+// 출시 3개월 미만 신제품도 동일하게 제외 (parts_master 출시일 기준).
+function isRecentLaunch_(r, launchMap, baseDate){
+  const launchRaw = launchMap[String(r.parts_no||'').trim()];
+  if(!launchRaw) return true;
+  const launch = new Date(launchRaw.replace(/\./g,'-'));
+  if(isNaN(launch.getTime())||isNaN(baseDate.getTime())) return false;
+  const diffMonths = (baseDate.getFullYear()-launch.getFullYear())*12 + (baseDate.getMonth()-launch.getMonth());
+  return diffMonths<3;
+}
+
 function psrStagnantList_(unit,key,baseDateStr){
   const launchMap = psrLaunchDateMap_();
   const baseDate = new Date(String(baseDateStr||'').replace(/\./g,'-'));
   const rows = getAggSkuRows(unit,key).filter(r=>isAggManaged(r) && isAggProduct(r) && toNum(r.turnover_3m)<0.1);
-  return rows.filter(r=>{
-    const launchRaw = launchMap[String(r.parts_no||'').trim()];
-    if(!launchRaw) return true;
-    const launch = new Date(launchRaw.replace(/\./g,'-'));
-    if(isNaN(launch.getTime())||isNaN(baseDate.getTime())) return true;
-    const diffMonths = (baseDate.getFullYear()-launch.getFullYear())*12 + (baseDate.getMonth()-launch.getMonth());
-    return diffMonths>=3;
-  }).sort((a,b)=>toNum(b.inv_amount)-toNum(a.inv_amount)).map(r=>({
+  return rows.filter(r=>!isRecentLaunch_(r, launchMap, baseDate))
+    .sort((a,b)=>toNum(b.inv_amount)-toNum(a.inv_amount)).map(r=>({
     partNo: String(r.parts_no||'').trim(),
     partName:String(r.parts_name||''), category:String(r.category||''),
     inventoryQty: toNum(r.inv_qty).toLocaleString(),
@@ -8288,7 +8293,8 @@ function openAggInventoryModal(kind){
   if(!p){ title.textContent='재고 상세'; body.innerHTML=emptyRow(1,'집계 CSV 데이터가 없습니다.'); return; }
   const rows=getAggSkuRows(p.period_unit||SEL_INV_PERIOD,p.period_key).filter(isAggManaged);
   const stockout=rows.filter(isAggStockout).sort((a,b)=>aggStockoutDays(b)-aggStockoutDays(a));
-  const stagnant=rows.filter(r=>isAggProduct(r)&&toNum(r.inv_amount)>0&&toNum(r.turnover_3m)<0.1).sort((a,b)=>toNum(b.inv_amount)-toNum(a.inv_amount));
+  const launchMap=psrLaunchDateMap_(), stagnantBaseDate=new Date(String(p.base_date||p.period_key||'').replace(/\./g,'-'));
+  const stagnant=rows.filter(r=>isAggProduct(r)&&toNum(r.inv_amount)>0&&toNum(r.turnover_3m)<0.1&&!isRecentLaunch_(r,launchMap,stagnantBaseDate)).sort((a,b)=>toNum(b.inv_amount)-toNum(a.inv_amount));
   const status={}; rows.forEach(r=>{const s=String(r.sales_status||'미분류').trim()||'미분류'; status[s]=(status[s]||0)+1;});
   const band=getBandForDate(p.base_date||p.period_key);
   const trend=getAggPeriodRows(p.period_unit||SEL_INV_PERIOD).slice(-20);
@@ -8330,7 +8336,8 @@ function renderInventoryOpsFromAgg(){
   const stockout=managed.filter(isAggStockout);
   const long30=stockout.filter(r=>aggStockoutDays(r)>=30);
   const long60=stockout.filter(r=>aggStockoutDays(r)>=60);
-  const stagnant=managed.filter(r=>isAggProduct(r)&&toNum(r.inv_amount)>0&&toNum(r.turnover_3m)<0.1).sort((a,b)=>toNum(b.inv_amount)-toNum(a.inv_amount));
+  const launchMap=psrLaunchDateMap_(), stagnantBaseDate=new Date(String(p.base_date||key||'').replace(/\./g,'-'));
+  const stagnant=managed.filter(r=>isAggProduct(r)&&toNum(r.inv_amount)>0&&toNum(r.turnover_3m)<0.1&&!isRecentLaunch_(r,launchMap,stagnantBaseDate)).sort((a,b)=>toNum(b.inv_amount)-toNum(a.inv_amount));
   const stagnantAmt=stagnant.reduce((s,r)=>s+toNum(r.inv_amount),0);
   const prodRows=getAggGroupRows(unit,key,'production');
   const sourcingRows=getAggGroupRows(unit,key,'sourcing');
@@ -8361,7 +8368,7 @@ function renderInventoryOpsFromAgg(){
     <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:16px">
       <div class="card"><div class="card-header"><div class="card-title">생산유형별 재고</div><div class="card-sub">행 클릭 시 SKU 상세</div></div><div class="ch" style="height:170px;margin-bottom:10px"><canvas id="ch-agg-prod-donut"></canvas></div><div class="tbl-wrap"><table class="tbl"><thead><tr><th>유형</th><th class="num">재고금액</th><th class="num">비중</th><th class="num">SKU</th><th class="num">3M회전율</th></tr></thead><tbody>${aggAmountRows(prodRows,inv,'production')||emptyRow(5,'데이터 없음')}</tbody></table></div></div>
       <div class="card"><div class="card-header"><div class="card-title">소싱유형별 재고</div><div class="card-sub">행 클릭 시 SKU 상세</div></div><div class="ch" style="height:170px;margin-bottom:10px"><canvas id="ch-agg-sourcing-donut"></canvas></div><div class="tbl-wrap"><table class="tbl"><thead><tr><th>유형</th><th class="num">재고금액</th><th class="num">비중</th><th class="num">SKU</th><th class="num">3M회전율</th></tr></thead><tbody>${aggAmountRows(sourcingRows,inv,'sourcing')||emptyRow(5,'데이터 없음')}</tbody></table></div></div>
-      <div class="card" onclick="openAggInventoryModal('stagnant')" style="cursor:pointer"><div class="card-header"><div class="card-title">장기미회전 재고</div><div class="card-sub">관리대상 Product Parts · 3M 회전율 &lt; 0.1</div></div>
+      <div class="card" onclick="openAggInventoryModal('stagnant')" style="cursor:pointer"><div class="card-header"><div class="card-title">장기미회전 재고</div><div class="card-sub">관리대상 Product Parts · 3M 회전율 &lt; 0.1 · 출시 3개월+</div></div>
         <div style="display:flex;gap:12px;margin-bottom:10px"><span class="tag tag-q">${stagnant.length} SKU</span><span class="tag tag-gray">${fmtW(stagnantAmt)}</span></div>
         <div class="tbl-wrap"><table class="tbl"><thead><tr><th>파츠명</th><th>카테고리</th><th class="num">재고금액</th><th class="num">3M회전율</th></tr></thead><tbody>${stagnant.slice(0,10).map(r=>`<tr><td>${esc(crop(r.parts_name||r.parts_no||'',26))}<div style="font-size:10px;color:var(--text3)">${esc(r.parts_no||'')}</div></td><td>${esc(r.category||'')}</td><td class="num">${fmtW(toNum(r.inv_amount))}</td><td class="num">${fmtTurn(toNum(r.turnover_3m))}</td></tr>`).join('')||emptyRow(4,'대상 없음')}</tbody></table></div>
       </div>
@@ -8888,14 +8895,15 @@ function gradFilterChips(counts){
 function renderGraduationFromAgg(){
   const el=document.getElementById('sec-graduation');
   const p=getSelectedAggPeriod(); if(!p){ el.innerHTML='<div class="card empty">dashboard_sku_snapshot CSV 데이터가 없습니다.</div>'; return; }
-  const candidates=getAggSkuRows(p.period_unit||SEL_INV_PERIOD,p.period_key).filter(r=>isAggManaged(r)&&isAggProduct(r)&&toNum(r.inv_amount)>0&&toNum(r.turnover_3m)<0.1).sort((a,b)=>toNum(b.inv_amount)-toNum(a.inv_amount));
+  const launchMap=psrLaunchDateMap_(), stagnantBaseDate=new Date(String(p.base_date||p.period_key||'').replace(/\./g,'-'));
+  const candidates=getAggSkuRows(p.period_unit||SEL_INV_PERIOD,p.period_key).filter(r=>isAggManaged(r)&&isAggProduct(r)&&toNum(r.inv_amount)>0&&toNum(r.turnover_3m)<0.1&&!isRecentLaunch_(r,launchMap,stagnantBaseDate)).sort((a,b)=>toNum(b.inv_amount)-toNum(a.inv_amount));
   const totalAmt=candidates.reduce((s,r)=>s+toNum(r.inv_amount),0);
   const withAction=candidates.map(r=>({r,action:gradActionKey(toNum(r.sales_3m),toNum(r.turnover_3m))}));
   const counts={}; withAction.forEach(({action})=>{counts[action]=(counts[action]||0)+1;});
   const shown=GRAD_ACTION_FILTER==='all'?withAction:withAction.filter(({action})=>action===GRAD_ACTION_FILTER);
   el.innerHTML=`
     <div class="kpi-row-3">
-      <div class="kpi-card c-purple"><div class="kpi-label">장기미회전 후보</div><div class="kpi-val">${candidates.length}개</div><div class="kpi-sub">관리대상 Product Parts · 3M 회전율 &lt; 0.1</div></div>
+      <div class="kpi-card c-purple"><div class="kpi-label">장기미회전 후보</div><div class="kpi-val">${candidates.length}개</div><div class="kpi-sub">관리대상 Product Parts · 3M 회전율 &lt; 0.1 · 출시 3개월+</div></div>
       <div class="kpi-card c-red"><div class="kpi-label">해당 재고금액</div><div class="kpi-val">${fmtW(totalAmt)}</div></div>
       <div class="kpi-card c-blue"><div class="kpi-label">조회기간</div><div class="kpi-val" style="font-size:18px">${esc(aggPeriodLabel(p))}</div></div>
     </div>
