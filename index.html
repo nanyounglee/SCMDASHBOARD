@@ -7655,6 +7655,9 @@ function psrFmtComp_(curAmount, prevAmount, prevLabelText, label){
   return '  - '+label+': '+sign+fa(delta)+pct+'  (전기 '+fa(prevAmount)+', '+prevLabelText+')';
 }
 
+// 파츠명이 "PT0000-실제품명" 형식일 때 "PT0000-" 접두어를 제거해 표를 좁게 표시 (주간보고서 전용).
+function psrStripPartNoPrefix_(name){ return String(name||'').replace(/^PT\d+-/,''); }
+
 function psrGetSelectedWeekRow_(){
   const rows = getAggPeriodRows('weekly');
   if(!rows.length) return null;
@@ -7960,15 +7963,16 @@ function genWeeklyInventoryReport(){
   L.push('### 2-1. 카테고리별 재고 현황'); L.push('');
   const top5 = psrCategoryTop5_(unit,key);
   if(top5.length){
-    L.push('| 카테고리 | 비중 | SKU | 재고금액 | 1개월 판매량 | 3개월 판매량 | 잔여재고수량 | 재고회전율 |');
-    L.push('|---|---:|---|---:|---:|---:|---:|---:|');
+    L.push('| 카테고리<br>(비중) | SKU | 재고금액 | 1개월 판매량 | 3개월 판매량 | 잔여재고수량 | 재고회전율 |');
+    L.push('|---|---|---:|---:|---:|---:|---:|');
     top5.forEach(cat=>{
+      const catCell = cat.category+'<br>('+cat.inventoryShareText+')';
       if(!cat.skus.length){
-        L.push('| '+cat.category+' | '+cat.inventoryShareText+' | - | - | - | - | - | - |');
+        L.push('| '+catCell+' | - | - | - | - | - | - |');
         return;
       }
       cat.skus.forEach((sku,idx)=>{
-        L.push('| '+(idx===0?cat.category:'')+' | '+(idx===0?cat.inventoryShareText:'')+' | '+sku.partName+' | '+fa(sku.inventoryAmountValue)+' | '+sku.salesQty1m+' | '+sku.salesQty+' | '+sku.inventoryQty+' | '+sku.turnover+' |');
+        L.push('| '+(idx===0?catCell:'')+' | '+psrStripPartNoPrefix_(sku.partName)+' | '+fa(sku.inventoryAmountValue)+' | '+sku.salesQty1m+' | '+sku.salesQty+' | '+sku.inventoryQty+' | '+sku.turnover+' |');
       });
     });
     L.push('');
@@ -8001,7 +8005,7 @@ function genWeeklyInventoryReport(){
         L.push('| 파츠명 | 재고금액 | 재고수량 | 재고회전율 |');
         L.push('|---|---:|---:|---:|');
         kwSkuRows.forEach(r=>{
-          L.push('| '+String(r.parts_name||'-')+' | '+fa(toNum(r.inv_amount))+' | '+toNum(r.inv_qty).toLocaleString()+' | '+fmtTurn(toNum(r.turnover_3m))+' |');
+          L.push('| '+(r.parts_name?psrStripPartNoPrefix_(r.parts_name):'-')+' | '+fa(toNum(r.inv_amount))+' | '+toNum(r.inv_qty).toLocaleString()+' | '+fmtTurn(toNum(r.turnover_3m))+' |');
         });
       } else {
         L.push('- "'+kw+'" 포함 품목 없음');
@@ -8036,7 +8040,7 @@ function genWeeklyInventoryReport(){
     L.push('|---|---|---|---|---:|:---:|:---:|');
     so.nonIntentionalList.forEach(r=>{
       const statusText = r.salesStatus + (r.stockoutDays>=30?' **(장기품절)**':'');
-      L.push('| 선매입 | '+statusText+' | '+r.partName+' | '+r.stockoutStartDate+' | '+(r.stockoutDays?r.stockoutDays+'일':'-')+' | - | - |');
+      L.push('| 선매입 | '+statusText+' | '+psrStripPartNoPrefix_(r.partName)+' | '+r.stockoutStartDate+' | '+(r.stockoutDays?r.stockoutDays+'일':'-')+' | - | - |');
     });
   } else {
     L.push('- 대상 없음');
@@ -8056,7 +8060,7 @@ function genWeeklyInventoryReport(){
     L.push('| 제품명 | 카테고리 | 재고수량 | 재고금액 | 3개월 회전율 |');
     L.push('|---|---|---:|---:|---:|');
     stagnant.forEach(r=>{
-      L.push('| '+r.partName+' | '+r.category+' | '+r.inventoryQty+' | '+r.inventoryAmountText+' | '+r.turnoverText+' |');
+      L.push('| '+psrStripPartNoPrefix_(r.partName)+' | '+r.category+' | '+r.inventoryQty+' | '+r.inventoryAmountText+' | '+r.turnoverText+' |');
     });
   } else {
     L.push('- 대상 없음');
