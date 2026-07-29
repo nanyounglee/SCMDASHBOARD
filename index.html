@@ -5535,9 +5535,19 @@ function toggleInvTurnover(idx,pn) {
 function buildInvAccordion(r,idx) {
   const allMonths=getSkuMonths();
   const monthlyQty=allMonths.map(m=>({month:m,qty:getSkuSalesQty(r.pn,m)}));
-  const totalQty=monthlyQty.reduce((s,m)=>s+m.qty,0);
-  const avgQty=allMonths.length>0?(totalQty/allMonths.length).toFixed(1):'0';
   const maxQty=Math.max(...monthlyQty.map(m=>m.qty),1);
+
+  // 월평균 판매: 올해(currYear) 개월만 분모로 사용 — 출시가 올해면 출시월 이후만 포함(신제품 희석 방지).
+  const currYear=new Date().getFullYear();
+  let avgMonths=allMonths.filter(m=>Math.floor(monthKeyNum(m)/100)===currYear);
+  const launchM=r.launchDate?String(r.launchDate).match(/^(\d{4})-(\d{1,2})/):null;
+  if(launchM && Number(launchM[1])===currYear){
+    const launchKey=Number(launchM[1])*100+Number(launchM[2]);
+    avgMonths=avgMonths.filter(m=>monthKeyNum(m)>=launchKey);
+  }
+  if(!avgMonths.length) avgMonths=allMonths; // 올해 데이터가 아직 없으면 전체 기간으로 폴백
+  const avgQty=avgMonths.length>0?(avgMonths.reduce((s,m)=>s+getSkuSalesQty(r.pn,m),0)/avgMonths.length).toFixed(1):'0';
+  const avgLabel=avgMonths===allMonths?'월평균 판매':(currYear+'년 월평균');
 
   // Decision log from D.purchase_review if available
   let decisionHtml='';
@@ -5566,7 +5576,7 @@ function buildInvAccordion(r,idx) {
         <span style="font-size:12px;font-weight:600">${esc(r.name)}</span>
         ${r.launchDate?`<span style="font-size:11px;color:var(--purple);background:var(--purple-light);padding:2px 8px;border-radius:10px">출시일 ${esc(r.launchDate)}</span>`:''}
         ${r.lastReceiptDate?`<span style="font-size:11px;color:var(--green);background:var(--green-light);padding:2px 8px;border-radius:10px">마지막입고 ${esc(r.lastReceiptDate)} · ${fmtN(r.lastReceiptQty)}개</span>`:''}
-        <span style="font-size:11px;color:var(--text3)">월평균 판매 <strong style="color:var(--text)">${avgQty}개</strong></span>
+        <span style="font-size:11px;color:var(--text3)">${esc(avgLabel)} <strong style="color:var(--text)">${avgQty}개</strong></span>
         <span style="font-size:11px;color:var(--text3)">3M판매 <strong style="color:var(--text)">${fmtN(r.s3)}개</strong></span>
       </div>
       <div style="font-size:11px;font-weight:600;margin-bottom:6px">월별 판매추이 (${allMonths[0]||'-'} ~ ${allMonths[allMonths.length-1]||'-'})</div>
