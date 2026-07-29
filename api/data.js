@@ -1,8 +1,16 @@
-// GET /api/data/CSV/order.csv, /api/data/CSV_BANK/2026_W30/order_....csv, etc.
+// GET /api/data?path=CSV/order.csv, /api/data?path=CSV_BANK/2026_W30/order_....csv, etc.
 // Requires a valid session cookie (set by /api/login). On success, proxies the
 // file from the private data repo using a server-side GitHub token — the
 // token never reaches the browser, only the file contents do.
-const { isSessionValid } = require('../_session');
+//
+// v23.7: originally implemented as a nested catch-all route
+// (api/data/[...path].js mapping /api/data/*), but on the deployed Vercel
+// project any request path with 2+ segments under /api/data/ returned a
+// platform-level 404 while 1-segment paths worked fine (confirmed by live
+// testing, not just a hunch) — nested dynamic segments were not being
+// matched correctly. Switched to a flat function reading the file path from
+// a query string instead, which sidesteps path-segment routing entirely.
+const { isSessionValid } = require('./_session');
 
 const EXT_TYPES = {
   csv: 'text/csv; charset=utf-8',
@@ -15,8 +23,13 @@ module.exports = async (req, res) => {
     res.status(401).json({ ok: false, error: '로그인이 필요합니다' });
     return;
   }
-  const segments = req.query.path;
-  const parts = Array.isArray(segments) ? segments : [segments];
+  const raw = req.query.path;
+  const filePathRaw = Array.isArray(raw) ? raw[0] : raw;
+  if (!filePathRaw) {
+    res.status(400).json({ ok: false, error: 'invalid path' });
+    return;
+  }
+  const parts = filePathRaw.split('/');
   if (!parts.length || parts.some((p) => !p || p === '..' || p === '.')) {
     res.status(400).json({ ok: false, error: 'invalid path' });
     return;
