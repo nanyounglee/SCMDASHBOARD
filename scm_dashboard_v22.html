@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1.0">
-<title>SCM 통합운영 대시보드 v23</title>
+<title>SCM 통합운영 대시보드 v0.9</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
 <style>
 :root{
@@ -223,9 +223,126 @@ a{color:var(--blue);text-decoration:none}
 .empty{text-align:center;padding:40px 20px;color:var(--text3);font-size:13px}
 /* Chart wrapper */
 .ch{position:relative}
+/* ── 품절 상세 (sales_status_history 전체 이력 기반) — 전부 .sh-root 안에서만 적용 ── */
+.sh-root { --sh-blue:#4F6BED; --sh-red:#E5484D; --sh-amber:#E09F3E; --sh-purple:#7C5CE0;
+  --sh-green:#2F9E6B; --sh-teal:#1B6E8C; --sh-violet:#6B5B95; --sh-crimson:#A8324A;
+  --sh-ink:#111827; --sh-ink2:#6B7280; --sh-ink3:#9CA3AF; --sh-line:#E9EBF0; --sh-line2:#F1F2F6; }
+.sh-root .mono { font-variant-numeric: tabular-nums; }
+.sh-top { display:flex; align-items:center; gap:12px; flex-wrap:wrap; margin-bottom:14px; }
+.sh-top h2 { font-size:16px; margin:0; }
+.sh-nb { border:1px solid var(--sh-line); background:#fff; border-radius:8px; width:30px; height:30px; font-size:14px; color:#4B5563; cursor:pointer; line-height:1; }
+.sh-nb:disabled { opacity:.35; cursor:default; }
+.sh-rng { font-size:11.5px; color:var(--sh-ink3); margin-left:2px; }
+.sh-guide { background:#fff; border:1px solid var(--sh-line); border-radius:9px; padding:11px 15px; font-size:12px; color:var(--sh-ink2); margin-bottom:16px; display:flex; gap:9px; align-items:baseline; flex-wrap:wrap; }
+.sh-guide b { color:var(--sh-ink); }
+.sh-tot { font-size:13px; font-weight:800; color:var(--sh-ink); letter-spacing:-.02em; }
+.sh-warn { margin-left:auto; font-size:11.5px; color:#9A6A17; background:#FFF8EC; border:1px solid #F3E2C2; border-radius:6px; padding:3px 9px; }
+.sh-kpis { display:grid; grid-template-columns:repeat(auto-fit,minmax(196px,1fr)); gap:14px; margin-bottom:16px; }
+.sh-kpi { background:#fff; border:1px solid var(--sh-line); border-radius:11px; padding:16px 18px; border-top:3px solid var(--sh-blue); box-shadow:0 1px 2px rgba(16,24,40,.04); }
+.sh-kpi .l { font-size:12.5px; color:#4B5563; font-weight:600; }
+.sh-kpi .l em { font-style:normal; font-size:10.5px; color:var(--sh-ink3); font-weight:600; margin-left:4px; }
+.sh-kpi .v { font-size:30px; font-weight:800; letter-spacing:-.045em; margin-top:4px; line-height:1.1; }
+.sh-kpi .v small { font-size:14px; font-weight:700; color:var(--sh-ink3); margin-left:3px; }
+.sh-kpi .s { font-size:11.5px; color:var(--sh-ink3); margin-top:5px; }
+.sh-kpi .s em { font-style:normal; color:var(--sh-ink2); font-weight:600; }
+.sh-dt { font-size:11.5px; font-weight:800; padding:1px 6px; border-radius:5px; margin-left:5px; }
+.sh-up { background:#FDECEC; color:var(--sh-red); } .sh-dn { background:#E7F6EE; color:var(--sh-green); } .sh-fl { background:#F1F2F6; color:var(--sh-ink3); }
+.sh-panel { background:#fff; border:1px solid var(--sh-line); border-radius:11px; overflow:hidden; box-shadow:0 1px 2px rgba(16,24,40,.04); margin-bottom:16px; }
+.sh-ph { padding:16px 19px 12px; display:flex; align-items:baseline; gap:9px; flex-wrap:wrap; }
+.sh-ph h3 { font-size:15.5px; font-weight:700; letter-spacing:-.02em; margin:0; }
+.sh-ph .sh-hint { font-size:11.5px; color:var(--sh-ink3); margin-left:auto; }
+.sh-grid2 { display:grid; grid-template-columns:1fr 1fr; gap:16px; }
+@media(max-width:1000px) { .sh-grid2 { grid-template-columns:1fr; } }
+.sh-grid2 > .sh-panel { margin-bottom:0; }
+.sh-cz2col { display:grid; grid-template-columns:1fr 1fr; gap:0 8px; }
+@media(max-width:700px) { .sh-cz2col { grid-template-columns:1fr; } }
+.sh-root table { width:100%; border-collapse:collapse; font-size:13px; }
+.sh-root th { text-align:left; font-size:11px; color:var(--sh-ink3); font-weight:700; padding:9px 19px; border-top:1px solid var(--sh-line2); border-bottom:1px solid var(--sh-line2); background:#FAFBFC; white-space:nowrap; }
+.sh-root th.r, .sh-root td.r { text-align:right; }
+.sh-root td { padding:10px 19px; border-bottom:1px solid var(--sh-line2); vertical-align:middle; }
+.sh-root tbody tr:hover { background:#FBFCFE; }
+.sh-bdg { display:inline-block; padding:3px 9px; border-radius:14px; font-size:11px; font-weight:700; white-space:nowrap; }
+.sh-b-tmp { background:#FDECEC; color:var(--sh-red); } .sh-b-int { background:#FDF3E2; color:#B5791F; }
+.sh-b-soon { background:#F1F2F6; color:#6B7280; }
+.sh-gsb { display:inline-block; padding:1px 6px; border-radius:4px; font-size:10px; font-weight:800; background:#FBE9EC; color:var(--sh-crimson); border:1px solid #F0CFD6; }
+.sh-cz { display:inline-block; padding:2px 8px; border-radius:5px; font-size:11px; font-weight:700; white-space:nowrap; }
+.sh-c-risk { background:#FBEDF0; color:var(--sh-crimson); } .sh-c-qty { background:#E8F3F7; color:var(--sh-teal); }
+.sh-c-time { background:#EFEDF6; color:var(--sh-violet); } .sh-c-none { background:#F1F2F6; color:var(--sh-ink3); }
+.sh-pt { font-weight:600; font-size:12.5px; letter-spacing:-.01em; }
+.sh-pc { font-size:11px; color:var(--sh-ink3); margin-top:1px; }
+.sh-days { font-weight:800; font-size:15px; letter-spacing:-.02em; }
+.sh-days.hot { color:var(--sh-red); } .sh-days.warm { color:var(--sh-amber); }
+.sh-dsub { font-size:10.5px; color:var(--sh-ink3); margin-top:1px; }
+.sh-eta { font-size:11.5px; font-weight:700; }
+.sh-eta.n { color:var(--sh-red); } .sh-eta.s { color:var(--sh-teal); } .sh-eta.u { color:var(--sh-ink3); font-weight:400; }
+.sh-dash { color:#D1D5DB; }
+.sh-chart-wrap { padding:4px 12px 14px; }
+.sh-lgd { display:flex; gap:14px; flex-wrap:wrap; padding:0 19px 10px; font-size:11px; color:var(--sh-ink2); }
+.sh-lgd i { display:inline-block; width:8px; height:8px; border-radius:2px; margin-right:4px; }
+.sh-lgd i.ln { width:14px; height:2px; border-radius:1px; vertical-align:3px; }
+.sh-bars { padding:2px 19px 8px; }
+.sh-brow { display:flex; align-items:center; gap:10px; margin-top:9px; }
+.sh-blab { width:112px; font-size:12px; color:#4B5563; font-weight:600; }
+.sh-btrack { flex:1; height:9px; background:var(--sh-line2); border-radius:5px; overflow:hidden; display:flex; }
+.sh-bseg { height:100%; }
+.sh-bnum { width:30px; text-align:right; font-size:11.5px; color:var(--sh-ink2); font-weight:700; }
+.sh-subnote { padding:10px 19px 16px; font-size:11.5px; color:var(--sh-ink3); line-height:1.5; }
+.sh-subnote b { color:var(--sh-ink2); }
+.sh-alert { margin:0 19px 14px; background:#FFF8EC; border:1px solid #F3E2C2; border-radius:8px; padding:11px 14px; font-size:12px; color:#7A5518; line-height:1.5; }
+.sh-alert b { color:#5C3E0D; }
+.sh-tabs { display:flex; gap:6px; padding:0 19px 13px; flex-wrap:wrap; }
+.sh-tab { border:1px solid var(--sh-line); background:#fff; border-radius:7px; padding:5px 13px; font-size:12px; color:var(--sh-ink2); cursor:pointer; }
+.sh-tab.on { background:var(--sh-ink); border-color:var(--sh-ink); color:#fff; font-weight:600; }
+.sh-foot { font-size:11.5px; color:var(--sh-ink3); padding:12px 19px; border-top:1px solid var(--sh-line2); background:#FAFBFC; }
+.sh-empty { padding:34px; text-align:center; color:var(--sh-ink3); font-size:12.5px; }
+.sh-scroll { max-height:380px; overflow:auto; }
 </style>
 </head>
 <body>
+<!-- v23.7: 첫 진입 시 비밀번호 게이트 — 사용자 요청(2026-07-29, 외부 사이트 접근 차단 목적).
+     주의: GitHub Pages 정적 사이트라 클라이언트 JS로만 막는 화면 가림일 뿐, 실제 접근 제어가
+     아니다(페이지 소스에 비밀번호가 그대로 노출되고, CSV/JSON 데이터 파일도 직접 URL로 그대로
+     받아갈 수 있음) — 우연한 방문자를 막는 용도로만 쓸 것. localStorage에 인증 상태를 저장해
+     한 번 입력하면 같은 브라우저에서는 다시 묻지 않는다. -->
+<div id="pwgate" style="position:fixed;inset:0;z-index:2147483647;background:#0f172a;display:flex;align-items:center;justify-content:center;flex-direction:column;gap:16px;color:#fff;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif">
+  <div style="font-size:19px;font-weight:700">SCM 통합운영 대시보드</div>
+  <div style="font-size:13px;color:#94a3b8">비밀번호를 입력해주세요</div>
+  <div style="display:flex;gap:8px">
+    <input id="pwgate-input" type="password" placeholder="비밀번호" autocomplete="off" style="padding:10px 14px;border-radius:8px;border:1px solid #334155;background:#1e293b;color:#fff;font-size:14px;width:220px;outline:none">
+    <button id="pwgate-btn" style="padding:10px 18px;border-radius:8px;border:none;background:#2563eb;color:#fff;font-weight:600;cursor:pointer;font-size:14px">확인</button>
+  </div>
+  <div id="pwgate-err" style="font-size:12px;color:#f87171;display:none">비밀번호가 올바르지 않습니다</div>
+</div>
+<script>
+// v23.7: 실제 서버 인증으로 교체 — /api/login이 httpOnly 세션 쿠키를 발급하고,
+// /api/data/*(CSV 프록시)가 그 쿠키를 검증한다. localStorage에 "인증됨" 플래그만
+// 저장하던 이전 방식은 화면만 가릴 뿐 데이터 자체는 그대로 노출됐던 문제가 있었음.
+(function(){
+  var gate=document.getElementById('pwgate');
+  var input=document.getElementById('pwgate-input');
+  var err=document.getElementById('pwgate-err');
+  var btn=document.getElementById('pwgate-btn');
+  function unlock(){ gate.style.display='none'; }
+  // 이미 유효한 세션 쿠키가 있으면(같은 브라우저 재방문) 게이트를 바로 건너뛴다
+  // (이 스크립트는 본문 스크립트의 dataUrl()보다 먼저 실행되므로 경로를 직접 씀)
+  fetch('/api/data/CSV/_manifest.json').then(function(r){ if(r.ok) unlock(); }).catch(function(){});
+  function tryUnlock(){
+    if(!input.value){ return; }
+    btn.disabled=true;
+    fetch('/api/login',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({password:input.value})})
+      .then(function(r){ return r.json().then(function(j){ return {ok:r.ok,j:j}; }); })
+      .then(function(res){
+        btn.disabled=false;
+        if(res.ok&&res.j&&res.j.ok){ unlock(); }
+        else { err.textContent=(res.j&&res.j.error)||'비밀번호가 올바르지 않습니다'; err.style.display='block'; input.value=''; input.focus(); }
+      })
+      .catch(function(){ btn.disabled=false; err.textContent='네트워크 오류 — 다시 시도해주세요'; err.style.display='block'; });
+  }
+  btn.addEventListener('click',tryUnlock);
+  input.addEventListener('keydown',function(e){ if(e.key==='Enter') tryUnlock(); });
+  input.focus();
+})();
+</script>
 <div class="shell">
 <aside class="sidebar">
   <div class="sb-logo">
@@ -234,7 +351,7 @@ a{color:var(--blue);text-decoration:none}
     </div>
     <div>
       <div class="sb-logo-text">SCM Dashboard</div>
-      <div class="sb-logo-sub">SCM실 통합운영 v23</div>
+      <div class="sb-logo-sub">SCM실 통합운영 v0.9</div>
     </div>
   </div>
   <div class="sb-divider"></div>
@@ -257,17 +374,9 @@ a{color:var(--blue);text-decoration:none}
     <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M8 2L2 5l6 3 6-3-6-3z"/><path d="M3 6.5v4l5 3 5-3v-4"/></svg>
     졸업 검토
   </div>
-  <div class="sb-item" onclick="nav(this,'purchase-review')">
-    <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M3 3h10v10H3z"/><path d="M6 6l2 2 2-2"/></svg>
-    매입 검토
-  </div>
-  <div class="sb-item" onclick="nav(this,'season-plan')">
-    <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M2 14h12M4 14V8M8 14V5M12 14V2"/></svg>
-    시즌재고 계획
-  </div>
   <div class="sb-item" onclick="nav(this,'eoq')">
     <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M2 12l4-4 3 3 5-6"/><path d="M10 5h4v4"/></svg>
-    EOQ · 발주알람
+    매입검토(EOQ)
   </div>
   <div class="sb-section">외주생산 · 발주 현황</div>
   <div class="sb-item" onclick="nav(this,'order')">
@@ -924,7 +1033,7 @@ a{color:var(--blue);text-decoration:none}
 
 <script>
 // ===== DATA =====
-const D = {order:null,issue:null,sup:null,ci:null,stockout_list:null,sales:null,purchase_review:null,season_plan:null,qms_raw:null,cost_reduction:null,quarter_eval:null,dashboard_period_summary:null,dashboard_group_summary:null,dashboard_sku_snapshot:null,dashboard_sku_detail:null,dashboard_sku_monthly:null,raw_purchase:null,parts_master:null,parts:null,proj_rev:null,check_answer:null,check_question:null,price_chg:null};
+const D = {order:null,issue:null,sup:null,ci:null,stockout_list:null,sales_status_history:null,sales:null,purchase_review:null,season_plan:null,qms_raw:null,cost_reduction:null,quarter_eval:null,dashboard_period_summary:null,dashboard_group_summary:null,dashboard_sku_snapshot:null,dashboard_sku_detail:null,dashboard_sku_monthly:null,raw_purchase:null,parts_master:null,parts:null,proj_rev:null,check_answer:null,check_question:null,price_chg:null};
 // Legacy keys kept as computed views (not uploaded)
 Object.defineProperty(D,'task',{get(){return D.order;},set(){}});
 Object.defineProperty(D,'subcontract',{get(){return null;},set(){}});
@@ -955,12 +1064,12 @@ function get2025Issue(mo) {
 function priorArchiveYear(){ return new Date().getFullYear()-1; }
 function loadPriorYearArchive(){
   const y=priorArchiveYear();
-  fetch('CSV_BANK/archive/'+y+'/order_'+y+'.csv').then(r=>r.ok?r.text():null).catch(()=>null).then(txt=>{
+  fetch(dataUrl('CSV_BANK/archive/'+y+'/order_'+y+'.csv')).then(r=>r.ok?r.text():null).catch(()=>null).then(txt=>{
     if(!txt) return;
     D.orderPrevYear=parseCSV(txt);
     if(typeof SEL_MONTH!=='undefined'&&SEL_MONTH) refreshAll();
   });
-  fetch('CSV_BANK/archive/'+y+'/issue_'+y+'.csv').then(r=>r.ok?r.text():null).catch(()=>null).then(txt=>{
+  fetch(dataUrl('CSV_BANK/archive/'+y+'/issue_'+y+'.csv')).then(r=>r.ok?r.text():null).catch(()=>null).then(txt=>{
     if(!txt) return;
     D.issuePrevYear=parseCSV(txt);
     if(typeof SEL_MONTH!=='undefined'&&SEL_MONTH) refreshAll();
@@ -1028,6 +1137,25 @@ function getDbPriceIndex(){
 let PRICE_HISTORY=null;
 function loadPriceHistory(){
   fetch('data/parts_price_history.json').then(r=>r.ok?r.json():null).catch(()=>null).then(j=>{ if(j) PRICE_HISTORY=j; });
+}
+// v23.6: 완제품 1개에 여러 개가 들어가는 부품성 파츠(BOM 구성 파츠) — 발주지시수량은 낱개 기준,
+// 고객주문수량은 세트 기준으로 기록되어 그대로 비교하면 여분율이 배수만큼 부풀려짐(예: AA건전지
+// 오프너1개당4개 → 여분 300%로 오표시). data/parts_bom_multiplier.json에 파츠번호별 배수를 등록해두고
+// 여분(버퍼) 계산에서 고객주문수량 × 배수로 낱개 단위를 맞춘 뒤 비교한다.
+let BOM_MULT=null;
+function loadBomMultiplier(){
+  fetch('data/parts_bom_multiplier.json').then(r=>r.ok?r.json():null).catch(()=>null).then(j=>{ if(j) BOM_MULT=j; });
+}
+function partCode(r){
+  const s=r['parts']||r['sync_itemdb']||r['산출물_파츠코드']||'';
+  const m=String(s).match(/PT\d+/);
+  return m?m[0]:'';
+}
+function bomMultiplier(r){
+  if(!BOM_MULT) return 1;
+  const pc=partCode(r);
+  const e=pc&&BOM_MULT[pc];
+  return (e&&e.multiplier>0)?e.multiplier:1;
 }
 const PRICE_TIER_STEPS=[1,50,100,300,500,1000,3000,5000,10000,30000];
 // v22.2 감사 수정: 0값 구간은 미기재로 스킵 (partTierCost·getCostTierValue와 규칙 통일)
@@ -1176,8 +1304,26 @@ function parseCSVLine(l) {
   r.push(c); return r;
 }
 
+// v23.7: CSV/CSV_BANK는 별도 private repo(nanyounglee/-private-repo)로 이관하고, 이 앱은
+// Vercel 서버리스 프록시(/api/data/...)를 통해서만 그 데이터를 받아온다 — 로그인 세션 쿠키가
+// 없으면 401. data/*.json(cost_db 등)은 이번 이관 범위에 포함되지 않아 그대로 상대경로 사용.
+function dataUrl(p){ return '/api/data/'+p; }
+
 // ===== AMOUNT UTILS =====
 function pa(s) { return parseFloat((s||'').replace(/[₩,\s]/g,''))||0; }
+// v23.7: 고객주문수량 전용 파서 — 샘플 등으로 한 행에 수량이 "50, 8"처럼 콤마+공백으로
+// 나열된 경우, pa()가 콤마·공백을 모두 제거해 "50"+"8"을 "508"로 이어붙여버리는 오파싱이
+// 있었다(사용자 제보, 2026-07-27). ", "(콤마+공백) 뒤에 오는 값은 별개 수량 나열로 보고
+// 그중 가장 큰 값을 채택 — 콤마만 있고 공백이 없는 일반 천단위 구분("1,234")은 pa()로 정상 처리.
+function pCustQty(s){
+  s=(s||'').trim();
+  if(!s) return 0;
+  if(/,\s+/.test(s)){
+    const nums=s.split(',').map(p=>pa(p)).filter(n=>n>0);
+    return nums.length?Math.max(...nums):0;
+  }
+  return pa(s);
+}
 function fa(n) {
   if (n>=100000000) return (n/100000000).toFixed(1)+'억';
   if (n>=10000000) return (n/10000000).toFixed(1)+'천만';
@@ -1366,6 +1512,7 @@ const FIELD_HINTS = {
   sup:   { required:['협력사 이름','1. 제조유형'] },
   ci:    { required:['등록일자','이슈내용'] },
   stockout_list: { required:['파츠명','판매상태','품절 성격'] },
+  sales_status_history: { required:['파츠명','판매상태','변경일(인터페이스용)','end time','end time(인터페이스용)'] },
   sales: { required:['제품명','주문수량','판매단가','소계'] },
   purchase_review:{required:['REVIEW_ID','파츠번호','결정상태']},
   season_plan:{required:['굿즈명','옵션','계획구분']},
@@ -1378,7 +1525,7 @@ const FIELD_HINTS = {
 };
 const KEY_LABELS = {
   order:'발주_RAW',issue:'이슈_RAW',sup:'공급망_RAW',ci:'고객인지이슈_RAW',
-  stockout_list:'품절리스트',sales:'판매주문',
+  stockout_list:'품절리스트',sales_status_history:'품절 이력(전체)',sales:'판매주문',
   purchase_review:'매입검토현황',season_plan:'시즌재고계획',qms_raw:'QMS_품질데이터',cost_reduction:'원가절감실적',parts:'코스트베이스(파츠리스트)',goods_master:'굿즈마스터(졸업/출시)',check_answer:'제품문의답변이력',check_question:'제품문의원본(질문1~3)'
 };
 function validateCSV(key,rows) {
@@ -1424,6 +1571,7 @@ const UPLOAD_SLOTS=[
   {key:'dashboard_period_summary',icon:'📊',label:'재고 KPI 요약',src:'GSheets S&OP → dashboard_period_summary',fields:'period_unit, period_key, inv_amount, turnover_3m',row:'buy'},
   {key:'dashboard_group_summary',icon:'🧩',label:'재고 그룹 요약',src:'GSheets S&OP → dashboard_group_summary',fields:'group_type, group_name, inv_amount, turnover_3m',row:'buy'},
   {key:'dashboard_sku_snapshot',icon:'📦',label:'재고 SKU 스냅샷',src:'GSheets S&OP → dashboard_sku_snapshot',fields:'parts_no, parts_name, inv_amount, turnover_3m',row:'buy'},
+  {key:'sales_status_history',icon:'🕒',label:'품절 이력(전체)',src:'GSheets S&OP → sales_status_history',fields:'파츠명, 판매상태, 변경일(인터페이스용), end time',row:'buy'},
   {key:'purchase_review',icon:'🔍',label:'매입검토현황',src:'GSheets S&OP → purchase_review',fields:'REVIEW_ID, 파츠번호, 결정상태',row:'buy'},
   {key:'season_plan',icon:'🗓️',label:'시즌재고계획',src:'GSheets S&OP → 시즌매입_파츠연결',fields:'굿즈명, 옵션, 계획구분',row:'buy'},
   // 공통 · 선택
@@ -1494,6 +1642,7 @@ const FILE_SIGNATURES={
   qms_raw:        {must:['발생일','이슈유형'],not:['이슈카테고리']},
   cost_reduction: {must:['절감액','항목']},
   stockout_list:  {must:['파츠명','판매상태','품절 성격']},
+  sales_status_history: {must:['파츠명','판매상태','변경일(인터페이스용)','end time','end time(인터페이스용)']},
   sales:          {must:['제품명','주문수량','판매단가','소계']},
   ci:             {must:['등록일자','이슈내용','프로젝트명'],not:['이슈카테고리']},
   sup:            {must:['협력사 이름','1. 제조유형']},
@@ -2128,7 +2277,7 @@ function itemColor(r){
 // 있음 — 구성옵션(인쇄제외)은 이름 그대로 인쇄 정보를 빼놓기 때문에, 인쇄 방식은 산출물_옵션 필드의
 // 파츠 토큰 목록에서 찾는다(이 필드는 파츠명과 공정명이 한 리스트에 섞여 있어 색상처럼 소유 관계를
 // 따지지 않고 인정된 인쇄 공정 단어가 토큰으로 존재하면 그대로 채택)
-const PRINT_WORDS=['UV','실크','레이저각인','전사','승화전사','나염','패브릭디지털','디지털인쇄','자수','옵셋'];
+const PRINT_WORDS=['UV','실크','레이저각인','전사','승화전사','나염','패브릭디지털','디지털인쇄','디지털','자수','옵셋'];
 function printMethod(r){
   if(!(r['산출물']||'')) return '';
   const opt=r['산출물_옵션']||''; if(!opt) return '';
@@ -2162,7 +2311,7 @@ function renderOrdTopTable() {
     byProd[key].freq++;
     // v21.9: 고객주문수량(고객이 실제 구매한 수량) 합계 + 현재 여분 발주율 — v21.7 관행 산식과 동일
     // (여분율 분모·분자는 고객주문>0 & 발주≥고객 행만: 분할발주 음수·재제작 행 제외)
-    const cq=pa(String(r['고객주문수량']||''));
+    const cq=pCustQty(r['고객주문수량'])*bomMultiplier(r);
     // v22.2 감사 수정: 고객주문수량 합계도 여분율과 동일 규칙(분할발주 발주<고객·재제작 제외) —
     // 분할발주에서 같은 고객 구매수량이 행마다 반복 계상되던 불일치 해소
     if(cq>0&&oq>=cq&&!String(r['task_id']||'').includes('재제작')){ byProd[key].cust+=cq; byProd[key].bufC+=cq; byProd[key].bufD+=(oq-cq); }
@@ -2240,7 +2389,7 @@ function computePreventionEffect(){
     const isRework=String(r['task_id']||'').includes('재제작');
     if(p&&!prods[p]) prods[p]={prod:p,prevCost:0,bufUnits:0,custQty:0,reworkCnt:0,failCost:0,shortCnt:0,avoided:0};
     if(isRework){ if(p){prods[p].reworkCnt++; prods[p].failCost+=pa(r['취득원가']);} return; }
-    const oq=pa(String(r['발주지시수량']||'')), cq=pa(String(r['고객주문수량']||'')), amt=pa(r['공급가액']);
+    const oq=pa(String(r['발주지시수량']||'')), cq=pCustQty(r['고객주문수량'])*bomMultiplier(r), amt=pa(r['공급가액']);
     const buf=(cq>0&&oq>cq)?oq-cq:0;
     const unit=(oq>0&&amt>0)?amt/oq:0;
     const pc=buf*unit;
@@ -2412,7 +2561,7 @@ function computeBufferRows(){
     g.taskCnt++; g.qty+=oq; g.amt+=pa(r['공급가액']);
     // v21.7: 현재 관행 여분 — 고객주문수량(고객이 실제 구매한 수량) 대비 발주지시수량 초과분.
     // 발주<고객(분할발주 등 음수)은 여분 판단 불가라 관행 집계에서 제외, 여분 0인 행은 포함
-    const cq=pa(String(r['고객주문수량']||''));
+    const cq=pCustQty(r['고객주문수량'])*bomMultiplier(r);
     g.orderRows.push({qty:oq,amt:pa(r['공급가액']),buf:(cq>0&&oq>=cq)?oq-cq:null}); // v21.8 구간별 + v21.18 구간 관행 여분
     if(hasNoReceipt(r)) g.noRecv++;
     if(cq>0&&oq>=cq){ g.custQty+=cq; g.bufGiven+=(oq-cq); g.bufRows++; }
@@ -2611,10 +2760,30 @@ function openProductOrderDetail(prod){
   orders.forEach(r=>{
     if(String(r['task_id']||'').includes('재제작')){ rework++; reworkCost+=pa(r['취득원가']); return; }
     const oq=pa(String(r['발주지시수량']||'')); taskCnt++; qty+=oq; amt+=pa(r['공급가액']);
-    const cq=pa(String(r['고객주문수량']||''));
+    const cq=pCustQty(r['고객주문수량'])*bomMultiplier(r);
     if(cq>0&&oq>=cq){ cust+=cq; buf+=(oq-cq); }
   });
   const bufPct=cust>0?(buf/cust*100):null;
+  // v23.7: 옵션별(색상·인쇄방식 등) 발주량 breakdown — 같은 산출물이라도 옵션(variantTag)이
+  // 2종 이상 섞여있으면(예: 포시즌 티셔츠 나염/디지털) 합산 수치만으론 옵션별 비중을 알 수 없어
+  // 사용자 요청으로 추가(2026-07-27). 옵션이 1종뿐이면 breakdown이 무의미해 표시하지 않음.
+  const variantGroups={};
+  orders.forEach(r=>{
+    if(String(r['task_id']||'').includes('재제작')) return;
+    const vt=variantTag(r)||'(옵션 미상)';
+    if(!variantGroups[vt]) variantGroups[vt]={taskCnt:0,qty:0,cust:0};
+    const oq2=pa(String(r['발주지시수량']||''));
+    const cq2=pCustQty(r['고객주문수량'])*bomMultiplier(r);
+    variantGroups[vt].taskCnt++; variantGroups[vt].qty+=oq2;
+    if(cq2>0&&oq2>=cq2) variantGroups[vt].cust+=cq2;
+  });
+  const variantEntries=Object.entries(variantGroups).sort((a,b)=>b[1].qty-a[1].qty);
+  const variantHtml=variantEntries.length>1?`<div class="card" style="margin:12px 0;padding:12px 16px">
+    <div style="font-size:12px;font-weight:700;margin-bottom:6px">옵션별 발주량 <span style="font-weight:400;font-size:10px;color:var(--text3)">— 당해+전년 전체 이력(재제작 제외)</span></div>
+    <table class="tbl"><thead><tr><th>옵션</th><th class="num">TASK</th><th class="num">발주수량</th><th class="num">고객주문</th></tr></thead><tbody>
+    ${variantEntries.map(([vt,g])=>`<tr><td style="font-size:11px">${esc(vt)}</td><td class="num">${g.taskCnt}</td><td class="num">${g.qty.toLocaleString()}</td><td class="num">${g.cust?g.cust.toLocaleString():'—'}</td></tr>`).join('')}
+    </tbody></table>
+  </div>`:'';
   const b=computeBufferRows().find(r=>r.prod===prod)||null;
   const pset=new Set([prod]);
   const issues=[...(D.issue||[]),...(D.issuePrevYear||[])].filter(r=>bufferIssueProductKey(r,pset)===prod)
@@ -2671,7 +2840,7 @@ function openProductOrderDetail(prod){
     <table class="tbl"><thead><tr><th class="rank">#</th><th>발주일</th><th>발주번호</th><th>협력사</th><th class="num">발주수량</th><th class="num">고객주문</th><th class="num">여분</th><th class="num">공급가액</th><th>구분</th></tr></thead><tbody>
     ${recent.map((r,i)=>{
       const rw=String(r['task_id']||'').includes('재제작');
-      const oq=pa(String(r['발주지시수량']||'')), cq=pa(String(r['고객주문수량']||''));
+      const oq=pa(String(r['발주지시수량']||'')), cq=pCustQty(r['고객주문수량'])*bomMultiplier(r);
       const bf=(cq>0&&oq>=cq&&!rw)?oq-cq:null;
       const isBigDeal=!rw&&bigDealQty>0&&oq>=bigDealQty;
       return `<tr><td class="rank">${i+1}</td><td style="font-size:11px">${esc(r['과업지시일자']||'—')}</td><td class="mono" style="font-size:11px">${esc(r['발주번호']||'—')}</td><td style="font-size:11px">${esc(r['수주처']||'—')}</td><td class="num">${oq.toLocaleString()}</td><td class="num">${cq?cq.toLocaleString():'—'}</td><td class="num">${bf!==null?bf.toLocaleString():'—'}</td><td class="num">${faFull(pa(r['공급가액']))}</td><td>${rw?'<span class="tag" style="background:var(--red-light);color:var(--red)">재제작</span>':''}${isBigDeal?' <span class="tag" style="background:var(--blue-light);color:var(--blue)" title="건당 평균 발주수량 대비 +10% 이상">빅딜</span>':''}</td></tr>`;
@@ -2686,7 +2855,9 @@ function openProductOrderDetail(prod){
       return `<tr><td class="rank">${i+1}</td><td style="font-size:11px">${esc(getIssueDateStr(r)||'—')}</td><td>${catTags(r['이슈카테고리']||'')}</td><td style="font-size:11px">${esc(crop(r['품질이슈내용']||r['수량이슈내용']||r['운영이슈내용(by물류)']||'',50))}</td><td class="num" style="${short?'color:var(--red);font-weight:600':''}">${short?short.toLocaleString()+'개':'—'}</td><td style="font-size:11px;color:var(--text2)">${esc(crop(resp,40))||'—'}</td></tr>`;
     }).join('')}
     </tbody></table>`:'<div style="font-size:11px;color:var(--text3)">매칭된 이슈 없음</div>'}`;
-  body.innerHTML=`<div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:4px">${chips}</div>${bufHtml}${patternHtml}${ordHtml}${issHtml}`;
+  body.innerHTML=`<div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:4px">${chips}</div>
+    <div style="font-size:10px;color:var(--text3);margin:4px 0 8px">※ 위 수치는 <b>당해+전년 전체 발주 이력</b> 기준(재고생산 제외) — 발주 현황 상단 표는 현재 선택된 기간(${SEL_MONTH||'—'}) 기준이라 서로 범위가 달라 숫자가 다를 수 있습니다.</div>
+    ${variantHtml}${bufHtml}${patternHtml}${ordHtml}${issHtml}`;
 }
 function renderOrderBuffer(){
   const tbody=document.getElementById('tb-ord-buffer'); if(!tbody) return;
@@ -3088,7 +3259,7 @@ function renderCIFailCostPanel() {
   // (전년 라인용으로 전년 발주 포함 · v21.10 예방비용 카드와 동일 산식)
   [D.order,D.orderPrevYear].forEach(list=>(list||[]).forEach(r=>{
     if(isStock(r)||String(r['task_id']||'').includes('재제작')) return;
-    const oq=pa(String(r['발주지시수량']||'')), cq=pa(String(r['고객주문수량']||'')), amt=pa(r['공급가액']);
+    const oq=pa(String(r['발주지시수량']||'')), cq=pCustQty(r['고객주문수량'])*bomMultiplier(r), amt=pa(r['공급가액']);
     if(!(cq>0&&oq>cq&&amt>0)) return;
     const mo=pOrderMonth(r['과업지시일자']); if(!mo) return;
     prevCostByMonth[mo]=(prevCostByMonth[mo]||0)+(oq-cq)*(amt/oq);
@@ -3500,7 +3671,7 @@ async function detectSupplierChanges(){
   }
   weeks.reverse(); // 과거→최근
   const snaps=await Promise.all(weeks.map(label=>
-    fetch('CSV_BANK/'+label+'/sup.csv').then(r=>r.ok?r.text():null).catch(()=>null).then(txt=>({label,rows:txt?parseCSV(txt):null}))
+    fetch(dataUrl('CSV_BANK/'+label+'/sup.csv')).then(r=>r.ok?r.text():null).catch(()=>null).then(txt=>({label,rows:txt?parseCSV(txt):null}))
   ));
   const chain=snaps.filter(s=>s.rows&&s.rows.length);
   chain.push({label:'current',rows:D.sup});
@@ -3533,7 +3704,7 @@ async function detectPartsChanges(){
   }
   weeks.reverse();
   const snaps=await Promise.all(weeks.map(label=>
-    fetch('CSV_BANK/'+label+'/parts.csv').then(r=>r.ok?r.text():null).catch(()=>null).then(txt=>({label,rows:txt?parseCSV(txt):null}))
+    fetch(dataUrl('CSV_BANK/'+label+'/parts.csv')).then(r=>r.ok?r.text():null).catch(()=>null).then(txt=>({label,rows:txt?parseCSV(txt):null}))
   ));
   const chain=snaps.filter(s=>s.rows&&s.rows.length>=10);
   chain.push({label:'current',rows:D.parts});
@@ -3737,8 +3908,18 @@ const MANUAL_VENDOR_TERMINATIONS=[
   {name:'주식회사 유경',note:'거래종료'},
   {name:'(주)파워',note:'거래종료'},
   {name:'아이큐아이',note:'거래종료'},
-  {name:'모아산업',note:'거래종료'}
+  {name:'모아산업',note:'거래종료'},
+  {name:'디지탈준',note:'거래종료'},
+  {name:'시티핸즈캄퍼니',note:'거래종료'}
 ];
+// v23.7: 거래종료 협력사 이름 집합 — sup.csv(마스터)는 종료된 협력사도 행이 남아있어(Status 필드도
+// 갱신이 늦음) 자동 감지(diff)와 수동입력을 합쳐 "실제로 종료된" 협력사를 판별. 변경검토 리스트 등
+// "지금 관리가 필요한 협력사"만 보여줘야 하는 화면에서 걸러내는 용도(등록 협력사 총원 집계는 그대로 유지).
+function getTerminatedVendorNames(){
+  const s=new Set(MANUAL_VENDOR_TERMINATIONS.map(m=>m.name));
+  (typeof CHANGE_LOG!=='undefined'?CHANGE_LOG:[]).forEach(e=>{ if(e.type==='sup_terminated'&&e.name) s.add(e.name); });
+  return s;
+}
 // v22.13: goods_master.csv 졸업일이 실제보다 최근으로 잘못 찍혀(재입력 등) 최근 30일 창에
 // 이미 지난달 이전에 졸업 공지된 건이 재노출되는 경우 — 사용자 확인 후 수동 제외(2026-07-22)
 const MANUAL_GRAD_EXCLUDE=['PITU','WCCV']; // 포인트업 러그·웹캠 커버 — 실제로는 2026-06-25보다 이전에 이미 졸업
@@ -5600,19 +5781,119 @@ function genWeeklyOutsource() {
   const sundayDate = new Date(mondayDate); sundayDate.setDate(mondayDate.getDate() + 6);
   const weekRange = `${fmtShort(mondayDate)}~${fmtShort(sundayDate)}`;
 
+  // ============================================================
+  //  필드 레지스트리 (WR_FIELDS) — 이 리포트가 의존하는 원천 CSV 헤더의 "단일 출처".
+  //  원천 시트(Airtable/GSheets) 헤더가 바뀌면 여기 한 곳만 고치면 리포트 전체가 따라온다.
+  //  ‖ 규칙(난영님 v22.2 감사 교훈): 필드명을 코드 곳곳에 흩어 쓰지 않는다 —
+  //    헤더 오타/변경(예: 수량이슈대응방안_SCM 누락) 하나로 리포트가 조용히 빈칸을
+  //    뱉는 사고를 구조적으로 차단하기 위함.
+  //  ‖ 배열([a,b,c])은 폴백 우선순위 — pick()이 앞에서부터 "값이 있는 첫 필드"를 채택.
+  // ============================================================
+  const WR_FIELDS = {
+    order: {
+      date:    '과업지시일자',
+      amount:  '공급가액',
+      urgent:  '긴급여부',
+      sup:     '수주처',
+      supText: '(파트너)발주협력사명 텍스트',
+      miipha:  '미입하 발생이력_movement',
+      taskId:  'task_id',
+      output:  ['산출물', '발주번호'],
+      item:    ['item (통합) (from order)', 'project_name'],
+    },
+    issue: {
+      category:  '이슈카테고리',
+      item:      ['입고물품', 'item (통합) (from order)', '파츠명 (from order)'],
+      goodsName: 'goods_Name(from. order)',
+      sup:       '수주처',
+      supText:   '(파트너)발주협력사명 텍스트',
+      gradeInit: '품질등급최초판정',
+      gradeScm:  '품질등급의견_SCM',
+      qContent:  '품질이슈내용',
+      qResp:     ['품질등급의견판단사유_SCM', '품질이슈대응방안_SCM'],
+      qtyContent:'수량이슈내용',
+      qtyResp:   '수량이슈대응방안_SCM',
+      opContent: '운영이슈내용(by물류)',
+      opResp:    '운영이슈개선방안_SCM',
+      amount:    '공급가액',
+    },
+    ci: {
+      date:    '등록일자',
+      product: '관련제품',
+      project: '프로젝트명',
+      content: '이슈내용',
+      cause:   '발생원인',
+      improve: '개선방안',
+    },
+    priceChg: {
+      confirm:   'Confirmation',
+      reqDate:   '요청일자',
+      applyWhen: '변동사항 적용 시점',
+      sup:       ['협력사 이름', '협력사'],
+      goods:     '대상 굿즈명',
+      parts:     ['대상 파츠명 (Shift+Space)', '대상 파츠명'],
+      change:    ['변동사항 (Shift+Space로 전체 내용을 확인하세요)', '변동사항'],
+      cause:     '변동원인',
+    },
+    partsMaster: {
+      code:     '파츠번호',
+      name:     '파츠명',
+      goods:    '굿즈연결',
+      sup:      '수주처',
+      category: '굿즈카테고리',
+    },
+    quarterEval: {
+      sup:     '협력사',
+      grade1Q: '1Q_공급망관리등급',
+      grade2Q: '2Q_공급망관리등급',
+      score1Q: '1Q_공급망관리점수',
+      score2Q: '2Q_공급망관리점수',
+    },
+    stockout: {
+      status:  '판매상태',
+      name:    '파츠명',
+      changed: '변경일(인터페이스용)',
+    },
+    sup: { name: '협력사 이름' },
+    partsCsv: { code: '파츠명 (Long ver)', category: '굿즈 카테고리', sup: '제작협력사' }, // 5-0 품절 카테고리·수주처(=제작협력사) 연동
+  };
+  const F = WR_FIELDS;
+  // pick(r, spec): spec가 문자열이면 그 필드, 배열이면 폴백 우선순위대로
+  //   "값이 있는 첫 필드"를 반환. 없으면 ''. 중첩 배열도 평탄화 지원.
+  const pick = (r, spec) => {
+    if (!r) return '';
+    const keys = (Array.isArray(spec) ? spec : [spec]).flat(Infinity);
+    for (const k of keys) { const v = r[k]; if (v != null && String(v).trim() !== '') return v; }
+    return '';
+  };
+  // 자주 쓰는 조합 접근자 (레지스트리 경유 — 필드 변경에 자동 대응)
+  const wrItem   = r => String(pick(r, F.issue.item));                 // 이슈 품목명(폴백 통일)
+  const wrOrdItem= r => String(pick(r, F.order.item));                 // 발주행 품목명(project_name 폴백)
+  const wrGrades = r => {                                              // 품질등급 최초판정 vs SCM의견
+    const init = String(pick(r, F.issue.gradeInit)).trim();
+    const scm  = String(pick(r, F.issue.gradeScm)).trim();
+    return { init, scm, both: !!(init && scm), mismatch: !!(init && scm && init !== scm) };
+  };
+  // parts.csv(코스트베이스) PT코드 인덱스 — 5-0 품절 카테고리·수주처, 4-1 협력사 폴백 공용
+  const partsCsvByCode = {};
+  (D.parts || []).forEach(r => { const m = String(pick(r, F.partsCsv.code)).match(/PT\d+/); if (m && !partsCsvByCode[m[0]]) partsCsvByCode[m[0]] = r; });
+  const ptCodeOf = s => (String(s).match(/PT\d+/) || [])[0] || '';
+  const partsCsvSup = str => { const r = partsCsvByCode[ptCodeOf(str)]; return r ? String(pick(r, F.partsCsv.sup)).trim() : ''; };
+  const stripPt = s => String(s).replace(/^PT\d+-/, ''); // 표시용 PT코드 접두어 제거
+
   // --- 집계 헬퍼 ---
-  const orderInWeek = (r, lbl) => getISOWeek(r['과업지시일자'] || '') === lbl;
+  const orderInWeek = (r, lbl) => getISOWeek(pick(r, F.order.date) || '') === lbl;
   const issueInWeek = (r, lbl) => { const d=parseAnyDate(getIssueDateStr(r)); return d ? getISOWeek(`${d.getFullYear()}.${d.getMonth()+1}.${d.getDate()}`) === lbl : false; };
-  const sumAmt = rows => rows.reduce((s, r) => s + pa(r['공급가액']), 0);
-  const urgF = rows => rows.filter(r => r['긴급여부'] === '긴급' && (r['수주처']||'').trim() !== URGENT_EXCLUDE_SUP);
-  const miiphaF = rows => rows.filter(r => String(r['미입하 발생이력_movement']||'').includes('1 checked out of'));
-  const failCostF = rows => rows.filter(r => (r['task_id']||'').includes('재제작'));
-  const issuesByType = (issues, type) => issues.filter(r => (r['이슈카테고리']||'').includes(type));
-  const primaryCat = r => (r['이슈카테고리']||'').split(',')[0].trim();
+  const sumAmt = rows => rows.reduce((s, r) => s + pa(pick(r, F.order.amount)), 0);
+  const urgF = rows => rows.filter(r => pick(r, F.order.urgent) === '긴급' && String(pick(r, F.order.sup)).trim() !== URGENT_EXCLUDE_SUP);
+  const miiphaF = rows => rows.filter(r => String(pick(r, F.order.miipha)).includes('1 checked out of'));
+  const failCostF = rows => rows.filter(r => String(pick(r, F.order.taskId)).includes('재제작'));
+  const issuesByType = (issues, type) => issues.filter(r => String(pick(r, F.issue.category)).includes(type));
+  const primaryCat = r => String(pick(r, F.issue.category)).split(',')[0].trim();
   const issuesByPrimary = (issues, type) => issues.filter(r => primaryCat(r).includes(type));
   const projMap = getProjKeySupplierMap();
   const mvMap = getMovementSupplierMap();
-  const supOfIssue = r => issueSupplierOf(r, projMap, mvMap) || (r['(파트너)발주협력사명 텍스트']||'').replace(/^"+|"+$/g,'').trim() || '';
+  const supOfIssue = r => issueSupplierOf(r, projMap, mvMap) || String(pick(r, F.issue.supText)).replace(/^"+|"+$/g,'').trim() || '';
 
   // --- 이번 주 / 전주 order ---
   const curOrders = D.order ? D.order.filter(r => orderInWeek(r, curLabel)) : [];
@@ -5639,17 +5920,14 @@ function genWeeklyOutsource() {
   // 품질등급 일치율
   const gradeMatchRate = issues => {
     if (!issues.length) return null;
-    const mismatch = issues.filter(r => {
-      const a = (r['품질등급최초판정']||'').trim(), b = (r['품질등급의견_SCM']||'').trim();
-      return a && b && a !== b;
-    }).length;
+    const mismatch = issues.filter(r => wrGrades(r).mismatch).length;
     return ((issues.length - mismatch) / issues.length * 100).toFixed(1);
   };
   const curGradeRate = gradeMatchRate(curQuality), prevGradeRate = gradeMatchRate(prevQuality);
 
   // --- CI 이슈 ---
-  const curCI = D.ci ? D.ci.filter(r => getISOWeek(r['등록일자']||'') === curLabel) : [];
-  const prevCI = D.ci ? D.ci.filter(r => getISOWeek(r['등록일자']||'') === prevLabel) : [];
+  const curCI = D.ci ? D.ci.filter(r => getISOWeek(pick(r, F.ci.date)) === curLabel) : [];
+  const prevCI = D.ci ? D.ci.filter(r => getISOWeek(pick(r, F.ci.date)) === prevLabel) : [];
 
   // --- WoW 헬퍼 ---
   const wow = (cur, prev) => {
@@ -5675,7 +5953,7 @@ function genWeeklyOutsource() {
     const wProj = wOrders.filter(r => !isStock(r));
     const wUrg = urgF(wProj).length;
     const wIssues = D.issue ? D.issue.filter(r => issueInWeek(r, lbl)) : [];
-    const wCI = D.ci ? D.ci.filter(r => getISOWeek(r['등록일자']||'') === lbl) : [];
+    const wCI = D.ci ? D.ci.filter(r => getISOWeek(pick(r, F.ci.date)) === lbl) : [];
     const wQuality = issuesByPrimary(wIssues, '품질');
     recentWeeks.unshift({
       lbl: ty + '-W' + String(tw).padStart(2,'0'),
@@ -5697,7 +5975,7 @@ function genWeeklyOutsource() {
   const monthlyRows = [];
   for (let m = 1; m <= curMonth; m++) {
     const mk = `${curYear}.${m}`;
-    const mOrders = D.order ? D.order.filter(r => pOrderMonth(r['과업지시일자']||'') === mk) : [];
+    const mOrders = D.order ? D.order.filter(r => pOrderMonth(pick(r, F.order.date)) === mk) : [];
     const mProj = mOrders.filter(r => !isStock(r));
     const mUrg = urgF(mProj).length;
     const mIssues = D.issue ? D.issue.filter(r => pIssueMonth(r) === mk) : [];
@@ -5706,7 +5984,7 @@ function genWeeklyOutsource() {
     const mFailCost = sumAmt(failCostF(mOrders));
     const mGradeRate = gradeMatchRate(mQuality);
     const mCI = D.ci ? D.ci.filter(r => {
-      const d = r['등록일자'] || '';
+      const d = pick(r, F.ci.date);
       if (!d) return false;
       const parts = d.split('.');
       return parseInt(parts[0]) === curYear && parseInt(parts[1]) === m;
@@ -5735,18 +6013,15 @@ function genWeeklyOutsource() {
   const ytdQty = issuesByType(ytdIssues, '수량').length;
   const ytdOp = issuesByType(ytdIssues, '운영').length;
   const ytdGradeRate = gradeMatchRate(ytdQuality);
-  const ytdMismatch = ytdQuality.filter(r => {
-    const a = (r['품질등급최초판정']||'').trim(), b = (r['품질등급의견_SCM']||'').trim();
-    return a && b && a !== b;
-  }).length;
+  const ytdMismatch = ytdQuality.filter(r => wrGrades(r).mismatch).length;
 
   // 단가 변동 데이터 (섹션 4-1 및 5 카테고리별 서술에서 공통 사용)
   // 요청일자 iso week +-1주 OR 변동사항 적용 시점 iso week -1~해당주
   const priceChanges = D.price_chg ? D.price_chg.filter(r => {
-    if ((r['Confirmation']||'').trim() === '반려') return false;
-    const reqWk = getISOWeek((r['요청일자']||'').trim());
+    if (String(pick(r, F.priceChg.confirm)).trim() === '반려') return false;
+    const reqWk = getISOWeek(String(pick(r, F.priceChg.reqDate)).trim());
     if (reqWk && (reqWk === prevLabel || reqWk === curLabel || reqWk === nextLabel)) return true;
-    const applyWk = getISOWeek((r['변동사항 적용 시점']||'').trim());
+    const applyWk = getISOWeek(String(pick(r, F.priceChg.applyWhen)).trim());
     if (applyWk && (applyWk === prevLabel || applyWk === curLabel)) return true;
     return false;
   }) : [];
@@ -5766,7 +6041,7 @@ function genWeeklyOutsource() {
   md += `|---|---|---|---|\n`;
   md += `| 발주 TASK (프로젝트) | ${curProj.length}건 | ${prevProj.length}건 | ${wow(curProj.length, prevProj.length, false)} |\n`;
   md += `| 재고생산 TASK | ${curStock.length}건 | - | - |\n`;
-  md += `| 매입금액 (과업지시일자 기준) | ${faFull(curAmt)} | ${faFull(prevAmt)} | ${curAmt!==prevAmt?(curAmt>prevAmt?'▲ +':'▼ ')+Math.round(Math.abs(curAmt-prevAmt)).toLocaleString()+'원':'유지'} |\n`;
+  md += `| 매입금액 (과업지시일자 기준) | ${faFull(curAmt)} | ${faFull(prevAmt)} | ${curAmt!==prevAmt?(curAmt>prevAmt?'+':'-')+Math.round(Math.abs(curAmt-prevAmt)).toLocaleString()+'원':'유지'} |\n`;
   md += `| 긴급건수 (서디협 제외) | ${curUrg}건 (${urgRate}%) | ${prevUrg}건 (${prevUrgRate}%) | ${wow(curUrg, prevUrg)} |\n`;
   md += `| 미입하 TASK | ${curMiipha.length}건 (${miiphaRate}%) | ${prevMiipha.length}건 (${prevMiiphaRate}%) | ${wow(curMiipha.length, prevMiipha.length, true)} |\n`;
   md += `| 품질이슈 | ${curQuality.length}건 | ${prevQuality.length}건 | ${wow(curQuality.length, prevQuality.length, true)} |\n`;
@@ -5817,7 +6092,7 @@ function genWeeklyOutsource() {
     md += `| 품목 | 프로젝트명 | 이슈 내용 요약 | 발생원인 | SCM 대응 |\n`;
     md += `|---|---|---|---|---|\n`;
     curCI.forEach(r => {
-      md += `| ${r['관련제품']||'(확인필요)'} | ${r['프로젝트명']||''} | ${(r['이슈내용']||'').replace(/\n/g,' ').substring(0,60)} | ${(r['발생원인']||'').replace(/\n/g,' ').substring(0,40)} | ${(r['개선방안']||'').replace(/\n/g,' ').substring(0,40)} |\n`;
+      md += `| ${pick(r, F.ci.product)||'(확인필요)'} | ${pick(r, F.ci.project)} | ${String(pick(r, F.ci.content)).replace(/\n/g,' ').substring(0,60)} | ${String(pick(r, F.ci.cause)).replace(/\n/g,' ').substring(0,40) || '(확인필요)'} | ${String(pick(r, F.ci.improve)).replace(/\n/g,' ').substring(0,40) || '(확인필요)'} |\n`;
     });
   } else {
     md += `> ${curLabel} 고객인지이슈 없음\n`;
@@ -5827,34 +6102,31 @@ function genWeeklyOutsource() {
   md += `### 2-2. 품질이슈\n\n`;
   if (curQuality.length) {
     const sortedQ = [...curQuality].sort((a, b) => {
-      const aSin = (a['품질이슈대응방안_SCM']||a['품질이슈내용']||'').includes('신시어리') || (a['수주처']||'').includes('신시어리') ? 1 : 0;
-      const bSin = (b['품질이슈대응방안_SCM']||b['품질이슈내용']||'').includes('신시어리') || (b['수주처']||'').includes('신시어리') ? 1 : 0;
+      const sin = r => (String(pick(r,[F.issue.qResp, F.issue.qContent])).includes('신시어리') || String(pick(r, F.issue.sup)).includes('신시어리')) ? 1 : 0;
+      const aSin = sin(a), bSin = sin(b);
       if (bSin !== aSin) return bSin - aSin;
-      return pa(b['공급가액']) - pa(a['공급가액']);
+      return pa(pick(b, F.issue.amount)) - pa(pick(a, F.issue.amount));
     });
     md += `| 품목 | 협력사 | 이슈유형 | 이슈 내용 요약 | SCM 대응 | 처리결과 | 비용 |\n`;
     md += `|---|---|---|---|---|---|---|\n`;
     sortedQ.forEach(r => {
-      const item = (r['item (통합) (from order)'] || r['입고물품'] || '(확인필요)').substring(0, 40);
+      const item = (wrItem(r) || '(확인필요)').substring(0, 40);
       const sup = supOfIssue(r);
-      const content = (r['품질이슈내용']||'').replace(/\n/g,' ').substring(0, 50);
-      const resp = (r['품질등급의견판단사유_SCM']||r['품질이슈대응방안_SCM']||'').replace(/\n/g,' ').substring(0, 50);
-      const initG = r['품질등급최초판정']||'', scmG = r['품질등급의견_SCM']||'';
-      const result = initG && scmG ? `${initG}→${scmG}${initG!==scmG?' (**불일치**)':''}` : (initG || scmG || '');
+      const content = String(pick(r, F.issue.qContent)).replace(/\n/g,' ').substring(0, 50);
+      const resp = String(pick(r, F.issue.qResp)).replace(/\n/g,' ').substring(0, 50);
+      const g = wrGrades(r);
+      const result = g.both ? `${g.init}→${g.scm}${g.mismatch?' (**불일치**)':''}` : (g.init || g.scm || '');
       md += `| ${item} | ${sup} | 품질 | ${content} | ${resp} | ${result} | - |\n`;
     });
-    const mismatchQ = curQuality.filter(r => {
-      const a=(r['품질등급최초판정']||'').trim(), b=(r['품질등급의견_SCM']||'').trim();
-      return a && b && a !== b;
-    });
+    const mismatchQ = curQuality.filter(r => wrGrades(r).mismatch);
     const matchCnt = curQuality.length - mismatchQ.length;
     const rateStr = curGradeRate !== null ? curGradeRate+'%' : '-';
     md += `\n> 등급 일치율 **${rateStr}(${curQuality.length}건 중 ${matchCnt}건 일치)**`;
     if (mismatchQ.length) {
       const summary = mismatchQ.map(r => {
         const s = supOfIssue(r);
-        const a=r['품질등급최초판정']||'', b=r['품질등급의견_SCM']||'';
-        return `${s}(${a}→${b})`;
+        const g = wrGrades(r);
+        return `${s}(${g.init}→${g.scm})`;
       });
       md += `. 불일치 ${mismatchQ.length}건: ${summary.join(', ')}`;
     }
@@ -5870,9 +6142,9 @@ function genWeeklyOutsource() {
     md += `| 품목 | 협력사 | 이슈내용 | SCM 대응 |\n`;
     md += `|---|---|---|---|\n`;
     curQtyIssues.forEach(r => {
-      const item = (r['item (통합) (from order)'] || r['입고물품'] || '(확인필요)').substring(0,40);
+      const item = (wrItem(r) || '(확인필요)').substring(0,40);
       const sup = supOfIssue(r);
-      md += `| ${item} | ${sup} | ${(r['수량이슈내용']||'').replace(/\n/g,' ').substring(0,60)} | ${(r['수량이슈대응방안_SCM']||'(확인필요)').replace(/\n/g,' ').substring(0,60)} |\n`;
+      md += `| ${item} | ${sup} | ${String(pick(r, F.issue.qtyContent)).replace(/\n/g,' ').substring(0,60)} | ${(String(pick(r, F.issue.qtyResp))||'(확인필요)').replace(/\n/g,' ').substring(0,60)} |\n`;
     });
   } else {
     md += `> ${curLabel} 수량이슈 없음\n`;
@@ -5885,9 +6157,9 @@ function genWeeklyOutsource() {
     md += `| 품목 | 협력사 | 이슈내용 | SCM 대응 |\n`;
     md += `|---|---|---|---|\n`;
     curOpIssues.forEach(r => {
-      const item = (r['item (통합) (from order)'] || r['입고물품'] || '(확인필요)').substring(0,40);
+      const item = (wrItem(r) || '(확인필요)').substring(0,40);
       const sup = supOfIssue(r);
-      md += `| ${item} | ${sup} | ${(r['운영이슈내용(by물류)']||'').replace(/\n/g,' ').substring(0,60)} | ${(r['운영이슈개선방안_SCM']||'(확인필요)').replace(/\n/g,' ').substring(0,60)} |\n`;
+      md += `| ${item} | ${sup} | ${String(pick(r, F.issue.opContent)).replace(/\n/g,' ').substring(0,60)} | ${(String(pick(r, F.issue.opResp))||'(확인필요)').replace(/\n/g,' ').substring(0,60)} |\n`;
     });
   } else {
     md += `> ${curLabel} 운영이슈 없음\n`;
@@ -5909,27 +6181,20 @@ function genWeeklyOutsource() {
   md += `| 수량이슈 | ${monthlyRows.map(r => r.qty).join(' | ')} | **${ytdQtySum}** |\n`;
   md += `| 운영이슈 | ${monthlyRows.map(r => r.op).join(' | ')} | **${ytdOpSum}** |\n`;
   md += `| 고객인지이슈 | ${monthlyRows.map(r => r.ci).join(' | ')} | **${ytdCiSum}** |\n\n`;
-
-  md += `### 3-2. YTD 이슈 유형 비중 분석\n\n`;
   const ytdTotal = ytdQSum + ytdQtySum + ytdOpSum + ytdCiSum;
   const pctOf = n => ytdTotal ? (n/ytdTotal*100).toFixed(1)+'%' : '-';
-  md += `| 유형 | YTD 비중 | ${prevLabel} 대비 | 주요 특이사항 |\n`;
-  md += `| --- | ---: | --- | --- |\n`;
-  md += `| 품질이슈 | ${pctOf(ytdQSum)} (${ytdQSum}건) | ${prevQuality.length}건 → ${curQuality.length}건 | 일치율 ${curGradeRate !== null ? curGradeRate+'%' : '-'} |\n`;
-  md += `| 수량이슈 | ${pctOf(ytdQtySum)} (${ytdQtySum}건) | ${prevQty}건 → ${curQty}건 | |\n`;
-  md += `| 운영이슈 | ${pctOf(ytdOpSum)} (${ytdOpSum}건) | ${prevOp}건 → ${curOp}건 | |\n`;
-  md += `| 고객인지이슈 | ${pctOf(ytdCiSum)} (${ytdCiSum}건) | ${prevCI.length}건 → ${curCI.length}건 | |\n\n`;
+  md += `> YTD 비중 — 품질 ${pctOf(ytdQSum)} · 수량 ${pctOf(ytdQtySum)} · 운영 ${pctOf(ytdOpSum)} · 고객인지 ${pctOf(ytdCiSum)} (전주대비 증감은 1-1, 유형 상세는 섹션 2 참조)\n\n`;
 
-  md += `### 3-3. 품질등급 일치율 월별 추이\n\n`;
-  md += `| 월 | 품질이슈 | 등급 일치율 | 목표(80%↑) |\n`;
-  md += `| --- | ---: | ---: | --- |\n`;
+  md += `### 3-2. 품질등급 일치율 월별 추이\n\n`;
+  md += `| 월 | 등급 일치율 | 목표(80%↑) |\n`;
+  md += `| --- | ---: | --- |\n`;
   monthlyRows.forEach(r => {
     const goal = r.gradeRateNum !== null ? (parseFloat(r.gradeRateNum) >= 80 ? '✅ 달성' : '❌ 미달') : '-';
-    md += `| ${r.mk} | ${r.quality}건 | ${r.gradeRate} | ${goal} |\n`;
+    md += `| ${r.mk} | ${r.gradeRate} | ${goal} |\n`;
   });
   md += '\n';
 
-  md += `### 3-4. 협력사 품질이슈 TOP (${curLabel}, ${curQuality.length}건)\n\n`;
+  md += `### 3-3. 협력사 품질이슈 TOP (${curLabel}, ${curQuality.length}건)\n\n`;
   if (curQuality.length) {
     const supCount = {};
     curQuality.forEach(r => {
@@ -5956,11 +6221,11 @@ function genWeeklyOutsource() {
       md += `| 협력사 | 품목 | 변동 내용 | 적용시점 | 변동원인 |\n`;
       md += `|---|---|---|---|---|\n`;
       priceChanges.forEach(r => {
-        const sup = (r['협력사 이름']||'').trim();
-        const item = (r['대상 굿즈명']||r['대상 파츠명 (Shift+Space)']||'').replace(/\n/g,' ').substring(0,30);
-        const change = (r['변동사항 (Shift+Space로 전체 내용을 확인하세요)']||r['변동사항']||'').replace(/\n/g,' ').substring(0,80);
-        const when = (r['변동사항 적용 시점']||'').trim();
-        const why = (r['변동원인']||'').substring(0,30);
+        const sup = String(pick(r, F.priceChg.sup)).trim() || partsCsvSup(pick(r, [F.priceChg.parts, F.priceChg.goods])) || '—';
+        const item = String(pick(r, [F.priceChg.goods, F.priceChg.parts])).replace(/\n/g,' ').substring(0,30);
+        const change = String(pick(r, F.priceChg.change)).replace(/https?:\/\/\S+/g,'').replace(/\s+/g,' ').trim().substring(0,80);
+        const when = String(pick(r, F.priceChg.applyWhen)).trim();
+        const why = String(pick(r, F.priceChg.cause)).substring(0,30);
         md += `| ${sup} | ${item} | ${change} | ${when} | ${why} |\n`;
       });
       md += `\n> 해당 기간(${prevLabel}~${curLabel}) 단가 변동 ${priceChanges.length}건 (요청일자 ±1주 또는 적용시점 기준)\n\n`;
@@ -5979,8 +6244,8 @@ function genWeeklyOutsource() {
     md += `| task_id | 품목 | 재제작 공급가액 |\n`;
     md += `|---|---|---|\n`;
     curRework.forEach(r => {
-      const item = r['item (통합) (from order)'] || r['project_name'] || '';
-      md += `| ${r['task_id']||''} | ${item} | ${faFull(pa(r['공급가액']))} |\n`;
+      const item = wrOrdItem(r);
+      md += `| ${pick(r, F.order.taskId)} | ${item} | ${faFull(pa(pick(r, F.order.amount)))} |\n`;
     });
     md += `\n- 이번 주 재제작 실패비용 합계: ${faFull(curFailCost)}\n`;
   } else {
@@ -5994,40 +6259,43 @@ function genWeeklyOutsource() {
 
   // 이번 주 이슈 협력사 분류
   const cleanSup = s => s.replace(/^"+|"+$/g, '').trim();
-  const getIssueSup = r => cleanSup(r['수주처'] || r['(파트너)발주협력사명 텍스트'] || '');
+  const getIssueSup = r => cleanSup(pick(r, [F.issue.sup, F.issue.supText]));
   const curIssueSups = [...new Set(curIssues.map(getIssueSup).filter(Boolean))];
   const prevIssueSups = new Set(prevIssues.map(getIssueSup).filter(Boolean));
   const repeatSups = curIssueSups.filter(s => prevIssueSups.has(s));
   const newIssueSups = curIssueSups.filter(s => !prevIssueSups.has(s));
 
-  md += `**이번 주 이슈 발생 협력사**\n`;
-  if (curIssueSups.length) {
-    curIssueSups.forEach(s => {
-      const tag = repeatSups.includes(s) ? ' (2주 연속)' : ' (신규)';
-      md += `- ${s}${tag}\n`;
-    });
-  } else {
-    md += `- 없음\n`;
+  md += `**이번 주 이슈 발생 협력사** (품질 중요도 중~상: 등급 C↓ 또는 실패비용 발생)\n`;
+  {
+    // ponytail: "중요도 중~상"을 품질등급 C·D 또는 재제작(실패비용)으로 해석. 별도 중요도 필드 생기면 교체.
+    const CRIT_GRADES = new Set(['C', 'D']);
+    const fromQuality = curQuality.filter(r => { const g = wrGrades(r); return CRIT_GRADES.has(g.init) || CRIT_GRADES.has(g.scm); }).map(getIssueSup);
+    const fromFail = failCostF(curOrders).map(r => cleanSup(pick(r, [F.order.sup, F.order.supText])));
+    const critSups = [...new Set([...fromQuality, ...fromFail].filter(Boolean))];
+    if (critSups.length) {
+      critSups.forEach(s => { const tag = repeatSups.includes(s) ? ' (2주 연속)' : ' (신규)'; md += `- ${s}${tag}\n`; });
+    } else {
+      md += `- 없음 (품질 중요도 중~상 이슈 없음)\n`;
+    }
   }
   md += '\n';
 
   const manualSO = typeof MANUAL_STOCKOUT !== 'undefined' ? MANUAL_STOCKOUT : [];
   const manualSOMonth = typeof MANUAL_STOCKOUT_MONTH !== 'undefined' ? MANUAL_STOCKOUT_MONTH : '';
-  const ptCodeOf = s => (s.match(/^(PT\d+)/) || [])[1] || '';
-  const supSet = new Set(D.sup ? D.sup.map(r => (r['협력사 이름']||'').trim()).filter(Boolean) : []);
+  const supSet = new Set(D.sup ? D.sup.map(r => String(pick(r, F.sup.name)).trim()).filter(Boolean) : []);
   const supFromParts = parts => {
     if (!D.order) return '';
     const code = ptCodeOf(parts);
     if (!code) return '';
-    const matches = D.order.filter(r => (r['산출물']||r['발주번호']||'').includes(code));
+    const matches = D.order.filter(r => String(pick(r, F.order.output)).includes(code));
     if (!matches.length) return '';
-    matches.sort((a,b) => (b['과업지시일자']||'').localeCompare(a['과업지시일자']||''));
+    matches.sort((a,b) => String(pick(b, F.order.date)).localeCompare(String(pick(a, F.order.date))));
     // 회사명 텍스트 우선 — 수주처는 개인명이 들어올 수 있으므로 폴백
     for (const m of matches) {
-      const name = cleanSup(m['(파트너)발주협력사명 텍스트']||'');
+      const name = cleanSup(pick(m, F.order.supText));
       if (name && supSet.has(name)) return name;
     }
-    const fallback = cleanSup(matches[0]['(파트너)발주협력사명 텍스트']||matches[0]['수주처']||'');
+    const fallback = cleanSup(pick(matches[0], [F.order.supText, F.order.sup]));
     return fallback;
   };
 
@@ -6035,9 +6303,9 @@ function genWeeklyOutsource() {
   const pmRows = D.parts_master || [];
   const pmByCode = {}, pmByName = {}, pmByGoods = {};
   pmRows.forEach(r => {
-    const code = (r['파츠번호']||'').trim();
-    const name = (r['파츠명']||'').trim();
-    const goods = (r['굿즈연결']||'').trim();
+    const code = String(pick(r, F.partsMaster.code)).trim();
+    const name = String(pick(r, F.partsMaster.name)).trim();
+    const goods = String(pick(r, F.partsMaster.goods)).trim();
     if (code) pmByCode[code] = r;
     if (name) pmByName[name] = r;
     if (goods && !pmByGoods[goods]) pmByGoods[goods] = r;
@@ -6051,36 +6319,43 @@ function genWeeklyOutsource() {
     if (pmByName[s]) return pmByName[s];
     if (pmByGoods[s]) return pmByGoods[s];
     return pmRows.find(r => {
-      const n=(r['파츠명']||'').trim(), g=(r['굿즈연결']||'').trim();
+      const n=String(pick(r, F.partsMaster.name)).trim(), g=String(pick(r, F.partsMaster.goods)).trim();
       return (n&&s.length>=4&&(n.includes(s)||s.includes(n)))||(g&&s.length>=4&&(g===s||g.includes(s)||s.includes(g)));
     })||null;
   };
-  const pmSup  = str => { const r=pmLookup(str); return r?(r['수주처']||'').trim()||'—':'—'; };
-  const pmCat  = str => { const r=pmLookup(str); return r?(r['굿즈카테고리']||'').trim()||null:null; };
-  const pmGoods= str => { const r=pmLookup(str); return r?(r['굿즈연결']||'').trim():''; };
+  const pmSup  = str => { const r=pmLookup(str); return r?String(pick(r, F.partsMaster.sup)).trim()||'—':'—'; };
+  const pmCat  = str => { const r=pmLookup(str); return r?String(pick(r, F.partsMaster.category)).trim()||null:null; };
+  const pmGoods= str => { const r=pmLookup(str); return r?String(pick(r, F.partsMaster.goods)).trim():''; };
+
+  // parts.csv 우선 + parts_master 폴백으로 카테고리·수주처(=제작협력사) 조회 (partsCsvByCode는 상단 정의)
+  const catSupOf = partsNm => {
+    const code = ptCodeOf(partsNm);
+    const pc = code ? partsCsvByCode[code] : null;
+    let cat = pc ? String(pick(pc, F.partsCsv.category)).trim() : '';
+    let sup = pc ? String(pick(pc, F.partsCsv.sup)).trim() : '';
+    if (!cat || !sup) { const pm = pmLookup(partsNm); if (pm) { cat = cat || String(pick(pm, F.partsMaster.category)).trim(); sup = sup || String(pick(pm, F.partsMaster.sup)).trim(); } }
+    return { cat, sup };
+  };
 
   md += `**협력사 품절 현황**${manualSOMonth ? ' (' + manualSOMonth + ' 기준)' : ''}\n\n`;
   if (manualSO.length) {
     md += `| 파츠명 | 카테고리 | 수주처 | 판매상태 |\n`;
     md += `|---|---|---|---|\n`;
     manualSO.forEach(r => {
-      const pm = pmLookup(r.parts);
-      const supName = pm ? (pm['수주처']||'').trim()||'—' : supFromParts(r.parts)||'—';
-      const cat = pm ? (pm['굿즈카테고리']||'').trim()||'—' : '—';
-      md += `| ${r.parts} | ${cat} | ${supName} | ${r.status} |\n`;
+      const {cat, sup} = catSupOf(r.parts);
+      const supName = sup || supFromParts(r.parts) || '—';
+      md += `| ${stripPt(r.parts)} | ${cat||'—'} | ${supName} | ${r.status} |\n`;
     });
     md += `\n> 총 ${manualSO.length}건 (대시보드 수동 등록 목록 기준)\n`;
   } else if (D.stockout_list) {
-    const stockouts = D.stockout_list.filter(r => ['일시품절','품절예정'].includes((r['판매상태']||'').trim()));
+    const stockouts = D.stockout_list.filter(r => ['일시품절','품절예정'].includes(String(pick(r, F.stockout.status)).trim()));
     if (stockouts.length) {
       md += `| 파츠명 | 카테고리 | 수주처 | 판매상태 | 변경일 |\n`;
       md += `|---|---|---|---|---|\n`;
       stockouts.slice(0, 10).forEach(r => {
-        const partsNm = r['파츠명']||'';
-        const pm = pmLookup(partsNm);
-        const supName = pm ? (pm['수주처']||'').trim()||'—' : '—';
-        const cat = pm ? (pm['굿즈카테고리']||'').trim()||'—' : '—';
-        md += `| ${partsNm} | ${cat} | ${supName} | ${r['판매상태']||''} | ${r['변경일(인터페이스용)']||''} |\n`;
+        const partsNm = pick(r, F.stockout.name);
+        const {cat, sup} = catSupOf(partsNm);
+        md += `| ${stripPt(partsNm)} | ${cat||'—'} | ${sup||'—'} | ${pick(r, F.stockout.status)} | ${pick(r, F.stockout.changed)} |\n`;
       });
       if (stockouts.length > 10) md += `\n> 외 ${stockouts.length - 10}건 — 대시보드 품절 현황 탭 참조\n`;
     } else {
@@ -6091,71 +6366,66 @@ function genWeeklyOutsource() {
   }
   md += '\n';
 
-  md += `### 5-1~5-5. 카테고리별 서술 (Tech/Drinkware/Stationery/Lifestyle/Fabric)\n\n`;
+  md += `### 5-1~5-5. 카테고리별 요약 (이슈·단가·품절)\n\n`;
+  md += `> 상세(수주처·내용·SCM대응)는 위 2·4-1·5-0 참조 — 아래는 카테고리별 한눈 요약\n\n`;
   {
-    // D.parts_master 굿즈카테고리 기준 그루핑
-    const catData = {}; // goodsCat → { issues: [], priceChgs: [] }
+    const uniq = arr => [...new Set(arr.map(x => String(x).trim()).filter(Boolean))];
+    // parts_master 굿즈카테고리 기준 그루핑 (이슈·단가변동·품절)
+    const catData = {}; // goodsCat → { issues, priceChgs, stockouts }
+    const catOf = cat => (catData[cat] = catData[cat] || {issues:[], priceChgs:[], stockouts:[]});
     curIssues.forEach(r => {
-      const itemName = ((r['item (통합) (from order)']||r['파츠명 (from order)']||r['입고물품']||'')).trim();
-      const goodsName = (r['goods_Name(from. order)']||'').trim();
-      const cat = pmCat(itemName) || pmCat(goodsName) || '기타';
-      if (!catData[cat]) catData[cat] = {issues:[], priceChgs:[]};
-      catData[cat].issues.push(r);
+      const cat = pmCat(wrItem(r).trim()) || pmCat(String(pick(r, F.issue.goodsName)).trim()) || '기타';
+      catOf(cat).issues.push(r);
     });
     priceChanges.forEach(r => {
-      const rawParts = (r['대상 파츠명 (Shift+Space)']||r['대상 파츠명']||'').trim();
-      const ptCodes = rawParts.match(/PT\d+/g) || [];
+      const ptCodes = String(pick(r, F.priceChg.parts)).match(/PT\d+/g) || [];
       let cat = null;
       for (const code of ptCodes) {
-        if (pmByCode[code] && pmByCode[code]['굿즈카테고리']) { cat = pmByCode[code]['굿즈카테고리'].trim(); break; }
+        if (pmByCode[code] && pmByCode[code][F.partsMaster.category]) { cat = String(pmByCode[code][F.partsMaster.category]).trim(); break; }
       }
-      if (!cat) cat = pmCat(r['대상 굿즈명']||'') || '기타';
-      if (!catData[cat]) catData[cat] = {issues:[], priceChgs:[]};
-      catData[cat].priceChgs.push(r);
+      if (!cat) cat = pmCat(pick(r, F.priceChg.goods)) || '기타';
+      catOf(cat).priceChgs.push(r);
     });
-    // catOrder: parts_master 전체 카테고리 동적 수집 (고정 순서 우선)
+    // 품절 (5-0과 동일 소스) → 카테고리 매핑
+    const soItems = manualSO.length
+      ? manualSO.map(r => ({name:r.parts, status:r.status}))
+      : (D.stockout_list ? D.stockout_list
+          .filter(r => ['일시품절','품절예정'].includes(String(pick(r, F.stockout.status)).trim()))
+          .map(r => ({name:pick(r, F.stockout.name), status:pick(r, F.stockout.status)})) : []);
+    soItems.forEach(it => { catOf(catSupOf(it.name).cat || '기타').stockouts.push(it); });
+
+    // catOrder: 고정 순서 우선 + parts_master 전체 카테고리 동적 수집
     const fixedCats = ['Tech','Drinkware','Stationery','Lifestyle','Fabric','Bag&pouch'];
-    const allPmCats = [...new Set(pmRows.map(r=>(r['굿즈카테고리']||'').trim()).filter(Boolean))];
-    const extraCats = allPmCats.filter(c => !fixedCats.includes(c));
-    const catOrder = [...fixedCats, ...extraCats.sort(), '기타'];
+    const allPmCats = [...new Set(pmRows.map(r=>String(pick(r, F.partsMaster.category)).trim()).filter(Boolean))];
+    const catOrder = [...fixedCats, ...allPmCats.filter(c => !fixedCats.includes(c)).sort()]; // '기타' 제외
+    // 줄글용 표기 헬퍼
+    const goodsNmOfIssue = r => pmGoods(wrItem(r)) || String(pick(r, F.issue.goodsName)).trim() || wrItem(r).substring(0,15) || '(품목미상)';
+    const pcNm  = r => String(pick(r, [F.priceChg.goods, F.priceChg.parts])).trim() || '(품목미상)';
+    const pcDir = r => { const t = String(pick(r, F.priceChg.change)) + ' ' + String(pick(r, F.priceChg.cause)); return /인상|상승|증액/.test(t) ? '인상' : /인하|하락|감소|절감/.test(t) ? '인하' : '변동'; };
+
     let hasCatContent = false;
     catOrder.forEach(cat => {
       const d = catData[cat];
-      if (!d || (!d.issues.length && !d.priceChgs.length)) return;
+      if (!d || (!d.issues.length && !d.priceChgs.length && !d.stockouts.length)) return;
       hasCatContent = true;
-      md += `**[${cat}]**\n\n`;
-      if (d.issues.length) {
-        md += `- **이슈** (${d.issues.length}건)\n\n`;
-        md += `| 굿즈명 | 수주처 | 유형 | 주요 내용 | SCM 대응방안 |\n`;
-        md += `|---|---|---|---|---|\n`;
-        d.issues.slice(0, 5).forEach(r => {
-          const itemName = (r['item (통합) (from order)']||r['파츠명 (from order)']||r['입고물품']||'').trim();
-          const goodsNm = pmGoods(itemName) || (r['goods_Name(from. order)']||'').trim() || itemName.substring(0, 15);
-          const sup = cleanSup(supOfIssue(r)) || pmSup(itemName);
-          const type = primaryCat(r).replace('이슈', '');
-          const content = (r['품질이슈내용']||r['운영이슈내용(by물류)']||r['수량이슈내용']||'').replace(/\n/g,' ').trim().substring(0, 30);
-          const response = (r['품질이슈대응방안_SCM']||r['운영이슈개선방안_SCM']||r['수량이슈대응방안_SCM']||'').replace(/\n/g,' ').trim().substring(0, 30);
-          md += `| ${goodsNm||'—'} | ${sup||'—'} | ${type||'—'} | ${content||'—'} | ${response||'확인 필요'} |\n`;
-        });
-        if (d.issues.length > 5) md += `\n> 외 ${d.issues.length-5}건\n`;
-        md += '\n';
-      }
+      md += `**[${cat}]**\n`;
+      // 단가 변동 — 방향별 제품명 묶음
       if (d.priceChgs.length) {
-        md += `- **단가 변동** (${d.priceChgs.length}건)\n\n`;
-        md += `| 굿즈명 | 협력사 | 변동원인 | 변동 내용 |\n`;
-        md += `|---|---|---|---|\n`;
-        d.priceChgs.slice(0, 5).forEach(r => {
-          const goodsNm = (r['대상 굿즈명']||'').trim().substring(0, 20);
-          const sup = (r['협력사 이름']||r['협력사']||'').trim();
-          const reason = (r['변동원인']||'—').trim().substring(0, 20);
-          const detail = (r['변동사항 (Shift+Space로 전체 내용을 확인하세요)']||r['변동사항']||'—').replace(/\n/g,' ').trim().substring(0, 35);
-          md += `| ${goodsNm||'—'} | ${sup||'—'} | ${reason} | ${detail} |\n`;
-        });
-        if (d.priceChgs.length > 5) md += `\n> 외 ${d.priceChgs.length-5}건\n`;
-        md += '\n';
+        const byDir = {};
+        d.priceChgs.forEach(r => { const dir = pcDir(r); (byDir[dir] = byDir[dir]||[]).push(pcNm(r)); });
+        Object.entries(byDir).forEach(([dir, names]) => { md += `- ${uniq(names).join(', ')} 단가 ${dir}\n`; });
       }
+      // 이슈 — 유형별 제품명 묶음
+      if (d.issues.length) {
+        const byType = {};
+        d.issues.forEach(r => { const type = primaryCat(r).replace('이슈','') || '기타'; (byType[type] = byType[type]||[]).push(goodsNmOfIssue(r)); });
+        Object.entries(byType).forEach(([type, names]) => { md += `- ${uniq(names).join(', ')} ${type} 이슈\n`; });
+      }
+      // 품절
+      if (d.stockouts.length) { md += `- ${uniq(d.stockouts.map(s=>stripPt(s.name))).join(', ')} 품절\n`; }
+      md += '\n';
     });
-    if (!hasCatContent) md += `> 이번 기간 이슈 및 단가 변동 없음 — parts_master 매핑 기반 자동 분류\n\n`;
+    if (!hasCatContent) md += `> 이번 기간 이슈·단가·품절 없음 — parts_master 카테고리 기반 자동 분류\n\n`;
   }
 
   md += `### 5-6. 재배치 검토표\n\n`;
@@ -6184,14 +6454,14 @@ function genWeeklyOutsource() {
     const gradeDist = {A:0, B:0, C:0, D:0};
     const gradeSups = {A:[], B:[], C:[], D:[]};
     D.quarter_eval.forEach(row => {
-      const g1 = (row['1Q_공급망관리등급']||'').trim(), g2 = (row['2Q_공급망관리등급']||'').trim();
-      const t1 = parseFloat(row['1Q_공급망관리점수'])||0, t2 = parseFloat(row['2Q_공급망관리점수'])||0;
+      const g1 = String(pick(row, F.quarterEval.grade1Q)).trim(), g2 = String(pick(row, F.quarterEval.grade2Q)).trim();
+      const t1 = parseFloat(pick(row, F.quarterEval.score1Q))||0, t2 = parseFloat(pick(row, F.quarterEval.score2Q))||0;
       let g = '';
       if (g1 && g2 && g1 !== g2) { const avg = ((t1||gradeMid[g1]||0)+(t2||gradeMid[g2]||0))/2; g = gradeOf(avg); }
       else g = g2 || g1;
       if (g && gradeDist[g] !== undefined) {
         gradeDist[g]++;
-        const sn = (row['협력사']||'').trim();
+        const sn = String(pick(row, F.quarterEval.sup)).trim();
         if (sn) gradeSups[g].push(sn);
       }
     });
@@ -6211,35 +6481,14 @@ function genWeeklyOutsource() {
   }
   md += '\n';
 
+
   // 섹션 7 — QCD 기준 운영 전략 제안
   md += `## 7. 운영 전략 제안 (QCD)\n\n`;
-
-  // 공통 헬퍼
-  const supGradeOf = s => {
-    if (!D.quarter_eval) return '';
-    const row = D.quarter_eval.find(r => (r['협력사']||'').trim() === s);
-    return row ? (row['2Q_공급망관리등급']||row['1Q_공급망관리등급']||'') : '';
-  };
-  const supYtdIssueCnt = s => D.issue ? D.issue.filter(r => {
-    const m = pIssueMonth(r);
-    return m && m.startsWith(String(curYear)) && getIssueSup(r) === s;
-  }).length : 0;
-  const issueTypeBreakdown = issues => {
-    const parts = [];
-    const q = issuesByPrimary(issues,'품질').length;
-    const qty = issuesByPrimary(issues,'수량').length;
-    const op = issuesByPrimary(issues,'운영').length;
-    if (q) parts.push(`품질 ${q}건`);
-    if (qty) parts.push(`수량 ${qty}건`);
-    if (op) parts.push(`운영 ${op}건`);
-    return parts.join(' / ') || '—';
-  };
-  const supCurAmt = s => sumAmt(curOrders.filter(r => cleanSup(r['수주처']||r['(파트너)발주협력사명 텍스트']||'') === s));
 
   // 3주 연속 이슈 협력사 분석
   const allWeekIssueSups = recentWeeks.map(w => {
     const wIss = D.issue ? D.issue.filter(r => issueInWeek(r, w.lbl)) : [];
-    return new Set(wIss.map(r => cleanSup(r['수주처']||r['(파트너)발주협력사명 텍스트']||'')).filter(Boolean));
+    return new Set(wIss.map(getIssueSup).filter(Boolean));
   });
   const consec3Sups = [];
   if (allWeekIssueSups.length >= 4) {
@@ -6250,168 +6499,86 @@ function genWeeklyOutsource() {
   const consec3Set = new Set(consec3Sups);
   const repeatSups2 = repeatSups.filter(s => !consec3Set.has(s));
 
-  // ── Q: 품질 ─────────────────────────────────────────────────
+  // ── Q: 품질 (크리티컬 이슈 중심 · 줄글) ──────────────────────
+  const uniqArr = a => [...new Set(a.filter(Boolean))];
   md += `### Q. 품질\n\n`;
-  let qn = 0, qHas = false;
-
-  if (consec3Sups.length) {
-    qHas = true; qn++;
-    md += `**Q-${qn}. 3주 연속 이슈 발생 협력사 — 근본 원인 개선 필요** 🔴\n\n`;
-    md += `| 협력사 | 등급 | 이번 주 이슈 유형 | YTD 이슈 | 이번 주 매입금액 |\n`;
-    md += `|---|:---:|---|---:|---:|\n`;
-    consec3Sups.forEach(s => {
-      const sIss = curIssues.filter(r => getIssueSup(r) === s);
-      md += `| ${s} | ${supGradeOf(s)||'—'} | ${issueTypeBreakdown(sIss)} | ${supYtdIssueCnt(s)}건 | ${faFull(supCurAmt(s))} |\n`;
-    });
-    md += `\n> 제안: 근본 원인 분석(RCA) 요청 및 개선 계획서 수령을 검토해볼 수 있음\n\n`;
-  }
-
-  if (repeatSups2.length) {
-    qHas = true; qn++;
-    md += `**Q-${qn}. 2주 연속 이슈 협력사 — 집중 모니터링** 🟠\n\n`;
-    md += `| 협력사 | 등급 | 이번 주 이슈 유형 | YTD 이슈 | 이번 주 매입금액 |\n`;
-    md += `|---|:---:|---|---:|---:|\n`;
-    repeatSups2.forEach(s => {
-      const sIss = curIssues.filter(r => getIssueSup(r) === s);
-      md += `| ${s} | ${supGradeOf(s)||'—'} | ${issueTypeBreakdown(sIss)} | ${supYtdIssueCnt(s)}건 | ${faFull(supCurAmt(s))} |\n`;
-    });
-    md += '\n';
-  }
-
-  if (newIssueSups.length) {
-    qHas = true; qn++;
-    md += `**Q-${qn}. 신규 이슈 발생 협력사** 🟡\n\n`;
-    md += `| 협력사 | 이번 주 이슈 유형 | 비고 |\n`;
-    md += `|---|---|---|\n`;
-    newIssueSups.forEach(s => {
-      const sIss = curIssues.filter(r => getIssueSup(r) === s);
-      md += `| ${s} | ${issueTypeBreakdown(sIss)} | 최초 발생 — 원인 확인 필요 |\n`;
-    });
-    md += '\n';
-  }
-
-  // 품질등급 불일치
-  const mismatchQIss = curQuality.filter(r => {
-    const a=(r['품질등급최초판정']||'').trim(), b=(r['품질등급의견_SCM']||'').trim();
-    return a && b && a !== b;
-  });
-  if (mismatchQIss.length) {
-    qHas = true; qn++;
-    md += `**Q-${qn}. 품질등급 불일치 (${curLabel})** 🟡\n\n`;
-    md += `| 협력사 | 품목 | 최초 판정 | SCM 의견 | 공급가액 |\n`;
-    md += `|---|---|:---:|:---:|---:|\n`;
-    mismatchQIss.forEach(r => {
-      const s = supOfIssue(r);
-      const item = (r['item (통합) (from order)']||r['입고물품']||'').substring(0,25);
-      md += `| ${s} | ${item} | ${r['품질등급최초판정']||''} | ${r['품질등급의견_SCM']||''} | ${faFull(pa(r['공급가액']))} |\n`;
-    });
-    md += '\n';
-  }
-
-  // 실패비용 집중 협력사
   {
-    const FAIL_PCT_THR = 0.3;
-    const ytdOrd = D.order ? D.order.filter(r => (r['과업지시일자']||'').startsWith(String(curYear))) : [];
-    const ytdTotal = ytdOrd.reduce((s,r) => s+pa(r['공급가액']), 0);
-    const ytdRew = ytdOrd.filter(r => (r['task_id']||'').includes('재제작'));
-    if (ytdRew.length && ytdTotal > 0) {
-      const rewBySup = {};
-      ytdRew.forEach(r => {
-        const s = cleanSup(r['수주처']||r['(파트너)발주협력사명 텍스트']||'(미확인)');
-        if (!rewBySup[s]) rewBySup[s] = {cnt:0,amt:0};
-        rewBySup[s].cnt++; rewBySup[s].amt += pa(r['공급가액']);
-      });
-      const failSups = Object.entries(rewBySup)
-        .map(([s,v]) => [s, v, v.amt/ytdTotal*100])
-        .filter(([,,pct]) => pct >= FAIL_PCT_THR)
-        .sort((a,b) => b[2]-a[2]);
-      if (failSups.length) {
-        qHas = true; qn++;
-        md += `**Q-${qn}. 실패비용 집중 협력사 (${curYear} YTD, 매입대금 대비 ${FAIL_PCT_THR}% 이상)** ${failSups[0][2]>=1?'🔴':'🟠'}\n\n`;
-        md += `| 협력사 | 재제작 건수 | 실패비용 | 매입대금 대비 | 등급 |\n`;
-        md += `|---|---:|---:|---:|:---:|\n`;
-        failSups.forEach(([s,v,pct]) => {
-          md += `| ${pct>=1?'🔴':'🟠'} ${s} | ${v.cnt}건 | ${faFull(v.amt)} | ${pct.toFixed(2)}% | ${supGradeOf(s)||'—'} |\n`;
-        });
-        md += '\n';
+    let qHas = false;
+    if (consec3Sups.length) { qHas = true; md += `- 🔴 ${consec3Sups.join(', ')} — 3주 연속 이슈, 근본원인 분석(RCA)·개선계획 수령 검토\n`; }
+    if (repeatSups2.length) { qHas = true; md += `- 🟠 ${repeatSups2.join(', ')} — 2주 연속 이슈, 집중 모니터링\n`; }
+    // 실패비용 집중 협력사 (YTD 매입대금 대비 0.3% 이상)
+    {
+      const FAIL_PCT_THR = 0.3;
+      const ytdOrd = D.order ? D.order.filter(r => String(pick(r, F.order.date)).startsWith(String(curYear))) : [];
+      const ytdTotal = ytdOrd.reduce((s,r) => s+pa(pick(r, F.order.amount)), 0);
+      const ytdRew = ytdOrd.filter(r => String(pick(r, F.order.taskId)).includes('재제작'));
+      if (ytdRew.length && ytdTotal > 0) {
+        const rewBySup = {};
+        ytdRew.forEach(r => { const s = cleanSup(pick(r, [F.order.sup, F.order.supText])) || '(미확인)'; if (!rewBySup[s]) rewBySup[s] = {cnt:0,amt:0}; rewBySup[s].cnt++; rewBySup[s].amt += pa(pick(r, F.order.amount)); });
+        const failSups = Object.entries(rewBySup).map(([s,v]) => [s, v, v.amt/ytdTotal*100]).filter(([,,pct]) => pct >= FAIL_PCT_THR).sort((a,b) => b[2]-a[2]);
+        if (failSups.length) {
+          qHas = true;
+          const parts = failSups.map(([s,v,pct]) => `${s}(${faFull(v.amt)}·매입대비 ${pct.toFixed(1)}%)`);
+          md += `- ${failSups[0][2]>=1?'🔴':'🟠'} 실패비용 집중: ${parts.join(', ')} — 재제작 원인·개선계획 확인\n`;
+        }
       }
     }
+    // 품질등급 불일치
+    const mismatchQIss = curQuality.filter(r => wrGrades(r).mismatch);
+    if (mismatchQIss.length) { qHas = true; md += `- 🟡 품질등급 불일치 ${mismatchQIss.length}건 (${uniqArr(mismatchQIss.map(supOfIssue)).join(', ')}) — 판정 기준 재확인\n`; }
+    if (!qHas) md += `- 크리티컬 품질 이슈 없음\n`;
+    md += '\n';
   }
 
-  if (!qHas) md += `> 이번 주 품질 관련 전략 제안 없음\n\n`;
-
-  // ── C: 원가 ─────────────────────────────────────────────────
+  // ── C: 원가 (카테고리 추세 중심 · 줄글) ──────────────────────
   md += `### C. 원가\n\n`;
-
   if (priceChanges.length) {
-    const issueSupSetC = new Set(curIssueSups);
-    const vcInProgressSups = new Set(
-      vcData.filter(r => r.workflowStatus==='전환 검토중'||r.workflowStatus==='확정')
-        .map(r => r.asSup||'').filter(Boolean)
-    );
-    md += `**C-1. 단가 변동 협력사 대응** 🟠\n\n`;
-    md += `| 협력사 | 품목 | 변동 내용 | 적용시점 | 변동원인 | 이번 주 이슈 | 재배치 검토 | 이번 주 매입금액 |\n`;
-    md += `|---|---|---|---|---|:---:|:---:|---:|\n`;
-    priceChanges.slice(0,5).forEach(r => {
-      const sup = (r['협력사 이름']||'').trim();
-      const item = (r['대상 굿즈명']||'').substring(0,18);
-      const change = (r['변동사항 (Shift+Space로 전체 내용을 확인하세요)']||r['변동사항']||'').replace(/\n/g,' ').substring(0,50);
-      const when = (r['변동사항 적용 시점']||'').trim();
-      const why = (r['변동원인']||'').substring(0,20);
-      const issueFlag = issueSupSetC.has(sup) ? '⚠️ 있음' : '확인 필요';
-      const vcFlag = vcInProgressSups.has(sup) ? '검토중' : '—';
-      md += `| ${sup} | ${item} | ${change} | ${when} | ${why} | ${issueFlag} | ${vcFlag} | ${faFull(supCurAmt(sup))} |\n`;
+    // 카테고리별 원가 변동 집계 (parts_master 매핑)
+    const catPc = {};
+    priceChanges.forEach(r => {
+      const ptCodes = String(pick(r, F.priceChg.parts)).match(/PT\d+/g) || [];
+      let cat = null;
+      for (const code of ptCodes) { if (pmByCode[code] && pmByCode[code][F.partsMaster.category]) { cat = String(pmByCode[code][F.partsMaster.category]).trim(); break; } }
+      if (!cat) cat = pmCat(pick(r, F.priceChg.goods)) || '기타';
+      (catPc[cat] = catPc[cat] || []).push(r);
     });
-    const compoundRisk = priceChanges.filter(r => issueSupSetC.has((r['협력사 이름']||'').trim()));
-    if (compoundRisk.length) {
-      md += `\n> ⚠️ 복합 리스크: **${compoundRisk.map(r=>(r['협력사 이름']||'').trim()).join(', ')}** — 단가 변동 + 이슈 동시 발생. 대응 방안 검토 고려\n`;
+    const catEntries = Object.entries(catPc).filter(([c]) => c !== '기타').sort((a,b) => b[1].length-a[1].length);
+    if (catEntries.length) {
+      const n = catEntries.reduce((s,[,rows]) => s+rows.length, 0);
+      const topShare = (catEntries[0][1].length / n * 100).toFixed(0);
+      md += `- 원가 변동 ${n}건 — 최다 [${catEntries[0][0]}] ${topShare}% (${catEntries.map(([c,r]) => `${c} ${r.length}`).join('·')}), 추세 점검 필요\n`;
     }
+    // ponytail: "10%↑ 인상 품목 위주" 기준 미정 — 임계값 정해지면 변동사항 파싱해 필터 추가
+    const issueSupSetC = new Set(curIssueSups);
+    const compound = uniqArr(priceChanges.map(r => String(pick(r, F.priceChg.sup)).trim()).filter(s => issueSupSetC.has(s)));
+    if (compound.length) md += `- ⚠️ 복합 리스크: ${compound.join(', ')} — 단가 변동 + 이슈 동시, 대응 방안 검토\n`;
     md += '\n';
   } else {
-    md += `> 해당 기간(${prevLabel}~${curLabel}) 단가 변동 없음\n\n`;
+    md += `- 해당 기간(${prevLabel}~${curLabel}) 단가 변동 없음\n\n`;
   }
 
-  // ── D: 납기 ─────────────────────────────────────────────────
+  // ── D: 납기 (지표 + 협력사 · 줄글) ───────────────────────────
   md += `### D. 납기\n\n`;
-  let dn = 0, dHas = false;
-
-  // 미입하 집중 협력사
-  if (curMiipha.length) {
-    dHas = true; dn++;
-    const miiphaBySup = {};
-    curMiipha.forEach(r => {
-      const s = cleanSup(r['수주처']||r['(파트너)발주협력사명 텍스트']||'(미확인)');
-      if (!miiphaBySup[s]) miiphaBySup[s] = {cnt:0, amt:0};
-      miiphaBySup[s].cnt++; miiphaBySup[s].amt += pa(r['공급가액']);
-    });
-    const miiphaSups = Object.entries(miiphaBySup).sort((a,b)=>b[1].cnt-a[1].cnt);
-    md += `**D-${dn}. 미입하 발생 협력사 (${curLabel})** 🟠\n\n`;
-    md += `| 협력사 | 건수 | 공급가액 | 등급 |\n`;
-    md += `|---|---:|---:|:---:|\n`;
-    miiphaSups.forEach(([s,v]) => {
-      md += `| ${s} | ${v.cnt}건 | ${faFull(v.amt)} | ${supGradeOf(s)||'—'} |\n`;
-    });
-    md += `\n> 미입하율 ${miiphaRate}% (전주 ${prevMiiphaRate}%, ${wowPct(miiphaRate, prevMiiphaRate)})\n\n`;
+  {
+    let dHas = false;
+    if (curMiipha.length) {
+      dHas = true;
+      const miiphaBySup = {};
+      curMiipha.forEach(r => { const s = cleanSup(pick(r, [F.order.sup, F.order.supText])) || '(미확인)'; miiphaBySup[s] = (miiphaBySup[s]||0) + 1; });
+      const sups = Object.entries(miiphaBySup).sort((a,b)=>b[1]-a[1]).map(([s,c]) => `${s}(${c}건)`);
+      md += `- 미입하율 ${miiphaRate}% (전주 ${prevMiiphaRate}%, ${wowPct(miiphaRate, prevMiiphaRate)}) — ${sups.join(', ')} 출고 현황 점검 필요\n`;
+    }
+    const urgRateDiff = parseFloat(urgRate) - parseFloat(prevUrgRate);
+    if (curUrg > 0 && (urgRateDiff >= 3 || curUrg >= 3)) {
+      dHas = true;
+      const urgBySup = {};
+      urgF(curProj).forEach(r => { const s = cleanSup(pick(r, [F.order.sup, F.order.supText])) || '(미확인)'; urgBySup[s] = (urgBySup[s]||0) + 1; });
+      const sups = Object.entries(urgBySup).sort((a,b)=>b[1]-a[1]).slice(0,5).map(([s,c]) => `${s}(${c}건)`);
+      md += `- 긴급률 ${urgRate}% (전주대비 ${urgRateDiff>=0?'+':''}${urgRateDiff.toFixed(1)}%p) — ${sups.join(', ')} 리드타임 단축 가능 여부 검토\n`;
+    }
+    if (!dHas) md += `- 납기 리스크 없음 (미입하 ${curMiipha.length}건 · 긴급률 ${urgRate}%)\n`;
+    md += '\n';
   }
-
-  // 긴급률 급등 분석 (전주 대비 +3%p 이상 또는 긴급 3건 이상)
-  const urgRateDiff = parseFloat(urgRate) - parseFloat(prevUrgRate);
-  if (curUrg > 0 && (urgRateDiff >= 3 || curUrg >= 3)) {
-    dHas = true; dn++;
-    const urgBySup = {};
-    urgF(curProj).forEach(r => {
-      const s = cleanSup(r['수주처']||r['(파트너)발주협력사명 텍스트']||'(미확인)');
-      urgBySup[s] = (urgBySup[s]||0) + 1;
-    });
-    const urgSups = Object.entries(urgBySup).sort((a,b)=>b[1]-a[1]);
-    md += `**D-${dn}. 긴급건 집중 협력사 (긴급률 ${urgRate}%, 전주 대비 ${urgRateDiff>=0?'+':''}${urgRateDiff.toFixed(1)}%p)** 🟡\n\n`;
-    md += `| 협력사 | 긴급건수 |\n`;
-    md += `|---|---:|\n`;
-    urgSups.slice(0,5).forEach(([s,cnt]) => { md += `| ${s} | ${cnt}건 |\n`; });
-    md += `\n> 긴급 ${curUrg}건 (${urgRate}%) — 원인 파악 및 일정 관리 방안 검토 고려\n\n`;
-  }
-
-  if (!dHas) md += `> 이번 주 납기 관련 전략 제안 없음 (미입하 ${curMiipha.length}건 · 긴급률 ${urgRate}%)\n\n`;
 
   md += `---\n`;
   md += `*Action Items는 [주간회의록](../외주생산파트_주간회의/${cy}_W${String(cw).padStart(2,'0')}_${thursMMDD}_파트회의_외주생산파트.md)에서 관리한다.*\n`;
@@ -6527,7 +6694,7 @@ async function genMeetingDraftFromAirtable() {
   statusDiv.textContent = '⏳ Airtable 회의자료 로딩 중...';
   let agenda;
   try {
-    const r = await fetch('CSV/meeting_agenda.json');
+    const r = await fetch(dataUrl('CSV/meeting_agenda.json'));
     if (!r.ok) throw new Error('HTTP ' + r.status);
     agenda = await r.json();
   } catch (e) {
@@ -6647,7 +6814,7 @@ function nav(el,id) {
   const titles={overview:'종합 현황','inventory-ops':'재고운영 현황','stockout-detail':'품절 상세','purchase-review':'매입 검토','season-plan':'시즌재고 계획',eoq:'EOQ · 발주알람',graduation:'졸업 검토',order:'발주 현황',progress:'발주 진행현황','cost-analysis':'원가 분석',issue:'이슈 현황',sales:'매출/마진 분석','product-trend':'제품별 판매량 추이',supplier:'협력사 · 매입 현황','supplier-product':'협력사유형별 제품군',kpi:'KPI 목표·트래킹',portfolio:'공급망 포트폴리오',qms:'품질 현황',subcontract:'하도급법 위험',ai:'AI 어시스턴트',report:'리포트 생성',stock:'재고 현황',quote:'견적계산기'};
   const guides={
     overview:'<b>확인 가능 지표:</b> 월간 공지사항(졸업/출시/품절 제품, 선택 월 기준 자동집계) · 발주TASK(프로젝트/재고생산/긴급) · 월매입금액 · 이슈건수(품질/수량/운영) · 긴급발주 · 고객인지이슈 — 모든 KPI에 전년 동기(YoY) 비교 표시 | <b>차트:</b> 매입추이(월별/주별·합산/협력사/업태/굿즈코드) · 이슈유형 도넛 · 담당자별 발주 · 월별이슈추이 · 제조유형 매입비중(업태/카테고리 전환) | <b>클릭:</b> KPI 카드 클릭 시 상세 모달 · 차트 월 클릭 시 Top5 모달 | <b>CSV:</b> 발주_RAW + 이슈_RAW + 공급망_RAW + 고객인지이슈_RAW + 굿즈마스터(졸업/출시) + 품절리스트',
-    'inventory-ops':'<b>확인 가능 지표:</b> 재고자산평가액 · 재고회전율(1M/3M/YTD) · 품절률 · 운영밴드 상태(분기별) | <b>차트:</b> 재고금액 추이(최근12주, 밴드 상/하한 표시) · 카테고리별 재고비중/SKU수/회전율 | <b>클릭:</b> 재고자산/회전율 KPI → SKU별 상세 모달(정렬 가능, 회전율 클릭 시 월별 판매추이 바차트+회의이력) | <b>CSV:</b> 재고 SKU 스냅샷(dashboard_sku_snapshot) + 재고 그룹 요약(dashboard_group_summary)',
+    'inventory-ops':'<b>확인 가능 지표:</b> 재고자산평가액 · 재고회전율(1M/3M/YTD) · 선매입재고품절율 · 운영밴드 상태(분기별) | <b>차트:</b> 재고금액 추이(최근12주, 밴드 상/하한 표시) · 카테고리별 재고비중/SKU수/회전율 | <b>클릭:</b> 재고자산/회전율 KPI → SKU별 상세 모달(정렬 가능, 회전율 클릭 시 월별 판매추이 바차트+회의이력) | <b>CSV:</b> 재고 SKU 스냅샷(dashboard_sku_snapshot) + 재고 그룹 요약(dashboard_group_summary)',
     'stockout-detail':'<b>확인 가능 지표:</b> 관리대상 SKU · 비의도적/일시 품절 건수 · 장기품절(30일+/60일+) | <b>테이블:</b> 판매상태 분포 · 품절 상세(품절일수 내림차순) | <b>CSV:</b> 재고 SKU 스냅샷(dashboard_sku_snapshot)',
     'purchase-review':'<b>확인 가능 지표:</b> 전체 검토건수 · 미확정 계획금액 · 확정 매입금액 | <b>필터:</b> 전체/미확정/확정 상태 전환 | <b>테이블:</b> 파츠명·번호 · 재고수량 · 계획/확정 수량 · 결정상태/사항 · 회의명 | <b>CSV:</b> 매입검토현황 (S&OP purchase_review)',
     'season-plan':'<b>확인 가능 지표:</b> 구매팀 희망금액 · S&OP 확정금액 · 확정 입력률 | <b>탭:</b> 전체요약 + 계획구분별 탭(국내생산/직소싱/중개소싱 등) | <b>테이블:</b> 굿즈명 · 옵션 · 24Q4/25Q4/26Q4예상 판매 · 매입희망수량 · S&OP 확정(입력 가능, localStorage 저장) · 단가 | <b>CSV:</b> 시즌재고계획 (시즌매입_파츠연결)',
@@ -6776,7 +6943,7 @@ async function startDashboardTour(){
       { element:()=>tourGoto('overview'),
         popover:{ title:'① 종합 현황', description:'핵심 KPI 5종, 전년 동기·전월 대비, 이번 달 졸업·출시·품절·협력사 변경 이력을 한 화면에서 확인합니다.' } },
       { element:()=>tourGoto('inventory-ops'),
-        popover:{ title:'② 재고운영 현황 (구매전략)', description:'재고자산·회전율·품절율을 자동 계산하고, 입고예정금액·EOQ 발주알람으로 발주 타이밍을 미리 알려드려요.' } },
+        popover:{ title:'② 재고운영 현황 (구매전략)', description:'재고자산·회전율·선매입재고품절율을 자동 계산하고, 입고예정금액·EOQ 발주알람으로 발주 타이밍을 미리 알려드려요.' } },
       { element:()=>{ closeModal(); openModal('inventoryAsset'); const m=document.querySelector('.modal'); if(m) void m.offsetHeight; return m; },
         popover:{ title:'🔍 재고자산 KPI 클릭 → SKU별 상세', description:'재고자산 카드를 클릭하면 이렇게 SKU마다 카테고리·조달유형·재고수량·재고금액·3개월 회전율까지 한 번에 비교할 수 있어요(정렬 가능).' } },
       { element:()=>tourGoto('order'),
@@ -7627,7 +7794,7 @@ function psrRenderSection5_(L, unit, key, baseDate, periodRow, totalInv, memoTex
   L.push('## 5. 주요 이슈 및 우선순위'); L.push('');
   L.push('### 5-1. 주간 변동 요약'); L.push('');
   const stockoutRate = toNum(periodRow.stockout_rate);
-  L.push('- 품절율: '+(stockoutRate*100).toFixed(1)+'% (비의도적 품절 '+toNum(periodRow.stockout_count).toLocaleString()+'건 / 관리대상 '+toNum(periodRow.managed_count).toLocaleString()+'건)');
+  L.push('- 선매입재고품절율: '+(stockoutRate*100).toFixed(1)+'% (비의도적 품절 '+toNum(periodRow.stockout_count).toLocaleString()+'건 / 관리대상 '+toNum(periodRow.managed_count).toLocaleString()+'건)');
   const skuRowsForCounts = getAggSkuRows(unit,key);
   const longStockout30 = skuRowsForCounts.filter(r=>isAggManaged(r)&&isAggStockout(r)&&aggStockoutDays(r)>=30).length;
   const longStockout60 = skuRowsForCounts.filter(r=>isAggManaged(r)&&isAggStockout(r)&&aggStockoutDays(r)>=60).length;
@@ -8118,7 +8285,7 @@ function openAggInventoryModal(kind){
   if(kind==='band'){
     title.textContent='운영밴드 상세 · '+aggPeriodLabel(p);
     body.innerHTML=`<div style="display:flex;gap:10px;margin-bottom:12px;flex-wrap:wrap"><span class="tag tag-gray">${band.q} 기준밴드 ${fmtW(band.min)}~${fmtW(band.max)}</span><span class="tag ${String(p.band_status||'').includes('정상')?'tag-ok':'tag-n'}">${esc(p.band_status||'운영밴드 미확인')}</span></div>
-    <table class="tbl"><thead><tr><th>기간</th><th class="num">재고금액</th><th class="num">1M회전율</th><th class="num">3M회전율</th><th class="num">YTD회전율</th><th class="num">품절율</th><th>상태</th></tr></thead><tbody>
+    <table class="tbl"><thead><tr><th>기간</th><th class="num">재고금액</th><th class="num">1M회전율</th><th class="num">3M회전율</th><th class="num">YTD회전율</th><th class="num">선매입재고품절율</th><th>상태</th></tr></thead><tbody>
     ${trend.map(r=>`<tr><td>${esc(r.period_key||'')}</td><td class="num">${fmtW(toNum(r.inv_amount))}</td><td class="num">${fmtTurn(toNum(r.turnover_1m))}</td><td class="num">${fmtTurn(toNum(r.turnover_3m))}</td><td class="num">${fmtTurn(toNum(r.turnover_ytd))}</td><td class="num">${fmtPct(toNum(r.stockout_rate))}</td><td>${esc(r.band_status||'')}</td></tr>`).join('')}
     </tbody></table>`;
     return;
@@ -8168,7 +8335,7 @@ function renderInventoryOpsFromAgg(){
     <div class="kpi-row">
       <div class="kpi-card c-blue" onclick="openModal('inventoryAsset')" style="cursor:pointer"><div class="kpi-label">재고자산 평가액</div><div class="kpi-val">${fmtW(inv)}</div><div class="kpi-sub">SKU 상세 보기</div></div>
       <div class="kpi-card c-green" onclick="openModal('inventoryAsset')" style="cursor:pointer"><div class="kpi-label">재고회전율</div><div class="kpi-val">${fmtTurn(toNum(p.turnover_3m))}</div><div class="kpi-sub">1M ${fmtTurn(toNum(p.turnover_1m))} · 3M ${fmtTurn(toNum(p.turnover_3m))} · YTD ${fmtTurn(toNum(p.turnover_ytd))}</div></div>
-      <div class="kpi-card c-red" onclick="openAggInventoryModal('stockout')" style="cursor:pointer"><div class="kpi-label">품절율</div><div class="kpi-val">${fmtPct(toNum(p.stockout_rate))}</div><div class="kpi-sub">비의도적 ${fmtN(toNum(p.stockout_count)||stockout.length)} / 관리대상 ${fmtN(toNum(p.managed_count)||managed.length)} · 30일+ ${long30.length} · 60일+ ${long60.length}</div></div>
+      <div class="kpi-card c-red" onclick="openAggInventoryModal('stockout')" style="cursor:pointer"><div class="kpi-label">선매입재고품절율</div><div class="kpi-val">${fmtPct(toNum(p.stockout_rate))}</div><div class="kpi-sub">비의도적 ${fmtN(toNum(p.stockout_count)||stockout.length)} / 관리대상 ${fmtN(toNum(p.managed_count)||managed.length)} · 30일+ ${long30.length} · 60일+ ${long60.length}</div></div>
       <div class="kpi-card c-amber" onclick="openAggInventoryModal('band')" style="cursor:pointer"><div class="kpi-label">운영밴드</div><div class="kpi-val" style="color:${bsc};font-size:20px">${esc(bandStatus)}</div><div class="kpi-sub">${band.q} ${fmtW(band.min)}~${fmtW(band.max)}</div></div>
       <div class="kpi-card c-purple" onclick="openIncomingOrdersModal()" style="cursor:pointer"><div class="kpi-label">입고예정금액</div><div class="kpi-val" style="font-size:20px">${incoming?fmtW(incoming.totalAmount):'데이터 없음'}</div><div class="kpi-sub">${incoming?`SKU ${fmtN(incoming.skuCount)} · 미입하 ${fmtN(incoming.orderCount)}건 · 입고 후 ${fmtW(incomingAfter)}`:'raw_발주 + parts_master 필요'}</div></div>
     </div>
@@ -8215,7 +8382,7 @@ function renderInventoryOpsFromAgg(){
         <div class="ch" style="height:260px"><canvas id="ch-agg-cat-donut"></canvas></div>
       </div>
     </div>
-    <div style="font-size:15px;font-weight:700;margin:18px 0 10px">4. 품절현황</div>
+    <div style="font-size:15px;font-weight:700;margin:18px 0 10px">4. 선매입재고 품절현황</div>
     <div class="grid-2" style="margin-top:16px">
       <div class="card"><div class="card-header"><div class="card-title">판매상태 요약</div><div class="card-sub">행 클릭 시 상태별 SKU 상세</div></div><div class="tbl-wrap"><table class="tbl"><thead><tr><th>판매상태</th><th class="num">SKU</th></tr></thead><tbody>${Object.entries(statuses).sort((a,b)=>b[1]-a[1]).map(([s,c])=>`<tr onclick="openAggStatusDetail('${encArg(s)}')" style="cursor:pointer"><td>${aggStatusTag(s)}</td><td class="num">${c}</td></tr>`).join('')||emptyRow(2,'데이터 없음')}</tbody></table></div></div>
       <div class="card" onclick="openAggInventoryModal('stockout')" style="cursor:pointer"><div class="card-header"><div class="card-title">장기품절</div><div class="card-sub">30일 이상 품절 · 클릭 시 전체 품절 상세</div></div>
@@ -8226,7 +8393,7 @@ function renderInventoryOpsFromAgg(){
     <div style="font-size:15px;font-weight:700;margin:18px 0 10px">5. 흐름 분석</div>
     <div class="grid-2">
       <div class="card"><div class="card-header"><div class="card-title">재고금액 추이</div><div class="card-sub">최근 12주 · 집계 CSV</div></div><div class="ch" style="height:240px"><canvas id="ch-inv-trend"></canvas></div></div>
-      <div class="card"><div class="card-header"><div class="card-title">회전율/품절율 추이</div><div class="card-sub">3M 회전율 · 품절율</div></div><div class="ch" style="height:240px"><canvas id="ch-agg-turn-stock"></canvas></div></div>
+      <div class="card"><div class="card-header"><div class="card-title">회전율/선매입재고품절율 추이</div><div class="card-sub">3M 회전율 · 선매입재고품절율</div></div><div class="ch" style="height:240px"><canvas id="ch-agg-turn-stock"></canvas></div></div>
     </div>`;
   dc('ch-inv-trend'); dc('ch-agg-turn-stock');
   renderAggInventoryDonut('ch-agg-prod-donut',prodRows);
@@ -8235,7 +8402,432 @@ function renderInventoryOpsFromAgg(){
   const ctx1=getCtx('ch-inv-trend');
   if(ctx1) CHARTS['ch-inv-trend']=new Chart(ctx1,{type:'line',data:{labels:trend.map(r=>String(r.period_key||'').slice(5)),datasets:[{label:'재고금액',data:trend.map(r=>toNum(r.inv_amount)),borderColor:'#1d4ed8',backgroundColor:'rgba(29,78,216,.08)',fill:true,tension:.35,pointRadius:3,borderWidth:2},{label:'밴드 상한',data:trend.map(()=>band.max),borderColor:'#dc2626',borderDash:[4,4],borderWidth:1,pointRadius:0},{label:'밴드 하한',data:trend.map(()=>band.min),borderColor:'#d97706',borderDash:[4,4],borderWidth:1,pointRadius:0}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{position:'bottom',labels:{font:{size:10}}}},scales:{y:{ticks:{callback:v=>fmtW(v),font:{size:10}}}}}});
   const ctx2=getCtx('ch-agg-turn-stock');
-  if(ctx2) CHARTS['ch-agg-turn-stock']=new Chart(ctx2,{type:'line',data:{labels:trend.map(r=>String(r.period_key||'').slice(5)),datasets:[{label:'3M 회전율',data:trend.map(r=>toNum(r.turnover_3m)),borderColor:'#059669',backgroundColor:'rgba(5,150,105,.08)',yAxisID:'y',tension:.35,pointRadius:3,borderWidth:2},{label:'품절율(%)',data:trend.map(r=>toNum(r.stockout_rate)*100),borderColor:'#dc2626',backgroundColor:'rgba(220,38,38,.06)',yAxisID:'y1',tension:.35,pointRadius:3,borderWidth:2}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{position:'bottom',labels:{font:{size:10}}}},scales:{y:{position:'left',ticks:{font:{size:10}}},y1:{position:'right',grid:{drawOnChartArea:false},ticks:{callback:v=>v+'%',font:{size:10}}}}}});
+  if(ctx2) CHARTS['ch-agg-turn-stock']=new Chart(ctx2,{type:'line',data:{labels:trend.map(r=>String(r.period_key||'').slice(5)),datasets:[{label:'3M 회전율',data:trend.map(r=>toNum(r.turnover_3m)),borderColor:'#059669',backgroundColor:'rgba(5,150,105,.08)',yAxisID:'y',tension:.35,pointRadius:3,borderWidth:2},{label:'선매입재고품절율(%)',data:trend.map(r=>toNum(r.stockout_rate)*100),borderColor:'#dc2626',backgroundColor:'rgba(220,38,38,.06)',yAxisID:'y1',tension:.35,pointRadius:3,borderWidth:2}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{position:'bottom',labels:{font:{size:10}}}},scales:{y:{position:'left',ticks:{font:{size:10}}},y1:{position:'right',grid:{drawOnChartArea:false},ticks:{callback:v=>v+'%',font:{size:10}}}}}});
+}
+
+// ===== 3-3b. 품절 상세 — sales_status_history 전체 이력 기반 =====
+// .clasp S&OP 대시보드 "품절 상세" 탭 로직 이식(구간 재구성 + 자동 태깅 + 주/월/분기 탐색).
+// sales_status_history CSV가 아직 없으면 아래 renderStockoutDetailFromAgg()(현재 스냅샷 전용)로 폴백.
+function shParseDate_(v){
+  var t=String(v||'').trim(); if(!t) return '';
+  var m=t.match(/^(\d{4})[.\-\/](\d{1,2})[.\-\/](\d{1,2})/);
+  if(!m) return '';
+  return m[1]+'-'+('0'+m[2]).slice(-2)+'-'+('0'+m[3]).slice(-2);
+}
+var SH_INIT_TX_=['','정보 최초 입력','최초등록','최초 등록'];
+var SH_BIGDEAL_RE_=/대량건|대량\s?주문|대량\s?발주|빅딜|대량\s?진행|대량\s?수주|PNA\d+|발주\s?확정|인입건|진행\s?예정인\s?건|진행\s?확정|\d{1,3},\d{3}\s?개/;
+var SH_BIGDEAL_EX_RE_=/대량\s?문의|있다면|있으면|해주세요|해주시/;
+var SH_CAUSE_RULES_=[
+  ['리스크','공급중단',/거래\s?종료|공급\s?중단|공급중단|단종|생산\s?종료|철수|폐업/],
+  ['리스크','품질',/품질|불량|하자|재생산\s?필요|리콜|퀄리티|오류|고장|색상\s?차이/],
+  ['리스크','기타',/연락.{0,4}되지\s?않|연락두절|전산.{0,3}실재고|오차|담당자/],
+  ['수량','수요초과',SH_BIGDEAL_RE_],
+  ['수량','공급부족',/재고\s?소진|소진|재고\s?부족|재고\s?없|품절/],
+  ['시점','납기지연',/입고\s?지연|생산\s?지연|지연|미뤄/],
+];
+var SH_CAUSE_PRIORITY_={'리스크':1,'수량':2,'시점':3};
+var SH_ETA_NONE_RE_=/미정|일정\s?없|알\s?수\s?없|추후|확인되면|확인\s?후/;
+var SH_ETA_SET_RE_=/재입고|입하|판매\s?재개|판매재개|입고\s?예정|입고예정|\d{1,2}\s?월|\d{1,2}\/\d{1,2}/;
+var SH_INTENT_RE_=/시즌\s?종료|시즌종료|리뉴얼|졸업|재고\s?효율|리스크\s?대비|포트폴리오/;
+function shTagCause_(tx){
+  var text=String(tx||'').trim();
+  var bigdeal=SH_BIGDEAL_RE_.test(text)&&!SH_BIGDEAL_EX_RE_.test(text);
+  if(SH_INIT_TX_.indexOf(text)>=0) return {cz:'-',bg:bigdeal};
+  var matched=[];
+  SH_CAUSE_RULES_.forEach(function(rule,i){ if(rule[2].test(text)) matched.push({cat:rule[0],sub:rule[1],order:i}); });
+  if(!matched.length) return {cz:'-',bg:bigdeal};
+  matched.sort(function(a,b){ var pa=SH_CAUSE_PRIORITY_[a.cat],pb=SH_CAUSE_PRIORITY_[b.cat]; return pa!==pb?pa-pb:a.order-b.order; });
+  return {cz:matched[0].cat+'_'+matched[0].sub,bg:bigdeal};
+}
+function shTagEta_(tx){ var text=String(tx||'').trim();
+  if(SH_ETA_NONE_RE_.test(text)) return '미정';
+  if(SH_ETA_SET_RE_.test(text)) return '일정확정';
+  return '불명'; }
+function shTagIntent_(st,tx){ if(st==='의도적 품절') return '의도적'; if(SH_INTENT_RE_.test(String(tx||''))) return '의도적'; return '비의도적'; }
+function shBuildIntervals_(){
+  var rows=D.sales_status_history||[];
+  var out=[];
+  rows.forEach(function(r){
+    var pt=String(r['파츠명']||'').trim(); if(!pt) return;
+    var s=shParseDate_(r['변경일(인터페이스용)']); if(!s) return;
+    var isOpen=String(r['end time']||'').trim()==='';
+    var e=isOpen?null:shParseDate_(r['end time(인터페이스용)']);
+    var tx=String(r['판매상태 변경사유']||'').trim();
+    var st=String(r['판매상태']||'').trim();
+    var tagged=shTagCause_(tx);
+    var cz=tagged.cz;
+    var measured=String(r['품절 사유']||'').trim();
+    if(measured && SH_INIT_TX_.indexOf(measured)<0) cz=measured;
+    out.push({
+      pt:pt,
+      gd:String(r['적용 굿즈명']||'').trim(),
+      ow:String(r['재고소유구분 (from sync_parts)']||'').trim(),
+      pk:String(r['파츠 유형 (from 파츠명)']||'').trim(),
+      st:st, s:s, e:e||null,
+      cz:cz, et:shTagEta_(tx), it:shTagIntent_(st,tx),
+      gs:String(r['굿즈품절여부']||'').trim().toLowerCase()==='checked',
+      bg:tagged.bg, tx:tx
+    });
+  });
+  return out;
+}
+function shDaysAdd_(date,days){ var d=new Date(date.getTime()); d.setDate(d.getDate()+days); return d; }
+function shFmtDateKey_(date){ return date.getFullYear()+'-'+('0'+(date.getMonth()+1)).slice(-2)+'-'+('0'+date.getDate()).slice(-2); }
+function shISOWeek_(date){
+  var d=new Date(Date.UTC(date.getFullYear(),date.getMonth(),date.getDate()));
+  var dayNum=d.getUTCDay()||7; d.setUTCDate(d.getUTCDate()+4-dayNum);
+  var yearStart=new Date(Date.UTC(d.getUTCFullYear(),0,1));
+  var weekNo=Math.ceil((((d-yearStart)/86400000)+1)/7);
+  return {year:d.getUTCFullYear(),week:weekNo};
+}
+function shBuildPeriods_(unit,today){
+  var start=new Date('2023-06-01T00:00:00'); var periods=[]; var cursor=start;
+  while(cursor<=today){
+    var naturalEnd,id;
+    if(unit==='week'){ var weekday=(cursor.getDay()+6)%7; var monday=shDaysAdd_(cursor,-weekday); naturalEnd=shDaysAdd_(monday,6); var info=shISOWeek_(monday); id=info.year+'-W'+('0'+info.week).slice(-2); }
+    else if(unit==='month'){ naturalEnd=new Date(cursor.getFullYear(),cursor.getMonth()+1,0); id=cursor.getFullYear()+'-'+('0'+(cursor.getMonth()+1)).slice(-2); }
+    else { var q=Math.floor(cursor.getMonth()/3); naturalEnd=new Date(cursor.getFullYear(),q*3+3,0); id=cursor.getFullYear()+'-Q'+(q+1); }
+    var periodEnd = naturalEnd>today?today:naturalEnd;
+    periods.push({id:id,s:shFmtDateKey_(cursor),e:shFmtDateKey_(periodEnd)});
+    cursor=shDaysAdd_(periodEnd,1);
+  }
+  return periods;
+}
+function renderStockoutDetailFull_(){
+  const el=document.getElementById('sec-stockout-detail');
+  el.innerHTML =
+    '<div class="sh-root">' +
+      '<div class="sh-top">' +
+        '<h2>품절 상세</h2>' +
+      '</div>' +
+      '<div class="filter-row" style="margin:0 0 14px;padding:10px 12px;background:var(--surface);border:1px solid var(--border);border-radius:var(--r)">' +
+        '<span class="filter-label">기간 단위</span>' +
+        '<span id="sh-seg" style="display:inline-flex;gap:8px">' +
+          '<span class="m-chip" data-g="week">주별</span><span class="m-chip" data-g="month">월별</span><span class="m-chip" data-g="quarter">분기별</span>' +
+        '</span>' +
+        '<span class="filter-label" style="margin-left:12px">조회기간</span>' +
+        '<button class="sh-nb" id="sh-prev">&#8249;</button>' +
+        '<select id="sh-psel" style="font-size:12px;padding:5px 9px;border:1px solid var(--border2);border-radius:var(--r-sm);background:var(--surface);min-width:110px;text-align:center"></select>' +
+        '<button class="sh-nb" id="sh-next">&#8250;</button>' +
+        '<span class="sh-rng" id="sh-prng"></span>' +
+      '</div>' +
+      '<div class="sh-guide">' +
+        '<span id="sh-totline"></span>' +
+        '<span style="color:var(--sh-ink3)">기말 시점(기간 마지막 날) 기준 · 제품 철수(졸업) 제외</span>' +
+        '<span class="sh-warn" id="sh-gswarn"></span>' +
+      '</div>' +
+      '<div class="sh-kpis" id="sh-kpis"></div>' +
+      '<div class="sh-panel">' +
+        '<div class="sh-ph"><h3>굿즈품절율 추이</h3><span class="sh-hint">목표선 1~3Q 3%↓ · 4Q 5%↓ · 분모는 그 시점 출시일~졸업일 기준 운영중 굿즈 수 · 점 클릭 시 해당 기간 목록</span></div>' +
+        '<div class="ch" style="height:220px;padding:4px 14px 12px"><canvas id="sh-gschart-cv"></canvas></div>' +
+      '</div>' +
+      '<div class="sh-panel">' +
+        '<div class="sh-ph"><h3>비의도적품절 추이 (SKU수 기준)</h3><span class="sh-hint">점 클릭 시 해당 기간 품절 목록 보기 · 각 기간 기말 시점</span></div>' +
+        '<div class="ch" style="height:220px;padding:4px 14px 12px"><canvas id="sh-chart-cv"></canvas></div>' +
+      '</div>' +
+      '<div class="sh-panel"><div class="sh-ph"><h3>품절 사유</h3><span class="sh-hint" id="sh-czhint"></span></div>' +
+        '<div class="sh-cz2col">' +
+          '<div><div class="sh-subnote" style="padding:6px 19px 4px;">비의도적</div><div class="sh-bars" id="sh-czbars"></div></div>' +
+          '<div><div class="sh-subnote" style="padding:6px 19px 4px;">의도적</div><div class="sh-bars" id="sh-czbars2"></div></div>' +
+        '</div>' +
+        '<div class="sh-subnote" id="sh-cznote"></div>' +
+      '</div>' +
+      '<div class="sh-grid2">' +
+        '<div class="sh-panel"><div class="sh-ph"><h3>협력사재고 품절 상세</h3><span class="sh-hint" id="sh-cohint"></span></div>' +
+          '<div class="sh-alert" id="sh-alert"></div>' +
+          '<div class="sh-scroll"><table><thead><tr><th>파츠</th><th class="r">경과일</th><th>사유</th><th>해소전망</th></tr></thead>' +
+          '<tbody id="sh-ptb"></tbody></table><div class="sh-empty" id="sh-pemp" style="display:none">해당 기간 협력사재고 품절 없음</div></div></div>' +
+        '<div class="sh-panel"><div class="sh-ph"><h3>선매입재고 품절 상세</h3><span class="sh-hint" id="sh-suhint"></span></div>' +
+          '<div class="sh-alert" id="sh-sualert"></div>' +
+          '<div class="sh-scroll"><table><thead><tr><th>파츠</th><th class="r">경과일</th><th>사유</th><th>해소전망</th></tr></thead>' +
+          '<tbody id="sh-sutb"></tbody></table><div class="sh-empty" id="sh-suemp" style="display:none">해당 기간 선매입재고 품절 없음</div></div></div>' +
+      '</div>' +
+      '<div class="sh-panel">' +
+        '<div class="sh-ph"><h3>품절 상세</h3><span class="sh-hint">경과일 내림차순</span></div>' +
+        '<div class="sh-tabs" id="sh-tabs"></div>' +
+        '<div class="sh-scroll"><table><thead><tr><th>#</th><th>파츠명</th><th>소유</th><th>구분</th><th>판매상태</th>' +
+        '<th class="r">품절일수</th><th>대표사유</th><th>해소전망</th><th>변경사유 원문</th></tr></thead>' +
+        '<tbody id="sh-mtb"></tbody></table><div class="sh-empty" id="sh-memp" style="display:none">해당 없음</div></div>' +
+        '<div class="sh-foot" id="sh-foot"></div>' +
+      '</div>' +
+    '</div>';
+
+  const $ = s => document.querySelector(s);
+  const IV = shBuildIntervals_();
+  IV.forEach(r => { r._s = new Date(r.s); r._e = r.e ? new Date(r.e) : null; });
+  const today = new Date();
+  const PS = { week: shBuildPeriods_('week', today), month: shBuildPeriods_('month', today), quarter: shBuildPeriods_('quarter', today) };
+  const OUT = ['일시품절', '의도적 품절'], DEAD = '제품 철수(졸업)';
+  const OWNC = { '신시어리': 'var(--sh-green)', '협력사': 'var(--sh-blue)', '생산': 'var(--sh-purple)' };
+  const GS_FROM = new Date('2026-03-27');
+  let G = 'week', I = PS.week.length - 1, F = null;
+
+  function snap(dstr) {
+    const t = new Date(dstr);
+    const a = IV.filter(r => r._s <= t && (!r._e || r._e > t) && r.st !== DEAD);
+    const dd = r => Math.round((t - r._s) / 864e5);
+    const so = a.filter(r => OUT.includes(r.st));
+    return { t, dd, so, tot: a.length,
+      un:  so.filter(r => r.it === '비의도적'),
+      itn: so.filter(r => r.it === '의도적'),
+      lng: so.filter(r => dd(r) >= 60),
+      gs:  so.filter(r => r.gs),
+      soon: a.filter(r => r.st === '품절예정') };
+  }
+  function delta(c, pv) {
+    if (pv === null || pv === undefined) return '';
+    const d = c - pv; if (!d) return '<span class="sh-dt sh-fl">–</span>';
+    return `<span class="sh-dt ${d>0?'sh-up':'sh-dn'}">${d>0?'+':''}${d}</span>`;
+  }
+  function deltaPct(c, pv) {
+    if (c === null || pv === null || pv === undefined) return '';
+    const d = c - pv; if (Math.abs(d) < 0.05) return '<span class="sh-dt sh-fl">–</span>';
+    return `<span class="sh-dt ${d>0?'sh-up':'sh-dn'}">${d>0?'+':''}${d.toFixed(1)}%p</span>`;
+  }
+  function shGoodsSet_(list) {
+    const set = new Set();
+    list.forEach(r => { String(r.gd||'').split(',').forEach(g => { const t = g.trim(); if (t) set.add(t); }); });
+    return set;
+  }
+  // 그 시점(dateStr) 기준 "운영 중"이던 굿즈 수 — 출시일≤기준일<졸업일로 판정.
+  // 졸업일이 있으면 그걸로 확정 판단(가장 신뢰), 없으면 굿즈 Status='졸업'만으로도 제외,
+  // 출시일도 없는 경우(메타데이터 자체가 없는 행)는 이력 재구성이 불가능해 현재 Status로만 판단.
+  function shGoodsActiveAt_(dateStr) {
+    const t = new Date(dateStr);
+    return (D.goods_master||[]).filter(r => {
+      const status = String(r['굿즈 Status']||'').trim();
+      const launch = shParseDate_(r['출시일']);
+      const grad = shParseDate_(r['졸업일']);
+      if (launch && new Date(launch) > t) return false;
+      if (grad) return new Date(grad) > t;
+      if (status === '졸업') return false;
+      if (!launch) return status === '판매중';
+      return true;
+    }).length;
+  }
+
+  function render() {
+    const L = PS[G]; I = Math.max(0, Math.min(I, L.length - 1));
+    const p = L[I], S = snap(p.e), P = I > 0 ? snap(L[I-1].e) : null;
+    $('#sh-seg').querySelectorAll('span').forEach(e => e.classList.toggle('active', e.dataset.g === G));
+    $('#sh-psel').innerHTML = L.map(pp => `<option value="${pp.id}"${pp.id===p.id?' selected':''}>${pp.id}</option>`).join('');
+    $('#sh-prng').textContent = `${p.s} ~ ${p.e}`;
+    $('#sh-prev').disabled = I === 0; $('#sh-next').disabled = I === L.length - 1;
+
+    $('#sh-totline').innerHTML = `<span class="sh-tot">전체 품절 ${S.so.length}건</span>
+      <span style="color:var(--sh-ink3);margin-left:6px">= 비의도적 ${S.un.length} + 의도적 ${S.itn.length}</span>
+      <span style="color:var(--sh-ink3);margin-left:6px">· 품절예정 ${S.soon.length}건 별도</span>`;
+    const late = S.t >= GS_FROM;
+    $('#sh-gswarn').textContent = late ? '' : '굿즈품절여부는 2026-03-27부터 입력 시작 · 이전 기간은 0으로 표시됨';
+    $('#sh-gswarn').style.display = late ? 'none' : 'inline-block';
+
+    const ow = arr => ['협력사','신시어리','생산'].map(o => { const n = arr.filter(r => r.ow === o).length;
+      return n ? `${o==='신시어리'?'선매입':o} <em>${n}</em>` : ''; }).filter(Boolean).join(' · ') || '없음';
+    const activeGoodsCount = shGoodsActiveAt_(p.e);
+    const gsGoodsCount = shGoodsSet_(S.gs).size;
+    const gsRate = (late && activeGoodsCount) ? (gsGoodsCount/activeGoodsCount*100) : null;
+    const prevActiveGoodsCount = I > 0 ? shGoodsActiveAt_(L[I-1].e) : 0;
+    const gsRatePrev = (P && late && prevActiveGoodsCount) ? (shGoodsSet_(P.gs).size/prevActiveGoodsCount*100) : null;
+    const kpiDefs = [
+     ['gs', '굿즈품절율','<em>기말</em>',S.gs.length,
+       !late ? '입력 시작 전 기간' : (activeGoodsCount ? `영향 굿즈 <em>${gsGoodsCount}</em> / 그 시점 운영중 <em>${activeGoodsCount}</em>개` : 'goods_master 업로드 필요'),
+       'var(--sh-crimson)',P?P.gs.length:null],
+     ['un', '비의도적 품절','<em>기말</em>',S.un.length,ow(S.un),'var(--sh-red)',P?P.un.length:null],
+     ['itn','의도적 품절','<em>기말</em>',S.itn.length,ow(S.itn),'var(--sh-amber)',P?P.itn.length:null],
+     ['lng','장기품절 60일+','<em>기말</em>',S.lng.length,`비의도적 <em>${S.lng.filter(r=>r.it==='비의도적').length}</em> · 의도적 <em>${S.lng.filter(r=>r.it==='의도적').length}</em>`,'var(--sh-purple)',P?P.lng.length:null]
+    ];
+    $('#sh-kpis').innerHTML = kpiDefs.map(([k,l,e,v,s,c,pv]) => {
+      const valHtml = k==='gs'
+        ? (gsRate!==null ? `${gsRate.toFixed(1)}<small>%</small>${deltaPct(gsRate,gsRatePrev)}` : `—<small>%</small>`)
+        : `${v}<small>건</small>${delta(v,pv)}`;
+      return `<div class="sh-kpi" data-kind="${k}" style="border-top-color:${c};cursor:pointer;">
+      <div class="l">${l}${e}</div>
+      <div class="v">${valHtml}</div><div class="s">${s}</div></div>`;
+    }).join('');
+    $('#sh-kpis').querySelectorAll('.sh-kpi').forEach(el2 => {
+      el2.onclick = () => shOpenCardModal_(el2.dataset.kind, S, p);
+    });
+
+    chart(L, p); gsChart(L, p); causes(S, p); coop(S); detail(S);
+  }
+
+  function shModalRows_(title, subtitle, rows, dd) {
+    const ov = document.getElementById('modal-overlay');
+    const t = document.getElementById('modal-title');
+    const b = document.getElementById('modal-body');
+    const tabsEl = document.getElementById('modal-tabs-el');
+    ov.classList.add('open');
+    tabsEl.innerHTML = '';
+    t.textContent = title;
+    b.innerHTML = `<div style="font-size:11.5px;color:var(--text3);margin-bottom:12px">${esc(subtitle)}</div>` + (rows.length
+      ? `<div class="sh-root"><div class="sh-scroll" style="max-height:60vh"><table><thead><tr><th>#</th><th>파츠명</th><th>소유</th><th>구분</th><th>판매상태</th>
+          <th class="r">품절일수</th><th>대표사유</th><th>해소전망</th><th>변경사유 원문</th></tr></thead>
+          <tbody>${rows.map((r, i) => { const d = dd(r); return `<tr>
+            <td>${i+1}</td>
+            <td><div class="sh-pt">${esc(r.pt)}</div><div class="sh-pc">${esc(r.gd||'')}${r.bg?' · <b style="color:#B5791F">대량건</b>':''}${r.gs?' <span class="sh-gsb">굿즈품절</span>':''}</div></td>
+            <td>${r.ow==='신시어리'?'선매입':esc(r.ow)}</td>
+            <td>${r.pk ? esc(r.pk) : '<span class="sh-dash">—</span>'}</td>
+            <td><span class="sh-bdg ${stB[r.st]||''}">${esc(r.st)}</span></td>
+            <td class="r"><span class="sh-days mono ${dcl(d)}">${d}</span></td>
+            <td>${czEl(r.cz)}</td><td>${etaEl(r.et)}</td>
+            <td style="font-size:12px;max-width:280px;">${r.tx ? esc(r.tx) : '<span class="sh-dash">—</span>'}</td>
+          </tr>`; }).join('')}</tbody></table></div></div>`
+      : '<div class="empty">해당 항목이 없습니다.</div>');
+  }
+
+  function shOpenCardModal_(kind, S, p) {
+    const titles = { un:'비의도적 품절 상세', itn:'의도적 품절 상세', lng:'장기품절 60일+ 상세', gs:'굿즈품절 상세' };
+    const rows = (S[kind] || []).slice().sort((a, b) => S.dd(b) - S.dd(a));
+    shModalRows_(titles[kind] || '품절 상세',
+      `${p.id} 기말(${p.e}) 기준 · ${rows.length}건 · 경과일 내림차순`, rows, S.dd);
+  }
+
+  function shOpenCauseModal_(kind, czKey, S, p) {
+    const kindLabel = kind === 'itn' ? '의도적' : '비의도적';
+    const rows = (S[kind] || []).filter(r => (r.cz==='-'?'미분류':r.cz) === czKey)
+      .slice().sort((a, b) => S.dd(b) - S.dd(a));
+    shModalRows_(`${czKey} · ${kindLabel} 품절 상세`,
+      `${p.id} 기말(${p.e}) 기준 · ${rows.length}건 · 경과일 내림차순`, rows, S.dd);
+  }
+
+  function shTargetPct_(dateStr) {
+    const m = Number(String(dateStr||'').slice(5,7));
+    const q = m ? Math.ceil(m/3) : 1;
+    const lv = (typeof EOQ_SERVICE_LEVEL!=='undefined' && EOQ_SERVICE_LEVEL[q]) ? EOQ_SERVICE_LEVEL[q].level : (q===4?0.95:0.97);
+    return (1-lv)*100;
+  }
+  function chart(L, cp) {
+    const N = G==='quarter' ? L.length : (G==='month' ? 24 : 26);
+    const sl = L.slice(Math.max(0, I-N+1), I+1);
+    const data = sl.map(p => ({ id:p.id, un: snap(p.e).un.length }));
+    dc('sh-chart-cv');
+    const ctx = getCtx('sh-chart-cv');
+    if (!ctx) return;
+    CHARTS['sh-chart-cv'] = new Chart(ctx, {
+      type:'line',
+      data:{ labels: data.map(d => G==='week' ? d.id.slice(5) : d.id),
+        datasets:[{ label:'비의도적 품절(SKU)', data: data.map(d=>d.un),
+          borderColor:'#dc2626', backgroundColor:'rgba(220,38,38,.08)',
+          fill:true, tension:.35, pointRadius:2, pointHoverRadius:4, borderWidth:2 }] },
+      options:{ responsive:true, maintainAspectRatio:false,
+        plugins:{ legend:{ display:false },
+          tooltip:{ callbacks:{ label:c => `비의도적 품절 ${c.parsed.y}건` } } },
+        onClick:(evt, els) => { if (!els.length) return; const bp = sl[els[0].index]; if (bp) shOpenCardModal_('un', snap(bp.e), bp); },
+        scales:{ x:{ ticks:{ font:{size:10}, maxRotation:0, autoSkip:true } },
+          y:{ beginAtZero:true, ticks:{ font:{size:10}, precision:0 } } } }
+    });
+  }
+  function gsChart(L, cp) {
+    const N = G==='quarter' ? L.length : (G==='month' ? 24 : 26);
+    const sl = L.slice(Math.max(0, I-N+1), I+1);
+    const data = sl.map(p => { const s = snap(p.e);
+      const goodsCount = shGoodsSet_(s.gs).size;
+      const activeGoodsCount = shGoodsActiveAt_(p.e);
+      const rate = activeGoodsCount ? goodsCount/activeGoodsCount*100 : 0;
+      return { id:p.id, rate, target: shTargetPct_(p.e) }; });
+    dc('sh-gschart-cv');
+    const ctx = getCtx('sh-gschart-cv');
+    if (!ctx) return;
+    CHARTS['sh-gschart-cv'] = new Chart(ctx, {
+      type:'line',
+      data:{ labels: data.map(d => G==='week' ? d.id.slice(5) : d.id),
+        datasets:[
+          { label:'굿즈품절율', data: data.map(d=>d.rate),
+            borderColor:'#A8324A', backgroundColor:'rgba(168,50,74,.08)',
+            fill:true, tension:.35, pointRadius:2, pointHoverRadius:4, borderWidth:2 },
+          { label:'목표선', data: data.map(d=>d.target),
+            borderColor:'#d97706', borderDash:[4,4], borderWidth:1.5, pointRadius:0 }
+        ] },
+      options:{ responsive:true, maintainAspectRatio:false,
+        plugins:{ legend:{ position:'bottom', labels:{ font:{size:10}, boxWidth:12 } },
+          tooltip:{ callbacks:{ label:c => `${c.dataset.label} ${c.parsed.y.toFixed(1)}%` } } },
+        onClick:(evt, els) => { if (!els.length) return; const bp = sl[els[0].index]; if (bp) shOpenCardModal_('gs', snap(bp.e), bp); },
+        scales:{ x:{ ticks:{ font:{size:10}, maxRotation:0, autoSkip:true } },
+          y:{ ticks:{ callback:v=>v+'%', font:{size:10} } } } }
+    });
+  }
+
+  const czEl = c => { const m = (c||'-').split('_')[0];
+    return `<span class="sh-cz ${({'리스크':'sh-c-risk','수량':'sh-c-qty','시점':'sh-c-time'})[m]||'sh-c-none'}">${c==='-'?'미분류':c.replace('_',' · ')}</span>`; };
+  const etaEl = e => `<span class="sh-eta ${e==='미정'?'n':e==='일정확정'?'s':'u'}">${e}</span>`;
+  const dcl = d => d>=60?'hot':(d>=30?'warm':'');
+  const stB = { '일시품절':'sh-b-tmp', '의도적 품절':'sh-b-int', '품절예정':'sh-b-soon' };
+
+  function causeBarsHtml_(list, emptyText, kind) {
+    if (!list.length) return `<div class="sh-empty">${emptyText}</div>`;
+    const g = {};
+    list.forEach(r => { const k = r.cz==='-'?'미분류':r.cz;
+      (g[k]=g[k]||{n:0,o:{}}).n++; g[k].o[r.ow]=(g[k].o[r.ow]||0)+1; });
+    const mx = Math.max(...Object.values(g).map(v=>v.n));
+    return Object.entries(g).sort((a,b)=>b[1].n-a[1].n).map(([k,v]) => {
+      const segs = ['신시어리','협력사','생산'].map(o => v.o[o] ? `<div class="sh-bseg" style="width:${v.o[o]/mx*100}%;background:${OWNC[o]}"></div>` : '').join('');
+      return `<div class="sh-brow" data-kind="${kind}" data-cz="${esc(k)}" style="cursor:pointer"><span class="sh-blab">${czEl(k)}</span><span class="sh-btrack">${segs}</span><span class="sh-bnum mono">${v.n}</span></div>`;
+    }).join('');
+  }
+
+  function causes(S, p) {
+    $('#sh-czhint').textContent = `비의도적 ${S.un.length}건 · 의도적 ${S.itn.length}건`;
+    $('#sh-czbars').innerHTML  = causeBarsHtml_(S.un,  '해당 기간 비의도적 품절 없음', 'un');
+    $('#sh-czbars2').innerHTML = causeBarsHtml_(S.itn, '해당 기간 의도적 품절 없음', 'itn');
+    $('#sh-cznote').innerHTML = `<b>색상</b> <span style="color:var(--sh-green)">■</span> 선매입
+      <span style="color:var(--sh-blue)">■</span> 협력사 <span style="color:var(--sh-purple)">■</span> 생산`;
+    [$('#sh-czbars'), $('#sh-czbars2')].forEach(el2 => {
+      el2.querySelectorAll('.sh-brow').forEach(row => {
+        row.onclick = () => shOpenCauseModal_(row.dataset.kind, row.dataset.cz, S, p);
+      });
+    });
+  }
+
+  function ownerStockoutPanel_(S, owner, ids) {
+    const label = owner === '신시어리' ? '선매입' : owner;
+    const rs = S.so.filter(r => r.ow===owner).sort((a,b) => S.dd(b)-S.dd(a));
+    $(ids.hint).textContent = `기말 기준 ${rs.length}건`;
+    const ints = rs.filter(r => r.it==='의도적').length;
+    $(ids.alert).style.display = ints ? 'block' : 'none';
+    $(ids.alert).innerHTML = `<b>${label} 의도적 품절 ${ints}건이 종료일 없이 열려 있습니다.</b> 판매중단 결정은 끝났으나 구간이 닫히지 않은 건으로, 졸업 처리 대상인지 확인이 필요합니다.`;
+    $(ids.empty).style.display = rs.length ? 'none' : 'block';
+    $(ids.body).innerHTML = rs.map(r => { const d = S.dd(r); return `<tr>
+      <td><div class="sh-pt">${esc(r.pt)}</div><div class="sh-pc">${esc(r.gd||'')} <span class="sh-bdg ${stB[r.st]}" style="padding:1px 7px;font-size:10px">${esc(r.st)}</span>${r.gs?' <span class="sh-gsb">굿즈품절</span>':''}</div></td>
+      <td class="r"><div class="sh-days mono ${dcl(d)}">${d}일</div><div class="sh-dsub mono">${esc(r.s)}~</div></td>
+      <td>${czEl(r.cz)}</td><td>${etaEl(r.et)}</td></tr>`; }).join('');
+  }
+
+  function coop(S) {
+    ownerStockoutPanel_(S, '협력사',  { hint:'#sh-cohint', alert:'#sh-alert',  body:'#sh-ptb',  empty:'#sh-pemp' });
+    ownerStockoutPanel_(S, '신시어리', { hint:'#sh-suhint', alert:'#sh-sualert', body:'#sh-sutb', empty:'#sh-suemp' });
+  }
+
+  function detail(S) {
+    const all = S.so.concat(S.soon);
+    const sets = { '전체':all, '비의도적':S.un, '의도적':S.itn, '장기 60일+':S.lng, '굿즈품절':S.gs };
+    $('#sh-tabs').innerHTML = Object.entries(sets).map(([l,v]) =>
+      `<span class="sh-tab ${F===l||(!F&&l==='전체')?'on':''}" data-t="${l}">${l} ${v.length}</span>`).join('');
+    $('#sh-tabs').querySelectorAll('.sh-tab').forEach(e => e.onclick = () => { F = e.dataset.t==='전체'?null:e.dataset.t; detail(S); });
+    const rs = [...(sets[F]||all)].sort((a,b) => S.dd(b)-S.dd(a));
+    $('#sh-memp').style.display = rs.length ? 'none' : 'block';
+    $('#sh-mtb').innerHTML = rs.map((r,i) => { const d = S.dd(r); return `<tr>
+      <td class="mono" style="color:var(--sh-ink3)">${i+1}</td>
+      <td><div class="sh-pt">${esc(r.pt)}</div><div class="sh-pc">${esc(r.gd||'')}${r.bg?' · <b style="color:#B5791F">대량건</b>':''}${r.gs?' <span class="sh-gsb">굿즈품절</span>':''}</div></td>
+      <td style="color:var(--sh-ink2)">${r.ow==='신시어리'?'선매입':esc(r.ow)}</td>
+      <td style="color:var(--sh-ink2);font-size:11.5px">${r.pk?esc(r.pk):'<span class="sh-dash">—</span>'}</td>
+      <td><span class="sh-bdg ${stB[r.st]||''}">${esc(r.st)}</span></td>
+      <td class="r"><span class="sh-days mono ${dcl(d)}">${d}</span><div class="sh-dsub mono">${esc(r.s)}~</div></td>
+      <td>${czEl(r.cz)}</td><td>${etaEl(r.et)}</td>
+      <td style="font-size:11px;color:var(--sh-ink2);max-width:270px">${r.tx?esc(r.tx):'<span class="sh-dash">—</span>'}</td></tr>`; }).join('');
+    $('#sh-foot').innerHTML = `${rs.length}건 · 품절일수는 sales_status_history 구간에서 산출 · 대표사유는 룰 자동 분류(2026년분은 실측 태깅 우선) · 굿즈품절여부는 2026-03-27부터 입력`;
+  }
+
+  $('#sh-seg').querySelectorAll('span').forEach(e => e.onclick = () => {
+    const old = PS[G][I].e; G = e.dataset.g;
+    const n = PS[G].findIndex(p=>p.e>=old); I = n<0?PS[G].length-1:n; render();
+  });
+  $('#sh-prev').onclick = () => { I--; render(); };
+  $('#sh-next').onclick = () => { I++; render(); };
+  $('#sh-psel').onchange = () => {
+    const idx = PS[G].findIndex(pp => pp.id === $('#sh-psel').value);
+    if (idx >= 0) { I = idx; render(); }
+  };
+  render();
 }
 
 function renderStockoutDetailFromAgg(){
@@ -8304,6 +8896,7 @@ function renderInventoryOps() {
 // ===== 3-3. 품절 상세 =====
 function renderStockoutDetail() {
   const el=document.getElementById('sec-stockout-detail');
+  if(D.sales_status_history && D.sales_status_history.length) { renderStockoutDetailFull_(); return; }
   if(hasAggInventoryData()) { renderStockoutDetailFromAgg(); return; }
   el.innerHTML='<div class="card empty">dashboard_sku_snapshot CSV 데이터가 없습니다.</div>';
 }
@@ -8786,8 +9379,12 @@ function renderCostProjectDetail() {
   const costRate=revenue>0?(totalCost/revenue*100):0;
 
   // Standard cost from 공정DB
-  const gc=goodsCode(taskRows[0]||{});
-  const procs=gc?getProcessesForGoods(gc):[];
+  // v23.6 fix: a project can mix multiple distinct 산출물(goods) — gc must be
+  // derived per task row, not once from taskRows[0], or every row silently
+  // gets matched against whichever goods happened to be first (e.g. 에코컵
+  // 표준단가 leaking onto 하이킹폴딩방석 rows when both share tc==='A1').
+  const allGc=[...new Set(taskRows.map(r=>goodsCode(r)).filter(Boolean))];
+  const procs=allGc.length?COST_DB.process.filter(p=>allGc.includes(p.gc)):[];
 
   el.innerHTML=`
     <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin:14px 0">
@@ -8815,7 +9412,8 @@ function renderCostProjectDetail() {
       // Standard from 공정DB or 파츠마스터
       const taskId=(r['task_id']||'').split('_');
       const tc=taskId[taskId.length-1]||'';
-      const proc=procs.find(p=>p.tc===tc);
+      const rowGc=goodsCode(r);
+      const proc=procs.find(p=>p.tc===tc&&(!rowGc||p.gc===rowGc));
       const od=parseAnyDate(r['과업지시일자']); const stdCost=proc?getProcStdUnit(proc,qty,od?fmtISODate(od):null):0; // v21.17: 발주일 시점 단가
       const diff=stdCost>0&&unitCost>0?((unitCost-stdCost)/stdCost*100):null;
       const diffBadge=diff===null?'<span style="color:var(--text3)">—</span>':diff<=0?`<span style="color:var(--green);font-weight:600">${diff.toFixed(1)}%</span>`:`<span style="color:var(--red);font-weight:600">+${diff.toFixed(1)}%</span>`;
@@ -8836,9 +9434,9 @@ function renderCostProjectDetail() {
     </tbody></table></div>`:''}
 
     ${procs.length?`
-    <div style="font-size:11px;font-weight:600;color:var(--text3);text-transform:uppercase;letter-spacing:.04em;margin:16px 0 6px">공정DB 표준 원가 참조 (${gc})</div>
-    <div class="tbl-wrap"><table class="tbl"><thead><tr><th>공정</th><th>협력사</th><th>제조유형</th><th>재고공정</th><th class="num">100개</th><th class="num">500개</th><th class="num">1000개</th></tr></thead><tbody>
-    ${procs.map(p=>`<tr><td style="font-size:11px">${esc(p.id)}</td><td style="font-size:11px">${esc(p.sup||'')}</td><td><span class="tag tag-gray">${esc(p.mfg||'')}</span></td><td>${p.isStock==='Y'?'<span class="tag tag-n">재고</span>':'—'}</td><td class="num">${p.c100?p.c100.toLocaleString()+'원':'—'}</td><td class="num">${p.c500?p.c500.toLocaleString()+'원':'—'}</td><td class="num">${p.c1000?p.c1000.toLocaleString()+'원':'—'}</td></tr>`).join('')}
+    <div style="font-size:11px;font-weight:600;color:var(--text3);text-transform:uppercase;letter-spacing:.04em;margin:16px 0 6px">공정DB 표준 원가 참조 (${allGc.join(', ')})</div>
+    <div class="tbl-wrap"><table class="tbl"><thead><tr><th>굿즈</th><th>공정</th><th>협력사</th><th>제조유형</th><th>재고공정</th><th class="num">100개</th><th class="num">500개</th><th class="num">1000개</th></tr></thead><tbody>
+    ${procs.map(p=>`<tr><td style="font-size:11px">${esc(p.gc||'')}</td><td style="font-size:11px">${esc(p.id)}</td><td style="font-size:11px">${esc(p.sup||'')}</td><td><span class="tag tag-gray">${esc(p.mfg||'')}</span></td><td>${p.isStock==='Y'?'<span class="tag tag-n">재고</span>':'—'}</td><td class="num">${p.c100?p.c100.toLocaleString()+'원':'—'}</td><td class="num">${p.c500?p.c500.toLocaleString()+'원':'—'}</td><td class="num">${p.c1000?p.c1000.toLocaleString()+'원':'—'}</td></tr>`).join('')}
     </tbody></table></div>`:''}
 
     <div style="background:var(--surface2);border-left:3px solid var(--border2);border-radius:0 var(--r-sm) var(--r-sm) 0;padding:10px 14px;font-size:11px;color:var(--text3);margin-top:14px;line-height:1.6">
@@ -8868,6 +9466,7 @@ function getOrderRowCategoryStr(r){
   if(gc&&gm[gc]) gm[gc].forEach(c=>cats.add(c));
   (extractPartsCodes(r)||[]).forEach(code=>{
     const p=PARTS_MAP[code];
+    if(p&&p.type==='Package Parts') return; // v23.7: 포장재(OPP·박스 등)는 여러 카테고리 제품에 공용으로 쓰여 goodsCat이 다중값 — 제품 카테고리 판단에서 제외(예: 데코스티커가 OPP 공용 포장재 때문에 Fabric으로도 잡히던 문제, 사용자 제보)
     if(p&&p.goodsCat) String(p.goodsCat).split(',').forEach(x=>{ x=x.trim(); if(x) cats.add(x); });
   });
   const s=normCat([...cats].join('|'));
@@ -8915,21 +9514,46 @@ function renderProductTrend() {
   const bucketCmp=bucketMode==='month'?monthCmp:undefined; // week/quarter 키는 사전순 정렬로 충분
   const unitLabel={week:'주간',month:'월간',quarter:'분기'}[bucketMode];
   const avgLabel={week:'주평균',month:'월평균',quarter:'분기평균'}[bucketMode];
-  const byProduct={};
-  // v21.12: 파츠유형에 Product Parts가 없는 행(인쇄·포장 전용 발주)은 제외 — 같은 제품이 본품 발주와
-  // 인쇄 발주(박·실크 등)로 나뉘어 수량이 중복 집계되는 것을 방지. 단 수주처가 신시어리웨일즈 주식회사인
-  // 행은 예외(자사 제작 건은 인쇄 파츠 행이 곧 제품 발주 기록이라 제외하면 그 제품이 통째로 사라짐)
+  // v23.7: 빅딜(그 제품 발주수량 분포에서 중앙값 대비 크게 벗어나는 이상치) 제외 — 사용자
+  // 요청(2026-07-27), 기준 확정(2026-07-29: "전체 주문량 중앙값에서 크게 벗어나는 수치").
+  // "제품 전체 대비 80%"·"그 달 버킷 대비 80%"·"중앙값의 고정 배수"를 차례로 시도했으나 각각
+  // 반복 대량발주 누락/정상 소량주문 오탐/정상 고매출 제품 과다 제외 문제가 있었음 — 표본 크기에
+  // 흔들리지 않고 "분포에서 확 튀는 값"을 잡아내는 표준 통계 기법인 IQR(사분위범위) 이상치
+  // 판정으로 교체. Q1·Q3(1·3사분위수)를 구해 Q3+1.5×IQR을 넘는 값만 이상치로 제외한다
+  // (박스플롯의 통상적인 "울타리" 기준과 동일 — 예: UV펜은 정상 범위가 50~635개인데 1,005개부터
+  // 뚜렷한 간격을 두고 튀어 그 이상만 제외, 410~635개 같은 정상 변동은 그대로 유지).
+  // 표본이 5건 미만이면 사분위수가 불안정해 제외 대상에서 뺀다.
+  const rowsByProduct={};
   D.order.filter(r=>!isStock(r)&&(!q||matchesSearch(r,q)||catTokenMatch(getOrderRowCategoryStr(r),nq))
     &&(!isCustom||inSelDateRange(r['과업지시일자']))
     &&(partsType(r).includes('Product Parts')||(r['수주처']||'').trim()==='신시어리웨일즈 주식회사')).forEach(r=>{
     const name=(r['산출물']||'').trim(); if(!name) return; // 비스포크(산출물 없음)는 반복성 없어 제외
     const mk=bucketOf(r['과업지시일자']); if(!mk) return;
     const qty=pa(r['발주지시수량']);
-    if(!byProduct[name]) byProduct[name]={name,total:0,months:{},supCnt:{}};
-    byProduct[name].months[mk]=(byProduct[name].months[mk]||0)+qty;
-    byProduct[name].total+=qty;
     const s=(r['수주처']||'').trim();
-    if(s) byProduct[name].supCnt[s]=(byProduct[name].supCnt[s]||0)+1;
+    (rowsByProduct[name]=rowsByProduct[name]||[]).push({mk,qty,s});
+  });
+  function percentileOf(sortedArr,p){
+    if(!sortedArr.length) return 0;
+    const idx=(sortedArr.length-1)*p, lo=Math.floor(idx), hi=Math.ceil(idx);
+    return lo===hi?sortedArr[lo]:sortedArr[lo]+(sortedArr[hi]-sortedArr[lo])*(idx-lo);
+  }
+  const byProduct={};
+  Object.entries(rowsByProduct).forEach(([name,rows])=>{
+    const qtys=rows.map(x=>x.qty).sort((a,b)=>a-b);
+    let cut=Infinity;
+    if(qtys.length>=5){
+      const q1=percentileOf(qtys,0.25), q3=percentileOf(qtys,0.75);
+      cut=q3+1.5*(q3-q1);
+    }
+    const v={name,total:0,months:{},supCnt:{},bigDealQty:0,bigDealCnt:0};
+    rows.forEach(x=>{
+      if(x.qty>cut){ v.bigDealQty+=x.qty; v.bigDealCnt++; return; }
+      v.months[x.mk]=(v.months[x.mk]||0)+x.qty;
+      v.total+=x.qty;
+      if(x.s) v.supCnt[x.s]=(v.supCnt[x.s]||0)+1;
+    });
+    byProduct[name]=v;
   });
   const mainSup=v=>Object.entries(v.supCnt).sort((a,b)=>b[1]-a[1])[0]?.[0]||'';
   const sorted=Object.entries(byProduct).sort((a,b)=>b[1].total-a[1].total);
@@ -8947,11 +9571,12 @@ function renderProductTrend() {
   el.innerHTML=`
     <div class="card"><div class="card-header"><div class="card-title">제품별 ${unitLabel} 발주수량 추이 (Top 10)</div><div class="card-sub">총 ${sorted.length}개 제품 · 발주지시수량 기준 · 재고생산 제외 · ${periodNote} · <b>파츠유형 Product Parts 포함 발주만</b>(인쇄·포장 전용 발주 행 제외로 중복 집계 방지, 신시어리웨일즈 제작 건은 예외) · 검색창에 <b>Goods Category</b>(예: Drinkware, Stationery)를 입력하면 해당 카테고리 제품 전체 표시${q?' · <b>검색 필터 적용</b>':''}</div></div>
     <div class="ch" style="height:320px"><canvas id="ch-prod-trend"></canvas></div></div>
-    <div class="card" style="margin-top:12px"><div class="card-header"><div class="card-title">제품별 발주 요약 <span style="font-weight:400;font-size:11px;color:var(--text3)">(${URGENT_EXCLUDE_SUP} 제작 제품 제외${q?' · 검색 필터 적용':''})</span></div></div>
+    <div class="card" style="margin-top:12px"><div class="card-header"><div class="card-title">제품별 발주 요약 <span style="font-weight:400;font-size:11px;color:var(--text3)">(${URGENT_EXCLUDE_SUP} 제작 제품 제외${q?' · 검색 필터 적용':''} · 한 건이 그 제품 전체의 80% 이상을 차지하는 빅딜 건은 추이·합계에서 제외하고 별도 표기)</span></div></div>
     <div class="tbl-wrap"><table class="tbl"><thead><tr><th class="rank">#</th><th>제품명</th><th>제작 협력사</th><th class="num">누적 발주수량</th><th class="num">${avgLabel}</th>${shownMonths.map(m=>`<th class="num" style="font-size:10px">${shownLbl(m)}</th>`).join('')}</tr></thead><tbody>
     ${summarySorted.slice(0,20).map(([k,v],i)=>{
       const avg=allMonths.length>0?Math.round(v.total/allMonths.length):0;
-      return `<tr><td class="rank">${i+1}</td><td>${esc(v.name||k)}</td><td style="font-size:11px;color:var(--text3)">${esc(crop(mainSup(v),16))}</td><td class="num">${fmtN(v.total)}</td><td class="num">${fmtN(avg)}</td>${shownMonths.map(m=>`<td class="num">${v.months[m]?fmtN(v.months[m]):'—'}</td>`).join('')}</tr>`;
+      const bigDealBadge=v.bigDealQty>0?` <span class="tag tag-gray" style="font-size:9px" title="추이·합계에서 제외됨">빅딜 제외 ${fmtN(v.bigDealQty)}개(${v.bigDealCnt}건)</span>`:'';
+      return `<tr><td class="rank">${i+1}</td><td>${esc(v.name||k)}</td><td style="font-size:11px;color:var(--text3)">${esc(crop(mainSup(v),16))}</td><td class="num">${fmtN(v.total)}${bigDealBadge}</td><td class="num">${fmtN(avg)}</td>${shownMonths.map(m=>`<td class="num">${v.months[m]?fmtN(v.months[m]):'—'}</td>`).join('')}</tr>`;
     }).join('')||emptyRow(5,q?'검색 결과 없음':'데이터 없음')}
     </tbody></table></div></div>`;
 
@@ -9780,7 +10405,8 @@ function togglePortfolioActive(checked) {
 function renderPortfolioChangeReview(vendors, quadColors) {
   const el = document.getElementById('portfolio-change-review');
   if (!el) return;
-  const flagged = vendors.filter(v => v._grade === 'C' || v._grade === 'D').sort((a,b) => a._total - b._total);
+  const terminated=getTerminatedVendorNames();
+  const flagged = vendors.filter(v => (v._grade === 'C' || v._grade === 'D') && !terminated.has(v.name)).sort((a,b) => a._total - b._total);
   if (!flagged.length) { el.innerHTML = `<div style="font-size:12px;color:var(--text3);padding:8px 0">C·D등급 협력사가 없습니다.</div>`; return; }
   el.innerHTML = `<table class="tbl"><thead><tr>
     <th class="rank">#</th><th>협력사</th><th>담당자</th><th style="width:55px">등급</th><th style="width:60px">Tier</th>
@@ -10265,6 +10891,7 @@ const AUTO_CSV_DEFAULT={
   sup:'sup.csv',
   ci:'ci.csv',
   stockout_list:'stockout_list.csv',
+  sales_status_history:'sales_status_history.csv',
   dashboard_period_summary:'dashboard_period_summary.csv',
   dashboard_group_summary:'dashboard_group_summary.csv',
   dashboard_sku_snapshot:'dashboard_sku_snapshot.csv',
@@ -10281,13 +10908,13 @@ const AUTO_CSV_DEFAULT={
   price_chg:'price_chg.csv'
 };
 function autoLoadRaw(){
-  fetch('CSV/_manifest.json').then(r=>r.ok?r.json():null).catch(()=>null).then(man=>{
+  fetch(dataUrl('CSV/_manifest.json')).then(r=>r.ok?r.json():null).catch(()=>null).then(man=>{
     const map=Object.assign({},AUTO_CSV_DEFAULT,man||{});
     const keys=Object.keys(map); let done=0;
     if(!keys.length) return;
     const bust='?t='+Date.now();
     keys.forEach(k=>{
-      fetch('CSV/'+encodeURIComponent(map[k])+bust).then(r=>{if(!r.ok)throw 0;return r.text();}).then(txt=>{
+      fetch(dataUrl('CSV/'+encodeURIComponent(map[k]))+bust).then(r=>{if(!r.ok)throw 0;return r.text();}).then(txt=>{
         const rows=parseCSV(txt);
         if(rows&&rows.length){
           D[k]=rows; UD[k]='자동로드';
@@ -10460,8 +11087,8 @@ function fetchWeeklyFile(prefix,y,w){
   const file=weeklyFileName(prefix,y,w);
   const label=y+'-W'+String(w).padStart(2,'0');
   const wrap=txt=>({rows:parseCSV(txt),y,w,label});
-  return fetch('CSV/'+file).then(r=>{ if(r.ok) return r.text().then(wrap); throw 0; })
-    .catch(()=>fetch('CSV_BANK/'+y+'_W'+String(w).padStart(2,'0')+'/'+file).then(r=>{ if(r.ok) return r.text().then(wrap); return null; }).catch(()=>null));
+  return fetch(dataUrl('CSV/'+file)).then(r=>{ if(r.ok) return r.text().then(wrap); throw 0; })
+    .catch(()=>fetch(dataUrl('CSV_BANK/'+y+'_W'+String(w).padStart(2,'0')+'/'+file)).then(r=>{ if(r.ok) return r.text().then(wrap); return null; }).catch(()=>null));
 }
 function fetchLatestWeekly(prefix,lookback){
   const start=isoWeekOf(new Date());
@@ -10769,6 +11396,7 @@ window.addEventListener('load',()=>{
   loadPriorYearArchive();
   loadCostDB();
   loadPriceHistory();
+  loadBomMultiplier();
   // v22: 협력사·매입 현황(sec-supplier) / 협력사유형별 제품군(sec-supplier-product) 섹션을
   // 공급망 포트폴리오 서브탭 패널로 입양 — 렌더러들이 내부 id(tb-sup-pur 등)를 대상으로 하므로
   // DOM만 옮기면 그대로 동작. sec- 접두 id는 nav의 전체 숨김 대상이라 입양 시 id 교체.
