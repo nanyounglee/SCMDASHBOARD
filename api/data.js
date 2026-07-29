@@ -7,9 +7,16 @@
 // (api/data/[...path].js mapping /api/data/*), but on the deployed Vercel
 // project any request path with 2+ segments under /api/data/ returned a
 // platform-level 404 while 1-segment paths worked fine (confirmed by live
-// testing, not just a hunch) — nested dynamic segments were not being
-// matched correctly. Switched to a flat function reading the file path from
-// a query string instead, which sidesteps path-segment routing entirely.
+// testing) — switched to a flat function reading the file path from a query
+// string, which sidesteps path-segment routing entirely.
+//
+// v23.7b: GitHub's default Contents API response (base64 JSON) only includes
+// `content` for files <=1MB — order.csv (~60MB) came back without it
+// ("unexpected GitHub API response") since larger files omit the field.
+// Requesting the raw media type instead returns the file bytes directly in
+// the response body regardless of size, and we stream that straight through
+// to the client rather than buffering it into one Buffer first.
+const { Readable } = require('stream');
 const { isSessionValid } = require('./_session');
 
 const EXT_TYPES = {
@@ -47,7 +54,7 @@ module.exports = async (req, res) => {
     ghRes = await fetch(`https://api.github.com/repos/${repo}/contents/${filePath}`, {
       headers: {
         Authorization: `Bearer ${token}`,
-        Accept: 'application/vnd.github+json',
+        Accept: 'application/vnd.github.raw+json',
         'X-GitHub-Api-Version': '2022-11-28',
       },
     });
@@ -60,20 +67,13 @@ module.exports = async (req, res) => {
     res.status(404).json({ ok: false, error: 'file not found' });
     return;
   }
-  if (!ghRes.ok) {
+  if (!ghRes.ok || !ghRes.body) {
     res.status(502).json({ ok: false, error: `GitHub API ${ghRes.status}` });
     return;
   }
 
-  const json = await ghRes.json();
-  if (!json.content || json.encoding !== 'base64') {
-    res.status(502).json({ ok: false, error: 'unexpected GitHub API response (directory?)' });
-    return;
-  }
-  const buf = Buffer.from(json.content, 'base64');
   const ext = (filePath.split('.').pop() || '').toLowerCase();
-
   res.setHeader('Content-Type', EXT_TYPES[ext] || 'application/octet-stream');
   res.setHeader('Cache-Control', 'private, no-store');
-  res.status(200).send(buf);
+  Readable.fromWeb(ghRes.body).pipe(res);
 };
