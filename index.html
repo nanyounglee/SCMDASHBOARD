@@ -9510,13 +9510,15 @@ function renderProductTrend() {
   const bucketCmp=bucketMode==='month'?monthCmp:undefined; // week/quarter 키는 사전순 정렬로 충분
   const unitLabel={week:'주간',month:'월간',quarter:'분기'}[bucketMode];
   const avgLabel={week:'주평균',month:'월평균',quarter:'분기평균'}[bucketMode];
-  // v23.7: 빅딜(한 발주 건이 그 제품 전체 발주수량의 80% 이상을 차지) 제외 — 사용자 요청(2026-07-27).
-  // 일회성 대량 발주 한 건이 추이 평균을 크게 왜곡하므로, 제품별 전체 발주 건 대비 80% 이상인
-  // 단일 건은 추이·합계에서 빼고 별도로 "빅딜 제외 수량"만 표기한다. 발주 건이 1건뿐인 제품은
-  // (비교 대상이 없어 "왜곡"이라 볼 수 없으므로) 제외 대상에서 뺀다.
-  // (2026-07-29 재검토: 시점 버킷 기준·중앙값 배수 기준도 시도했으나, 전자는 반복 대량발주 고객
-  // 건이 누락되고 후자는 UV펜 등 정상 고매출 제품까지 과도하게 걸러내 원복 — 정확한 기준은
-  // 사용자와 재협의 필요.)
+  // v23.7: 빅딜(그 제품 발주수량 분포에서 중앙값 대비 크게 벗어나는 이상치) 제외 — 사용자
+  // 요청(2026-07-27), 기준 확정(2026-07-29: "전체 주문량 중앙값에서 크게 벗어나는 수치").
+  // "제품 전체 대비 80%"·"그 달 버킷 대비 80%"·"중앙값의 고정 배수"를 차례로 시도했으나 각각
+  // 반복 대량발주 누락/정상 소량주문 오탐/정상 고매출 제품 과다 제외 문제가 있었음 — 표본 크기에
+  // 흔들리지 않고 "분포에서 확 튀는 값"을 잡아내는 표준 통계 기법인 IQR(사분위범위) 이상치
+  // 판정으로 교체. Q1·Q3(1·3사분위수)를 구해 Q3+1.5×IQR을 넘는 값만 이상치로 제외한다
+  // (박스플롯의 통상적인 "울타리" 기준과 동일 — 예: UV펜은 정상 범위가 50~635개인데 1,005개부터
+  // 뚜렷한 간격을 두고 튀어 그 이상만 제외, 410~635개 같은 정상 변동은 그대로 유지).
+  // 표본이 5건 미만이면 사분위수가 불안정해 제외 대상에서 뺀다.
   const rowsByProduct={};
   D.order.filter(r=>!isStock(r)&&(!q||matchesSearch(r,q)||catTokenMatch(getOrderRowCategoryStr(r),nq))
     &&(!isCustom||inSelDateRange(r['과업지시일자']))
@@ -9527,13 +9529,22 @@ function renderProductTrend() {
     const s=(r['수주처']||'').trim();
     (rowsByProduct[name]=rowsByProduct[name]||[]).push({mk,qty,s});
   });
+  function percentileOf(sortedArr,p){
+    if(!sortedArr.length) return 0;
+    const idx=(sortedArr.length-1)*p, lo=Math.floor(idx), hi=Math.ceil(idx);
+    return lo===hi?sortedArr[lo]:sortedArr[lo]+(sortedArr[hi]-sortedArr[lo])*(idx-lo);
+  }
   const byProduct={};
   Object.entries(rowsByProduct).forEach(([name,rows])=>{
-    const naiveTotal=rows.reduce((s,x)=>s+x.qty,0);
-    const bigDealCut=rows.length>1?naiveTotal*0.8:Infinity;
+    const qtys=rows.map(x=>x.qty).sort((a,b)=>a-b);
+    let cut=Infinity;
+    if(qtys.length>=5){
+      const q1=percentileOf(qtys,0.25), q3=percentileOf(qtys,0.75);
+      cut=q3+1.5*(q3-q1);
+    }
     const v={name,total:0,months:{},supCnt:{},bigDealQty:0,bigDealCnt:0};
     rows.forEach(x=>{
-      if(naiveTotal>0&&x.qty>=bigDealCut){ v.bigDealQty+=x.qty; v.bigDealCnt++; return; }
+      if(x.qty>cut){ v.bigDealQty+=x.qty; v.bigDealCnt++; return; }
       v.months[x.mk]=(v.months[x.mk]||0)+x.qty;
       v.total+=x.qty;
       if(x.s) v.supCnt[x.s]=(v.supCnt[x.s]||0)+1;
