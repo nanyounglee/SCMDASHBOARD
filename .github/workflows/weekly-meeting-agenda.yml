@@ -2,6 +2,9 @@ name: weekly-meeting-agenda
 
 # 매주 목요일 16:00 KST (= 07:00 UTC) 회의 직후 회의자료를 최신화한다.
 # 회의 시간: 목요일 15~16시 → 16시 갱신으로 당일 최신 안건 반영
+#
+# v23.7: CSV/meeting_agenda.json은 private repo(nanyounglee/-private-repo)로 이관됨 —
+# 상세는 weekly-airtable.yml 상단 주석 참고.
 on:
   schedule:
     - cron: '0 7 * * 4'
@@ -19,19 +22,24 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
 
       - uses: actions/setup-node@v4
         with:
           node-version: '20'
 
+      - name: private 데이터 저장소 클론
+        env:
+          PRIVATE_REPO_TOKEN: ${{ secrets.PRIVATE_REPO_TOKEN }}
+        run: git clone --quiet https://x-access-token:${PRIVATE_REPO_TOKEN}@github.com/nanyounglee/-private-repo.git /tmp/data-repo
+
       - name: Fetch 회의자료 (주간 회의록 프롬프트 복사 버튼용 JSON)
+        working-directory: /tmp/data-repo
         env:
           AIRTABLE_TOKEN: ${{ secrets.AIRTABLE_TOKEN }}
-        run: node scripts/fetch_meeting_agenda.mjs
+        run: node "$GITHUB_WORKSPACE/scripts/fetch_meeting_agenda.mjs"
 
-      - name: Commit & push if changed
+      - name: private 데이터 저장소에 커밋 & 푸시
+        working-directory: /tmp/data-repo
         run: |
           git config user.name "airtable-bot"
           git config user.email "actions@github.com"
@@ -41,6 +49,5 @@ jobs:
           else
             WK=$(TZ=Asia/Seoul date +%G-W%V)
             git commit -m "chore: 주간 회의자료 JSON 자동 커밋 ($WK)"
-            git pull --rebase origin main
             git push origin main
           fi

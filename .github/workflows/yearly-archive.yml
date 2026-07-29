@@ -10,6 +10,9 @@ name: yearly-archive
 # 놓친 경우 workflow_dispatch로 수동 실행하되, order.csv가 이미 새해 데이터로
 # 바뀌었으면 스크립트의 연도 검증이 아카이빙을 거부하므로 그때는
 # CSV_BANK/{연도}_W##/ 주간 아카이브에서 마지막 주차 파일을 수동 복사한다.
+#
+# v23.7: CSV/CSV_BANK는 private repo(nanyounglee/-private-repo)로 이관됨 — 상세는
+# weekly-airtable.yml 상단 주석 참고.
 on:
   schedule:
     - cron: '10 15 1 1 *'
@@ -36,12 +39,19 @@ jobs:
         with:
           node-version: '20'
 
+      - name: private 데이터 저장소 클론
+        env:
+          PRIVATE_REPO_TOKEN: ${{ secrets.PRIVATE_REPO_TOKEN }}
+        run: git clone --quiet https://x-access-token:${PRIVATE_REPO_TOKEN}@github.com/nanyounglee/-private-repo.git /tmp/data-repo
+
       - name: 연말 아카이브 생성
+        working-directory: /tmp/data-repo
         env:
           ARCHIVE_YEAR: ${{ inputs.archive_year }}
-        run: node scripts/archive_year_end.mjs
+        run: node "$GITHUB_WORKSPACE/scripts/archive_year_end.mjs"
 
-      - name: Commit & push if changed
+      - name: private 데이터 저장소에 커밋 & 푸시
+        working-directory: /tmp/data-repo
         run: |
           git config user.name "archive-bot"
           git config user.email "actions@github.com"
@@ -50,6 +60,5 @@ jobs:
             echo "변경 없음 — 커밋 생략"
           else
             git commit -m "chore: 연말 데이터 아카이브 (CSV_BANK/archive)"
-            git pull --rebase origin main
             git push origin main
           fi
