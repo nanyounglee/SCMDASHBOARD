@@ -15,6 +15,244 @@
       "detail": ""
     },
     {
+      "id": "part_grad|PT1907|2026_W31",
+      "type": "part_grad",
+      "name": "PT1907-색박(음각)_50x50_청산인쇄",
+      "date": "2026-07-30",
+      "detail": "(주)청산인쇄"
+    },
+    {
+      "id": "part_grad|PT1968|2026_W31",
+      "type": "part_grad",
+      "name": "PT1968-색박(음각)_150x200_청산인쇄",
+      "date": "2026-07-30",
+      "detail": "(주)청산인쇄"
+    },
+    {
+      "id": "part_grad|PT1102|2026_W31",
+      "type": "part_grad",
+      "name": "PT1102-실크_유광블랙1색_소프트터치블루투스키보드_신명인쇄",
+      "date": "2026-07-30",
+      "detail": "신명인쇄"
+    },
+    {
+      "id": "part_grad|PT2624|2026_W31",
+      "type": "part_grad",
+      "name": "PT2624-샘플(본제작과동일옵션)",
+      "date": "2026-07-30",
+      "detail": "신명인쇄"
+    },
+    {
+      "id": "part_price|PT5532|2026_W31",
+      "type": "part_price",
+      "name": "실크_1색(화이트.블랙)_전면_신명인쇄",
+      "date": "2026-07-30",
+      "detail": "평균 96.5% 인하 · 신명인쇄"
+    },
+    {
+      "id": "part_price|PT5535|2026_W31",
+      "type": "part_price",
+      "name": "샘플(실크)_본제작과동일옵션_신명인쇄",
+      "date": "2026-07-30",
+      "detail": "평균 82.1% 인하 · 신명인쇄"
+    },
+    {
+      "id": "part_price|PT5544|2026_W31",
+      "type": "part_price",
+      "name": "샘플(실크)_본제작과동일옵션_신명인쇄",
+      "date": "2026-07-30",
+      "detail": "평균 83.0% 인하 · 신명인쇄"
+    },
+    {
+      "id": "part_price|PT4855|2026_W31",
+      "type": "part_price",
+      "name": "자수_4도_하단250x48mm_개별시안_유노타월유노디자인",
+      "date": "2026-07-30",
+      "detail": "평균 216.9% 상승 · 유노타월 유노디자인"
+    },
+    {
+      "id": "part_new|PT5587|2026_W31",
+      "type": "part_new",
+      "name": "PT5587-공박(음각)_전면_유엘상사",
+      "date": "2026-07-30",
+      "detail": "유엘상사"
+    },
+    {
+      "id": "part_grad|PT1105|2026_W31",
+      "type": "part_grad",
+      "name": "PT1105-오픈박스(커스텀인쇄)_블랙_100-1",
+      "date": "2026-07-30",
+      "detail": "(주)청산인쇄"
+    },
+    {
+      "id": "part_grad|PT1107|2026_W31",
+      "type": "part_grad",
+      "name": "PT1107-오픈박스(커스텀인쇄)_화이트+옵셋풀컬러_100-1",
+      "date": "2026-07-30",
+      "detail": "(주)청산인쇄"
+    },
+    {
+      "id": "part_grad|PT1108|2026_W31",
+      "type": "part_grad",
+      "name": "PT1108-오픈박스(전용)_블랙_100-1",
+      "date": "2026-07-30",
+      "detail": "(주)청산인쇄"
+    },
+    {
+      "id": "part_price|PT5321|2026_W31",
+      "type": "part_price",
+      "name": "단품박스(전용)_화이트",
+      "date": "2026-07-30",
+      "detail": "평균 0.8% 인하 · \"Shanghai Ansheng insulation Technology Co.,Ltd\""
+    },
+    {
+      "id": "part_price|PT5325|2026_W31",
+      "type": "part_price",
+      "name": "단품박스(전용)_화이트",
+      "date": "2026-07-30",
+      "detail": "평균 0.8% 인하 · \"Shanghai Ansheng insulation Technology Co.,Ltd\""
+    },
+    {
+      "id": "part_grad|PT1103|2026_W31",
+      "type": "part_grad",
+      "name": "PT1103-웰컴페이퍼(커스텀인쇄)_화이트+디지털풀컬러_000-1",
+      "date": "2026-07-30",
+      "detail": "서울디지털인쇄협동조합"
+    },
+    {
+      "id": "part_grad|PT1104|2026_W31",
+      "type": "part_grad",
+      "name": "PT1104-사각스티커(커스텀인쇄)_화이트+디지털풀컬러_000-49",
+      "date": "2026-07-30",
+      "detail": "서울디지털인쇄협동조합"
+    },
+    {
+      "id": "part_grad|PT1106|2026_W31",
+      "type": "part_grad",
+      "name": "PT1106-소프트터치블루투스키보드_블랙",
+      "date": "2026-07-30",
+      "detail": "(주)제이컴정보통신"
+    },
+    {
+      "id": "part_grad|PT2755|2026_W31",
+      "type": "part_grad",
+      "name": "PT2755-샘플(소프트터치블루투스키보드)",
+      "date": "2026-07-30",
+      "detail": "(주)제이컴정보통신"
+    },
+    {
+      "id": "part_price|PT5319|2026_W31",
+      "type": "part_price",
+      "name": "베러댄텀블러본품_아이보리",
+      "date": "2026-07-30",
+      "detail": "평균 81.0% 인하 · \"Shanghai Ansheng insulation Technology Co.,Ltd\""
+    },
+    {
+      "id": "part_price|PT5320|2026_W31",
+      "type": "part_price",
+      "name": "베러댄텀블러본품_블랙",
+      "date": "2026-07-30",
+      "detail": "평균 81.0% 인하 · \"Shanghai Ansheng insulation Technology Co.,Ltd\""
+    },
+    {
+      "id": "part_price|PT5323|2026_W31",
+      "type": "part_price",
+      "name": "픽미핸들텀블러본품_아이보리",
+      "date": "2026-07-30",
+      "detail": "평균 81.0% 인하 · \"Shanghai Ansheng insulation Technology Co.,Ltd\""
+    },
+    {
+      "id": "part_price|PT5103|2026_W31",
+      "type": "part_price",
+      "name": "킵세이프마그넷배터리MAX(10000mAh)",
+      "date": "2026-07-30",
+      "detail": "평균 5.0% 상승 · 감성코퍼레이션 주식회사"
+    },
+    {
+      "id": "part_price|PT5104|2026_W31",
+      "type": "part_price",
+      "name": "킵세이프마그넷배터리MAX(5000mAh)",
+      "date": "2026-07-30",
+      "detail": "평균 4.8% 상승 · 감성코퍼레이션 주식회사"
+    },
+    {
+      "id": "part_price|PT5111|2026_W31",
+      "type": "part_price",
+      "name": "샘플(킵세이프마그넷배터리MAX)(5000mAh)",
+      "date": "2026-07-30",
+      "detail": "평균 3.2% 상승 · 감성코퍼레이션 주식회사"
+    },
+    {
+      "id": "part_price|PT5112|2026_W31",
+      "type": "part_price",
+      "name": "샘플(킵세이프마그넷배터리MAX)(10000mAh)",
+      "date": "2026-07-30",
+      "detail": "평균 3.5% 상승 · 감성코퍼레이션 주식회사"
+    },
+    {
+      "id": "part_price|PT5023|2026_W31",
+      "type": "part_price",
+      "name": "슬리브(커스텀)",
+      "date": "2026-07-30",
+      "detail": "평균 29.7% 인하 · 엔엠텍코리아주식회사"
+    },
+    {
+      "id": "part_price|PT5540|2026_W31",
+      "type": "part_price",
+      "name": "가죽슬리브_컬러",
+      "date": "2026-07-30",
+      "detail": "평균 11.2% 상승 · 유엘상사"
+    },
+    {
+      "id": "part_price|PT3162|2026_W31",
+      "type": "part_price",
+      "name": "포시즌티셔츠_컬러",
+      "date": "2026-07-30",
+      "detail": "평균 14.1% 인하 · 톰스코리아 주식회사"
+    },
+    {
+      "id": "part_price|PT3215|2026_W31",
+      "type": "part_price",
+      "name": "포시즌티셔츠(XXL.XXXL)_컬러",
+      "date": "2026-07-30",
+      "detail": "평균 28.6% 상승 · 톰스코리아 주식회사"
+    },
+    {
+      "id": "part_new|PT5588|2026_W31",
+      "type": "part_new",
+      "name": "PT5588-조립산출물_노트북슬리브",
+      "date": "2026-07-30",
+      "detail": ""
+    },
+    {
+      "id": "part_new|PT5589|2026_W31",
+      "type": "part_new",
+      "name": "PT5589-노트북슬리브(14인치)_추상적산출물",
+      "date": "2026-07-30",
+      "detail": ""
+    },
+    {
+      "id": "part_new|PT5590|2026_W31",
+      "type": "part_new",
+      "name": "PT5590-노트북슬리브(16인치)_추상적산출물",
+      "date": "2026-07-30",
+      "detail": ""
+    },
+    {
+      "id": "part_new|PT5591|2026_W31",
+      "type": "part_new",
+      "name": "PT5591-노트북슬리브(공박)_추상적산출물",
+      "date": "2026-07-30",
+      "detail": ""
+    },
+    {
+      "id": "part_new|PT5592|2026_W31",
+      "type": "part_new",
+      "name": "PT5592-외주생산총공정산출물_노트북슬리브",
+      "date": "2026-07-30",
+      "detail": ""
+    },
+    {
       "id": "part_new|PT5582|2026_W31",
       "type": "part_new",
       "name": "PT5582-실크1도_전면_90x90_개미기획",
@@ -2248,5 +2486,5 @@
       "detail": ""
     }
   ],
-  "updatedAt": "2026-07-27T05:36:37.146Z"
+  "updatedAt": "2026-07-30T01:20:56.754Z"
 }
