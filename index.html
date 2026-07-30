@@ -945,6 +945,7 @@ a{color:var(--blue);text-decoration:none}
         <div class="tab active" onclick="swTab(this,'pf','pf-tab-main')">공급망 포트폴리오</div>
         <div class="tab" onclick="swTab(this,'pf','pf-tab-supplier')">협력사 · 매입 현황</div>
         <div class="tab" onclick="swTab(this,'pf','pf-tab-supprod')">협력사유형별 제품군</div>
+        <div class="tab" onclick="swTab(this,'pf','pf-tab-mgr')">담당자별 협력사</div>
       </div>
       <div id="pf-tab-main" class="tab-panel active">
         <!-- v22.9: 1) 등록/활성 버튼 → 2) Tier별 협력사 수+매트릭스+도넛 → 3) 공통 상세 협력사 목록 → 4) 협력사 변경 검토 진행현황 → 5) 협력사 변경 검토 리스트 순서로 재배치 (사용자 요청) -->
@@ -1003,6 +1004,7 @@ a{color:var(--blue);text-decoration:none}
       </div>
       <div id="pf-tab-supplier" class="tab-panel" style="display:none"></div>
       <div id="pf-tab-supprod" class="tab-panel" style="display:none"></div>
+      <div id="pf-tab-mgr" class="tab-panel" style="display:none"></div>
     </div>
     <!-- QMS -->
     <div id="sec-qms" style="display:none">
@@ -6950,6 +6952,7 @@ function swTab(el,group,targetId) {
   if (targetId==='tab-iss-px') renderIssueRateMatrix();
   if (targetId==='tab-iss-re') renderRecurringIssues();
   if (targetId==='pf-tab-supprod') renderSupplierProduct(); // v22: 포트폴리오 서브탭
+  if (targetId==='pf-tab-mgr') renderSupplierByManager(); // v23.8: 담당자별 협력사 서브탭(사용자 요청)
   if (targetId==='tab-iss-ci') renderCICharts(); // v22: 숨김 상태에서 그려진 차트는 크기 0 — 탭 활성화 시 재렌더
   if (targetId==='tab-sup-pur') updatePurchaseTabs(); // v22: 협력사·매입 통합 — 매입 서브탭 활성화 시 차트 재렌더
   if (targetId==='pf-tab-supplier') updatePurchaseTabs(); // v22.4: 내부 탭 제거 후 바깥 서브탭 전환 시 차트 재렌더
@@ -9750,6 +9753,59 @@ function renderSupplierProduct() {
     </tbody></table></div></div>`;
 }
 
+// ===== 3-12b. 담당자별 협력사 (사용자 요청, 2026-07-30) =====
+function renderSupplierByManager() {
+  const el=document.getElementById('pf-tab-mgr');
+  if(!D.sup) { el.innerHTML='<div class="card empty">공급망_RAW CSV를 업로드해주세요.</div>'; return; }
+  const byMgr={};
+  D.sup.forEach(r=>{
+    const name=(r['협력사 이름']||'').trim(); if(!name) return;
+    const mgr=(r['발주담당자']||'').trim()||'미지정';
+    (byMgr[mgr]=byMgr[mgr]||[]).push(name);
+  });
+  const sorted=Object.entries(byMgr).sort((a,b)=>b[1].length-a[1].length);
+  el.innerHTML=`
+    <div class="card">
+      <div class="card-header"><div><div class="card-title">발주담당자별 담당 협력사</div><div class="card-sub">담당자 ${sorted.length}명 · 등록 협력사 ${Object.values(byMgr).reduce((s,v)=>s+v.length,0)}곳 · 담당자명 클릭 시 선택 기간 발주수량·매입금액·이슈·주요 제품 확인</div></div></div>
+      <div class="tbl-wrap"><table class="tbl"><thead><tr><th class="rank">#</th><th>발주담당자</th><th class="num">협력사 수</th><th>담당 협력사</th></tr></thead><tbody>
+      ${sorted.map(([mgr,list],i)=>`<tr><td class="rank">${i+1}</td><td style="font-weight:600;color:var(--blue);cursor:pointer" onclick="openMgrVendorDetail('${esc(mgr).replace(/'/g,"\\'")}')">${esc(mgr)}</td><td class="num">${list.length}</td><td style="font-size:11px;color:var(--text2)">${list.slice().sort((a,b)=>a.localeCompare(b,'ko')).map(esc).join(', ')}</td></tr>`).join('')||emptyRow(4,'데이터 없음')}
+      </tbody></table></div>
+    </div>`;
+}
+// 담당자 클릭 시 — 그 담당자의 협력사별 "선택 기간" 발주수량·매입금액·이슈·주요 제품(매입금액 상위)
+function openMgrVendorDetail(mgr) {
+  const ov=document.getElementById('modal-overlay');
+  document.getElementById('modal-tabs-el').innerHTML='';
+  document.getElementById('modal-title').textContent='담당자별 협력사 발주 현황 — '+mgr;
+  const body=document.getElementById('modal-body');
+  ov.classList.add('open');
+  const vendors=(D.sup||[]).filter(r=>((r['발주담당자']||'').trim()||'미지정')===mgr).map(r=>(r['협력사 이름']||'').trim()).filter(Boolean);
+  const vendorSet=new Set(vendors);
+  const stats={};
+  vendors.forEach(v=>{ stats[v]={qty:0,amt:0,issue:0,prodAmt:{}}; });
+  getFilteredAllOrders().filter(r=>!isStock(r)).forEach(r=>{
+    const v=(r['수주처']||'').trim(); if(!vendorSet.has(v)) return;
+    const s=stats[v];
+    s.qty+=pa(String(r['발주지시수량']||''));
+    s.amt+=pa(r['공급가액']);
+    const prod=(r['산출물']||'').trim();
+    if(prod) s.prodAmt[prod]=(s.prodAmt[prod]||0)+pa(r['공급가액']);
+  });
+  (D.issue||[]).filter(r=>inSelDateRange(issueDateStr(r))).forEach(r=>{
+    const v=(r['출하장소']||r['수주처']||'').trim(); if(!vendorSet.has(v)) return;
+    stats[v].issue++;
+  });
+  const rows=vendors.map(v=>{
+    const s=stats[v];
+    const topProducts=Object.entries(s.prodAmt).sort((a,b)=>b[1]-a[1]).slice(0,3).map(([name])=>name);
+    return {v,...s,topProducts};
+  }).sort((a,b)=>b.amt-a.amt);
+  body.innerHTML=`
+    <div style="font-size:11px;color:var(--text3);margin-bottom:10px">선택 기간(상단 기간 선택 기준) · 재고생산 제외 · 협력사명 클릭 시 전체 이력 상세로 이동</div>
+    <div class="tbl-wrap"><table class="tbl"><thead><tr><th class="rank">#</th><th>협력사</th><th class="num">발주수량</th><th class="num">매입금액</th><th class="num">이슈</th><th>주요 제작 제품</th></tr></thead><tbody>
+    ${rows.map((r,i)=>`<tr><td class="rank">${i+1}</td><td style="color:var(--blue);cursor:pointer" onclick="openSupplierDetailModal('${esc(r.v).replace(/'/g,"\\'")}')">${esc(r.v)}</td><td class="num">${r.qty.toLocaleString()}</td><td class="num">${r.amt?faFull(r.amt):'—'}</td><td class="num">${r.issue?`<span style="color:var(--red)">${r.issue}</span>`:'—'}</td><td style="font-size:11px;color:var(--text2)">${r.topProducts.length?r.topProducts.map(p=>esc(crop(p,20))).join(', '):'<span style="color:var(--text3)">발주 이력 없음</span>'}</td></tr>`).join('')||emptyRow(6,'데이터 없음')}
+    </tbody></table></div>`;
+}
 // ===== 3-13. 품질 현황 (QMS) =====
 function renderQMS() {
   const el=document.getElementById('sec-qms');
