@@ -528,14 +528,14 @@ a{color:var(--blue);text-decoration:none}
         <div id="notice-footnote" style="font-size:10px;color:var(--text3);margin-top:8px">※ 졸업/출시/협력사 신규·거래종료는 <b>실제 변경일 기준 최근 30일</b> 롤링 노출(상단 월 선택과 무관) — 졸업/출시는 굿즈마스터(goods_master.csv) 출시일·졸업일, 협력사는 매주 자동 갱신되는 sup.csv 스냅샷(CSV_BANK) 비교로 감지. 감지된 변경은 data/change_log.json에 누적 기록되며 "전체 변경 이력 보기"에서 확인 가능 · 품절만 상단 선택 기간 기준 · "(수동입력)" 표시는 자동 집계로 잡히지 않아 담당자가 직접 등록한 건</div>
       </div>
       <div class="kpi-row kpi-row-6">
-        <div class="kpi-card c-slate" onclick="nav(document.querySelector('.sb-item[onclick*=cost-analysis]'),'cost-analysis')" style="cursor:pointer" title="원가분석 화면으로 이동">
-          <div class="kpi-label">매출 현황</div><div class="kpi-val" id="k-revenue">—</div>
-          <div class="kpi-sub"><span id="k-revenue-sub">데이터 없음</span></div>
-        </div>
         <div class="kpi-card c-blue" onclick="openModal('orderTask')">
           <div class="kpi-label">발주 TASK</div><div class="kpi-val" id="k-order">—</div>
           <div class="kpi-sub"><span id="k-order-sub">데이터 없음</span></div>
           <div class="kpi-spark"><svg width="60" height="30" id="spark-order"></svg></div>
+        </div>
+        <div class="kpi-card c-slate" onclick="nav(document.querySelector('.sb-item[onclick*=cost-analysis]'),'cost-analysis')" style="cursor:pointer" title="원가분석 화면으로 이동">
+          <div class="kpi-label">매출 현황</div><div class="kpi-val" id="k-revenue">—</div>
+          <div class="kpi-sub"><span id="k-revenue-sub">데이터 없음</span></div>
         </div>
         <div class="kpi-card c-green" onclick="openModal('purchase')">
           <div class="kpi-label">월 매입금액</div><div class="kpi-val" id="k-purchase">—</div>
@@ -9765,46 +9765,129 @@ function renderSupplierByManager() {
   });
   const sorted=Object.entries(byMgr).sort((a,b)=>b[1].length-a[1].length);
   el.innerHTML=`
+    <div class="card" style="margin-bottom:16px">
+      <div class="card-header"><div class="card-title">담당자별 담당 협력사 수</div></div>
+      <div class="ch" style="height:${Math.max(180,sorted.length*36)}px"><canvas id="ch-mgr-vendor-count"></canvas></div>
+    </div>
     <div class="card">
-      <div class="card-header"><div><div class="card-title">발주담당자별 담당 협력사</div><div class="card-sub">담당자 ${sorted.length}명 · 등록 협력사 ${Object.values(byMgr).reduce((s,v)=>s+v.length,0)}곳 · 담당자명 클릭 시 선택 기간 발주수량·매입금액·이슈·주요 제품 확인</div></div></div>
+      <div class="card-header"><div><div class="card-title">발주담당자별 담당 협력사</div><div class="card-sub">담당자 ${sorted.length}명 · 등록 협력사 ${Object.values(byMgr).reduce((s,v)=>s+v.length,0)}곳 · 담당자명 클릭 시 상세 화면(선택 기간 발주TASK수·발주수량·이슈·주요 제품·협력사등급, 기간단위 드릴다운)</div></div></div>
       <div class="tbl-wrap"><table class="tbl"><thead><tr><th class="rank">#</th><th>발주담당자</th><th class="num">협력사 수</th><th>담당 협력사</th></tr></thead><tbody>
       ${sorted.map(([mgr,list],i)=>`<tr><td class="rank">${i+1}</td><td style="font-weight:600;color:var(--blue);cursor:pointer" onclick="openMgrVendorDetail('${esc(mgr).replace(/'/g,"\\'")}')">${esc(mgr)}</td><td class="num">${list.length}</td><td style="font-size:11px;color:var(--text2)">${list.slice().sort((a,b)=>a.localeCompare(b,'ko')).map(esc).join(', ')}</td></tr>`).join('')||emptyRow(4,'데이터 없음')}
       </tbody></table></div>
     </div>`;
+  dc('ch-mgr-vendor-count');
+  const ctx=getCtx('ch-mgr-vendor-count');
+  if(ctx){
+    CHARTS['ch-mgr-vendor-count']=new Chart(ctx,{type:'bar',data:{
+      labels:sorted.map(([mgr])=>mgr),
+      datasets:[{label:'담당 협력사 수',data:sorted.map(([,list])=>list.length),backgroundColor:'#1d4ed8',borderRadius:4}]
+    },options:{indexAxis:'y',responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},scales:{x:{beginAtZero:true,ticks:{precision:0}}}}});
+  }
 }
-// 담당자 클릭 시 — 그 담당자의 협력사별 "선택 기간" 발주수량·매입금액·이슈·주요 제품(매입금액 상위)
+let MGR_DETAIL_SORT='amt', MGR_DETAIL_UNIT='month';
+function toggleMgrRow(id){ const el=document.getElementById(id); if(el) el.style.display=(el.style.display==='none'?'':'none'); }
+// 담당자 클릭 시 — 그 담당자의 협력사별 "선택 기간" 발주TASK수·발주수량·이슈·주요 제품·협력사등급.
+// 협력사명 클릭 시 기간단위(주/월/분기) 드릴다운, 이슈 숫자 클릭 시 이슈유형별 건수+이슈율 표시.
 function openMgrVendorDetail(mgr) {
   const ov=document.getElementById('modal-overlay');
   document.getElementById('modal-tabs-el').innerHTML='';
   document.getElementById('modal-title').textContent='담당자별 협력사 발주 현황 — '+mgr;
   const body=document.getElementById('modal-body');
   ov.classList.add('open');
+  const mgrEsc=esc(mgr).replace(/'/g,"\\'");
+
   const vendors=(D.sup||[]).filter(r=>((r['발주담당자']||'').trim()||'미지정')===mgr).map(r=>(r['협력사 이름']||'').trim()).filter(Boolean);
   const vendorSet=new Set(vendors);
+  const gradeMap={};
+  getEvaluatedPortfolioVendors().forEach(v=>{ gradeMap[v.name]=v._grade||''; });
+
+  const unit=MGR_DETAIL_UNIT;
+  const bucketOf=ds=>{
+    if(unit==='week'){ const d=parseAnyDate(ds); return d?dstr(mondayOf(d)):null; }
+    const mk=pOrderMonth(ds); if(!mk) return null;
+    if(unit==='quarter'){ const p=mk.split('.'); return p[0]+'.Q'+Math.ceil(+p[1]/3); }
+    return mk;
+  };
+
   const stats={};
-  vendors.forEach(v=>{ stats[v]={qty:0,amt:0,issue:0,prodAmt:{}}; });
+  vendors.forEach(v=>{ stats[v]={taskCnt:0,qty:0,amt:0,issue:0,prodAmt:{},periods:{},issueTypes:{품질:0,수량:0,운영:0,고객인지:0}}; });
   getFilteredAllOrders().filter(r=>!isStock(r)).forEach(r=>{
     const v=(r['수주처']||'').trim(); if(!vendorSet.has(v)) return;
     const s=stats[v];
-    s.qty+=pa(String(r['발주지시수량']||''));
-    s.amt+=pa(r['공급가액']);
+    const qty=pa(String(r['발주지시수량']||'')), amt=pa(r['공급가액']);
+    s.taskCnt++; s.qty+=qty; s.amt+=amt;
     const prod=(r['산출물']||'').trim();
-    if(prod) s.prodAmt[prod]=(s.prodAmt[prod]||0)+pa(r['공급가액']);
+    if(prod) s.prodAmt[prod]=(s.prodAmt[prod]||0)+amt;
+    const bk=bucketOf(r['과업지시일자'])||'기간미상';
+    if(!s.periods[bk]) s.periods[bk]={taskCnt:0,qty:0,issue:0};
+    s.periods[bk].taskCnt++; s.periods[bk].qty+=qty;
   });
   (D.issue||[]).filter(r=>inSelDateRange(issueDateStr(r))).forEach(r=>{
     const v=(r['출하장소']||r['수주처']||'').trim(); if(!vendorSet.has(v)) return;
-    stats[v].issue++;
+    const s=stats[v];
+    s.issue++;
+    const cat=r['이슈카테고리']||'';
+    if(cat.includes('품질')) s.issueTypes.품질++;
+    else if(cat.includes('수량')) s.issueTypes.수량++;
+    else if(cat.includes('운영')) s.issueTypes.운영++;
+    else s.issueTypes.고객인지++;
+    const bk=bucketOf(issueDateStr(r))||'기간미상';
+    if(!s.periods[bk]) s.periods[bk]={taskCnt:0,qty:0,issue:0};
+    s.periods[bk].issue++;
   });
+
   const rows=vendors.map(v=>{
     const s=stats[v];
     const topProducts=Object.entries(s.prodAmt).sort((a,b)=>b[1]-a[1]).slice(0,3).map(([name])=>name);
-    return {v,...s,topProducts};
-  }).sort((a,b)=>b.amt-a.amt);
+    const issueRate=s.taskCnt>0?(s.issue/s.taskCnt*100):null;
+    return {v,...s,topProducts,grade:gradeMap[v]||'—',issueRate};
+  });
+  const sortKey=MGR_DETAIL_SORT;
+  rows.sort((a,b)=> sortKey==='issue'?b.issue-a.issue : sortKey==='qty'?b.qty-a.qty : b.amt-a.amt);
+
+  const unitLabel={week:'주별',month:'월별',quarter:'분기별'}[unit];
+  const gradeColor={A:'#059669',B:'#1d4ed8',C:'#d97706',D:'#dc2626'};
+
   body.innerHTML=`
-    <div style="font-size:11px;color:var(--text3);margin-bottom:10px">선택 기간(상단 기간 선택 기준) · 재고생산 제외 · 협력사명 클릭 시 전체 이력 상세로 이동</div>
-    <div class="tbl-wrap"><table class="tbl"><thead><tr><th class="rank">#</th><th>협력사</th><th class="num">발주수량</th><th class="num">매입금액</th><th class="num">이슈</th><th>주요 제작 제품</th></tr></thead><tbody>
-    ${rows.map((r,i)=>`<tr><td class="rank">${i+1}</td><td style="color:var(--blue);cursor:pointer" onclick="openSupplierDetailModal('${esc(r.v).replace(/'/g,"\\'")}')">${esc(r.v)}</td><td class="num">${r.qty.toLocaleString()}</td><td class="num">${r.amt?faFull(r.amt):'—'}</td><td class="num">${r.issue?`<span style="color:var(--red)">${r.issue}</span>`:'—'}</td><td style="font-size:11px;color:var(--text2)">${r.topProducts.length?r.topProducts.map(p=>esc(crop(p,20))).join(', '):'<span style="color:var(--text3)">발주 이력 없음</span>'}</td></tr>`).join('')||emptyRow(6,'데이터 없음')}
-    </tbody></table></div>`;
+    <div style="display:flex;gap:12px;align-items:center;margin-bottom:10px;flex-wrap:wrap">
+      <span style="font-size:11px;color:var(--text3)">선택 기간(상단 기간 선택 기준) · 재고생산 제외</span>
+      <span style="margin-left:auto;display:flex;gap:6px;align-items:center;font-size:11px;color:var(--text3)">
+        정렬
+        <select onchange="MGR_DETAIL_SORT=this.value;openMgrVendorDetail('${mgrEsc}')" style="font-size:11px;padding:4px 8px;border:1px solid var(--border2);border-radius:var(--r-sm);background:var(--surface)">
+          <option value="amt" ${sortKey==='amt'?'selected':''}>매입금액순</option>
+          <option value="issue" ${sortKey==='issue'?'selected':''}>이슈순</option>
+          <option value="qty" ${sortKey==='qty'?'selected':''}>발주수량순</option>
+        </select>
+        기간단위
+        <select onchange="MGR_DETAIL_UNIT=this.value;openMgrVendorDetail('${mgrEsc}')" style="font-size:11px;padding:4px 8px;border:1px solid var(--border2);border-radius:var(--r-sm);background:var(--surface)">
+          <option value="week" ${unit==='week'?'selected':''}>주별</option>
+          <option value="month" ${unit==='month'?'selected':''}>월별</option>
+          <option value="quarter" ${unit==='quarter'?'selected':''}>분기별</option>
+        </select>
+      </span>
+    </div>
+    <div class="tbl-wrap"><table class="tbl"><thead><tr><th class="rank">#</th><th>협력사</th><th class="num">발주TASK수</th><th class="num">총발주수량</th><th class="num">매입금액</th><th class="num">이슈</th><th>주요 제작 제품</th><th>등급</th></tr></thead><tbody>
+    ${rows.map((r,i)=>{
+      const periodEntries=Object.entries(r.periods).filter(([k])=>k!=='기간미상').sort((a,b)=>a[0].localeCompare(b[0]));
+      const periodRows=periodEntries.map(([k,p])=>`<tr><td style="padding-left:24px;font-size:11px;color:var(--text3)">${esc(k)}</td><td class="num" style="font-size:11px">${p.taskCnt}</td><td class="num" style="font-size:11px">${p.qty.toLocaleString()}</td><td class="num" style="font-size:11px">${p.issue||'—'}</td><td colspan="4"></td></tr>`).join('');
+      const issueTypeChips=Object.entries(r.issueTypes).filter(([,c])=>c>0).map(([t,c])=>`<span class="tag tag-gray" style="margin-right:4px">${esc(t)} ${c}건</span>`).join('')||'<span style="color:var(--text3)">이슈 없음</span>';
+      return `
+      <tr>
+        <td class="rank">${i+1}</td>
+        <td style="color:var(--blue);cursor:pointer" onclick="toggleMgrRow('mgr-period-${i}')" title="클릭 시 ${unitLabel} 드릴다운">${esc(r.v)} <span style="font-size:10px;color:var(--text3)">▾${unitLabel}</span></td>
+        <td class="num">${r.taskCnt}</td>
+        <td class="num">${r.qty.toLocaleString()}</td>
+        <td class="num">${r.amt?faFull(r.amt):'—'}</td>
+        <td class="num" ${r.issue?`style="color:var(--red);cursor:pointer;font-weight:600" onclick="toggleMgrRow('mgr-issue-${i}')" title="클릭 시 이슈유형·이슈율"`:''}>${r.issue||'—'}</td>
+        <td style="font-size:11px;color:var(--text2)">${r.topProducts.length?r.topProducts.map(p=>esc(crop(p,18))).join(', '):'<span style="color:var(--text3)">발주 이력 없음</span>'}</td>
+        <td><span style="font-weight:700;color:${gradeColor[r.grade]||'var(--text3)'}">${esc(r.grade)}</span></td>
+      </tr>
+      <tr id="mgr-period-${i}" style="display:none;background:var(--surface2)"><td colspan="8" style="padding:0"><table style="width:100%"><tbody>${periodRows||'<tr><td style="padding:6px 24px;font-size:11px;color:var(--text3)">기간별 데이터 없음</td></tr>'}</tbody></table></td></tr>
+      <tr id="mgr-issue-${i}" style="display:none;background:var(--red-light)"><td colspan="8" style="padding:8px 16px;font-size:11px">이슈율 <b>${r.issueRate!==null?r.issueRate.toFixed(1)+'%':'—'}</b> (발주TASK ${r.taskCnt}건 중 이슈 ${r.issue}건) · ${issueTypeChips}</td></tr>
+      `;
+    }).join('')||emptyRow(8,'데이터 없음')}
+    </tbody></table></div>
+    <div style="font-size:10px;color:var(--text3);margin-top:8px">※ 이슈유형 "고객인지"는 품질/수량/운영으로 분류되지 않은 이슈(고객인지이슈 등) 포함</div>`;
 }
 // ===== 3-13. 품질 현황 (QMS) =====
 function renderQMS() {
