@@ -6264,7 +6264,10 @@ function genWeeklyOutsource() {
       priceChanges.forEach(r => {
         const sup = String(pick(r, F.priceChg.sup)).trim() || partsCsvSup(pick(r, [F.priceChg.parts, F.priceChg.goods])) || '—';
         const item = String(pick(r, [F.priceChg.goods, F.priceChg.parts])).replace(/\n/g,' ').substring(0,30);
-        const change = String(pick(r, F.priceChg.change)).replace(/https?:\/\/\S+/g,'').replace(/\s+/g,' ').trim().substring(0,80);
+        const change = String(pick(r, F.priceChg.change))
+          .replace(/\[([^\]]+)\]\(https?:\/\/[^\s)]*\)?/g,'$1') // 마크다운 링크 → 텍스트만 (닫는 괄호 없어도 매치)
+          .replace(/https?:\/\/\S+/g,'')
+          .replace(/\s+/g,' ').trim().substring(0,80);
         const when = String(pick(r, F.priceChg.applyWhen)).trim();
         const why = String(pick(r, F.priceChg.cause)).substring(0,30);
         md += `| ${sup} | ${item} | ${change} | ${when} | ${why} |\n`;
@@ -6375,6 +6378,7 @@ function genWeeklyOutsource() {
     let cat = pc ? String(pick(pc, F.partsCsv.category)).trim() : '';
     let sup = pc ? String(pick(pc, F.partsCsv.sup)).trim() : '';
     if (!cat || !sup) { const pm = pmLookup(partsNm); if (pm) { cat = cat || String(pick(pm, F.partsMaster.category)).trim(); sup = sup || String(pick(pm, F.partsMaster.sup)).trim(); } }
+    cat = cat.split(',').map(s => s.trim()).filter(s => s && s !== '기타').join(', '); // 다중 카테고리 중 '기타'는 제외
     return { cat, sup };
   };
 
