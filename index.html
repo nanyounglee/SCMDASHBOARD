@@ -9761,9 +9761,10 @@ function renderSupplierProduct() {
 function renderSupplierByManager() {
   const el=document.getElementById('pf-tab-mgr');
   if(!D.sup) { el.innerHTML='<div class="card empty">공급망_RAW CSV를 업로드해주세요.</div>'; return; }
+  const terminated=getTerminatedVendorNames();
   const byMgr={};
   D.sup.forEach(r=>{
-    const name=(r['협력사 이름']||'').trim(); if(!name) return;
+    const name=(r['협력사 이름']||'').trim(); if(!name||terminated.has(name)) return;
     const mgr=(r['발주담당자']||'').trim()||'미지정';
     (byMgr[mgr]=byMgr[mgr]||[]).push(name);
   });
@@ -9789,7 +9790,10 @@ function renderSupplierByManager() {
   }
 }
 let MGR_DETAIL_SORT='amt', MGR_DETAIL_UNIT='month';
-function toggleMgrRow(id){ const el=document.getElementById(id); if(el) el.style.display=(el.style.display==='none'?'':'none'); }
+// v23.8 버그수정: 드릴다운을 별도 <table>로 중첩했더니 바깥 테이블 헤더와 컬럼폭이 안 맞았음
+// (중첩 테이블은 자기 컨텐츠 기준으로 독립적으로 폭을 잡음) — 같은 테이블의 형제 <tr>로 바꾸고,
+// 여러 행을 한 번에 토글해야 해서 id 대신 class 기준으로 전환.
+function toggleMgrRow(cls){ document.querySelectorAll('.'+cls).forEach(el=>{ el.style.display=(el.style.display==='none'?'':'none'); }); }
 // 담당자 클릭 시 — 그 담당자의 협력사별 "선택 기간" 발주TASK수·발주수량·이슈·주요 제품·협력사등급.
 // 협력사명 클릭 시 기간단위(주/월/분기) 드릴다운, 이슈 숫자 클릭 시 이슈유형별 건수+이슈율 표시.
 function openMgrVendorDetail(mgr) {
@@ -9800,7 +9804,8 @@ function openMgrVendorDetail(mgr) {
   ov.classList.add('open');
   const mgrEsc=esc(mgr).replace(/'/g,"\\'");
 
-  const vendors=(D.sup||[]).filter(r=>((r['발주담당자']||'').trim()||'미지정')===mgr).map(r=>(r['협력사 이름']||'').trim()).filter(Boolean);
+  const terminated=getTerminatedVendorNames();
+  const vendors=(D.sup||[]).filter(r=>((r['발주담당자']||'').trim()||'미지정')===mgr).map(r=>(r['협력사 이름']||'').trim()).filter(v=>v&&!terminated.has(v));
   const vendorSet=new Set(vendors);
   const gradeMap={};
   getEvaluatedPortfolioVendors().forEach(v=>{ gradeMap[v.name]=v._grade||''; });
@@ -9826,8 +9831,8 @@ function openMgrVendorDetail(mgr) {
     const prod=(r['산출물']||'').trim();
     if(prod) s.prodAmt[prod]=(s.prodAmt[prod]||0)+amt;
     const bk=bucketOf(r['과업지시일자'])||'기간미상';
-    if(!s.periods[bk]) s.periods[bk]={taskCnt:0,qty:0,issue:0};
-    s.periods[bk].taskCnt++; s.periods[bk].qty+=qty;
+    if(!s.periods[bk]) s.periods[bk]={taskCnt:0,qty:0,amt:0,issue:0};
+    s.periods[bk].taskCnt++; s.periods[bk].qty+=qty; s.periods[bk].amt+=amt;
   });
   (D.issue||[]).filter(r=>inSelDateRange(issueDateStr(r))).forEach(r=>{
     const v=(r['출하장소']||r['수주처']||'').trim(); if(!vendorSet.has(v)) return;
@@ -9839,7 +9844,7 @@ function openMgrVendorDetail(mgr) {
     else if(cat.includes('운영')) s.issueTypes.운영++;
     else s.issueTypes.고객인지++;
     const bk=bucketOf(issueDateStr(r))||'기간미상';
-    if(!s.periods[bk]) s.periods[bk]={taskCnt:0,qty:0,issue:0};
+    if(!s.periods[bk]) s.periods[bk]={taskCnt:0,qty:0,amt:0,issue:0};
     s.periods[bk].issue++;
   });
 
@@ -9850,7 +9855,7 @@ function openMgrVendorDetail(mgr) {
     return {v,...s,topProducts,grade:gradeMap[v]||'—',issueRate};
   });
   const sortKey=MGR_DETAIL_SORT;
-  rows.sort((a,b)=> sortKey==='issue'?b.issue-a.issue : sortKey==='qty'?b.qty-a.qty : b.amt-a.amt);
+  rows.sort((a,b)=> sortKey==='issue'?b.issue-a.issue : sortKey==='qty'?b.qty-a.qty : sortKey==='task'?b.taskCnt-a.taskCnt : b.amt-a.amt);
 
   const unitLabel={week:'주별',month:'월별',quarter:'분기별'}[unit];
   const gradeColor={A:'#059669',B:'#1d4ed8',C:'#d97706',D:'#dc2626'};
@@ -9864,6 +9869,7 @@ function openMgrVendorDetail(mgr) {
           <option value="amt" ${sortKey==='amt'?'selected':''}>매입금액순</option>
           <option value="issue" ${sortKey==='issue'?'selected':''}>이슈순</option>
           <option value="qty" ${sortKey==='qty'?'selected':''}>발주수량순</option>
+          <option value="task" ${sortKey==='task'?'selected':''}>발주TASK수순</option>
         </select>
         기간단위
         <select onchange="MGR_DETAIL_UNIT=this.value;openMgrVendorDetail('${mgrEsc}')" style="font-size:11px;padding:4px 8px;border:1px solid var(--border2);border-radius:var(--r-sm);background:var(--surface)">
@@ -9876,7 +9882,8 @@ function openMgrVendorDetail(mgr) {
     <div class="tbl-wrap"><table class="tbl"><thead><tr><th class="rank">#</th><th>협력사</th><th class="num">발주TASK수</th><th class="num">총발주수량</th><th class="num">매입금액</th><th class="num">이슈</th><th>주요 제작 제품</th><th>등급</th></tr></thead><tbody>
     ${rows.map((r,i)=>{
       const periodEntries=Object.entries(r.periods).filter(([k])=>k!=='기간미상').sort((a,b)=>a[0].localeCompare(b[0]));
-      const periodRows=periodEntries.map(([k,p])=>`<tr><td style="padding-left:24px;font-size:11px;color:var(--text3)">${esc(k)}</td><td class="num" style="font-size:11px">${p.taskCnt}</td><td class="num" style="font-size:11px">${p.qty.toLocaleString()}</td><td class="num" style="font-size:11px">${p.issue||'—'}</td><td colspan="4"></td></tr>`).join('');
+      const periodRows=periodEntries.map(([k,p])=>`<tr class="mgr-period-${i}" style="display:none;background:var(--surface2)"><td></td><td style="padding-left:24px;font-size:11px;color:var(--text3)">${esc(k)}</td><td class="num" style="font-size:11px">${p.taskCnt}</td><td class="num" style="font-size:11px">${p.qty.toLocaleString()}</td><td class="num" style="font-size:11px">${p.amt?faFull(p.amt):'—'}</td><td class="num" style="font-size:11px">${p.issue||'—'}</td><td></td><td></td></tr>`).join('')
+        ||`<tr class="mgr-period-${i}" style="display:none;background:var(--surface2)"><td></td><td colspan="7" style="font-size:11px;color:var(--text3)">기간별 데이터 없음</td></tr>`;
       const issueTypeChips=Object.entries(r.issueTypes).filter(([,c])=>c>0).map(([t,c])=>`<span class="tag tag-gray" style="margin-right:4px">${esc(t)} ${c}건</span>`).join('')||'<span style="color:var(--text3)">이슈 없음</span>';
       return `
       <tr>
@@ -9889,8 +9896,8 @@ function openMgrVendorDetail(mgr) {
         <td style="font-size:11px;color:var(--text2)">${r.topProducts.length?r.topProducts.map(p=>esc(crop(p,18))).join(', '):'<span style="color:var(--text3)">발주 이력 없음</span>'}</td>
         <td><span style="font-weight:700;color:${gradeColor[r.grade]||'var(--text3)'}">${esc(r.grade)}</span></td>
       </tr>
-      <tr id="mgr-period-${i}" style="display:none;background:var(--surface2)"><td colspan="8" style="padding:0"><table style="width:100%"><tbody>${periodRows||'<tr><td style="padding:6px 24px;font-size:11px;color:var(--text3)">기간별 데이터 없음</td></tr>'}</tbody></table></td></tr>
-      <tr id="mgr-issue-${i}" style="display:none;background:var(--red-light)"><td colspan="8" style="padding:8px 16px;font-size:11px">이슈율 <b>${r.issueRate!==null?r.issueRate.toFixed(1)+'%':'—'}</b> (발주TASK ${r.taskCnt}건 중 이슈 ${r.issue}건) · ${issueTypeChips}</td></tr>
+      ${periodRows}
+      <tr class="mgr-issue-${i}" style="display:none;background:var(--red-light)"><td colspan="8" style="padding:8px 16px;font-size:11px">이슈율 <b>${r.issueRate!==null?r.issueRate.toFixed(1)+'%':'—'}</b> (발주TASK ${r.taskCnt}건 중 이슈 ${r.issue}건) · ${issueTypeChips}</td></tr>
       `;
     }).join('')||emptyRow(8,'데이터 없음')}
     </tbody></table></div>
@@ -10634,7 +10641,11 @@ function renderPortfolioChangeReview(vendors, quadColors) {
   const el = document.getElementById('portfolio-change-review');
   if (!el) return;
   const terminated=getTerminatedVendorNames();
-  const flagged = vendors.filter(v => (v._grade === 'C' || v._grade === 'D') && !terminated.has(v.name)).sort((a,b) => a._total - b._total);
+  // v23.8: 담당자 미배정(담당자 공백) 협력사와 해외(중국 등) 협력사는 국내 담당자 대상
+  // 이관검토 리스트 성격상 실효성이 없어 제외 — 국문 자모가 전혀 없는 영문 상호를 해외업체로 판단
+  // (현재 마스터의 해외 업체는 전부 중국 소재라 이 기준으로 정확히 걸러짐, 사업자 등록 주소에 국가 컬럼 없음).
+  const isForeignVendor = name => !/[가-힣]/.test(name);
+  const flagged = vendors.filter(v => (v._grade === 'C' || v._grade === 'D') && !terminated.has(v.name) && v.mgr && !isForeignVendor(v.name)).sort((a,b) => a._total - b._total);
   if (!flagged.length) { el.innerHTML = `<div style="font-size:12px;color:var(--text3);padding:8px 0">C·D등급 협력사가 없습니다.</div>`; return; }
   el.innerHTML = `<table class="tbl"><thead><tr>
     <th class="rank">#</th><th>협력사</th><th>담당자</th><th style="width:55px">등급</th><th style="width:60px">Tier</th>
