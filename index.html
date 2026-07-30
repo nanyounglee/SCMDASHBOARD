@@ -3936,6 +3936,10 @@ const MANUAL_VENDOR_TERMINATIONS=[
 function getTerminatedVendorNames(){
   const s=new Set(MANUAL_VENDOR_TERMINATIONS.map(m=>m.name));
   (typeof CHANGE_LOG!=='undefined'?CHANGE_LOG:[]).forEach(e=>{ if(e.type==='sup_terminated'&&e.name) s.add(e.name); });
+  // v23.8: sup.csv 마스터의 협력사 Status가 실제로 "거래종료"로 채워진 경우(2026-07-30부터
+  // 담당자가 직접 갱신 시작) 그것도 그대로 반영 — 앞으로는 이 필드만 채우면 수동 목록에
+  // 추가할 필요 없이 자동으로 걸러진다.
+  (D.sup||[]).forEach(r=>{ if((r['협력사 Status']||'').trim()==='거래종료'){ const n=(r['협력사 이름']||'').trim(); if(n) s.add(n); } });
   return s;
 }
 // v22.13: goods_master.csv 졸업일이 실제보다 최근으로 잘못 찍혀(재입력 등) 최근 30일 창에
