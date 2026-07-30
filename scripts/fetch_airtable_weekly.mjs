@@ -146,7 +146,18 @@ async function runJob(prefix, table, view) {
 let changed = false;
 changed = await runJob('progress', process.env.PROGRESS_TABLE, process.env.PROGRESS_VIEW) || changed;
 if (process.env.PROJECT_TABLE && process.env.PROJECT_VIEW) {
-  changed = await runJob('project', process.env.PROJECT_TABLE, process.env.PROJECT_VIEW) || changed;
+  const projectSaved = await runJob('project', process.env.PROJECT_TABLE, process.env.PROJECT_VIEW);
+  changed = projectSaved || changed;
+  // v23.8: 대시보드(getProjRevMap)는 주차별 project_YYYY_Wnn.csv가 아니라 고정 파일명
+  // CSV/proj_rev.csv를 읽는다 — 지금까지 이 job이 project_YYYY_Wnn.csv만 쌓고 proj_rev.csv는
+  // 갱신 안 해서, 매출 자동화가 켜져도 대시보드 매출은 계속 수동 업로드에 의존하게 되는
+  // 사각지대가 있었음(사용자 제보, 2026-07-30). 방금 저장한 이번 주차 파일을 그대로 복사.
+  if (projectSaved) {
+    const latest = path.join('CSV', `project_${wk(CUR_Y, CUR_W)}.csv`);
+    fs.copyFileSync(latest, path.join('CSV', 'proj_rev.csv'));
+    console.log(`  proj_rev.csv 갱신 (${latest} 기준)`);
+    changed = true;
+  }
 } else {
   console.log('[project] PROJECT_TABLE/PROJECT_VIEW 미설정 — 건너뜀');
 }

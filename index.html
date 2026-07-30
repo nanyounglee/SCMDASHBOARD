@@ -102,6 +102,7 @@ a{color:var(--blue);text-decoration:none}
 .dateinput{font-family:inherit;font-size:12.5px;padding:6px 9px;border:1px solid var(--border2);border-radius:var(--r-sm);color:var(--text);background:var(--surface)}
 /* KPI */
 .kpi-row{display:grid;grid-template-columns:repeat(5,1fr);gap:14px}
+.kpi-row-6{display:grid;grid-template-columns:repeat(6,1fr);gap:14px}
 .kpi-card.c-slate::before{background:#64748b}
 .kpi-row-4{display:grid;grid-template-columns:repeat(4,1fr);gap:14px}
 .kpi-row-3{display:grid;grid-template-columns:repeat(3,1fr);gap:14px}
@@ -526,7 +527,11 @@ a{color:var(--blue);text-decoration:none}
         <div id="notice-body" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:8px"></div>
         <div id="notice-footnote" style="font-size:10px;color:var(--text3);margin-top:8px">※ 졸업/출시/협력사 신규·거래종료는 <b>실제 변경일 기준 최근 30일</b> 롤링 노출(상단 월 선택과 무관) — 졸업/출시는 굿즈마스터(goods_master.csv) 출시일·졸업일, 협력사는 매주 자동 갱신되는 sup.csv 스냅샷(CSV_BANK) 비교로 감지. 감지된 변경은 data/change_log.json에 누적 기록되며 "전체 변경 이력 보기"에서 확인 가능 · 품절만 상단 선택 기간 기준 · "(수동입력)" 표시는 자동 집계로 잡히지 않아 담당자가 직접 등록한 건</div>
       </div>
-      <div class="kpi-row">
+      <div class="kpi-row kpi-row-6">
+        <div class="kpi-card c-slate" onclick="nav(document.querySelector('.sb-item[onclick*=cost-analysis]'),'cost-analysis')" style="cursor:pointer" title="원가분석 화면으로 이동">
+          <div class="kpi-label">매출 현황</div><div class="kpi-val" id="k-revenue">—</div>
+          <div class="kpi-sub"><span id="k-revenue-sub">데이터 없음</span></div>
+        </div>
         <div class="kpi-card c-blue" onclick="openModal('orderTask')">
           <div class="kpi-label">발주 TASK</div><div class="kpi-val" id="k-order">—</div>
           <div class="kpi-sub"><span id="k-order-sub">데이터 없음</span></div>
@@ -2199,6 +2204,30 @@ function updateKPIs() {
     setValue('k-purchase',fa(totAll));
     // v18: 재고생산(별도) 카드 제거 — 재고생산분은 여기 비고(전체 매입의 %)로만 병기
     document.getElementById('k-purchase-sub').innerHTML=`${purCnt}건 · 재고제외 ${fa(totProj)} · 재고생산 ${fa(totStock)} <span style="color:var(--text3)">(전체 매입의 ${totAll?(totStock/totAll*100).toFixed(1):0}%)</span>${momBadge(totAll,pmTotAll)}${yoyBadge(totAll,pyPur)}${q?' <span style="color:var(--text3)">(필터)</span>':''}<br><span style="font-size:10px;color:var(--text3)">${pmTotAll?'전기 '+fa(pmTotAll):''}${pmTotAll&&pyPur!==null?' · ':''}${pyPur!==null?'전년 동기 '+fa(pyPur)+' (재고 포함)':''} · <b>월 단위 집계</b> (세금계산서작성월 기준)</span>`;
+    // v23.8: "매출 현황" 카드(사용자 요청) — 선택 기간(curMonths)의 매출 합계. 원가분석 화면과 동일
+    // 기준(proj_rev 프로젝트 총매출액을 출고월에 귀속, 복수 출고월은 균등분할, 미업로드 시 R) 판매가
+    // 근사 폴백) + 매입/매출 비율(재고제외 매입 totProj ÷ 매출, 원가분석의 원가율과 동일 정의)
+    const revMap=getProjRevMap();
+    const useRevOv=Object.keys(revMap).length>0;
+    let periodRevenue=0;
+    if(useRevOv){
+      const projSeen=new Set();
+      getFilteredAllOrders().filter(r=>!isStock(r)).forEach(r=>{ const p=(r['project']||'').trim(); if(p) projSeen.add(p); });
+      projSeen.forEach(p=>{
+        const rv=revMap[p]; if(!rv||!rv.months.length) return;
+        const share=1/rv.months.length;
+        rv.months.forEach(m=>{ if(curMonths.includes(m)) periodRevenue+=rv.rev*share; });
+      });
+    } else {
+      getFilteredAllOrders().filter(r=>!isStock(r)).forEach(r=>{
+        const mo=pOrderMonth(r['과업지시일자']); if(!mo||!curMonths.includes(mo)) return;
+        periodRevenue+=pa(r['R) 판매가(최종)']);
+      });
+    }
+    const revRatio=periodRevenue>0?(totProj/periodRevenue*100):null;
+    const revRatioColor=revRatio===null?'var(--text3)':revRatio>70?'var(--red)':revRatio>50?'var(--amber)':'var(--green)';
+    setValue('k-revenue',fa(periodRevenue));
+    document.getElementById('k-revenue-sub').innerHTML=`${useRevOv?'실측(CX 매출결산)':'근사(R) 판매가)'} · 매입 비중 <b style="color:${revRatioColor}">${revRatio!==null?revRatio.toFixed(1)+'%':'—'}</b>${q?' <span style="color:var(--text3)">(필터)</span>':''}`;
   }
   if (D.issue) {
     let fi=D.issue.filter(r=>inSelDateRange(issueDateStr(r)));
