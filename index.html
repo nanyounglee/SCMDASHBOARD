@@ -5894,6 +5894,7 @@ function genWeeklyOutsource() {
       status:  '판매상태',
       name:    '파츠명',
       changed: '변경일(인터페이스용)',
+      reason:  '판매상태 변경사유', // 5-0 품절표 "비고" 컬럼
     },
     sup: { name: '협력사 이름' },
     partsCsv: { code: '파츠명 (Long ver)', category: '굿즈 카테고리', sup: '제작협력사' }, // 5-0 품절 카테고리·수주처(=제작협력사) 연동
@@ -6282,20 +6283,18 @@ function genWeeklyOutsource() {
     md += `> [price_chg.csv 미로드 — SCMDASHBOARD-main/price_chg.csv 를 CSV/ 폴더에 복사 후 업로드 또는 수동 입력]\n\n`;
   }
 
-  md += `### 4-2. 재제작률\n\n`;
-  const curRework = failCostF(curOrders);
+  // 공급가액 0원인 재제작 건은 표기 의미가 없어 제외, 그런 건조차 없으면 4-2 섹션 자체를 생략
+  const curRework = failCostF(curOrders).filter(r => pa(pick(r, F.order.amount)) > 0);
   if (curRework.length) {
+    md += `### 4-2. 재제작률\n\n`;
     md += `| task_id | 품목 | 재제작 공급가액 |\n`;
     md += `|---|---|---|\n`;
     curRework.forEach(r => {
       const item = wrOrdItem(r);
       md += `| ${pick(r, F.order.taskId)} | ${item} | ${faFull(pa(pick(r, F.order.amount)))} |\n`;
     });
-    md += `\n- 이번 주 재제작 실패비용 합계: ${faFull(curFailCost)}\n`;
-  } else {
-    md += `> ${curLabel} 재제작 건 없음\n`;
+    md += `\n- 이번 주 재제작 실패비용 합계: ${faFull(curFailCost)}\n\n`;
   }
-  md += '\n';
 
   // 섹션 5
   md += `## 5. 공급망 관리 지표\n\n`;
@@ -6307,19 +6306,19 @@ function genWeeklyOutsource() {
   const curIssueSups = [...new Set(curIssues.map(getIssueSup).filter(Boolean))];
   const prevIssueSups = new Set(prevIssues.map(getIssueSup).filter(Boolean));
   const repeatSups = curIssueSups.filter(s => prevIssueSups.has(s));
-  const newIssueSups = curIssueSups.filter(s => !prevIssueSups.has(s));
 
-  md += `**이번 주 이슈 발생 협력사** (품질 중요도 중~상: 등급 C↓ 또는 실패비용 발생)\n`;
+  md += `**이번 주 이슈 발생 협력사** (품질 중요도 중~상: 등급 C↓ 또는 실패비용 발생, 2주 연속만)\n`;
   {
     // ponytail: "중요도 중~상"을 품질등급 C·D 또는 재제작(실패비용)으로 해석. 별도 중요도 필드 생기면 교체.
+    // 신규(1주차) 발생은 "신규"라는 표현이 모호해 제외 — 2주 연속 발생분만 표기.
     const CRIT_GRADES = new Set(['C', 'D']);
     const fromQuality = curQuality.filter(r => { const g = wrGrades(r); return CRIT_GRADES.has(g.init) || CRIT_GRADES.has(g.scm); }).map(getIssueSup);
     const fromFail = failCostF(curOrders).map(r => cleanSup(pick(r, [F.order.sup, F.order.supText])));
-    const critSups = [...new Set([...fromQuality, ...fromFail].filter(Boolean))];
+    const critSups = [...new Set([...fromQuality, ...fromFail].filter(Boolean))].filter(s => repeatSups.includes(s));
     if (critSups.length) {
-      critSups.forEach(s => { const tag = repeatSups.includes(s) ? ' (2주 연속)' : ' (신규)'; md += `- ${s}${tag}\n`; });
+      critSups.forEach(s => { md += `- ${s} (2주 연속)\n`; });
     } else {
-      md += `- 없음 (품질 중요도 중~상 이슈 없음)\n`;
+      md += `- 없음\n`;
     }
   }
   md += '\n';
@@ -6384,23 +6383,25 @@ function genWeeklyOutsource() {
 
   md += `**협력사 품절 현황**${manualSOMonth ? ' (' + manualSOMonth + ' 기준)' : ''}\n\n`;
   if (manualSO.length) {
-    md += `| 파츠명 | 카테고리 | 수주처 | 판매상태 |\n`;
+    // 카테고리는 5-1~5-5 요약에서 참고하므로 catSupOf()로 계속 연결해두되(수주처 폴백용), 표에는 노출하지 않음
+    md += `| 품목명 | 수주처 | 판매상태 | 비고 |\n`;
     md += `|---|---|---|---|\n`;
     manualSO.forEach(r => {
-      const {cat, sup} = catSupOf(r.parts);
+      const {sup} = catSupOf(r.parts);
       const supName = sup || supFromParts(r.parts) || '—';
-      md += `| ${stripPt(r.parts)} | ${cat||'—'} | ${supName} | ${r.status} |\n`;
+      md += `| ${stripPt(r.parts)} | ${supName} | ${r.status} | ${r.manager||'—'} |\n`;
     });
     md += `\n> 총 ${manualSO.length}건 (대시보드 수동 등록 목록 기준)\n`;
   } else if (D.stockout_list) {
     const stockouts = D.stockout_list.filter(r => ['일시품절','품절예정'].includes(String(pick(r, F.stockout.status)).trim()));
     if (stockouts.length) {
-      md += `| 파츠명 | 카테고리 | 수주처 | 판매상태 | 변경일 |\n`;
-      md += `|---|---|---|---|---|\n`;
+      md += `| 품목명 | 수주처 | 판매상태 | 비고 |\n`;
+      md += `|---|---|---|---|\n`;
       stockouts.slice(0, 10).forEach(r => {
         const partsNm = pick(r, F.stockout.name);
-        const {cat, sup} = catSupOf(partsNm);
-        md += `| ${stripPt(partsNm)} | ${cat||'—'} | ${sup||'—'} | ${pick(r, F.stockout.status)} | ${pick(r, F.stockout.changed)} |\n`;
+        const {sup} = catSupOf(partsNm);
+        const reason = String(pick(r, F.stockout.reason)).replace(/\n/g,' ').trim().substring(0,40) || '—';
+        md += `| ${stripPt(partsNm)} | ${sup||'—'} | ${pick(r, F.stockout.status)} | ${reason} |\n`;
       });
       if (stockouts.length > 10) md += `\n> 외 ${stockouts.length - 10}건 — 대시보드 품절 현황 탭 참조\n`;
     } else {
