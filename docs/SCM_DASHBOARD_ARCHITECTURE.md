@@ -722,7 +722,13 @@ computeBufferRows():
 //   별도 중요도 필드 생기면 교체). 1주차(신규) 발생분은 "신규" 표현이 모호하다는
 //   피드백으로 목록에서 완전히 제외(태그 숨김이 아니라 항목 자체 배제).
 // 품절 표: 컬럼은 품목명·수주처·판매상태·비고(카테고리는 표에 미노출). 비고는
-//   MANUAL_STOCKOUT일 때 담당자, stockout_list.csv 기준일 때 판매상태 변경사유(40자).
+//   currentReasonOf(partsNm) — 대시보드 "구매전략·품절 상세" 탭(shBuildIntervals_)과
+//   동일 소스인 D.sales_status_history에서 해당 파츠의 "현재 열려있는 구간"(raw
+//   end time 공백, 화면표시용 end time(인터페이스용)엔 예상 해소일이 차 있어도
+//   무관)의 판매상태 변경사유 원문을 40자로 표시(변경일 내림차순 정렬 후 열린 행
+//   우선, 없으면 최신행 폴백). MANUAL_STOCKOUT·stockout_list.csv 양쪽 다 동일 함수
+//   사용 — stockout_list.csv 자체의 판매상태 변경사유 필드는 스냅샷이라 부정확해
+//   더 이상 쓰지 않음(v23.8 1차 수정에서 잘못 사용했다가 v23.8 2차에서 교체).
 //   catSupOf(partsNm) — PT코드로 parts.csv(굿즈 카테고리·제작협력사) 우선 조회
 //   → 없으면 parts_master(pmLookup) 폴백 → 수주처는 supFromParts(D.order 역조회)
 //   최종폴백. 반환하는 카테고리는 화면엔 안 쓰지만 5-1~5-5 그루핑에서 별도로
