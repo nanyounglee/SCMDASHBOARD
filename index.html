@@ -9811,7 +9811,10 @@ function openMgrVendorDetail(mgr) {
 
   const stats={};
   vendors.forEach(v=>{ stats[v]={taskCnt:0,qty:0,amt:0,issue:0,prodAmt:{},periods:{},issueTypes:{품질:0,수량:0,운영:0,고객인지:0}}; });
-  getFilteredAllOrders().filter(r=>!isStock(r)).forEach(r=>{
+  // v23.8 버그수정: getFilteredAllOrders()는 검색어만 거르고 상단 기간 선택은 반영 안 함 —
+  // inSelDateRange를 직접 걸지 않으면 기간을 바꿔도 TASK수/발주수량이 고정값으로 나온다
+  // (사용자 제보, 2026-07-30).
+  getFilteredAllOrders().filter(r=>!isStock(r)&&inSelDateRange(r['과업지시일자'])).forEach(r=>{
     const v=(r['수주처']||'').trim(); if(!vendorSet.has(v)) return;
     const s=stats[v];
     const qty=pa(String(r['발주지시수량']||'')), amt=pa(r['공급가액']);
