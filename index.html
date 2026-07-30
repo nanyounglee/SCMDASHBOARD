@@ -3942,6 +3942,10 @@ function getTerminatedVendorNames(){
   (D.sup||[]).forEach(r=>{ if((r['협력사 Status']||'').trim()==='거래종료'){ const n=(r['협력사 이름']||'').trim(); if(n) s.add(n); } });
   return s;
 }
+// v23.8: 협력사 상호에 국문 자모가 전혀 없으면 해외(현재 마스터 기준 전부 중국 소재)업체로 판단
+// — sup.csv에 국가/COO 컬럼이 없어 상호 표기 방식으로 대체(오탐 없음 확인됨, 담당자별 협력사·
+// 변경검토 리스트에서 공용으로 사용).
+function isForeignVendor(name){ return !/[가-힣]/.test(name||''); }
 // v22.13: goods_master.csv 졸업일이 실제보다 최근으로 잘못 찍혀(재입력 등) 최근 30일 창에
 // 이미 지난달 이전에 졸업 공지된 건이 재노출되는 경우 — 사용자 확인 후 수동 제외(2026-07-22)
 const MANUAL_GRAD_EXCLUDE=['PITU','WCCV']; // 포인트업 러그·웹캠 커버 — 실제로는 2026-06-25보다 이전에 이미 졸업
@@ -9777,7 +9781,12 @@ function renderSupplierByManager() {
     <div class="card">
       <div class="card-header"><div><div class="card-title">발주담당자별 담당 협력사</div><div class="card-sub">담당자 ${sorted.length}명 · 등록 협력사 ${Object.values(byMgr).reduce((s,v)=>s+v.length,0)}곳 · 담당자명 클릭 시 상세 화면(선택 기간 발주TASK수·발주수량·이슈·주요 제품·협력사등급, 기간단위 드릴다운)</div></div></div>
       <div class="tbl-wrap"><table class="tbl"><thead><tr><th class="rank">#</th><th>발주담당자</th><th class="num">협력사 수</th><th>담당 협력사</th></tr></thead><tbody>
-      ${sorted.map(([mgr,list],i)=>`<tr><td class="rank">${i+1}</td><td style="font-weight:600;color:var(--blue);text-decoration:underline;cursor:pointer" onclick="openMgrVendorDetail('${esc(mgr).replace(/'/g,"\\'")}')" title="클릭 시 상세 화면">${esc(mgr)}</td><td class="num">${list.length}</td><td style="font-size:11px;color:var(--text2)">${list.slice().sort((a,b)=>a.localeCompare(b,'ko')).map(esc).join(', ')}</td></tr>`).join('')||emptyRow(4,'데이터 없음')}
+      ${sorted.map(([mgr,list],i)=>{
+        const domestic=list.filter(n=>!isForeignVendor(n)).slice().sort((a,b)=>a.localeCompare(b,'ko'));
+        const foreign=list.filter(isForeignVendor).slice().sort((a,b)=>a.localeCompare(b));
+        const foreignHtml=foreign.length?`<div style="margin-top:4px"><span class="tag tag-n" style="margin-right:4px">해외협력사 ${foreign.length}</span><span style="color:var(--text3)">${foreign.map(esc).join(', ')}</span></div>`:'';
+        return `<tr><td class="rank">${i+1}</td><td style="font-weight:600;color:var(--blue);text-decoration:underline;cursor:pointer" onclick="openMgrVendorDetail('${esc(mgr).replace(/'/g,"\\'")}')" title="클릭 시 상세 화면">${esc(mgr)}</td><td class="num">${list.length}</td><td style="font-size:11px;color:var(--text2)">${domestic.map(esc).join(', ')}${foreignHtml}</td></tr>`;
+      }).join('')||emptyRow(4,'데이터 없음')}
       </tbody></table></div>
     </div>`;
   dc('ch-mgr-vendor-count');
@@ -9888,7 +9897,7 @@ function openMgrVendorDetail(mgr) {
       return `
       <tr>
         <td class="rank">${i+1}</td>
-        <td style="color:var(--blue);text-decoration:underline;cursor:pointer" onclick="toggleMgrRow('mgr-period-${i}')" title="클릭 시 ${unitLabel} 드릴다운">${esc(r.v)} <span style="font-size:10px;color:var(--text3)">▾${unitLabel}</span></td>
+        <td style="color:var(--blue);text-decoration:underline;cursor:pointer" onclick="toggleMgrRow('mgr-period-${i}')" title="클릭 시 ${unitLabel} 드릴다운">${esc(r.v)}${isForeignVendor(r.v)?' <span class="tag tag-n">해외</span>':''} <span style="font-size:10px;color:var(--text3)">▾${unitLabel}</span></td>
         <td class="num">${r.taskCnt}</td>
         <td class="num">${r.qty.toLocaleString()}</td>
         <td class="num">${r.amt?faFull(r.amt):'—'}</td>
@@ -10642,9 +10651,7 @@ function renderPortfolioChangeReview(vendors, quadColors) {
   if (!el) return;
   const terminated=getTerminatedVendorNames();
   // v23.8: 담당자 미배정(담당자 공백) 협력사와 해외(중국 등) 협력사는 국내 담당자 대상
-  // 이관검토 리스트 성격상 실효성이 없어 제외 — 국문 자모가 전혀 없는 영문 상호를 해외업체로 판단
-  // (현재 마스터의 해외 업체는 전부 중국 소재라 이 기준으로 정확히 걸러짐, 사업자 등록 주소에 국가 컬럼 없음).
-  const isForeignVendor = name => !/[가-힣]/.test(name);
+  // 이관검토 리스트 성격상 실효성이 없어 제외(isForeignVendor 정의는 getTerminatedVendorNames 옆 공용 함수 참고).
   const flagged = vendors.filter(v => (v._grade === 'C' || v._grade === 'D') && !terminated.has(v.name) && v.mgr && !isForeignVendor(v.name)).sort((a,b) => a._total - b._total);
   if (!flagged.length) { el.innerHTML = `<div style="font-size:12px;color:var(--text3);padding:8px 0">C·D등급 협력사가 없습니다.</div>`; return; }
   el.innerHTML = `<table class="tbl"><thead><tr>
