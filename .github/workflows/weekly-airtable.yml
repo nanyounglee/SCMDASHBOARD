@@ -9,14 +9,6 @@ name: weekly-airtable-progress
 # 수동 실행(workflow_dispatch)도 가능 — 대시보드의 "지금 새로고침" 버튼도
 # 이 워크플로를 GitHub API로 직접 트리거한다(§9 참고).
 # ※ 회의자료(meeting_agenda.json)는 별도 weekly-meeting-agenda.yml (목요일 16:00 KST)에서 갱신
-#
-# v23.7: CSV/CSV_BANK는 별도 private repo(nanyounglee/-private-repo)로 이관됨(민감 데이터라
-# 공개 저장소에서 분리). fetch 스크립트들은 상대경로(CSV/, CSV_BANK/)를 그대로 쓰므로,
-# /tmp/data-repo에 private repo를 클론해 그 디렉터리를 작업 디렉터리로 스크립트를 실행한다 —
-# 이렇게 하면 git log 기반 아카이브 주차 계산도 private repo 자체의 커밋 이력으로 정상 동작한다
-# (이번 이관 직후 첫 실행만 이관 커밋 하나의 날짜로 잡힘 — 그 다음 주부터는 정상 축적).
-# update_price_history.mjs만 CSV/parts.csv(private)와 data/parts_price_history.json(public)을
-# 동시에 다뤄서 예외적으로 SCMDASHBOARD 체크아웃에 parts.csv를 복사해온 뒤 거기서 실행한다.
 on:
   schedule:
     - cron: '0 4 * * 4'
@@ -33,19 +25,18 @@ jobs:
   fetch-and-commit:
     runs-on: ubuntu-latest
     steps:
+      # fetch-depth: 0 — fetch_airtable_sources.mjs가 `git log -1 -- <file>`로 각 CSV의
+      # 마지막 커밋 날짜를 구해 아카이브 주차를 정하는데, 얕은 체크아웃(depth 1)에서는
+      # 모든 파일이 HEAD 커밋 날짜로 나와 CSV_BANK 주차 라벨이 어긋난다 (v22.2 감사 수정)
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
 
       - uses: actions/setup-node@v4
         with:
           node-version: '20'
 
-      - name: private 데이터 저장소 클론
-        env:
-          PRIVATE_REPO_TOKEN: ${{ secrets.PRIVATE_REPO_TOKEN }}
-        run: git clone --quiet https://x-access-token:${PRIVATE_REPO_TOKEN}@github.com/nanyounglee/-private-repo.git /tmp/data-repo
-
       - name: Fetch 진행현황/매출결산 (주차별 신규 파일)
-        working-directory: /tmp/data-repo
         env:
           AIRTABLE_TOKEN: ${{ secrets.AIRTABLE_TOKEN }}
           AIRTABLE_BASE_ID: ${{ vars.AIRTABLE_BASE_ID }}
@@ -53,48 +44,27 @@ jobs:
           PROGRESS_VIEW: ${{ vars.PROGRESS_VIEW }}
           PROJECT_TABLE: ${{ vars.PROJECT_TABLE }}
           PROJECT_VIEW: ${{ vars.PROJECT_VIEW }}
-        run: node "$GITHUB_WORKSPACE/scripts/fetch_airtable_weekly.mjs"
+        run: node scripts/fetch_airtable_weekly.mjs
 
       - name: Fetch 발주/이슈/협력사 등 (고정 파일명 CSV)
-        working-directory: /tmp/data-repo
         env:
           AIRTABLE_TOKEN: ${{ secrets.AIRTABLE_TOKEN }}
           AIRTABLE_SOURCES: ${{ vars.AIRTABLE_SOURCES }}
-        run: node "$GITHUB_WORKSPACE/scripts/fetch_airtable_sources.mjs"
+        run: node scripts/fetch_airtable_sources.mjs
 
       - name: Update parts price history (단가 변경 에폭 추가)
-        # update_price_history.mjs는 CSV/parts.csv(private repo)와
-        # data/parts_price_history.json(공개 repo)을 동시에 다뤄 SCMDASHBOARD 체크아웃에서 실행 —
-        # 방금 갱신된 parts.csv만 잠깐 복사해온다.
-        run: |
-          mkdir -p CSV
-          cp /tmp/data-repo/CSV/parts.csv CSV/parts.csv
-          node scripts/update_price_history.mjs
+        run: node scripts/update_price_history.mjs
 
-      - name: private 데이터 저장소에 커밋 & 푸시 (CSV/CSV_BANK)
-        working-directory: /tmp/data-repo
+      - name: Commit & push if changed
         run: |
           git config user.name "airtable-bot"
           git config user.email "actions@github.com"
-          git add -A
+          git add CSV/ CSV_BANK/ data/parts_price_history.json
           if git diff --cached --quiet; then
             echo "변경 없음 — 커밋 생략"
           else
             WK=$(TZ=Asia/Seoul date +%G-W%V)
             git commit -m "chore: 주간 Airtable CSV 자동 커밋 ($WK)"
-            git push origin main
-          fi
-
-      - name: SCMDASHBOARD에 커밋 & 푸시 (단가 변경 이력만)
-        run: |
-          git config user.name "airtable-bot"
-          git config user.email "actions@github.com"
-          git add data/parts_price_history.json
-          if git diff --cached --quiet; then
-            echo "변경 없음 — 커밋 생략"
-          else
-            WK=$(TZ=Asia/Seoul date +%G-W%V)
-            git commit -m "chore: 단가 변경 이력 갱신 ($WK)"
             git pull --rebase origin main
             git push origin main
           fi

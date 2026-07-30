@@ -1,8 +1,5 @@
 name: weekly-google-sheets-csv
 
-# v23.7: CSV/CSV_BANK는 private repo(nanyounglee/-private-repo)로 이관됨 — 상세는
-# weekly-airtable.yml 상단 주석 참고. 이 워크플로는 CSV/CSV_BANK만 다루므로 SCMDASHBOARD
-# 체크아웃에는 아무것도 커밋하지 않는다.
 on:
   schedule:
     # Every Thursday 18:00 KST (= 09:00 UTC), after purchase dashboard stamping.
@@ -26,29 +23,23 @@ jobs:
         with:
           node-version: '20'
 
-      - name: private 데이터 저장소 클론
-        env:
-          PRIVATE_REPO_TOKEN: ${{ secrets.PRIVATE_REPO_TOKEN }}
-        run: git clone --quiet https://x-access-token:${PRIVATE_REPO_TOKEN}@github.com/nanyounglee/-private-repo.git /tmp/data-repo
-
       - name: Fetch purchase dashboard CSVs from Google Sheets
-        working-directory: /tmp/data-repo
         env:
           GOOGLE_SHEETS_ID: ${{ vars.GOOGLE_SHEETS_ID || '1U0zzofg5JtNU2NAwFlqvfgNwAeziuNIwE0EhTrAtj40' }}
-          GOOGLE_SHEETS_CSV_SOURCES: ${{ vars.GOOGLE_SHEETS_CSV_SOURCES || '[{"key":"dashboard_period_summary","sheet":"dashboard_period_summary","gid":"84172882","file":"dashboard_period_summary.csv"},{"key":"dashboard_group_summary","sheet":"dashboard_group_summary","gid":"1833555647","file":"dashboard_group_summary.csv"},{"key":"dashboard_sku_snapshot","sheet":"dashboard_sku_snapshot","gid":"1807763326","file":"dashboard_sku_snapshot.csv"},{"key":"dashboard_sku_detail","sheet":"dashboard_sku_detail","gid":"1818334811","file":"dashboard_sku_detail.csv"},{"key":"dashboard_sku_monthly","sheet":"dashboard_sku_monthly","gid":"1653077946","file":"dashboard_sku_monthly.csv"},{"key":"raw_purchase","sheet":"raw_발주","gid":"1071121681","file":"raw_발주.csv"},{"key":"parts_master","sheet":"parts_master","gid":"620593093","file":"parts_master.csv"},{"key":"sales_status_history","sheet":"sales_status_history","gid":"2055635282","file":"sales_status_history.csv"}]' }}
+          GOOGLE_SHEETS_CSV_SOURCES: ${{ vars.GOOGLE_SHEETS_CSV_SOURCES || '[{"key":"dashboard_period_summary","sheet":"dashboard_period_summary","gid":"84172882","file":"dashboard_period_summary.csv"},{"key":"dashboard_group_summary","sheet":"dashboard_group_summary","gid":"1833555647","file":"dashboard_group_summary.csv"},{"key":"dashboard_sku_snapshot","sheet":"dashboard_sku_snapshot","gid":"1807763326","file":"dashboard_sku_snapshot.csv"},{"key":"dashboard_sku_detail","sheet":"dashboard_sku_detail","gid":"1818334811","file":"dashboard_sku_detail.csv"},{"key":"dashboard_sku_monthly","sheet":"dashboard_sku_monthly","gid":"1653077946","file":"dashboard_sku_monthly.csv"},{"key":"raw_purchase","sheet":"raw_발주","gid":"1071121681","file":"raw_발주.csv"},{"key":"parts_master","sheet":"parts_master","gid":"620593093","file":"parts_master.csv"}]' }}
           GOOGLE_SERVICE_ACCOUNT_JSON: ${{ secrets.GOOGLE_SERVICE_ACCOUNT_JSON }}
-        run: node "$GITHUB_WORKSPACE/scripts/fetch_google_sheets_csv.mjs"
+        run: node scripts/fetch_google_sheets_csv.mjs
 
-      - name: private 데이터 저장소에 커밋 & 푸시
-        working-directory: /tmp/data-repo
+      - name: Commit & push if changed
         run: |
           git config user.name "google-sheets-bot"
           git config user.email "actions@github.com"
-          git add -A
+          git add CSV/ CSV_BANK/
           if git diff --cached --quiet; then
             echo "No Google Sheets CSV changes; skipping commit"
           else
             WK=$(TZ=Asia/Seoul date +%G-W%V)
             git commit -m "chore: update purchase dashboard CSVs ($WK)"
+            git pull --rebase origin main
             git push origin main
           fi
