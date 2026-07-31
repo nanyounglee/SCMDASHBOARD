@@ -11210,18 +11210,22 @@ function renderRevenueModal(){
   const achAct=pct(selAct,selTarget), achOrder=pct(selOrder,selTarget), ratio=pct(selPurProj,selAct);
   const label=selPeriodLabel()||`${P.targetYear}년`;
   const noSel=!idxs.length;
-  const ratioColor=ratio===null?'var(--text3)':ratio>70?'var(--red)':ratio>50?'var(--amber)':'var(--green)';
+  const ratioAll=pct(selPurAll,selAct);
+  const rCol=v=>v===null?'var(--text3)':v>70?'var(--red)':v>50?'var(--amber)':'var(--green)';
+  const ratioColor=rCol(ratio), ratioAllColor=rCol(ratioAll);
   const kpi=(lbl,val,sub,cls)=>`<div class="kpi-card ${cls||''}" style="cursor:default"><div class="kpi-label">${lbl}</div><div class="kpi-val" style="font-size:20px">${val}</div><div class="kpi-sub">${sub}</div></div>`;
   body.innerHTML=`
     ${noSel?`<div style="padding:8px 12px;background:var(--amber-light);border-radius:var(--r-sm);font-size:11.5px;color:var(--text2);margin-bottom:12px">선택 기간이 ${P.targetYear}년 밖이라 목표 대비는 표시할 수 없습니다. 아래 추이·표는 ${P.targetYear}년 연간 기준입니다.</div>`:''}
     <div class="kpi-row-3" style="margin-bottom:6px">
       ${kpi('목표 수주액',noSel?'—':fa(selTarget),`${label} · 연간 목표의 ${noSel?'—':(selTarget/P.target.reduce((a,b)=>a+b,0)*100).toFixed(1)+'%'}`,'c-slate')}
       ${kpi('매출 현황 (업로드 실측)',noSel?'—':fa(selAct),`목표 대비 <b style="color:${col(achAct===null?null:achAct-100)}">${achAct===null?'—':achAct.toFixed(0)+'%'}</b> (${achAct===null?'—':sgn(achAct-100)})`,'c-blue')}
-      ${kpi('매입금액 (재고제외)',noSel?'—':fa(selPurProj),`매출 대비 <b style="color:${ratioColor}">${ratio===null?'—':ratio.toFixed(1)+'%'}</b> · 재고포함 ${noSel?'—':fa(selPurAll)}`,'c-green')}
+      ${kpi('매입 / 매출 비중 <span style="font-weight:400;color:var(--text3)">(재고제외)</span>',
+        noSel?'—':`<span style="color:${ratioColor}">${ratio===null?'—':ratio.toFixed(1)+'%'}</span>`,
+        `재고포함 <b style="color:${ratioAllColor}">${ratioAll===null?'—':ratioAll.toFixed(1)+'%'}</b><br><span style="font-size:10px;color:var(--text3)">매입 재고제외 ${noSel?'—':fa(selPurProj)} · 재고포함 ${noSel?'—':fa(selPurAll)}</span>`,'c-green')}
     </div>
     <div style="font-size:11px;color:var(--text3);margin-bottom:14px">
       · <b>매출 현황</b>은 종합 현황 카드와 동일한 업로드 실측치(프로젝트 총매출액을 출고월에 귀속)이고, <b>목표·수주액·전년</b>은 구매조달팀 연간분석 표(01-A/01-B) 수치입니다 — 산출 기준이 달라 표의 "2026년 매출액"과는 차이가 날 수 있습니다.
-      · <b>매입 비중</b>은 재고제외 매입 ÷ 매출 (원가분석의 원가율과 같은 정의).
+      · <b>매입 비중</b>은 매입 ÷ 매출 — <b>재고제외</b>는 원가분석의 원가율과 같은 정의(프로젝트 매출에 직접 대응하는 매입만), <b>재고포함</b>은 재고생산분까지 더한 총 매입 기준이라 항상 재고제외보다 큽니다.
     </div>
     <div class="card" style="margin-bottom:14px">
       <div class="card-header"><div class="card-title">${P.prevYear} vs ${P.targetYear} 매출·수주 추이</div><div class="card-sub"><a href="javascript:void(0)" onclick="closeModal();nav(document.querySelector('.sb-item[onclick*=cost-analysis]'),'cost-analysis')">원가 분석 화면 →</a></div></div>
@@ -11238,7 +11242,9 @@ function renderRevenueModal(){
         <tr><td><b>목표 대비 (수주)</b></td>${P.target.map((t,i)=>{const v=P.curOrder[i]?pct(P.curOrder[i],t)-100:null;return `<td class="num" style="white-space:nowrap;color:${col(v)}${idxs.includes(i)?';background:var(--blue-light)':''}">${v===null?'-':sgn(v)}</td>`;}).join('')}<td class="num" style="color:${col(pct(P.curOrder.reduce((a,b)=>a+b,0),P.target.reduce((a,b)=>a+b,0))-100)}">${sgn(pct(P.curOrder.reduce((a,b)=>a+b,0),P.target.reduce((a,b)=>a+b,0))-100)}</td></tr>
         <tr><td><b>전년 대비 (수주)</b></td>${P.prevOrder.map((p,i)=>{const v=P.curOrder[i]?pct(P.curOrder[i],p)-100:null;return `<td class="num" style="white-space:nowrap;color:${col(v)}${idxs.includes(i)?';background:var(--blue-light)':''}">${v===null?'-':sgn(v)}</td>`;}).join('')}<td class="num" style="color:${col(pct(P.curOrder.reduce((a,b)=>a+b,0),P.prevOrder.reduce((a,b)=>a+b,0))-100)}">${sgn(pct(P.curOrder.reduce((a,b)=>a+b,0),P.prevOrder.reduce((a,b)=>a+b,0))-100)}</td></tr>
         ${planRow('매입금액 (재고제외)',purProj,idxs)}
-        <tr><td><b>매입 / 매출 비중</b></td>${purProj.map((p,i)=>{const v=pct(p,actRev[i]);return `<td class="num" style="white-space:nowrap;color:${v===null?'var(--text3)':v>70?'var(--red)':v>50?'var(--amber)':'var(--green)'}${idxs.includes(i)?';background:var(--blue-light)':''}">${v===null?'-':v.toFixed(0)+'%'}</td>`;}).join('')}<td class="num">${(()=>{const v=pct(purProj.reduce((a,b)=>a+b,0),actRev.reduce((a,b)=>a+b,0));return v===null?'-':v.toFixed(0)+'%';})()}</td></tr>
+        ${ratioRow('매입 / 매출 비중 (재고제외)',purProj,actRev,idxs,rCol)}
+        ${planRow('매입금액 (재고포함)',purAll,idxs)}
+        ${ratioRow('매입 / 매출 비중 (재고포함)',purAll,actRev,idxs,rCol)}
       </tbody>
     </table></div>`;
   dc('ch-rev-plan');
@@ -11254,6 +11260,13 @@ function renderRevenueModal(){
     ]},options:{responsive:true,maintainAspectRatio:false,interaction:{mode:'index',intersect:false},
       plugins:{legend:{position:'bottom',labels:{font:{size:10},boxWidth:12}},tooltip:{callbacks:{label:c=>c.dataset.label+': '+(c.raw==null?'—':fa(c.raw))}}},
       scales:{x:{ticks:{font:{size:10}}},y:{ticks:{font:{size:10},callback:v=>fa(v)}}}}});
+}
+// 비중 행(분자 ÷ 분모 ×100) — 월별 셀 + 합계는 각 배열 총합끼리 나눈 값
+function ratioRow(label,num,den,idxs,colFn){
+  const cell=(v,hl)=>`<td class="num" style="white-space:nowrap;color:${colFn(v)}${hl?';background:var(--blue-light)':''}">${v===null?'-':v.toFixed(0)+'%'}</td>`;
+  const r=(a,b)=>b>0?(a/b*100):null;
+  const tot=r(num.reduce((a,b)=>a+b,0),den.reduce((a,b)=>a+b,0));
+  return `<tr><td style="white-space:nowrap"><b>${esc(label)}</b></td>${num.map((p,i)=>cell(r(p,den[i]),idxs.includes(i))).join('')}<td class="num" style="white-space:nowrap;color:${colFn(tot)}"><b>${tot===null?'-':tot.toFixed(0)+'%'}</b></td></tr>`;
 }
 function planRow(label,arr,idxs){
   return `<tr><td style="white-space:nowrap">${esc(label)}</td>${arr.map((v,i)=>`<td class="num" style="white-space:nowrap${idxs.includes(i)?';background:var(--blue-light)':''}">${v>0?fa(v):'-'}</td>`).join('')}<td class="num" style="white-space:nowrap"><b>${fa(arr.reduce((a,b)=>a+b,0))}</b></td></tr>`;
