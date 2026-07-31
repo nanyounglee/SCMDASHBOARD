@@ -542,7 +542,7 @@ a{color:var(--blue);text-decoration:none}
           <div class="kpi-sub"><span id="k-order-sub">데이터 없음</span></div>
           <div class="kpi-spark"><svg width="60" height="30" id="spark-order"></svg></div>
         </div>
-        <div class="kpi-card c-slate" onclick="nav(document.querySelector('.sb-item[onclick*=cost-analysis]'),'cost-analysis')" style="cursor:pointer" title="원가분석 화면으로 이동">
+        <div class="kpi-card c-slate" onclick="openModal('revenue')" style="cursor:pointer" title="목표 대비 달성률·연도별 추이·매입 비중 상세">
           <div class="kpi-label">매출 현황</div><div class="kpi-val" id="k-revenue">—</div>
           <div class="kpi-sub"><span id="k-revenue-sub">데이터 없음</span></div>
         </div>
@@ -4335,7 +4335,11 @@ function openModal(type,extra) {
   ov.classList.add('open');
   tabsEl.innerHTML='';
 
-  if (type==='orderTask') {
+  if (type==='revenue') {
+    title.textContent='매출 현황 · 목표 대비 — '+(selPeriodLabel()||'전체');
+    renderRevenueModal();
+
+  } else if (type==='orderTask') {
     title.textContent='발주 TASK 상세 — '+(selPeriodLabel()||'전체');
     if (!D.order) { body.innerHTML=emptyRow(1,'발주 RAW 업로드 필요'); return; }
     ORDERTASK_TAB='top';
@@ -11140,6 +11144,119 @@ function qcExportCSV(){
   const lines=[head.join(',')].concat(h.map(r=>[r.ts,r.type,r.spec,r.qty,r.paper,r.marginPct,r.totalCost,r.totalPrice,r.perUnit,r.consumer].join(',')));
   const blob=new Blob(['﻿'+lines.join('\n')],{type:'text/csv;charset=utf-8'});
   const a=document.createElement('a'); a.href=URL.createObjectURL(blob); a.download='견적이력_'+new Date().toISOString().slice(0,10)+'.csv'; a.click(); URL.revokeObjectURL(a.href);
+}
+
+// ===== 매출 목표·추이 (연간분석 01-A/01-B 표 기준, 구매조달팀 제공 — 2026.07.31) =====
+// CSV 자동로드 대상이 아닌 별도 계획 수치라 상수로 관리. 표가 갱신되면 아래 배열만 교체하면 된다.
+// 목표는 "목표 수주액(×1.15)" 기준이며 원본 표의 월별/누적 목표대비 %도 수주액 기준으로 산출돼 있다.
+const SALES_PLAN={
+  targetYear:2026, prevYear:2025,
+  target:      [1069910000,855160000,1138160000,1115710000,871000000,867330000,998250000,1106530000,1260360000,1381370000,1899880000,1690530000],
+  curOrder:    [960390000,679380000,958380000,895870000,1038650000,844300000,514730000,0,0,0,0,0],
+  curRevenue:  [1056260000,562150000,1168460000,783870000,723990000,730000000,0,0,0,0,0,0],
+  prevOrder:   [930350000,743620000,989710000,970190000,757390000,754200000,868040000,962200000,1095970000,1201190000,1652070000,1470020000],
+};
+// 선택 기간과 무관하게 월별(1~12) 매출을 산출 — k-revenue 카드와 동일 정의
+// (proj_rev 프로젝트 총매출액을 출고월에 귀속 · 복수 출고월 균등분할, 미업로드 시 R) 판매가 근사 폴백)
+function revenueByMonthAll(year){
+  const out={};
+  const revMap=getProjRevMap();
+  if(Object.keys(revMap).length){
+    const projSeen=new Set();
+    getFilteredAllOrders().filter(r=>!isStock(r)).forEach(r=>{ const p=(r['project']||'').trim(); if(p) projSeen.add(p); });
+    projSeen.forEach(p=>{
+      const rv=revMap[p]; if(!rv||!rv.months.length) return;
+      const share=1/rv.months.length;
+      rv.months.forEach(m=>{ out[m]=(out[m]||0)+rv.rev*share; });
+    });
+  } else {
+    getFilteredAllOrders().filter(r=>!isStock(r)).forEach(r=>{
+      const mo=pOrderMonth(r['과업지시일자']); if(!mo) return;
+      out[mo]=(out[mo]||0)+pa(r['R) 판매가(최종)']);
+    });
+  }
+  return Array.from({length:12},(_,i)=>out[year+'.'+(i+1)]||0);
+}
+// 월별 매입금액(세금계산서작성월 기준). stockIncl=false면 재고제외(totProj) — 매입비중은 카드와 동일하게 재고제외 기준
+function purchaseByMonthAll(year,stockIncl){
+  const out={};
+  getFilteredAllOrders().forEach(r=>{
+    if(!stockIncl&&isStock(r)) return;
+    const byM=purchaseByMonth(r);
+    Object.entries(byM).forEach(([m,a])=>{ out[m]=(out[m]||0)+a; });
+  });
+  return Array.from({length:12},(_,i)=>out[year+'.'+(i+1)]||0);
+}
+// 선택 기간에 걸친 월 인덱스(0-11) — 대상 연도 밖이면 빈 배열
+function planSelMonthIdx(){
+  return selPeriodMonths().map(m=>{
+    const p=String(m).split('.'); return (+p[0]===SALES_PLAN.targetYear)?(+p[1]-1):null;
+  }).filter(i=>i!==null&&i>=0&&i<12);
+}
+function renderRevenueModal(){
+  const body=document.getElementById('modal-body');
+  const P=SALES_PLAN;
+  const actRev=revenueByMonthAll(P.targetYear);        // 대시보드 업로드 실측 매출
+  const purProj=purchaseByMonthAll(P.targetYear,false); // 재고제외 매입
+  const purAll=purchaseByMonthAll(P.targetYear,true);   // 재고포함 매입
+  const idxs=planSelMonthIdx();
+  const sum=(arr,ii)=>ii.reduce((s,i)=>s+(arr[i]||0),0);
+  const pct=(a,b)=>b>0?(a/b*100):null;
+  const sgn=v=>v===null?'—':(v>=0?'+':'')+v.toFixed(0)+'%';
+  const col=v=>v===null?'var(--text3)':v>=0?'var(--green)':'var(--red)';
+  // 선택 기간 합계
+  const selTarget=sum(P.target,idxs), selAct=sum(actRev,idxs), selPlanRev=sum(P.curRevenue,idxs),
+        selOrder=sum(P.curOrder,idxs), selPrev=sum(P.prevOrder,idxs), selPurProj=sum(purProj,idxs), selPurAll=sum(purAll,idxs);
+  const achAct=pct(selAct,selTarget), achOrder=pct(selOrder,selTarget), ratio=pct(selPurProj,selAct);
+  const label=selPeriodLabel()||`${P.targetYear}년`;
+  const noSel=!idxs.length;
+  const ratioColor=ratio===null?'var(--text3)':ratio>70?'var(--red)':ratio>50?'var(--amber)':'var(--green)';
+  const kpi=(lbl,val,sub,cls)=>`<div class="kpi-card ${cls||''}" style="cursor:default"><div class="kpi-label">${lbl}</div><div class="kpi-val" style="font-size:20px">${val}</div><div class="kpi-sub">${sub}</div></div>`;
+  body.innerHTML=`
+    ${noSel?`<div style="padding:8px 12px;background:var(--amber-light);border-radius:var(--r-sm);font-size:11.5px;color:var(--text2);margin-bottom:12px">선택 기간이 ${P.targetYear}년 밖이라 목표 대비는 표시할 수 없습니다. 아래 추이·표는 ${P.targetYear}년 연간 기준입니다.</div>`:''}
+    <div class="kpi-row-3" style="margin-bottom:6px">
+      ${kpi('목표 수주액',noSel?'—':fa(selTarget),`${label} · 연간 목표의 ${noSel?'—':(selTarget/P.target.reduce((a,b)=>a+b,0)*100).toFixed(1)+'%'}`,'c-slate')}
+      ${kpi('매출 현황 (업로드 실측)',noSel?'—':fa(selAct),`목표 대비 <b style="color:${col(achAct===null?null:achAct-100)}">${achAct===null?'—':achAct.toFixed(0)+'%'}</b> (${achAct===null?'—':sgn(achAct-100)})`,'c-blue')}
+      ${kpi('매입금액 (재고제외)',noSel?'—':fa(selPurProj),`매출 대비 <b style="color:${ratioColor}">${ratio===null?'—':ratio.toFixed(1)+'%'}</b> · 재고포함 ${noSel?'—':fa(selPurAll)}`,'c-green')}
+    </div>
+    <div style="font-size:11px;color:var(--text3);margin-bottom:14px">
+      · <b>매출 현황</b>은 종합 현황 카드와 동일한 업로드 실측치(프로젝트 총매출액을 출고월에 귀속)이고, <b>목표·수주액·전년</b>은 구매조달팀 연간분석 표(01-A/01-B) 수치입니다 — 산출 기준이 달라 표의 "2026년 매출액"과는 차이가 날 수 있습니다.
+      · <b>매입 비중</b>은 재고제외 매입 ÷ 매출 (원가분석의 원가율과 같은 정의).
+    </div>
+    <div class="card" style="margin-bottom:14px">
+      <div class="card-header"><div class="card-title">${P.prevYear} vs ${P.targetYear} 매출·수주 추이</div><div class="card-sub"><a href="javascript:void(0)" onclick="closeModal();nav(document.querySelector('.sb-item[onclick*=cost-analysis]'),'cost-analysis')">원가 분석 화면 →</a></div></div>
+      <div class="ch" style="height:260px"><canvas id="ch-rev-plan"></canvas></div>
+    </div>
+    <div class="tbl-wrap"><table class="tbl" style="min-width:940px">
+      <thead><tr><th style="min-width:150px">구분</th>${Array.from({length:12},(_,i)=>`<th class="num"${idxs.includes(i)?' style="color:var(--blue)"':''}>${i+1}월</th>`).join('')}<th class="num">합계</th></tr></thead>
+      <tbody>
+        ${planRow('목표 수주액',P.target,idxs)}
+        ${planRow(P.targetYear+' 수주액',P.curOrder,idxs)}
+        ${planRow(P.targetYear+' 매출액 (표)',P.curRevenue,idxs)}
+        ${planRow('매출 현황 (업로드 실측)',actRev,idxs)}
+        ${planRow(P.prevYear+' 수주액',P.prevOrder,idxs)}
+        <tr><td><b>목표 대비 (수주)</b></td>${P.target.map((t,i)=>{const v=P.curOrder[i]?pct(P.curOrder[i],t)-100:null;return `<td class="num" style="white-space:nowrap;color:${col(v)}${idxs.includes(i)?';background:var(--blue-light)':''}">${v===null?'-':sgn(v)}</td>`;}).join('')}<td class="num" style="color:${col(pct(P.curOrder.reduce((a,b)=>a+b,0),P.target.reduce((a,b)=>a+b,0))-100)}">${sgn(pct(P.curOrder.reduce((a,b)=>a+b,0),P.target.reduce((a,b)=>a+b,0))-100)}</td></tr>
+        <tr><td><b>전년 대비 (수주)</b></td>${P.prevOrder.map((p,i)=>{const v=P.curOrder[i]?pct(P.curOrder[i],p)-100:null;return `<td class="num" style="white-space:nowrap;color:${col(v)}${idxs.includes(i)?';background:var(--blue-light)':''}">${v===null?'-':sgn(v)}</td>`;}).join('')}<td class="num" style="color:${col(pct(P.curOrder.reduce((a,b)=>a+b,0),P.prevOrder.reduce((a,b)=>a+b,0))-100)}">${sgn(pct(P.curOrder.reduce((a,b)=>a+b,0),P.prevOrder.reduce((a,b)=>a+b,0))-100)}</td></tr>
+        ${planRow('매입금액 (재고제외)',purProj,idxs)}
+        <tr><td><b>매입 / 매출 비중</b></td>${purProj.map((p,i)=>{const v=pct(p,actRev[i]);return `<td class="num" style="white-space:nowrap;color:${v===null?'var(--text3)':v>70?'var(--red)':v>50?'var(--amber)':'var(--green)'}${idxs.includes(i)?';background:var(--blue-light)':''}">${v===null?'-':v.toFixed(0)+'%'}</td>`;}).join('')}<td class="num">${(()=>{const v=pct(purProj.reduce((a,b)=>a+b,0),actRev.reduce((a,b)=>a+b,0));return v===null?'-':v.toFixed(0)+'%';})()}</td></tr>
+      </tbody>
+    </table></div>`;
+  dc('ch-rev-plan');
+  const ctx=getCtx('ch-rev-plan'); if(!ctx) return;
+  const zeroToNull=a=>a.map(v=>v>0?v:null);
+  CHARTS['ch-rev-plan']=new Chart(ctx,{type:'line',data:{
+    labels:Array.from({length:12},(_,i)=>(i+1)+'월'),
+    datasets:[
+      {label:P.targetYear+' 수주액',data:zeroToNull(P.curOrder),borderColor:'#1d4ed8',backgroundColor:'rgba(29,78,216,.08)',borderWidth:2.5,tension:.35,pointRadius:3,fill:true,spanGaps:false},
+      {label:P.targetYear+' 매출액',data:zeroToNull(P.curRevenue),borderColor:'#059669',borderWidth:2,tension:.35,pointRadius:3,fill:false,spanGaps:false},
+      {label:P.prevYear+' 수주액',data:zeroToNull(P.prevOrder),borderColor:'#94a3b8',borderWidth:2,borderDash:[5,4],tension:.35,pointRadius:2,fill:false},
+      {label:'목표 수주액',data:P.target,borderColor:'#cbd5e1',borderWidth:1.5,borderDash:[2,3],tension:.2,pointRadius:0,fill:false},
+    ]},options:{responsive:true,maintainAspectRatio:false,interaction:{mode:'index',intersect:false},
+      plugins:{legend:{position:'bottom',labels:{font:{size:10},boxWidth:12}},tooltip:{callbacks:{label:c=>c.dataset.label+': '+(c.raw==null?'—':fa(c.raw))}}},
+      scales:{x:{ticks:{font:{size:10}}},y:{ticks:{font:{size:10},callback:v=>fa(v)}}}}});
+}
+function planRow(label,arr,idxs){
+  return `<tr><td style="white-space:nowrap">${esc(label)}</td>${arr.map((v,i)=>`<td class="num" style="white-space:nowrap${idxs.includes(i)?';background:var(--blue-light)':''}">${v>0?fa(v):'-'}</td>`).join('')}<td class="num" style="white-space:nowrap"><b>${fa(arr.reduce((a,b)=>a+b,0))}</b></td></tr>`;
 }
 
 // ===== CALENDAR (연간 이벤트 캘린더 — 구매조달팀 연간주요이벤트 마스터 기준) =====
