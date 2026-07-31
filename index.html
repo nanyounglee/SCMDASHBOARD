@@ -403,6 +403,11 @@ a{color:var(--blue);text-decoration:none}
     <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M2 14V2M2 12h3V6h3v6h3V4h3v8"/><path d="M2 5l4-2 4 3 4-4" stroke="var(--green)" stroke-dasharray="2 1"/></svg>
     KPI 목표·트래킹
   </div>
+  <div class="sb-section">일정관리</div>
+  <div class="sb-item" onclick="nav(this,'calendar')">
+    <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="2" y="3" width="12" height="11" rx="1.5"/><path d="M2 6.5h12M5 1.5v3M11 1.5v3"/></svg>
+    연간 이벤트 캘린더
+  </div>
   <div class="sb-section">운영 서비스</div>
   <div class="sb-item" onclick="nav(this,'qms')">
     <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M4 8l3 3 5-5"/><circle cx="8" cy="8" r="6"/></svg>
@@ -902,6 +907,9 @@ a{color:var(--blue);text-decoration:none}
         </div>
       </div>
     </div>
+
+    <!-- CALENDAR -->
+    <div id="sec-calendar" style="display:none"></div>
 
     <!-- INVENTORY-OPS -->
     <div id="sec-inventory-ops" style="display:none">
@@ -6896,7 +6904,7 @@ function nav(el,id) {
   document.querySelectorAll('.sb-item').forEach(i=>i.classList.remove('active'));
   if (el) el.classList.add('active');
   CURRENT_SECTION=id;
-  const titles={overview:'종합 현황','inventory-ops':'재고운영 현황','stockout-detail':'품절 상세','purchase-review':'매입 검토','season-plan':'시즌재고 계획',eoq:'EOQ · 발주알람',graduation:'졸업 검토',order:'발주 현황',progress:'발주 진행현황','cost-analysis':'원가 분석',issue:'이슈 현황',sales:'매출/마진 분석','product-trend':'제품별 판매량 추이',supplier:'협력사 · 매입 현황','supplier-product':'협력사유형별 제품군',kpi:'KPI 목표·트래킹',portfolio:'공급망 포트폴리오',qms:'품질 현황',subcontract:'하도급법 위험',ai:'AI 어시스턴트',report:'리포트 생성',stock:'재고 현황',quote:'견적계산기'};
+  const titles={overview:'종합 현황','inventory-ops':'재고운영 현황','stockout-detail':'품절 상세','purchase-review':'매입 검토','season-plan':'시즌재고 계획',eoq:'EOQ · 발주알람',graduation:'졸업 검토',order:'발주 현황',progress:'발주 진행현황','cost-analysis':'원가 분석',issue:'이슈 현황',sales:'매출/마진 분석','product-trend':'제품별 판매량 추이',supplier:'협력사 · 매입 현황','supplier-product':'협력사유형별 제품군',kpi:'KPI 목표·트래킹',portfolio:'공급망 포트폴리오',qms:'품질 현황',subcontract:'하도급법 위험',ai:'AI 어시스턴트',report:'리포트 생성',stock:'재고 현황',quote:'견적계산기',calendar:'연간 이벤트 캘린더'};
   const guides={
     overview:'<b>확인 가능 지표:</b> 월간 공지사항(졸업/출시/품절 제품, 선택 월 기준 자동집계) · 발주TASK(프로젝트/재고생산/긴급) · 월매입금액 · 이슈건수(품질/수량/운영) · 긴급발주 · 고객인지이슈 — 모든 KPI에 전년 동기(YoY) 비교 표시 | <b>차트:</b> 매입추이(월별/주별·합산/협력사/업태/굿즈코드) · 이슈유형 도넛 · 담당자별 발주 · 월별이슈추이 · 제조유형 매입비중(업태/카테고리 전환) | <b>클릭:</b> KPI 카드 클릭 시 상세 모달 · 차트 월 클릭 시 Top5 모달 | <b>CSV:</b> 발주_RAW + 이슈_RAW + 공급망_RAW + 고객인지이슈_RAW + 굿즈마스터(졸업/출시) + 품절리스트',
     'inventory-ops':'<b>확인 가능 지표:</b> 재고자산평가액 · 재고회전율(1M/3M/YTD) · 선매입재고품절율 · 운영밴드 상태(분기별) | <b>차트:</b> 재고금액 추이(최근12주, 밴드 상/하한 표시) · 카테고리별 재고비중/SKU수/회전율 | <b>클릭:</b> 재고자산/회전율 KPI → SKU별 상세 모달(정렬 가능, 회전율 클릭 시 월별 판매추이 바차트+회의이력) | <b>CSV:</b> 재고 SKU 스냅샷(dashboard_sku_snapshot) + 재고 그룹 요약(dashboard_group_summary)',
@@ -6921,6 +6929,7 @@ function nav(el,id) {
     ai:'<b>사용법:</b> 제품명 입력 → 제품 정의서 링크 + 리드타임/제작기간·단가 문의 기존 답변(최신 3건, 답변 없으면 과거 슬랙 문의 텍스트로 폴백) — Check_standard_Answer(응답 완료) + Check_standard_Question(질문1~3·답변1~3 원본) 두 소스를 함께 검색해 커버리지 확대 | 협력사명 입력 → 발주현황/매입금액/3개월추이/품질이슈 분석 | 긴급 → 긴급발주 목록 | 미입하/task → 미입하현황 | 전월/매입 → 전월대비 비교 | 담당자명 → 개인 실적 | <b>CSV:</b> 제품문의답변이력(check_answer) + 제품문의원본(check_question) + 발주_RAW + 이슈_RAW + 공급망_RAW',
     quote:'<b>기능:</b> 패키지(박스) 자동 견적 산출 — 마닐라박스/C형/W형/슬리브형 | <b>로직:</b> 전개사이즈 → 지류단가(27지종×15규격, 0원 규격 자동상향) → 여분·연수 → 원단/인쇄/코팅/톰슨/접착/특수공정/골판지 → 관리비(10%·최소15만) → 마진(최소20만) | <b>이력:</b> localStorage 저장 · CSV 내보내기 | <b>기준:</b> 외주버전 v1.2.2 단가표',
     report:'<b>기능:</b> 팀 주간 회의록/보고서 바로가기(SCM-Archive) · 외주생산파트 주간 리포트·회의록 프롬프트 생성 · 구매전략파트 주간 재고 리포트 .md 생성(재고수준·재고구조·품절·장기미회전·이슈 자동 요약, 주차 선택 가능) · <b>변경 이력 리포트 .md 생성</b>(파츠 신규/졸업·단가 변동·협력사·제품 변경 — 주간 리포트/회의 원천 데이터) · <b>변경 스냅샷 아카이브(CSV_BANK) 바로가기</b>',
+    calendar:'<b>구성:</b> 주간 정기회의 안내 · 연간 반복업무 타임라인(협력사평가/S&OP/매입결산 등 9개 업무 · 카테고리별 색상) · 월별 상세(월 클릭 시 해당월 업무·비고) · <b>공급망 특이사항</b>(협력사 휴가·발주 마감 등 수시 이슈 — 직접 추가/삭제, 브라우저에 저장) | <b>출처:</b> 구매조달팀 연간주요이벤트 마스터(§2 업무 마스터 기준)',
   };
   document.getElementById('page-title').innerHTML=`${titles[id]||id}<span class="topbar-badge" id="page-month-badge">${selPeriodLabel()}</span>`;
   renderPeriodBar();
@@ -6947,6 +6956,7 @@ function nav(el,id) {
   
   if (id==='qms') renderQMS();
   if (id==='quote') renderQuoteCalc();
+  if (id==='calendar') renderCalendar();
   if (id==='portfolio') renderPortfolio();
   if (id==='kpi') renderKPITracker();
 }
@@ -11130,6 +11140,147 @@ function qcExportCSV(){
   const lines=[head.join(',')].concat(h.map(r=>[r.ts,r.type,r.spec,r.qty,r.paper,r.marginPct,r.totalCost,r.totalPrice,r.perUnit,r.consumer].join(',')));
   const blob=new Blob(['﻿'+lines.join('\n')],{type:'text/csv;charset=utf-8'});
   const a=document.createElement('a'); a.href=URL.createObjectURL(blob); a.download='견적이력_'+new Date().toISOString().slice(0,10)+'.csv'; a.click(); URL.revokeObjectURL(a.href);
+}
+
+// ===== CALENDAR (연간 이벤트 캘린더 — 구매조달팀 연간주요이벤트 마스터 기준) =====
+const CAL_MASTER=[
+  {id:'v-eval',cat:'협력사',name:'협력사 평가',dept:'구매전략파트',months:[1,2,3,4,5,6,7,8,9,10,11,12],span:m=>`${m}월 1주 ~ ${m}월 3주`},
+  {id:'v-visit',cat:'협력사',name:'협력사 순회',dept:'구매전략파트 · 구매조달팀',months:[1,2,3],span:()=>'1월 ~ 3월 말'},
+  {id:'r-audit',cat:'재고',name:'협력사 보유 재고 실사',dept:'외주생산파트',months:[3,6,9,12],span:m=>`${m}월 1주 ~ ${m}월 말`},
+  {id:'r-sop',cat:'재고',name:'S&OP',dept:'구매전략파트 · 구매조달팀',months:[1,2,3,4,5,6,7,8,9,10,11,12],span:m=>`${m}월 1주 ~ ${m}월 4주`},
+  {id:'r-scrap',cat:'재고',name:'재고자산 폐기',dept:'구매조달팀',months:[4,5,6],span:()=>'4월 ~ 6월 말'},
+  {id:'p-cny',cat:'구매',name:'중국 춘절 대비 재고 매입',dept:'구매조달팀',months:[11,12,1,2],span:()=>'11월 ~ 1월 말'},
+  {id:'d-vac',cat:'납기',name:'협력사 여름휴가',dept:'외주생산파트',months:[6],span:()=>'6월 1주 ~ 6월 말'},
+  {id:'d-holi',cat:'납기',name:'명절연휴 택배·리드타임',dept:'외주생산파트',months:[1,2,7,8,9,12],span:()=>'1월 · 9월 초 (사전 리드타임 확보)'},
+  {id:'a-close',cat:'관리',name:'매입 결산',dept:'구매전략파트',months:[1,2,3,4,5,6,7,8,9,10,11,12],span:()=>'매월 1일 ~ 14일'},
+];
+const CAL_WEEKLY=[
+  {day:'금요일',time:'오전 11:00',name:'구매조달 파트장 회의'},
+  {day:'목요일',time:'오후 3:00',name:'외주생산파트 회의'},
+];
+const CAL_CAT_COLOR={협력사:'#2563eb',재고:'#059669',구매:'#7c3aed',납기:'#d97706',품질:'#dc2626',원가:'#0891b2',관리:'#64748b'};
+const CAL_NOTES_KEY='cal_special_notes_v1';
+const CAL_NOTES_SEED=[
+  {id:'seed-1',cat:'납기',title:'비벨라 생산 이탈리아 공장 휴가',months:[8],period:'2026-08-01 ~ 2026-08-31 (한달간)',note:'휴가 기간 리드타임 지연 유의'},
+  {id:'seed-2',cat:'구매',title:'슬로건 다이어리 원단 확보 발주',months:[7],period:'2026년 7월 3주 발주 마감',note:'해당 주까지 발주해야 원단 확보 가능'},
+];
+function calLoadNotes(){
+  try{ const raw=localStorage.getItem(CAL_NOTES_KEY); if(raw) return JSON.parse(raw); }catch(e){}
+  calSaveNotes(CAL_NOTES_SEED);
+  return CAL_NOTES_SEED.slice();
+}
+function calSaveNotes(list){ try{ localStorage.setItem(CAL_NOTES_KEY,JSON.stringify(list)); }catch(e){} }
+let CAL_SELECTED_MONTH=new Date().getMonth()+1;
+function renderCalendar(){
+  const el=document.getElementById('sec-calendar'); if(!el) return;
+  const legend=Object.entries(CAL_CAT_COLOR).map(([cat,color])=>`<span style="display:inline-flex;align-items:center;gap:5px;font-size:11px;color:var(--text2)"><span style="width:9px;height:9px;border-radius:50%;background:${color};display:inline-block"></span>${cat}</span>`).join('');
+  el.innerHTML=`
+    <div class="card">
+      <div class="card-header"><div class="card-title">📅 주간 정기회의</div></div>
+      <div style="display:flex;gap:10px;flex-wrap:wrap">
+        ${CAL_WEEKLY.map(w=>`<div style="display:flex;align-items:center;gap:8px;padding:8px 14px;border:1px solid var(--border2);border-radius:20px;font-size:12px;color:var(--text2)"><b style="color:var(--text)">${esc(w.day)} ${esc(w.time)}</b> ${esc(w.name)}</div>`).join('')}
+      </div>
+    </div>
+    <div class="card" style="margin-top:14px">
+      <div class="card-header"><div class="card-title">연간 반복업무 타임라인</div><div class="card-sub" style="display:flex;gap:12px;flex-wrap:wrap">${legend}</div></div>
+      <div class="tbl-wrap" id="cal-gantt"></div>
+    </div>
+    <div class="card" style="margin-top:14px">
+      <div class="card-header"><div class="card-title">월별 상세</div></div>
+      <div id="cal-month-tiles" style="display:grid;grid-template-columns:repeat(6,1fr);gap:8px;margin-bottom:14px"></div>
+      <div id="cal-month-detail"></div>
+    </div>
+    <div class="card" style="margin-top:14px">
+      <div class="card-header"><div class="card-title">⚠ 공급망 특이사항 · 수시 이슈</div><div class="card-sub">협력사 휴가·발주 마감 등 — 직접 추가 가능(브라우저 저장)</div></div>
+      <div id="cal-notes-list" style="display:flex;flex-direction:column;gap:8px;margin-bottom:12px"></div>
+      <div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center;border-top:1px dashed var(--border);padding-top:12px">
+        <select id="cal-note-cat" style="padding:5px 8px;border:1px solid var(--border2);border-radius:var(--r-sm);font-size:12px">${Object.keys(CAL_CAT_COLOR).map(c=>`<option>${c}</option>`).join('')}</select>
+        <input id="cal-note-title" placeholder="제목 (예: OO공장 휴가)" style="width:180px;padding:5px 8px;border:1px solid var(--border2);border-radius:var(--r-sm);font-size:12px">
+        <input id="cal-note-month" type="number" min="1" max="12" placeholder="해당 월(1-12)" style="width:100px;padding:5px 8px;border:1px solid var(--border2);border-radius:var(--r-sm);font-size:12px">
+        <input id="cal-note-period" placeholder="기간/시점 (예: 8월 1일~31일)" style="width:180px;padding:5px 8px;border:1px solid var(--border2);border-radius:var(--r-sm);font-size:12px">
+        <input id="cal-note-note" placeholder="비고" style="width:200px;padding:5px 8px;border:1px solid var(--border2);border-radius:var(--r-sm);font-size:12px">
+        <button class="topbar-btn primary" onclick="calAddNote()">+ 추가</button>
+      </div>
+    </div>
+  `;
+  document.getElementById('cal-gantt').innerHTML=calGanttHtml();
+  calRenderMonthTiles();
+  calSelectMonth(CAL_SELECTED_MONTH);
+  calRenderNotes();
+}
+function calGanttHtml(){
+  const mn=CAL_SELECTED_MONTH||(new Date().getMonth()+1);
+  let h='<table class="tbl" style="min-width:760px"><thead><tr><th style="min-width:200px">업무</th>'+
+    Array.from({length:12},(_,i)=>`<th class="num" style="${i+1===mn?'color:var(--blue)':''}">${i+1}월</th>`).join('')+'</tr></thead><tbody>';
+  CAL_MASTER.forEach(t=>{
+    const color=CAL_CAT_COLOR[t.cat];
+    h+=`<tr><td><span style="display:inline-flex;align-items:center;gap:6px"><span style="width:8px;height:8px;border-radius:50%;background:${color};flex-shrink:0"></span><b style="color:var(--text)">${esc(t.name)}</b></span><div style="font-size:10px;color:var(--text3);margin-left:14px">${esc(t.dept)}</div></td>`;
+    for(let m=1;m<=12;m++){
+      const on=t.months.includes(m);
+      h+=`<td class="num" style="padding:6px 4px">${on?`<div title="${esc(t.span(m))}" style="height:14px;border-radius:3px;background:${color};opacity:.85"></div>`:''}</td>`;
+    }
+    h+='</tr>';
+  });
+  h+='</tbody></table>';
+  return h;
+}
+function calRenderMonthTiles(){
+  const wrap=document.getElementById('cal-month-tiles'); if(!wrap) return;
+  const notes=calLoadNotes();
+  const cur=new Date().getMonth()+1;
+  wrap.innerHTML=Array.from({length:12},(_,i)=>i+1).map(m=>{
+    const taskCnt=CAL_MASTER.filter(t=>t.months.includes(m)).length;
+    const noteCnt=notes.filter(n=>(n.months||[]).includes(m)).length;
+    const active=m===CAL_SELECTED_MONTH;
+    return `<div onclick="calSelectMonth(${m})" style="cursor:pointer;text-align:center;padding:10px 4px;border-radius:var(--r-sm);border:1px solid ${active?'var(--blue)':'var(--border2)'};background:${active?'var(--blue-light)':'var(--surface)'}">
+      <div style="font-size:13px;font-weight:600;color:${m===cur?'var(--blue)':'var(--text)'}">${m}월${m===cur?' ·':''}</div>
+      <div style="font-size:10px;color:var(--text3);margin-top:2px">${taskCnt}건${noteCnt?` · ⚠${noteCnt}`:''}</div>
+    </div>`;
+  }).join('');
+}
+function calSelectMonth(m){
+  CAL_SELECTED_MONTH=m;
+  calRenderMonthTiles();
+  const gantt=document.getElementById('cal-gantt'); if(gantt) gantt.innerHTML=calGanttHtml();
+  const notes=calLoadNotes().filter(n=>(n.months||[]).includes(m));
+  const tasks=CAL_MASTER.filter(t=>t.months.includes(m));
+  const rows=[
+    ...tasks.map(t=>`<tr><td class="mono">${esc(t.id)}</td><td>${esc(t.cat)}</td><td><b>${esc(t.name)}</b></td><td>${esc(t.dept)}</td><td colspan="2">${esc(t.span(m))}</td></tr>`),
+    ...notes.map(n=>`<tr style="background:var(--amber-light)"><td class="mono">⚠</td><td>${esc(n.cat)}</td><td><b>${esc(n.title)}</b></td><td>—</td><td colspan="2">${esc(n.period)}${n.note?` · ${esc(n.note)}`:''}</td></tr>`)
+  ].join('');
+  const el=document.getElementById('cal-month-detail'); if(!el) return;
+  el.innerHTML=`<div class="tbl-wrap"><table class="tbl"><thead><tr><th>ID</th><th>구분</th><th>업무명</th><th>담당</th><th colspan="2">기간 · 비고</th></tr></thead><tbody>${rows||`<tr><td colspan="6" class="empty" style="text-align:center;padding:20px;color:var(--text3)">${m}월 등록된 일정 없음</td></tr>`}</tbody></table></div>`;
+}
+function calRenderNotes(){
+  const wrap=document.getElementById('cal-notes-list'); if(!wrap) return;
+  const notes=calLoadNotes();
+  if(!notes.length){ wrap.innerHTML='<div class="empty" style="color:var(--text3);font-size:12px">등록된 특이사항이 없습니다.</div>'; return; }
+  wrap.innerHTML=notes.map((n,i)=>`<div style="display:flex;align-items:center;gap:10px;padding:8px 12px;border:1px solid var(--border);border-radius:var(--r-sm)">
+    <span style="width:8px;height:8px;border-radius:50%;background:${CAL_CAT_COLOR[n.cat]||'#64748b'};flex-shrink:0"></span>
+    <div style="flex:1;min-width:0">
+      <div style="font-size:12px;font-weight:600;color:var(--text)">${esc(n.title)} <span style="font-weight:400;color:var(--text3);font-size:11px">(${esc(n.cat)})</span></div>
+      <div style="font-size:11px;color:var(--text2)">${esc(n.period)}${n.note?` · ${esc(n.note)}`:''}</div>
+    </div>
+    <button class="topbar-btn" onclick="calDelNote(${i})" style="font-size:11px;padding:4px 10px">삭제</button>
+  </div>`).join('');
+}
+function calAddNote(){
+  const cat=document.getElementById('cal-note-cat').value;
+  const title=document.getElementById('cal-note-title').value.trim();
+  const monthRaw=document.getElementById('cal-note-month').value;
+  const period=document.getElementById('cal-note-period').value.trim();
+  const note=document.getElementById('cal-note-note').value.trim();
+  const month=parseInt(monthRaw,10);
+  if(!title||!month||month<1||month>12){ alert('제목과 해당 월(1-12)을 입력해주세요.'); return; }
+  const notes=calLoadNotes();
+  notes.push({id:'note-'+Date.now(),cat,title,months:[month],period:period||`${month}월`,note});
+  calSaveNotes(notes);
+  ['cal-note-title','cal-note-month','cal-note-period','cal-note-note'].forEach(id=>{const e=document.getElementById(id); if(e) e.value='';});
+  calRenderNotes(); calRenderMonthTiles(); calSelectMonth(CAL_SELECTED_MONTH);
+}
+function calDelNote(idx){
+  const notes=calLoadNotes(); notes.splice(idx,1); calSaveNotes(notes);
+  calRenderNotes(); calRenderMonthTiles(); calSelectMonth(CAL_SELECTED_MONTH);
 }
 
 // ===== AUTO-LOAD RAW (배포용: 정적 CSV 자동 fetch) =====
