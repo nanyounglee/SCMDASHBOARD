@@ -11151,7 +11151,7 @@ const CAL_MASTER=[
   {id:'r-scrap',cat:'재고',name:'재고자산 폐기',dept:'구매조달팀',months:[4,5,6],span:()=>'4월 ~ 6월 말'},
   {id:'p-cny',cat:'구매',name:'중국 춘절 대비 재고 매입',dept:'구매조달팀',months:[11,12,1,2],span:()=>'11월 ~ 1월 말'},
   {id:'d-vac',cat:'납기',name:'협력사 여름휴가',dept:'외주생산파트',months:[6],span:()=>'6월 1주 ~ 6월 말'},
-  {id:'d-holi',cat:'납기',name:'명절연휴 택배·리드타임',dept:'외주생산파트',months:[1,2,7,8,9,12],span:()=>'1월 · 9월 초 (사전 리드타임 확보)'},
+  {id:'d-holi',cat:'납기',name:'명절연휴 택배·리드타임',dept:'외주생산파트 · 구매전략파트',months:[1,2,7,8,9,12],span:()=>'1월 · 9월 초 (사전 리드타임 확보)'},
   {id:'a-close',cat:'관리',name:'매입 결산',dept:'구매전략파트',months:[1,2,3,4,5,6,7,8,9,10,11,12],span:()=>'매월 1일 ~ 14일'},
 ];
 const CAL_WEEKLY=[
@@ -11159,15 +11159,20 @@ const CAL_WEEKLY=[
   {day:'목요일',time:'오후 3:00',name:'외주생산파트 회의'},
 ];
 const CAL_CAT_COLOR={협력사:'#2563eb',재고:'#059669',구매:'#7c3aed',납기:'#d97706',품질:'#dc2626',원가:'#0891b2',관리:'#64748b'};
-const CAL_NOTES_KEY='cal_special_notes_v1';
+const CAL_NOTES_KEY='cal_special_notes_v2'; // v2: 기본 항목에 담당(dept) 추가 + 비벨라 휴가 표시월 8→7월(사전 대응 시점)
+const CAL_NOTES_PREV_KEY='cal_special_notes_v1';
 const CAL_NOTES_SEED=[
-  {id:'seed-1',cat:'납기',title:'비벨라 생산 이탈리아 공장 휴가',months:[8],period:'2026-08-01 ~ 2026-08-31 (한달간)',note:'휴가 기간 리드타임 지연 유의'},
-  {id:'seed-2',cat:'구매',title:'슬로건 다이어리 원단 확보 발주',months:[7],period:'2026년 7월 3주 발주 마감',note:'해당 주까지 발주해야 원단 확보 가능'},
+  {id:'seed-1',cat:'납기',title:'비벨라 생산 이탈리아 공장 휴가',dept:'구매전략파트',months:[7],period:'2026-08-01 ~ 2026-08-31 (한달간 휴가) · 7월 중 사전 대응',note:'휴가 기간 리드타임 지연 유의 — 8월분 물량은 7월에 사전 확보 필요'},
+  {id:'seed-2',cat:'구매',title:'슬로건 다이어리 원단 확보 발주',dept:'',months:[7],period:'2026년 7월 3주 발주 마감',note:'해당 주까지 발주해야 원단 확보 가능'},
 ];
 function calLoadNotes(){
   try{ const raw=localStorage.getItem(CAL_NOTES_KEY); if(raw) return JSON.parse(raw); }catch(e){}
-  calSaveNotes(CAL_NOTES_SEED);
-  return CAL_NOTES_SEED.slice();
+  // v1 → v2 이관: 기본 항목(seed-*)은 최신 정의로 교체하되, 사용자가 직접 추가한 항목은 보존
+  let carried=[];
+  try{ const old=JSON.parse(localStorage.getItem(CAL_NOTES_PREV_KEY)||'[]'); carried=old.filter(n=>n&&!String(n.id||'').startsWith('seed-')); }catch(e){}
+  const init=CAL_NOTES_SEED.concat(carried);
+  calSaveNotes(init);
+  return init;
 }
 function calSaveNotes(list){ try{ localStorage.setItem(CAL_NOTES_KEY,JSON.stringify(list)); }catch(e){} }
 let CAL_SELECTED_MONTH=new Date().getMonth()+1;
@@ -11196,6 +11201,7 @@ function renderCalendar(){
       <div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center;border-top:1px dashed var(--border);padding-top:12px">
         <select id="cal-note-cat" style="padding:5px 8px;border:1px solid var(--border2);border-radius:var(--r-sm);font-size:12px">${Object.keys(CAL_CAT_COLOR).map(c=>`<option>${c}</option>`).join('')}</select>
         <input id="cal-note-title" placeholder="제목 (예: OO공장 휴가)" style="width:180px;padding:5px 8px;border:1px solid var(--border2);border-radius:var(--r-sm);font-size:12px">
+        <select id="cal-note-dept" style="padding:5px 8px;border:1px solid var(--border2);border-radius:var(--r-sm);font-size:12px"><option value="">담당 미지정</option><option>구매전략파트</option><option>외주생산파트</option><option>구매조달팀</option><option>구매전략파트 · 외주생산파트</option></select>
         <input id="cal-note-month" type="number" min="1" max="12" placeholder="해당 월(1-12)" style="width:100px;padding:5px 8px;border:1px solid var(--border2);border-radius:var(--r-sm);font-size:12px">
         <input id="cal-note-period" placeholder="기간/시점 (예: 8월 1일~31일)" style="width:180px;padding:5px 8px;border:1px solid var(--border2);border-radius:var(--r-sm);font-size:12px">
         <input id="cal-note-note" placeholder="비고" style="width:200px;padding:5px 8px;border:1px solid var(--border2);border-radius:var(--r-sm);font-size:12px">
@@ -11246,7 +11252,7 @@ function calSelectMonth(m){
   const tasks=CAL_MASTER.filter(t=>t.months.includes(m));
   const rows=[
     ...tasks.map(t=>`<tr><td class="mono">${esc(t.id)}</td><td>${esc(t.cat)}</td><td><b>${esc(t.name)}</b></td><td>${esc(t.dept)}</td><td colspan="2">${esc(t.span(m))}</td></tr>`),
-    ...notes.map(n=>`<tr style="background:var(--amber-light)"><td class="mono">⚠</td><td>${esc(n.cat)}</td><td><b>${esc(n.title)}</b></td><td>—</td><td colspan="2">${esc(n.period)}${n.note?` · ${esc(n.note)}`:''}</td></tr>`)
+    ...notes.map(n=>`<tr style="background:var(--amber-light)"><td class="mono">⚠</td><td>${esc(n.cat)}</td><td><b>${esc(n.title)}</b></td><td>${n.dept?esc(n.dept):'—'}</td><td colspan="2">${esc(n.period)}${n.note?` · ${esc(n.note)}`:''}</td></tr>`)
   ].join('');
   const el=document.getElementById('cal-month-detail'); if(!el) return;
   el.innerHTML=`<div class="tbl-wrap"><table class="tbl"><thead><tr><th>ID</th><th>구분</th><th>업무명</th><th>담당</th><th colspan="2">기간 · 비고</th></tr></thead><tbody>${rows||`<tr><td colspan="6" class="empty" style="text-align:center;padding:20px;color:var(--text3)">${m}월 등록된 일정 없음</td></tr>`}</tbody></table></div>`;
@@ -11258,7 +11264,7 @@ function calRenderNotes(){
   wrap.innerHTML=notes.map((n,i)=>`<div style="display:flex;align-items:center;gap:10px;padding:8px 12px;border:1px solid var(--border);border-radius:var(--r-sm)">
     <span style="width:8px;height:8px;border-radius:50%;background:${CAL_CAT_COLOR[n.cat]||'#64748b'};flex-shrink:0"></span>
     <div style="flex:1;min-width:0">
-      <div style="font-size:12px;font-weight:600;color:var(--text)">${esc(n.title)} <span style="font-weight:400;color:var(--text3);font-size:11px">(${esc(n.cat)})</span></div>
+      <div style="font-size:12px;font-weight:600;color:var(--text)">${esc(n.title)} <span style="font-weight:400;color:var(--text3);font-size:11px">(${esc(n.cat)})</span>${n.dept?`<span style="font-weight:500;color:var(--blue);font-size:11px;margin-left:6px">${esc(n.dept)}</span>`:''}</div>
       <div style="font-size:11px;color:var(--text2)">${esc(n.period)}${n.note?` · ${esc(n.note)}`:''}</div>
     </div>
     <button class="topbar-btn" onclick="calDelNote(${i})" style="font-size:11px;padding:4px 10px">삭제</button>
@@ -11267,15 +11273,17 @@ function calRenderNotes(){
 function calAddNote(){
   const cat=document.getElementById('cal-note-cat').value;
   const title=document.getElementById('cal-note-title').value.trim();
+  const dept=document.getElementById('cal-note-dept').value;
   const monthRaw=document.getElementById('cal-note-month').value;
   const period=document.getElementById('cal-note-period').value.trim();
   const note=document.getElementById('cal-note-note').value.trim();
   const month=parseInt(monthRaw,10);
   if(!title||!month||month<1||month>12){ alert('제목과 해당 월(1-12)을 입력해주세요.'); return; }
   const notes=calLoadNotes();
-  notes.push({id:'note-'+Date.now(),cat,title,months:[month],period:period||`${month}월`,note});
+  notes.push({id:'note-'+Date.now(),cat,title,dept,months:[month],period:period||`${month}월`,note});
   calSaveNotes(notes);
   ['cal-note-title','cal-note-month','cal-note-period','cal-note-note'].forEach(id=>{const e=document.getElementById(id); if(e) e.value='';});
+  document.getElementById('cal-note-dept').value='';
   calRenderNotes(); calRenderMonthTiles(); calSelectMonth(CAL_SELECTED_MONTH);
 }
 function calDelNote(idx){
