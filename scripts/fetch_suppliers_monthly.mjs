@@ -29,6 +29,19 @@ const FILE  = 'sup.csv';
 const NAME_FIELD = '협력사 이름';
 const STATUS_FIELD = '협력사 Status';
 
+// ---- 내보낼 컬럼 허용목록 (v23.13, 2026-08-03) ----
+// 이 저장소는 GitHub Pages로 서비스하는 public 저장소다. 첫 실행에서 뷰의 필드를 전부 받아
+// 117컬럼을 커밋했는데, 거기에 통장사본·사업자등록증·등기부등본 첨부 링크와 계좌번호·
+// 사업자등록번호·대표자·담당자 연락처까지 들어 있었다(협력사 146곳분).
+// 대시보드가 실제로 읽는 sup 컬럼은 아래 9개뿐이므로(index.html 참조 횟수로 확인) 그것만 남긴다.
+//   - API 제공: 협력사 이름 · 협력사 Status · 발주담당자 · 협력사 결제조건 · 하도급계약 대상여부
+//   - 수기 관리(원천에 없음, 아래 보존 로직으로 이월): 업태 · 인쇄 · 1. 제조유형 · 2. Goods Category_1.goods
+// 컬럼을 늘려야 하면 SUPPLIER_COLUMNS 변수(쉼표 구분)로 덮어쓰되, 개인정보·금융정보는 넣지 말 것.
+const ALLOWED_COLUMNS = (process.env.SUPPLIER_COLUMNS || [
+  '협력사 이름', '협력사 Status', '발주담당자', '협력사 결제조건', '하도급계약 대상여부',
+  '업태', '인쇄', '1. 제조유형', '2. Goods Category_1.goods',
+].join(',')).split(',').map(s => s.trim()).filter(Boolean);
+
 if (!TOKEN) { console.log('AIRTABLE_TOKEN 미설정 — 협력사 자동 갱신을 건너뜁니다.'); process.exit(0); }
 
 // ---- Airtable 전체 레코드 페치 (100건 페이지네이션) ----
@@ -117,14 +130,14 @@ if (!records.length) {
 
 const prev = readExisting();
 const apiFields = [...new Set(records.flatMap(r => Object.keys(r.fields)))];
-let headers = prev ? prev.headers.slice() : apiFields;
+// 허용목록 순서를 그대로 헤더 순서로 쓴다 — 뷰에 새 필드가 생겨도 자동으로 딸려오지 않는다
+let headers = ALLOWED_COLUMNS.slice();
+const missing = ALLOWED_COLUMNS.filter(c => !apiFields.includes(c) && !(prev && prev.headers.includes(c)));
+if (missing.length) console.warn(`  주의: 허용목록 중 원천·기존 CSV 어디에도 없는 컬럼 ${missing.length}개 — ${missing.join(', ')}`);
+console.log(`  컬럼 ${apiFields.length}개 중 ${headers.length}개만 내보냄(공개 저장소 — 개인정보·금융정보 제외)`);
 if (prev) {
-  // 기존 헤더 순서 유지 + Airtable에 새로 생긴 필드는 뒤에 붙인다(대시보드 파서는 이름 기반이라 안전)
-  const added = apiFields.filter(h => !headers.includes(h));
-  if (added.length) { headers = headers.concat(added); console.log(`  신규 필드 ${added.length}개 추가: ${added.join(', ')}`); }
-
-  // 수동 컬럼 보존 — '업태'·'인쇄'처럼 원천 테이블에 없어 수기로 채운 컬럼은 협력사 이름으로
-  // 매칭해 이월한다. 이게 없으면 자동 갱신이 돌 때마다 수기 데이터가 날아간다(v22.4와 동일 규칙).
+  // 수동 컬럼 보존 — '업태'·'인쇄'·'1. 제조유형'처럼 원천 테이블에 없어 수기로 채운 컬럼은
+  // 협력사 이름으로 매칭해 이월한다. 없으면 자동 갱신마다 수기 데이터가 날아간다(v22.4와 동일 규칙).
   const manualCols = headers.filter(h => !apiFields.includes(h));
   if (manualCols.length) {
     const prevMap = {};

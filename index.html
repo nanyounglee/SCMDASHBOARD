@@ -3702,10 +3702,23 @@ function backfillProductChangeLog(){
 //   · 사라진 이름, 또는 '협력사 Status'가 '거래종료'로 바뀐 곳 → 거래종료
 //     (마스터는 종료된 협력사도 행이 남으므로 Status 전환도 같이 봐야 한다 — 현재 145곳 중 9곳이 거래종료)
 // 이미 코드에 하드코딩된 MANUAL_VENDOR_TERMINATIONS는 "이미 아는 종료분"이라 중복 통지하지 않는다.
+// v23.13(사용자 확인 2026-08-03, 첫 실행 결과 기준): 소스 뷰에는 외주생산파트 외 담당(문경선·
+// 윤지수·강예은·남인호 등 구매/물류 쪽) 협력사도 함께 들어있다. 첫 갱신에서 잡힌 신규 12곳이
+// 전부 그런 곳이었다 — 이 공지는 외주생산파트 담당 협력사만 다루므로 발주담당자로 거른다.
+const SCM_ORDER_MANAGERS=['육승미','김민지','이난영','김민정','김하은','김영준'];
+const isScmManagedVendor=r=>{
+  const m=String((r&&r['발주담당자'])||'').trim();
+  return m?SCM_ORDER_MANAGERS.some(n=>m.includes(n)):false; // 복수 담당자 표기 대비 부분일치
+};
 const supMonthLabel=d=>d.getFullYear()+'_'+String(d.getMonth()+1).padStart(2,'0');
 function supStatusMap(rows){
   const m={};
   (rows||[]).forEach(r=>{ const n=(r['협력사 이름']||'').trim(); if(n) m[n]=(r['협력사 Status']||'').trim(); });
+  return m;
+}
+function supRowMap(rows){
+  const m={};
+  (rows||[]).forEach(r=>{ const n=(r['협력사 이름']||'').trim(); if(n) m[n]=r; });
   return m;
 }
 async function detectSupplierChanges(){
@@ -3730,8 +3743,13 @@ async function detectSupplierChanges(){
     const detail=cur.label==='current'?'':cur.label+' 스냅샷 비교';
     const diff=diffSupNames(prev.rows,cur.rows);
     const prevStatus=supStatusMap(prev.rows), curStatus=supStatusMap(cur.rows);
-    diff.added.forEach(name=>entries.push({id:'sup_added|'+name+'|'+idLabel,type:'sup_added',name,date:dateKey,detail}));
-    const terminated=new Set(diff.removed.filter(n=>!alreadyKnown.has(n)));
+    const curRow=supRowMap(cur.rows);
+    // 신규: 외주생산파트(발주담당자 6인) 담당 협력사만 — 타 파트 협력사는 이 공지 대상이 아니다
+    diff.added.filter(name=>isScmManagedVendor(curRow[name]))
+      .forEach(name=>entries.push({id:'sup_added|'+name+'|'+idLabel,type:'sup_added',name,date:dateKey,detail}));
+    // 종료: 목록에서 사라진 곳. 단 직전 스냅샷에서 이미 '거래종료'였다면 이번에 종료된 게 아니라
+    // 마스터 정리로 행이 빠진 것이므로 통지하지 않는다(2026-08 첫 갱신에서 제외된 10곳 중 9곳이 이 경우).
+    const terminated=new Set(diff.removed.filter(n=>!alreadyKnown.has(n)&&prevStatus[n]!=='거래종료'));
     // 행은 남아있고 Status만 '거래종료'로 바뀐 경우도 종료로 본다
     Object.keys(curStatus).forEach(n=>{
       if(curStatus[n]!=='거래종료') return;
