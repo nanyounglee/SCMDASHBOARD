@@ -1028,7 +1028,11 @@ SCMDASHBOARD/
 
 미설정/실패 시엔 기존처럼 수동 커밋으로 대체 가능 — 대시보드는 진행현황 CSV가 이번 주 파일이 아니면 경고 배너(§v19)로 알려준다.
 
-**"지금 새로고침" 버튼 (v20 신규)** — 매주 목요일을 기다리지 않고 필요할 때 바로 Airtable을 재수집하고 싶을 때 쓴다. 업로드 바의 🔄 지금 새로고침 클릭 → `refreshAirtableNow()`가 GitHub Actions REST API로 `weekly-airtable.yml`에 `workflow_dispatch`를 보내고, `pollAirtableRefresh()`가 15초 간격(최대 10분)으로 실행 상태를 폴링하다가 완료되면 `autoLoadRaw()`를 다시 호출해 최신 CSV를 화면에 반영한다. 이 버튼을 쓰려면 GitHub 연동 토큰(§비고 자동 커밋과 동일 토큰)에 기존 `Contents: Read and write`에 더해 **`Actions: Read and write`** 권한이 추가로 필요하다 — 없으면 401/403/404로 실패하고 화면에 원인 안내가 뜬다.
+**"지금 새로고침" 버튼 (v20 신규, v23.9 전면 수정)** — 매주 목요일을 기다리지 않고 필요할 때 바로 원천 데이터를 재수집하고 싶을 때 쓴다. 업로드 바의 🔄 지금 새로고침 클릭 → `refreshAirtableNow()`가 `POST /repos/{owner}/{repo}/dispatches`로 **`repository_dispatch` 이벤트 `refresh-all`** 을 보내고, 이 이벤트를 구독하는 **세 워크플로**(`weekly-airtable.yml`·`weekly-google-sheets.yml`·`weekly-meeting-agenda.yml`)가 동시에 돈다. `pollAirtableRefresh()`가 20초 간격(최대 10분)으로 세 워크플로의 완료를 함께 폴링하다가, 하나라도 성공하면 GitHub Pages 재배포를 60초 기다린 뒤 `autoLoadRaw()`로 최신 CSV를 화면에 반영한다. 발주 진행현황(`progress_*`)·매출결산(`proj_rev`)도 이 경로에 포함된다.
+
+> **v23.9 이전 문제(사용자 제보 2026-08-03)**: v20~v23.8은 `POST .../actions/workflows/{file}/dispatches`(workflow_dispatch)를 썼는데, 이 엔드포인트는 fine-grained PAT에 **`Actions: write`** 를 요구한다. 그런데 ⚙ 설정이 안내하는 토큰은 비고 저장용 `Contents: Read/write`라, Actions를 따로 추가하지 않은 토큰은 전부 403 "권한 부족"으로 실패했다. `repository_dispatch`는 **`Contents: write`만** 요구하므로(GitHub REST 권한표) 기존 토큰 그대로 동작한다. `workflow_dispatch`는 Actions 권한이 있는 토큰을 위해 폴백으로만 남겼다.
+>
+> 실행 상태 조회(`GET .../actions/runs`)는 `Actions: read`가 필요하지만 이 저장소는 public이라 토큰 없이도 조회된다 — 401/403이면 익명 요청으로 자동 전환한다. 익명 API는 IP당 시간당 60회 제한이라(사무실은 공인 IP 공유) 워크플로별로 각각 조회하지 않고 저장소 전체 runs를 1회 받아 `path`로 구분한다.
 
 **협력사·졸업/출시 변경 이력 (v20 신규)** — `data/change_log.json`에 아래 4종 변경을 영구 기록한다:
 - 졸업 제품(`product_graduated`)·출시 제품(`product_launched`) — goods_master.csv의 졸업일/출시일을 그대로 사용(정확한 날짜가 원본에 있음). `backfillProductChangeLog()`가 오늘로부터 35일 이내 날짜만 최초 적재 대상으로 삼는다(그보다 오래된 과거 이력은 어차피 30일 노출 창을 벗어나므로 배포 시점에 한꺼번에 쌓지 않음).
