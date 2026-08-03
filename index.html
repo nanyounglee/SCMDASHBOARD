@@ -3687,37 +3687,58 @@ function backfillProductChangeLog(){
   });
   return entries;
 }
-// 협력사 신규/거래종료 — 정확한 상태변경일 필드가 원본에 없어, 주간 자동 커밋(§9)이
-// 매주 CSV_BANK/<연도>_W<주차>/sup.csv 로 남기는 스냅샷을 체인으로 이어 비교한다.
-// 최근 6주치만 확인(노출 기간 30일 + 여유) — 스냅샷이 아직 없는 주는 자동으로 건너뛴다.
-// (v20 배포 시점엔 CSV_BANK가 비어 있어 처음 몇 주는 결과가 없는 게 정상 — 자동 커밋이
-// 누적되면서부터 실제 감지가 시작된다.)
+// 협력사 신규/거래종료 — 정확한 상태변경일 필드가 원본에 없어, 자동 커밋이 남기는
+// sup.csv 스냅샷을 체인으로 이어 비교한다.
+//
+// v23.12(사용자 요청 2026-08-03): 주차 스냅샷(CSV_BANK/<연도>_W<주차>/sup.csv) →
+//   월간 스냅샷(CSV_BANK/sup_YYYY_MM.csv) 기준으로 전환.
+//   ① 협력사 마스터는 변동이 드물어 주간으로 볼 이유가 없다 — monthly-suppliers.yml이
+//      매월 1일 Airtable 뷰에서 받아 갱신하면서 직전 달 상태를 스냅샷으로 남긴다.
+//   ② 애초에 sup이 주간 자동 수집 대상이 아니어서 주차 스냅샷은 하나도 쌓인 적이 없었고
+//      (CSV_BANK에 sup 파일 0개 확인), 그래서 이 감지는 계속 0건이었다.
+//
+// 감지 대상은 "직전 스냅샷 대비 변동분"만 — 목록 전체가 아니라 추가/제외된 곳만 나온다:
+//   · 새로 나타난 이름 → 신규 협력사
+//   · 사라진 이름, 또는 '협력사 Status'가 '거래종료'로 바뀐 곳 → 거래종료
+//     (마스터는 종료된 협력사도 행이 남으므로 Status 전환도 같이 봐야 한다 — 현재 145곳 중 9곳이 거래종료)
+// 이미 코드에 하드코딩된 MANUAL_VENDOR_TERMINATIONS는 "이미 아는 종료분"이라 중복 통지하지 않는다.
+const supMonthLabel=d=>d.getFullYear()+'_'+String(d.getMonth()+1).padStart(2,'0');
+function supStatusMap(rows){
+  const m={};
+  (rows||[]).forEach(r=>{ const n=(r['협력사 이름']||'').trim(); if(n) m[n]=(r['협력사 Status']||'').trim(); });
+  return m;
+}
 async function detectSupplierChanges(){
   if(!D.sup) return [];
   const today=new Date();
-  const seen=new Set(); const weeks=[];
-  for(let i=0,d=new Date(today);i<6;i++,d.setDate(d.getDate()-7)){
-    const {y,w}=isoWeekOf(d); const label=wkLabel(y,w);
-    if(!seen.has(label)){ seen.add(label); weeks.push(label); }
-  }
-  weeks.reverse(); // 과거→최근
-  const snaps=await Promise.all(weeks.map(label=>
-    fetch(dataUrl('CSV_BANK/'+label+'/sup.csv')).then(r=>r.ok?r.text():null).catch(()=>null).then(txt=>({label,rows:txt?parseCSV(txt):null}))
+  const labels=[];
+  for(let i=6;i>=1;i--){ const d=new Date(today.getFullYear(),today.getMonth()-i,1); labels.push(supMonthLabel(d)); } // 과거→최근
+  const snaps=await Promise.all(labels.map(label=>
+    fetch(dataUrl('CSV_BANK/sup_'+label+'.csv')).then(r=>r.ok?r.text():null).catch(()=>null).then(txt=>({label,rows:txt?parseCSV(txt):null}))
   ));
   const chain=snaps.filter(s=>s.rows&&s.rows.length);
   chain.push({label:'current',rows:D.sup});
-  // v22.2 감사 수정: live 감지 id에 'current' 대신 현재 ISO 주차 라벨 사용 — 다음 주에 스냅샷 체인이
-  // 같은 변경을 주차 라벨 id로 재감지하면 id가 달라 이중 기록되던 문제의 1차 방어
-  // (2차 방어: detectAndLogChanges의 type|name 최근-창 dedup — 기존 '|current' 항목도 커버)
-  const {y:ly,w:lw}=isoWeekOf(today); const liveLabel=wkLabel(ly,lw);
+  const liveLabel=supMonthLabel(today);
+  const alreadyKnown=new Set(MANUAL_VENDOR_TERMINATIONS.map(m=>m.name)); // 하드코딩된 기존 종료분
   const entries=[];
   for(let i=1;i<chain.length;i++){
     const prev=chain[i-1], cur=chain[i];
-    const diff=diffSupNames(prev.rows,cur.rows);
     const idLabel=cur.label==='current'?liveLabel:cur.label;
-    const dateKey=cur.label==='current'?fmtISODate(today):isoWeekMondayDate(cur.label);
-    diff.added.forEach(name=>entries.push({id:'sup_added|'+name+'|'+idLabel,type:'sup_added',name,date:dateKey,detail:cur.label==='current'?'':cur.label+' 스냅샷 비교'}));
-    diff.removed.forEach(name=>entries.push({id:'sup_terminated|'+name+'|'+idLabel,type:'sup_terminated',name,date:dateKey,detail:cur.label==='current'?'':cur.label+' 스냅샷 비교'}));
+    // sup_YYYY_MM.csv는 그 달에 쓰이던 상태 — 다음 달 1일 실행 때 교체되므로 변경 시점은 cur 달의 1일로 잡는다
+    const mm=cur.label==='current'?null:cur.label.match(/(\d{4})_(\d{2})/);
+    const dateKey=mm?`${mm[1]}-${mm[2]}-01`:fmtISODate(today);
+    const detail=cur.label==='current'?'':cur.label+' 스냅샷 비교';
+    const diff=diffSupNames(prev.rows,cur.rows);
+    const prevStatus=supStatusMap(prev.rows), curStatus=supStatusMap(cur.rows);
+    diff.added.forEach(name=>entries.push({id:'sup_added|'+name+'|'+idLabel,type:'sup_added',name,date:dateKey,detail}));
+    const terminated=new Set(diff.removed.filter(n=>!alreadyKnown.has(n)));
+    // 행은 남아있고 Status만 '거래종료'로 바뀐 경우도 종료로 본다
+    Object.keys(curStatus).forEach(n=>{
+      if(curStatus[n]!=='거래종료') return;
+      if(!prevStatus[n]||prevStatus[n]==='거래종료') return; // 이전에도 종료였으면 새 변경이 아님
+      if(!alreadyKnown.has(n)) terminated.add(n);
+    });
+    terminated.forEach(name=>entries.push({id:'sup_terminated|'+name+'|'+idLabel,type:'sup_terminated',name,date:dateKey,detail}));
   }
   return entries;
 }
@@ -11717,9 +11738,10 @@ function testGhToken(){
 //   조회하지 않고 저장소 전체 runs를 한 번에 받아 path로 구분한다(폴링 1회 = 요청 1회).
 const REFRESH_EVENT_TYPE='refresh-all'; // 각 워크플로의 repository_dispatch types와 일치해야 함
 const REFRESH_WORKFLOWS=[
-  {file:'weekly-airtable.yml',      label:'발주·이슈·협력사·발주 진행현황·매출결산'},
+  {file:'weekly-airtable.yml',      label:'발주·이슈·파츠·발주 진행현황·매출결산'},
   {file:'weekly-google-sheets.yml', label:'구매 대시보드·파츠 마스터'},
   {file:'weekly-meeting-agenda.yml',label:'회의자료'},
+  {file:'monthly-suppliers.yml',    label:'협력사 마스터'}, // v23.12 — 월 1회 자동이지만 버튼으로도 즉시 갱신
 ];
 const REFRESH_POLL_SEC=20, REFRESH_MAX_TRIES=30; // 20초 × 30 = 10분
 let AIRTABLE_REFRESH_POLLING=false;

@@ -1036,7 +1036,12 @@ SCMDASHBOARD/
 
 **협력사·졸업/출시 변경 이력 (v20 신규)** — `data/change_log.json`에 아래 4종 변경을 영구 기록한다:
 - 졸업 제품(`product_graduated`)·출시 제품(`product_launched`) — goods_master.csv의 졸업일/출시일을 그대로 사용(정확한 날짜가 원본에 있음). `backfillProductChangeLog()`가 오늘로부터 35일 이내 날짜만 최초 적재 대상으로 삼는다(그보다 오래된 과거 이력은 어차피 30일 노출 창을 벗어나므로 배포 시점에 한꺼번에 쌓지 않음).
-- 신규 협력사(`sup_added`)·거래종료 협력사(`sup_terminated`) — 원본에 정확한 상태변경일 필드가 없어, 위 자동 커밋이 매주 남기는 `CSV_BANK/<연도>_W<주차>/sup.csv` 스냅샷을 체인으로 이어 비교(`detectSupplierChanges()`, 최근 6주치). 날짜는 그 주의 월요일로 근사. **v20 배포 시점엔 CSV_BANK가 비어 있어 처음 몇 주는 결과가 없는 게 정상** — 자동 커밋이 누적되면서부터 실제 감지가 시작된다. 그 전까지는 기존 `MANUAL_VENDOR_TERMINATIONS` 수동 리스트가 계속 보강한다.
+- 신규 협력사(`sup_added`)·거래종료 협력사(`sup_terminated`) — 원본에 정확한 상태변경일 필드가 없어 sup.csv 스냅샷을 체인으로 이어 비교한다(`detectSupplierChanges()`).
+  - **v23.12(2026-08-03) 전환**: 주차 스냅샷 → **월간 스냅샷 `CSV_BANK/sup_YYYY_MM.csv`** 기준(최근 6개월치). 변경 날짜는 비교 대상 달의 1일로 근사, 마지막 구간(최신 스냅샷 → 현재 `CSV/sup.csv`)만 오늘 날짜.
+  - **왜 바꿨나**: v20~v23.11은 `CSV_BANK/<연도>_W<주차>/sup.csv`를 봤는데, `sup`이 `AIRTABLE_SOURCES`에 등록된 적이 없어 **주차 스냅샷이 단 하나도 생긴 적이 없었다**(`find CSV_BANK -iname "sup*"` → 0건). 비교 체인이 `[현재]` 하나뿐이라 diff 루프가 돌지 않아 감지가 **항상 0건**이었고, 그래서 거래종료 목록을 코드에 하드코딩해 쓰고 있었다.
+  - **수집**: `.github/workflows/monthly-suppliers.yml`(매월 1일 09:00 KST, `scripts/fetch_suppliers_monthly.mjs`)이 Airtable 협력사 뷰(`appAbBz1Y48qhpHwz/tbl5BjEkhn3CUMIlI/viw73sRMI8OFPIwGp`)에서 받아 `CSV/sup.csv`를 갱신하고, 덮어쓰기 직전 이전 버전을 `CSV_BANK/sup_YYYY_MM.csv`로 보존한다. base/table/view는 워크플로에 기본값으로 박혀 있어 저장소 변수 설정이 필요 없다(`vars.SUPPLIER_*`로 덮어쓸 수는 있음). `업태`·`인쇄` 등 원천에 없는 수기 컬럼은 협력사 이름 매칭으로 이월 보존(v22.4와 동일 규칙).
+  - **감지 규칙**: 직전 스냅샷 대비 **변동분만** — ① 새로 나타난 이름 = 신규, ② 사라진 이름 **또는** `협력사 Status`가 `거래종료`로 바뀐 곳 = 거래종료. 마스터는 종료된 협력사도 행이 남으므로(현재 145곳 중 거래종료 9곳) Status 전환을 같이 봐야 한다. 이미 하드코딩된 `MANUAL_VENDOR_TERMINATIONS`는 "이미 아는 종료분"이라 중복 통지에서 제외한다.
+  - 첫 실행 때 현재 `CSV/sup.csv`(마지막 커밋 달 기준)가 그대로 첫 스냅샷이 되므로, **다음 달을 기다리지 않고 첫 갱신부터 바로 변동분이 잡힌다.**
 - 저장 방식은 비고/CI 수기입력(`progress_notes.json`/`ci_overrides.json`)과 동일한 패턴: `localStorage`에 항상 쌓이고, GitHub 토큰이 있는 사람이 열람할 때 `data/change_log.json`과 병합해 자동 커밋. 토큰 없는 사람이 봐도 그 브라우저 안에서는 정상 동작하되 팀 공유는 안 됨.
 - 종합 현황 월간 공지사항에서 이 4종은 더 이상 "선택 기간"이 아니라 **오늘 기준 최근 30일 롤링**으로 노출(품절 제품만 기존처럼 선택 기간 유지). 카드 하단 "전체 변경 이력 보기" 토글로 누적된 전체 이력(윈도 밖 포함)을 날짜 내림차순으로 볼 수 있다.
 - 로드 순서 경쟁 상태 주의: `data/change_log.json` fetch가 CSV 자동로드보다 먼저 끝나 감지 시점에 `D.goods_master`/`D.sup`가 아직 없을 수 있다 — `CHANGE_LOG_DETECTED` 플래그를 감지 성공 시에만 세워, 실패 시 다음 `renderMonthlyNotice()` 호출(데이터 로드 완료 후 refreshAll 경유)에서 재시도하도록 했다.
