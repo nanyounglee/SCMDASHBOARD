@@ -5,6 +5,10 @@ on:
     # Every Thursday 18:00 KST (= 09:00 UTC), after purchase dashboard stamping.
     - cron: '0 9 * * 4'
   workflow_dispatch:
+  # v23.9: 대시보드 "지금 새로고침" 버튼이 보내는 이벤트 — Contents:write 토큰만으로
+  # 트리거되도록 workflow_dispatch 대신 repository_dispatch를 쓴다(weekly-airtable.yml 주석 참고)
+  repository_dispatch:
+    types: [refresh-all, refresh-google-sheets]
 
 permissions:
   contents: write

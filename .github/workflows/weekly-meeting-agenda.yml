@@ -6,6 +6,9 @@ on:
   schedule:
     - cron: '0 7 * * 4'
   workflow_dispatch:
+  # v23.9: 대시보드 "지금 새로고침" 버튼이 보내는 이벤트(weekly-airtable.yml 주석 참고)
+  repository_dispatch:
+    types: [refresh-all, refresh-meeting-agenda]
 
 permissions:
   contents: write

@@ -7,12 +7,18 @@ name: weekly-airtable-progress
 #      갱신(AIRTABLE_SOURCES 변수로 설정된 항목만, fetch_airtable_sources.mjs)
 #      — 덮어쓰기 전 이전 버전을 CSV_BANK로 자동 아카이브(협력사는 월간 스냅샷도)
 # 수동 실행(workflow_dispatch)도 가능 — 대시보드의 "지금 새로고침" 버튼도
-# 이 워크플로를 GitHub API로 직접 트리거한다(§9 참고).
+# 이 워크플로를 GitHub API로 트리거한다(§9 참고).
+# v23.9: 버튼은 repository_dispatch(refresh-all)로 트리거한다. workflow_dispatch API는
+#   fine-grained PAT에 "Actions: write"를 요구해서, 비고 저장용으로 발급한
+#   "Contents: Read/write" 토큰으로는 403이 났다(사용자 제보 2026-08-03).
+#   repository_dispatch는 Contents:write만 있으면 되므로 기존 토큰 그대로 동작한다.
 # ※ 회의자료(meeting_agenda.json)는 별도 weekly-meeting-agenda.yml (목요일 16:00 KST)에서 갱신
 on:
   schedule:
     - cron: '0 4 * * 4'
   workflow_dispatch:
+  repository_dispatch:
+    types: [refresh-all, refresh-airtable]
 
 permissions:
   contents: write
