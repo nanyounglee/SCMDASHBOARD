@@ -1,0 +1,59 @@
+name: monthly-suppliers
+
+# 매월 1일 09:00 KST (= 전날 00:00 UTC) 협력사 마스터를 Airtable에서 받아 갱신한다.
+# 덮어쓰기 직전 이전 버전을 CSV_BANK/sup_YYYY_MM.csv 로 보존해, 대시보드가 월간
+# 스냅샷 체인을 비교해 "이번 달 추가/제외된 협력사"를 뽑아낼 수 있게 한다.
+#
+# 협력사 마스터는 변동이 드물어 주간 소스와 분리했다(사용자 요청 2026-08-03).
+# 소스 뷰: https://airtable.com/appAbBz1Y48qhpHwz/tbl5BjEkhn3CUMIlI/viw73sRMI8OFPIwGp
+on:
+  schedule:
+    - cron: '0 0 1 * *'
+  workflow_dispatch:
+  # 대시보드 "🔄 지금 새로고침"이 보내는 이벤트(weekly-airtable.yml 주석 참고)
+  repository_dispatch:
+    types: [refresh-all, refresh-suppliers]
+
+permissions:
+  contents: write
+
+concurrency:
+  group: monthly-suppliers
+  cancel-in-progress: false
+
+jobs:
+  fetch-and-commit:
+    runs-on: ubuntu-latest
+    steps:
+      # fetch-depth: 0 — 스크립트가 `git log -1 -- CSV/sup.csv`로 그 파일이 마지막으로
+      # 커밋된 달을 구해 스냅샷 이름(sup_YYYY_MM.csv)을 정한다. 얕은 체크아웃이면
+      # 모든 파일이 HEAD 커밋 날짜로 나와 스냅샷 월 라벨이 어긋난다.
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Fetch 협력사 마스터 (Airtable → CSV/sup.csv)
+        env:
+          AIRTABLE_TOKEN: ${{ secrets.AIRTABLE_TOKEN }}
+          SUPPLIER_BASE: ${{ vars.SUPPLIER_BASE || 'appAbBz1Y48qhpHwz' }}
+          SUPPLIER_TABLE: ${{ vars.SUPPLIER_TABLE || 'tbl5BjEkhn3CUMIlI' }}
+          SUPPLIER_VIEW: ${{ vars.SUPPLIER_VIEW || 'viw73sRMI8OFPIwGp' }}
+        run: node scripts/fetch_suppliers_monthly.mjs
+
+      - name: Commit & push if changed
+        run: |
+          git config user.name "airtable-bot"
+          git config user.email "actions@github.com"
+          git add CSV/sup.csv CSV_BANK/
+          if git diff --cached --quiet; then
+            echo "변경 없음 — 커밋 생략"
+          else
+            MM=$(TZ=Asia/Seoul date +%Y-%m)
+            git commit -m "chore: 협력사 마스터 월간 자동 커밋 ($MM)"
+            git pull --rebase origin main
+            git push origin main
+          fi

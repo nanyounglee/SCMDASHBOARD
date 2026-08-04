@@ -403,6 +403,11 @@ a{color:var(--blue);text-decoration:none}
     <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M2 14V2M2 12h3V6h3v6h3V4h3v8"/><path d="M2 5l4-2 4 3 4-4" stroke="var(--green)" stroke-dasharray="2 1"/></svg>
     KPI 목표·트래킹
   </div>
+  <div class="sb-section">일정관리</div>
+  <div class="sb-item" onclick="nav(this,'calendar')">
+    <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="2" y="3" width="12" height="11" rx="1.5"/><path d="M2 6.5h12M5 1.5v3M11 1.5v3"/></svg>
+    연간 이벤트 캘린더
+  </div>
   <div class="sb-section">운영 서비스</div>
   <div class="sb-item" onclick="nav(this,'qms')">
     <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M4 8l3 3 5-5"/><circle cx="8" cy="8" r="6"/></svg>
@@ -423,6 +428,10 @@ a{color:var(--blue);text-decoration:none}
   <div class="sb-item" onclick="nav(this,'report')">
     <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M3 2h10a1 1 0 011 1v10a1 1 0 01-1 1H3a1 1 0 01-1-1V3a1 1 0 011-1z"/><path d="M5 6h6M5 9h4M5 12h2"/></svg>
     리포트 생성
+  </div>
+  <div class="sb-item ext" onclick="window.open('https://nest.sincerely.work/workspace/kpis/combined?fromYear=2026&fromWeek=30&toYear=2026&toWeek=30','_blank')">
+    <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M3 8h10M9 4l4 4-4 4M10 3h2a1 1 0 011 1v8a1 1 0 01-1 1h-2"/></svg>
+    KPI종합분석-NEST ↗
   </div>
   <div class="sb-footer">
     <a class="sb-footer-link" href="https://github.com/nanyounglee/SCMDASHBOARD" target="_blank">
@@ -478,7 +487,7 @@ a{color:var(--blue);text-decoration:none}
             📁 CSV 파일 드래그 또는 클릭 (자동 인식)
           </div>
           <span id="parts-master-status" style="font-size:10px;color:var(--text3)"></span>
-          <button onclick="refreshAirtableNow()" id="airtable-refresh-btn" title="Airtable 원천 CSV를 지금 바로 재수집합니다(1~3분 소요). GitHub 연동 설정에 Actions 실행 권한이 있는 토큰이 필요합니다." style="font-size:10px;padding:4px 8px;border:1px solid var(--blue);border-radius:var(--r-sm);background:var(--blue-light);color:var(--blue);cursor:pointer">🔄 지금 새로고침</button>
+          <button onclick="refreshAirtableNow()" id="airtable-refresh-btn" title="원천 데이터를 지금 바로 재수집합니다(3~6분 소요) — Airtable(발주·이슈·협력사·발주 진행현황·매출결산) + Google Sheets(구매 대시보드·파츠 마스터) + 회의자료. ⚙ GitHub 연동 설정의 토큰(Contents: Read and write)이 필요합니다." style="font-size:10px;padding:4px 8px;border:1px solid var(--blue);border-radius:var(--r-sm);background:var(--blue-light);color:var(--blue);cursor:pointer">🔄 지금 새로고침</button>
           <span id="airtable-refresh-status" style="font-size:10px;color:var(--text3)"></span>
           <label style="font-size:10px;padding:4px 8px;border:1px solid var(--green);border-radius:var(--r-sm);background:var(--green-light);color:var(--green);cursor:pointer;position:relative">파츠 마스터 갱신<input type="file" accept=".csv" style="position:absolute;inset:0;opacity:0;cursor:pointer" onchange="updatePartsMasterFile(this.files[0])"></label>
           <button onclick="clearAllUploads()" style="font-size:10px;padding:4px 8px;border:1px solid var(--border2);border-radius:var(--r-sm);background:none;color:var(--text3);cursor:pointer">초기화</button>
@@ -486,9 +495,9 @@ a{color:var(--blue);text-decoration:none}
       </div>
       <!-- Collapsible detail area -->
       <div id="upload-detail" style="display:none;margin-top:10px">
-        <div class="upload-row-label" style="color:var(--purple)">외주생산파트 — Airtable SCM KPI 뷰에서 CSV Export (주 1회)</div>
+        <div class="upload-row-label" style="color:var(--purple)">외주생산파트 — Airtable에서 <b>매주 목 13:00 자동 수집</b>(발주·이슈·협력사·발주 진행현황·매출결산). 아래 업로드는 수동 보정용</div>
         <div class="upload-row" id="upload-row-prod"></div>
-        <div class="upload-row-label" style="color:var(--blue)">구매전략파트 — Google Sheets S&OP 대시보드에서 CSV Export (필요시)</div>
+        <div class="upload-row-label" style="color:var(--blue)">구매전략파트 — Google Sheets S&OP에서 <b>매주 목 18:00 자동 수집</b>. 아래 업로드는 수동 보정용</div>
         <div class="upload-row" id="upload-row-buy"></div>
         <div class="upload-row-label">공통 · 선택 — 추가 분석 데이터</div>
         <div class="upload-row" id="upload-row-etc"></div>
@@ -525,7 +534,7 @@ a{color:var(--blue);text-decoration:none}
           <div><div class="card-title"><span id="notice-collapse-arrow">▸</span> 📢 월간 공지사항 <span id="notice-inline-summary" style="font-weight:400;font-size:12px;color:var(--text2)"></span></div><div class="card-sub" id="notice-month-label"></div></div>
         </div>
         <div id="notice-body" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:8px"></div>
-        <div id="notice-footnote" style="font-size:10px;color:var(--text3);margin-top:8px">※ 졸업/출시/협력사 신규·거래종료는 <b>실제 변경일 기준 최근 30일</b> 롤링 노출(상단 월 선택과 무관) — 졸업/출시는 굿즈마스터(goods_master.csv) 출시일·졸업일, 협력사는 매주 자동 갱신되는 sup.csv 스냅샷(CSV_BANK) 비교로 감지. 감지된 변경은 data/change_log.json에 누적 기록되며 "전체 변경 이력 보기"에서 확인 가능 · 품절만 상단 선택 기간 기준 · "(수동입력)" 표시는 자동 집계로 잡히지 않아 담당자가 직접 등록한 건</div>
+        <div id="notice-footnote" style="font-size:10px;color:var(--text3);margin-top:8px">※ 8개 박스 모두 <b>실제 변경일 기준 이번 달(1일~오늘)</b> 변경분만 노출합니다(v23.10 — 상단 기간 선택과 무관, 품절 포함 전체 동일 기준) — 졸업/출시는 굿즈마스터(goods_master.csv) 출시일·졸업일, 협력사는 매주 자동 갱신되는 sup.csv 스냅샷(CSV_BANK) 비교로 감지. 졸업 제품은 굿즈마스터 졸업일 + 파츠 연결 해제(parts.csv 스냅샷) 두 경로, 단가 변동은 공식 가격요청(price_chg.csv) + 파츠 표준원가 실측 변동 두 경로를 합쳐 보여줍니다(v23.11 — "· 파츠 실측" 꼬리표로 구분). 감지된 변경은 data/change_log.json에 누적 기록되며 "전체 변경 이력 보기"에서 지난 달 이전 것도 확인 가능 · "(수동입력)" 표시는 자동 집계로 잡히지 않아 담당자가 직접 등록한 건(등록된 달에만 노출)</div>
       </div>
       <div class="kpi-row kpi-row-6">
         <div class="kpi-card c-blue" onclick="openModal('orderTask')">
@@ -533,7 +542,7 @@ a{color:var(--blue);text-decoration:none}
           <div class="kpi-sub"><span id="k-order-sub">데이터 없음</span></div>
           <div class="kpi-spark"><svg width="60" height="30" id="spark-order"></svg></div>
         </div>
-        <div class="kpi-card c-slate" onclick="nav(document.querySelector('.sb-item[onclick*=cost-analysis]'),'cost-analysis')" style="cursor:pointer" title="원가분석 화면으로 이동">
+        <div class="kpi-card c-slate" onclick="openModal('revenue')" style="cursor:pointer" title="목표 대비 달성률·연도별 추이·매입 비중 상세">
           <div class="kpi-label">매출 현황</div><div class="kpi-val" id="k-revenue">—</div>
           <div class="kpi-sub"><span id="k-revenue-sub">데이터 없음</span></div>
         </div>
@@ -898,6 +907,9 @@ a{color:var(--blue);text-decoration:none}
         </div>
       </div>
     </div>
+
+    <!-- CALENDAR -->
+    <div id="sec-calendar" style="display:none"></div>
 
     <!-- INVENTORY-OPS -->
     <div id="sec-inventory-ops" style="display:none">
@@ -3605,7 +3617,7 @@ function monthKeyOfDate(s) {
 }
 const STOCKOUT_STATUSES=['품절예정','일시품절','의도적 품절','비의도적품절'];
 // ===== v20: 변경 이력(change_log) — 협력사 신규/거래종료·제품 졸업/출시를
-// "선택 기간"이 아니라 "실제 변경 일자 기준 최근 30일 롤링"으로 공지사항에
+// "선택 기간"이 아니라 "실제 변경 일자 기준 이번 달"(v23.10 이전엔 최근 30일 롤링)로 공지사항에
 // 노출하고, 감지된 변경을 data/change_log.json에 영구 기록한다(비고/CI
 // 수기입력과 동일한 GitHub 자동 커밋 패턴 — 토큰 없으면 로컬에만 쌓이고,
 // 토큰 있는 누군가 열람 시 병합·커밋되어 팀 전체에 반영됨) =====
@@ -3675,37 +3687,76 @@ function backfillProductChangeLog(){
   });
   return entries;
 }
-// 협력사 신규/거래종료 — 정확한 상태변경일 필드가 원본에 없어, 주간 자동 커밋(§9)이
-// 매주 CSV_BANK/<연도>_W<주차>/sup.csv 로 남기는 스냅샷을 체인으로 이어 비교한다.
-// 최근 6주치만 확인(노출 기간 30일 + 여유) — 스냅샷이 아직 없는 주는 자동으로 건너뛴다.
-// (v20 배포 시점엔 CSV_BANK가 비어 있어 처음 몇 주는 결과가 없는 게 정상 — 자동 커밋이
-// 누적되면서부터 실제 감지가 시작된다.)
+// 협력사 신규/거래종료 — 정확한 상태변경일 필드가 원본에 없어, 자동 커밋이 남기는
+// sup.csv 스냅샷을 체인으로 이어 비교한다.
+//
+// v23.12(사용자 요청 2026-08-03): 주차 스냅샷(CSV_BANK/<연도>_W<주차>/sup.csv) →
+//   월간 스냅샷(CSV_BANK/sup_YYYY_MM.csv) 기준으로 전환.
+//   ① 협력사 마스터는 변동이 드물어 주간으로 볼 이유가 없다 — monthly-suppliers.yml이
+//      매월 1일 Airtable 뷰에서 받아 갱신하면서 직전 달 상태를 스냅샷으로 남긴다.
+//   ② 애초에 sup이 주간 자동 수집 대상이 아니어서 주차 스냅샷은 하나도 쌓인 적이 없었고
+//      (CSV_BANK에 sup 파일 0개 확인), 그래서 이 감지는 계속 0건이었다.
+//
+// 감지 대상은 "직전 스냅샷 대비 변동분"만 — 목록 전체가 아니라 추가/제외된 곳만 나온다:
+//   · 새로 나타난 이름 → 신규 협력사
+//   · 사라진 이름, 또는 '협력사 Status'가 '거래종료'로 바뀐 곳 → 거래종료
+//     (마스터는 종료된 협력사도 행이 남으므로 Status 전환도 같이 봐야 한다 — 현재 145곳 중 9곳이 거래종료)
+// 이미 코드에 하드코딩된 MANUAL_VENDOR_TERMINATIONS는 "이미 아는 종료분"이라 중복 통지하지 않는다.
+// v23.13(사용자 확인 2026-08-03, 첫 실행 결과 기준): 소스 뷰에는 외주생산파트 외 담당(문경선·
+// 윤지수·강예은·남인호 등 구매/물류 쪽) 협력사도 함께 들어있다. 첫 갱신에서 잡힌 신규 12곳이
+// 전부 그런 곳이었다 — 이 공지는 외주생산파트 담당 협력사만 다루므로 발주담당자로 거른다.
+const SCM_ORDER_MANAGERS=['육승미','김민지','이난영','김민정','김하은','김영준'];
+const isScmManagedVendor=r=>{
+  const m=String((r&&r['발주담당자'])||'').trim();
+  return m?SCM_ORDER_MANAGERS.some(n=>m.includes(n)):false; // 복수 담당자 표기 대비 부분일치
+};
+const supMonthLabel=d=>d.getFullYear()+'_'+String(d.getMonth()+1).padStart(2,'0');
+function supStatusMap(rows){
+  const m={};
+  (rows||[]).forEach(r=>{ const n=(r['협력사 이름']||'').trim(); if(n) m[n]=(r['협력사 Status']||'').trim(); });
+  return m;
+}
+function supRowMap(rows){
+  const m={};
+  (rows||[]).forEach(r=>{ const n=(r['협력사 이름']||'').trim(); if(n) m[n]=r; });
+  return m;
+}
 async function detectSupplierChanges(){
   if(!D.sup) return [];
   const today=new Date();
-  const seen=new Set(); const weeks=[];
-  for(let i=0,d=new Date(today);i<6;i++,d.setDate(d.getDate()-7)){
-    const {y,w}=isoWeekOf(d); const label=wkLabel(y,w);
-    if(!seen.has(label)){ seen.add(label); weeks.push(label); }
-  }
-  weeks.reverse(); // 과거→최근
-  const snaps=await Promise.all(weeks.map(label=>
-    fetch(dataUrl('CSV_BANK/'+label+'/sup.csv')).then(r=>r.ok?r.text():null).catch(()=>null).then(txt=>({label,rows:txt?parseCSV(txt):null}))
+  const labels=[];
+  for(let i=6;i>=1;i--){ const d=new Date(today.getFullYear(),today.getMonth()-i,1); labels.push(supMonthLabel(d)); } // 과거→최근
+  const snaps=await Promise.all(labels.map(label=>
+    fetch(dataUrl('CSV_BANK/sup_'+label+'.csv')).then(r=>r.ok?r.text():null).catch(()=>null).then(txt=>({label,rows:txt?parseCSV(txt):null}))
   ));
   const chain=snaps.filter(s=>s.rows&&s.rows.length);
   chain.push({label:'current',rows:D.sup});
-  // v22.2 감사 수정: live 감지 id에 'current' 대신 현재 ISO 주차 라벨 사용 — 다음 주에 스냅샷 체인이
-  // 같은 변경을 주차 라벨 id로 재감지하면 id가 달라 이중 기록되던 문제의 1차 방어
-  // (2차 방어: detectAndLogChanges의 type|name 최근-창 dedup — 기존 '|current' 항목도 커버)
-  const {y:ly,w:lw}=isoWeekOf(today); const liveLabel=wkLabel(ly,lw);
+  const liveLabel=supMonthLabel(today);
+  const alreadyKnown=new Set(MANUAL_VENDOR_TERMINATIONS.map(m=>m.name)); // 하드코딩된 기존 종료분
   const entries=[];
   for(let i=1;i<chain.length;i++){
     const prev=chain[i-1], cur=chain[i];
-    const diff=diffSupNames(prev.rows,cur.rows);
     const idLabel=cur.label==='current'?liveLabel:cur.label;
-    const dateKey=cur.label==='current'?fmtISODate(today):isoWeekMondayDate(cur.label);
-    diff.added.forEach(name=>entries.push({id:'sup_added|'+name+'|'+idLabel,type:'sup_added',name,date:dateKey,detail:cur.label==='current'?'':cur.label+' 스냅샷 비교'}));
-    diff.removed.forEach(name=>entries.push({id:'sup_terminated|'+name+'|'+idLabel,type:'sup_terminated',name,date:dateKey,detail:cur.label==='current'?'':cur.label+' 스냅샷 비교'}));
+    // sup_YYYY_MM.csv는 그 달에 쓰이던 상태 — 다음 달 1일 실행 때 교체되므로 변경 시점은 cur 달의 1일로 잡는다
+    const mm=cur.label==='current'?null:cur.label.match(/(\d{4})_(\d{2})/);
+    const dateKey=mm?`${mm[1]}-${mm[2]}-01`:fmtISODate(today);
+    const detail=cur.label==='current'?'':cur.label+' 스냅샷 비교';
+    const diff=diffSupNames(prev.rows,cur.rows);
+    const prevStatus=supStatusMap(prev.rows), curStatus=supStatusMap(cur.rows);
+    const curRow=supRowMap(cur.rows);
+    // 신규: 외주생산파트(발주담당자 6인) 담당 협력사만 — 타 파트 협력사는 이 공지 대상이 아니다
+    diff.added.filter(name=>isScmManagedVendor(curRow[name]))
+      .forEach(name=>entries.push({id:'sup_added|'+name+'|'+idLabel,type:'sup_added',name,date:dateKey,detail}));
+    // 종료: 목록에서 사라진 곳. 단 직전 스냅샷에서 이미 '거래종료'였다면 이번에 종료된 게 아니라
+    // 마스터 정리로 행이 빠진 것이므로 통지하지 않는다(2026-08 첫 갱신에서 제외된 10곳 중 9곳이 이 경우).
+    const terminated=new Set(diff.removed.filter(n=>!alreadyKnown.has(n)&&prevStatus[n]!=='거래종료'));
+    // 행은 남아있고 Status만 '거래종료'로 바뀐 경우도 종료로 본다
+    Object.keys(curStatus).forEach(n=>{
+      if(curStatus[n]!=='거래종료') return;
+      if(!prevStatus[n]||prevStatus[n]==='거래종료') return; // 이전에도 종료였으면 새 변경이 아님
+      if(!alreadyKnown.has(n)) terminated.add(n);
+    });
+    terminated.forEach(name=>entries.push({id:'sup_terminated|'+name+'|'+idLabel,type:'sup_terminated',name,date:dateKey,detail}));
   }
   return entries;
 }
@@ -3832,16 +3883,19 @@ function renderMonthlyNotice() {
   const wrap=document.getElementById('notice-body');
   if(!wrap) return;
   const lbl=document.getElementById('notice-month-label');
-  const months=monthsTouchedBy(SEL_DATE_RANGE); // 품절 섹션만 선택 기간을 그대로 따름(아래 3번)
 
   if(!CHANGE_LOG_LOADED) loadChangeLog(); // 최초 1회 트리거, 로드 완료 시 자체적으로 재렌더
   else if(!CHANGE_LOG_DETECTED) detectAndLogChanges(); // 로그 로드가 CSV 자동로드보다 먼저 끝난 경우 재시도(내부에서 멱등 처리)
 
-  // 1·2·4·5) 졸업/출시 제품·신규/거래종료 협력사 — 선택 기간과 무관하게 "오늘 기준 최근 30일"
-  // 변경만 노출(v20). 변경 감지·날짜는 change_log에서 가져온다(§9 참고).
+  // 졸업/출시 제품·신규/거래종료 협력사·파츠·단가·품절 — 상단 선택 기간과 무관하게
+  // "이번 달 1일 ~ 오늘" 변경분만 노출. 변경 감지·날짜는 change_log에서 가져온다(§9 참고).
+  // v23.10(사용자 요청 2026-08-03): v20의 "최근 30일 롤링" → 달력 월 기준으로 변경.
+  //   카드 이름은 '월간 공지사항'인데 롤링 창이라 8월 초에도 7월 변경분이 섞여 나왔고,
+  //   품절만 상단 선택 기간을 따라 카드 안에서 기준이 둘로 갈리던 것도 이번 달로 통일했다.
   const today=new Date(); today.setHours(0,0,0,0);
-  const windowStart=new Date(today); windowStart.setDate(windowStart.getDate()-30);
-  if(lbl) lbl.textContent='최근 30일 변경 (오늘 '+fmtISODate(today)+' 기준)';
+  const windowStart=new Date(today.getFullYear(),today.getMonth(),1);
+  const curMonthKey=today.getFullYear()+'.'+(today.getMonth()+1);
+  if(lbl) lbl.textContent=`${today.getFullYear()}년 ${today.getMonth()+1}월 변경분 (${fmtISODate(windowStart)} ~ ${fmtISODate(today)})`;
   const manualTerm=MANUAL_VENDOR_TERMINATIONS.map(m=>({id:'sup_terminated|'+m.name+'|manual',type:'sup_terminated',name:m.name,date:monthKeyToDate(MANUAL_VENDOR_TERM_MONTH,28),detail:m.note+' (수동입력)'}));
   const allEntries=(() => { const map={}; CHANGE_LOG.concat(manualTerm).forEach(e=>{map[e.id]=e;}); return Object.values(map); })();
   const inWindow=e=>{ const d=parseAnyDate(e.date); return d&&d>=windowStart&&d<=today; };
@@ -3856,15 +3910,18 @@ function renderMonthlyNotice() {
   // v22.2 감사 수정: greedy `\(.*\)$`는 제품명 자체에 괄호가 있으면("텀블러 (대) (MK01)" 등)
   // 첫 괄호부터 전부 잘라 이름 대조가 어긋남 — 끝의 굿즈코드 괄호(영대문자·숫자 2~6자)만 제거
   const gradNames=new Set(gradRows.map(e=>String(e.name).replace(/\s*\([A-Z0-9]{2,6}\)$/,'')));
-  // v22.14: parts.csv 마이그레이션(진행 중, 담당 seungmiyook)이 안정될 때까지 "파츠 연결 해제" 감지분을
-  // 졸업 제품 박스 표시에서 임시 제외 — data/change_log.json에 이미 쌓인 224건(2026-07-22, 마이그레이션발
-  // 오탐)이 detectPartsChanges()의 신규 안전장치로도 지워지지 않고 계속 남아있어(과거 기록은 유지) 사용자
-  // 요청으로 표시만 막음. 마이그레이션 완결 확인 후 재검토.
-  const unlinkedRows=[]; // byType('goods_unlinked').filter(e=>!gradNames.has(String(e.name)));
+  // v22.14에서 parts.csv 마이그레이션(2026-07-22) 중 "파츠 연결 해제"가 227건 오탐돼 표시를 막아뒀었다.
+  // v23.11(사용자 확인 2026-08-03): 마이그레이션이 끝났고, detectPartsChanges()에 행수 급감(50% 미만)
+  //   구간을 건너뛰는 안전장치가 들어가 같은 오탐이 재발할 여지가 낮아 재활성화한다. 이미 쌓인 7/22
+  //   오탐분은 v23.10에서 공지 창이 "이번 달"로 바뀌면서 자연히 창 밖으로 빠진다(이력에는 그대로 보존).
+  const unlinkedRows=byType('goods_unlinked').filter(e=>!gradNames.has(String(e.name)));
   const gradAllRows=gradRows.concat(unlinkedRows);
   // v22.1: 신규/졸업/단가를 하나의 파츠 박스로 합치지 않고 각각 분리 표시 (사용자 요청)
   const partNewRows=byType('part_new'), partGradRows=byType('part_grad'), partPriceRows=byType('part_price');
-  // v22.15: 단가 변동 공지 — price_chg.csv(Airtable 업무요청_가격) 기반. parts.csv 스냅샷 diff(partPriceRows)는 파츠 탭에서 유지.
+  // 단가 변동 공지 — v22.15에서 price_chg.csv(Airtable 업무요청_가격) 기반으로 바꾸면서 parts.csv
+  // 스냅샷 diff(partPriceRows)는 공지에서 빠졌었다. v23.11(사용자 요청 2026-08-03): 둘을 합쳐 표시 —
+  // 공식 가격요청과 실제 표준원가 변동은 서로를 못 잡는 사각지대가 있어(요청 없이 단가만 바뀐 건,
+  // 요청은 올렸지만 아직 단가 미반영인 건) 함께 봐야 한다.
   const priceChgRows = D.price_chg ? D.price_chg.filter(r => {
     if((r['Confirmation']||'').trim()==='반려') return false;
     const d=parseAnyDate((r['요청일자']||'').trim());
@@ -3873,18 +3930,31 @@ function renderMonthlyNotice() {
     const da=parseAnyDate((a['요청일자']||'').trim()), db=parseAnyDate((b['요청일자']||'').trim());
     return (da&&db)?db-da:0;
   }) : [];
+  const priceChgFmt = r => {
+    const name = esc((r['대상 굿즈명']||r['협력사 이름']||'(굿즈명 없음)').trim());
+    const why = esc((r['변동원인']||'').trim().substring(0,20));
+    const dateStr = esc((r['요청일자']||'').trim().replace(/\s.*$/,''));
+    return `${name}${why?` <span style="color:var(--text3)">(${why})</span>`:''} <span style="color:var(--text3)">· ${dateStr}</span>`;
+  };
+  // 같은 제품이 양쪽에 다 잡히면 사유가 적힌 공식 요청 쪽만 남기고, 파츠 실측분은 꼬리표로 구분
+  const priceReqNames=new Set(priceChgRows.map(r=>String(r['대상 굿즈명']||r['협력사 이름']||'').trim()).filter(Boolean));
+  const priceItems=priceChgRows.map(priceChgFmt).concat(
+    partPriceRows.filter(e=>!priceReqNames.has(String(e.name).trim()))
+      .map(e=>fmtEntry(e)+' <span style="color:var(--text3)">· 파츠 실측</span>'));
 
-  // 3) 품절 제품 — stockout_list.csv 판매상태+변경일 기준(졸업 성격 제외) + 수동입력 보강. 기존 그대로 선택 기간 연동.
+  // 3) 품절 제품 — stockout_list.csv 판매상태+변경일 기준(졸업 성격 제외) + 수동입력 보강.
+  // v23.10: 다른 박스와 같은 "이번 달" 창을 쓴다(이전에는 이 박스만 상단 선택 기간 연동).
   let stockRows=[], manualStock=[];
   if (D.stockout_list) {
     stockRows=D.stockout_list.filter(r=>{
       const st=(r['판매상태']||'').trim();
       if(!STOCKOUT_STATUSES.includes(st)) return false;
-      const chgDate=r['변경일']||r['변경일(인터페이스용)']||'';
-      return inSelDateRange(chgDate);
+      const d=parseAnyDate(r['변경일']||r['변경일(인터페이스용)']||'');
+      return d&&d>=windowStart&&d<=today;
     }).sort((a,b)=>{const da=parseAnyDate(a['변경일']||a['변경일(인터페이스용)']||''),db=parseAnyDate(b['변경일']||b['변경일(인터페이스용)']||'');return (da&&db)?db-da:0;});
     const already=new Set(stockRows.map(r=>r['파츠명']));
-    manualStock=months.includes(MANUAL_STOCKOUT_MONTH)?MANUAL_STOCKOUT.filter(m=>!already.has(m.parts)):[];
+    // 수동 등록분은 그 달에만 노출 — 7월분을 8월 공지로 둔갑시키지 않기 위해 월 키를 그대로 비교
+    manualStock=(MANUAL_STOCKOUT_MONTH===curMonthKey)?MANUAL_STOCKOUT.filter(m=>!already.has(m.parts)):[];
   }
 
   // 접기 상태 반영 — 접힘: 제목 옆 건수 요약 한 줄만, 펼침: 기존 박스 그리드
@@ -3892,14 +3962,15 @@ function renderMonthlyNotice() {
   if(arrow) arrow.textContent=NOTICE_COLLAPSED?'▸':'▾';
   const summary=document.getElementById('notice-inline-summary');
   if(summary) summary.textContent=NOTICE_COLLAPSED
-    ? `— 🎓 ${D.goods_master?gradAllRows.length:'—'} · 🚀 ${D.goods_master?launchRows.length:'—'} · 🚫 ${D.stockout_list?stockRows.length+manualStock.length:'—'} · 🆕 ${D.sup?addedRows.length:'—'} · 🔚 ${D.sup?removedRows.length:'—'} · 🧩 ${D.parts?partNewRows.length:'—'} · ⚙️ ${D.parts?partGradRows.length:'—'} · 💲 ${D.price_chg?priceChgRows.length:'—'}`
+    ? `— 🎓 ${(D.goods_master||D.parts)?gradAllRows.length:'—'} · 🚀 ${D.goods_master?launchRows.length:'—'} · 🚫 ${D.stockout_list?stockRows.length+manualStock.length:'—'} · 🆕 ${D.sup?addedRows.length:'—'} · 🔚 ${D.sup?removedRows.length:'—'} · 🧩 ${D.parts?partNewRows.length:'—'} · ⚙️ ${D.parts?partGradRows.length:'—'} · 💲 ${(D.price_chg||D.parts)?priceItems.length:'—'}`
     : '';
   const foot=document.getElementById('notice-footnote');
   if(foot) foot.style.display=NOTICE_COLLAPSED?'none':'';
   if(NOTICE_COLLAPSED){ wrap.style.display='none'; wrap.innerHTML=''; return; }
   wrap.style.display='grid';
 
-  const gradHtml = D.goods_master ? noticeBox('🎓 졸업 제품',gradAllRows.length,gradAllRows.map(fmtEntry)) : noticeEmptyBox('졸업 제품','goods_master.csv 업로드 필요');
+  // v23.11: goods_master 졸업일 + parts diff의 "파츠 연결 해제" 두 경로라, parts만 있어도 표시한다
+  const gradHtml = (D.goods_master||D.parts) ? noticeBox('🎓 졸업 제품',gradAllRows.length,gradAllRows.map(fmtEntry)) : noticeEmptyBox('졸업 제품','goods_master.csv 업로드 필요');
   const launchHtml = D.goods_master ? noticeBox('🚀 출시 제품',launchRows.length,launchRows.map(fmtEntry)) : noticeEmptyBox('출시 제품','goods_master.csv 업로드 필요');
   const stockHtml = D.stockout_list
     ? noticeBox('🚫 품절 제품',stockRows.length+manualStock.length,stockRows.map(r=>esc(stripPT(r['파츠명']||''))).concat(manualStock.map(m=>esc(stripPT(m.parts)))))
@@ -3909,13 +3980,9 @@ function renderMonthlyNotice() {
 
   const partNewHtml = D.parts ? noticeBox('🧩 신규 파츠',partNewRows.length,partNewRows.map(fmtEntry)) : noticeEmptyBox('신규 파츠','parts.csv 업로드 필요');
   const partGradHtml = D.parts ? noticeBox('⚙️ 파츠 졸업',partGradRows.length,partGradRows.map(fmtEntry)) : noticeEmptyBox('파츠 졸업','parts.csv 업로드 필요');
-  const priceChgFmt = r => {
-    const name = esc((r['대상 굿즈명']||r['협력사 이름']||'(굿즈명 없음)').trim());
-    const why = esc((r['변동원인']||'').trim().substring(0,20));
-    const dateStr = esc((r['요청일자']||'').trim().replace(/\s.*$/,''));
-    return `${name}${why?` <span style="color:var(--text3)">(${why})</span>`:''} <span style="color:var(--text3)">· ${dateStr}</span>`;
-  };
-  const partPriceHtml = D.price_chg ? noticeBox('💲 단가 변동',priceChgRows.length,priceChgRows.map(priceChgFmt)) : noticeEmptyBox('단가 변동','price_chg.csv 업로드 필요');
+  const partPriceHtml = (D.price_chg||D.parts)
+    ? noticeBox('💲 단가 변동',priceItems.length,priceItems)
+    : noticeEmptyBox('단가 변동','price_chg.csv 업로드 필요');
 
   wrap.innerHTML=gradHtml+launchHtml+stockHtml+addedHtml+removedHtml+partNewHtml+partGradHtml+partPriceHtml+renderChangeHistoryToggle(allEntries);
 }
@@ -4323,7 +4390,11 @@ function openModal(type,extra) {
   ov.classList.add('open');
   tabsEl.innerHTML='';
 
-  if (type==='orderTask') {
+  if (type==='revenue') {
+    title.textContent='매출 현황 · 목표 대비 — '+(selPeriodLabel()||'전체');
+    renderRevenueModal();
+
+  } else if (type==='orderTask') {
     title.textContent='발주 TASK 상세 — '+(selPeriodLabel()||'전체');
     if (!D.order) { body.innerHTML=emptyRow(1,'발주 RAW 업로드 필요'); return; }
     ORDERTASK_TAB='top';
@@ -6896,7 +6967,7 @@ function nav(el,id) {
   document.querySelectorAll('.sb-item').forEach(i=>i.classList.remove('active'));
   if (el) el.classList.add('active');
   CURRENT_SECTION=id;
-  const titles={overview:'종합 현황','inventory-ops':'재고운영 현황','stockout-detail':'품절 상세','purchase-review':'매입 검토','season-plan':'시즌재고 계획',eoq:'EOQ · 발주알람',graduation:'졸업 검토',order:'발주 현황',progress:'발주 진행현황','cost-analysis':'원가 분석',issue:'이슈 현황',sales:'매출/마진 분석','product-trend':'제품별 판매량 추이',supplier:'협력사 · 매입 현황','supplier-product':'협력사유형별 제품군',kpi:'KPI 목표·트래킹',portfolio:'공급망 포트폴리오',qms:'품질 현황',subcontract:'하도급법 위험',ai:'AI 어시스턴트',report:'리포트 생성',stock:'재고 현황',quote:'견적계산기'};
+  const titles={overview:'종합 현황','inventory-ops':'재고운영 현황','stockout-detail':'품절 상세','purchase-review':'매입 검토','season-plan':'시즌재고 계획',eoq:'EOQ · 발주알람',graduation:'졸업 검토',order:'발주 현황',progress:'발주 진행현황','cost-analysis':'원가 분석',issue:'이슈 현황',sales:'매출/마진 분석','product-trend':'제품별 판매량 추이',supplier:'협력사 · 매입 현황','supplier-product':'협력사유형별 제품군',kpi:'KPI 목표·트래킹',portfolio:'공급망 포트폴리오',qms:'품질 현황',subcontract:'하도급법 위험',ai:'AI 어시스턴트',report:'리포트 생성',stock:'재고 현황',quote:'견적계산기',calendar:'연간 이벤트 캘린더'};
   const guides={
     overview:'<b>확인 가능 지표:</b> 월간 공지사항(졸업/출시/품절 제품, 선택 월 기준 자동집계) · 발주TASK(프로젝트/재고생산/긴급) · 월매입금액 · 이슈건수(품질/수량/운영) · 긴급발주 · 고객인지이슈 — 모든 KPI에 전년 동기(YoY) 비교 표시 | <b>차트:</b> 매입추이(월별/주별·합산/협력사/업태/굿즈코드) · 이슈유형 도넛 · 담당자별 발주 · 월별이슈추이 · 제조유형 매입비중(업태/카테고리 전환) | <b>클릭:</b> KPI 카드 클릭 시 상세 모달 · 차트 월 클릭 시 Top5 모달 | <b>CSV:</b> 발주_RAW + 이슈_RAW + 공급망_RAW + 고객인지이슈_RAW + 굿즈마스터(졸업/출시) + 품절리스트',
     'inventory-ops':'<b>확인 가능 지표:</b> 재고자산평가액 · 재고회전율(1M/3M/YTD) · 선매입재고품절율 · 운영밴드 상태(분기별) | <b>차트:</b> 재고금액 추이(최근12주, 밴드 상/하한 표시) · 카테고리별 재고비중/SKU수/회전율 | <b>클릭:</b> 재고자산/회전율 KPI → SKU별 상세 모달(정렬 가능, 회전율 클릭 시 월별 판매추이 바차트+회의이력) | <b>CSV:</b> 재고 SKU 스냅샷(dashboard_sku_snapshot) + 재고 그룹 요약(dashboard_group_summary)',
@@ -6921,6 +6992,7 @@ function nav(el,id) {
     ai:'<b>사용법:</b> 제품명 입력 → 제품 정의서 링크 + 리드타임/제작기간·단가 문의 기존 답변(최신 3건, 답변 없으면 과거 슬랙 문의 텍스트로 폴백) — Check_standard_Answer(응답 완료) + Check_standard_Question(질문1~3·답변1~3 원본) 두 소스를 함께 검색해 커버리지 확대 | 협력사명 입력 → 발주현황/매입금액/3개월추이/품질이슈 분석 | 긴급 → 긴급발주 목록 | 미입하/task → 미입하현황 | 전월/매입 → 전월대비 비교 | 담당자명 → 개인 실적 | <b>CSV:</b> 제품문의답변이력(check_answer) + 제품문의원본(check_question) + 발주_RAW + 이슈_RAW + 공급망_RAW',
     quote:'<b>기능:</b> 패키지(박스) 자동 견적 산출 — 마닐라박스/C형/W형/슬리브형 | <b>로직:</b> 전개사이즈 → 지류단가(27지종×15규격, 0원 규격 자동상향) → 여분·연수 → 원단/인쇄/코팅/톰슨/접착/특수공정/골판지 → 관리비(10%·최소15만) → 마진(최소20만) | <b>이력:</b> localStorage 저장 · CSV 내보내기 | <b>기준:</b> 외주버전 v1.2.2 단가표',
     report:'<b>기능:</b> 팀 주간 회의록/보고서 바로가기(SCM-Archive) · 외주생산파트 주간 리포트·회의록 프롬프트 생성 · 구매전략파트 주간 재고 리포트 .md 생성(재고수준·재고구조·품절·장기미회전·이슈 자동 요약, 주차 선택 가능) · <b>변경 이력 리포트 .md 생성</b>(파츠 신규/졸업·단가 변동·협력사·제품 변경 — 주간 리포트/회의 원천 데이터) · <b>변경 스냅샷 아카이브(CSV_BANK) 바로가기</b>',
+    calendar:'<b>구성:</b> 주간 정기회의 안내 · <b>월간 달력</b>(v23.9 — 날짜 칸에 반복업무 9종·정기회의·특이사항을 막대로 표시, ‹ › 로 월 이동, 날짜 클릭 시 그 날 일정) · 월 타일 12개(클릭 시 해당월 달력으로 이동) · <b>공급망 특이사항</b>(협력사 휴가·발주 마감 등 수시 이슈 — 시작·종료일 지정 시 달력에 표시, 직접 추가/삭제·브라우저에 저장) | <b>출처:</b> 구매조달팀 연간주요이벤트 마스터(§2 업무 마스터 기준)',
   };
   document.getElementById('page-title').innerHTML=`${titles[id]||id}<span class="topbar-badge" id="page-month-badge">${selPeriodLabel()}</span>`;
   renderPeriodBar();
@@ -6947,6 +7019,7 @@ function nav(el,id) {
   
   if (id==='qms') renderQMS();
   if (id==='quote') renderQuoteCalc();
+  if (id==='calendar') renderCalendar();
   if (id==='portfolio') renderPortfolio();
   if (id==='kpi') renderKPITracker();
 }
@@ -11132,6 +11205,431 @@ function qcExportCSV(){
   const a=document.createElement('a'); a.href=URL.createObjectURL(blob); a.download='견적이력_'+new Date().toISOString().slice(0,10)+'.csv'; a.click(); URL.revokeObjectURL(a.href);
 }
 
+// ===== 매출 목표·추이 (연간분석 01-A/01-B 표 기준, 구매조달팀 제공 — 2026.08.03 갱신) =====
+// CSV 자동로드 대상이 아닌 별도 계획 수치라 상수로 관리. 표가 갱신되면 아래 배열만 교체하면 된다.
+// 목표는 "목표 수주액(×1.15)" 기준이며 원본 표의 월별/누적 목표대비 %도 수주액 기준으로 산출돼 있다.
+const SALES_PLAN={
+  targetYear:2026, prevYear:2025,
+  // 2026-08-03 갱신(7월 마감분 반영): 3월 수주액 958,380,000→959,080,000 ·
+  //   7월 목표 998,250,000→997,790,000 · 7월 수주액 514,730,000→902,120,000 ·
+  //   2025년 7월 수주액 868,040,000→867,640,000 · 7월 매출액 0→588,846,391.
+  //
+  // [curRevenue 산출 기준 — 2026-08-03 확인] 이 행은 대시보드의 "매출 현황(실측)"과
+  // 기준이 두 군데 다르다. 혼동이 잦아 여기 명시해 둔다:
+  //   ① 기간: 달력 월이 아니라 출고리스트 마감 구간이다. 7월분 = 2026-07-13 ~ 08-07
+  //      (6월분은 07-12까지). 매출이 목표에 못 미치면 다음 달 초순 출고까지 당겨 잡는다.
+  //   ② 금액: VAT 별도 공급가액(사용자 확인). 반면 proj_rev.csv의 '총 매출액'은
+  //      출고리스트의 '출고처리 금액'(VAT 포함)과 원 단위까지 동일함을 144건 중 143건에서 확인했다.
+  //   → 그래서 실측(revenueByMonthAll)과 이 행은 구조적으로 다른 값이 나온다. 정상이다.
+  // 7월분 출처: "26년 출고리스트_0713~0807(초안).xlsx" 144건 공급가액 합계.
+  //   ※ 초안본이라 확정본이 나오면 교체 필요(아마란스 매출일 컬럼이 아직 전부 공란).
+  target:      [1069910000,855160000,1138160000,1115710000,871000000,867330000,997790000,1106530000,1260360000,1381370000,1899880000,1690530000],
+  curOrder:    [960390000,679380000,959080000,895870000,1038650000,844300000,902120000,0,0,0,0,0],
+  curRevenue:  [1056260000,562150000,1168460000,783870000,723990000,730000000,588846391,0,0,0,0,0],
+  prevOrder:   [930350000,743620000,989710000,970190000,757390000,754200000,867640000,962200000,1095970000,1201190000,1652070000,1470020000],
+};
+// 선택 기간과 무관하게 월별(1~12) 매출을 산출 — k-revenue 카드와 동일 정의
+// (proj_rev 프로젝트 총매출액을 출고월에 귀속 · 복수 출고월 균등분할, 미업로드 시 R) 판매가 근사 폴백)
+function revenueByMonthAll(year){
+  const out={};
+  const revMap=getProjRevMap();
+  if(Object.keys(revMap).length){
+    const projSeen=new Set();
+    getFilteredAllOrders().filter(r=>!isStock(r)).forEach(r=>{ const p=(r['project']||'').trim(); if(p) projSeen.add(p); });
+    projSeen.forEach(p=>{
+      const rv=revMap[p]; if(!rv||!rv.months.length) return;
+      const share=1/rv.months.length;
+      rv.months.forEach(m=>{ out[m]=(out[m]||0)+rv.rev*share; });
+    });
+  } else {
+    getFilteredAllOrders().filter(r=>!isStock(r)).forEach(r=>{
+      const mo=pOrderMonth(r['과업지시일자']); if(!mo) return;
+      out[mo]=(out[mo]||0)+pa(r['R) 판매가(최종)']);
+    });
+  }
+  return Array.from({length:12},(_,i)=>out[year+'.'+(i+1)]||0);
+}
+// 월별 매입금액(세금계산서작성월 기준). stockIncl=false면 재고제외(totProj) — 매입비중은 카드와 동일하게 재고제외 기준
+function purchaseByMonthAll(year,stockIncl){
+  const out={};
+  getFilteredAllOrders().forEach(r=>{
+    if(!stockIncl&&isStock(r)) return;
+    const byM=purchaseByMonth(r);
+    Object.entries(byM).forEach(([m,a])=>{ out[m]=(out[m]||0)+a; });
+  });
+  return Array.from({length:12},(_,i)=>out[year+'.'+(i+1)]||0);
+}
+// 선택 기간에 걸친 월 인덱스(0-11) — 대상 연도 밖이면 빈 배열
+function planSelMonthIdx(){
+  return selPeriodMonths().map(m=>{
+    const p=String(m).split('.'); return (+p[0]===SALES_PLAN.targetYear)?(+p[1]-1):null;
+  }).filter(i=>i!==null&&i>=0&&i<12);
+}
+function renderRevenueModal(){
+  const body=document.getElementById('modal-body');
+  const P=SALES_PLAN;
+  const actRev=revenueByMonthAll(P.targetYear);        // 대시보드 업로드 실측 매출
+  const purProj=purchaseByMonthAll(P.targetYear,false); // 재고제외 매입
+  const purAll=purchaseByMonthAll(P.targetYear,true);   // 재고포함 매입
+  const idxs=planSelMonthIdx();
+  const sum=(arr,ii)=>ii.reduce((s,i)=>s+(arr[i]||0),0);
+  const pct=(a,b)=>b>0?(a/b*100):null;
+  const sgn=v=>v===null?'—':(v>=0?'+':'')+v.toFixed(0)+'%';
+  const col=v=>v===null?'var(--text3)':v>=0?'var(--green)':'var(--red)';
+  // 선택 기간 합계
+  const selTarget=sum(P.target,idxs), selAct=sum(actRev,idxs), selPlanRev=sum(P.curRevenue,idxs),
+        selOrder=sum(P.curOrder,idxs), selPrev=sum(P.prevOrder,idxs), selPurProj=sum(purProj,idxs), selPurAll=sum(purAll,idxs);
+  const achAct=pct(selAct,selTarget), achOrder=pct(selOrder,selTarget), ratio=pct(selPurProj,selAct);
+  const label=selPeriodLabel()||`${P.targetYear}년`;
+  const noSel=!idxs.length;
+  const ratioAll=pct(selPurAll,selAct);
+  const rCol=v=>v===null?'var(--text3)':v>70?'var(--red)':v>50?'var(--amber)':'var(--green)';
+  const ratioColor=rCol(ratio), ratioAllColor=rCol(ratioAll);
+  const kpi=(lbl,val,sub,cls)=>`<div class="kpi-card ${cls||''}" style="cursor:default"><div class="kpi-label">${lbl}</div><div class="kpi-val" style="font-size:20px">${val}</div><div class="kpi-sub">${sub}</div></div>`;
+  body.innerHTML=`
+    ${noSel?`<div style="padding:8px 12px;background:var(--amber-light);border-radius:var(--r-sm);font-size:11.5px;color:var(--text2);margin-bottom:12px">선택 기간이 ${P.targetYear}년 밖이라 목표 대비는 표시할 수 없습니다. 아래 추이·표는 ${P.targetYear}년 연간 기준입니다.</div>`:''}
+    <div class="kpi-row-3" style="margin-bottom:6px">
+      ${kpi('목표 수주액',noSel?'—':fa(selTarget),`${label} · 연간 목표의 ${noSel?'—':(selTarget/P.target.reduce((a,b)=>a+b,0)*100).toFixed(1)+'%'}`,'c-slate')}
+      ${kpi('매출 현황 (업로드 실측)',noSel?'—':fa(selAct),`목표 대비 <b style="color:${col(achAct===null?null:achAct-100)}">${achAct===null?'—':achAct.toFixed(0)+'%'}</b> (${achAct===null?'—':sgn(achAct-100)})`,'c-blue')}
+      ${kpi('매입 / 매출 비중 <span style="font-weight:400;color:var(--text3)">(재고제외)</span>',
+        noSel?'—':`<span style="color:${ratioColor}">${ratio===null?'—':ratio.toFixed(1)+'%'}</span>`,
+        `재고포함 <b style="color:${ratioAllColor}">${ratioAll===null?'—':ratioAll.toFixed(1)+'%'}</b><br><span style="font-size:10px;color:var(--text3)">매입 재고제외 ${noSel?'—':fa(selPurProj)} · 재고포함 ${noSel?'—':fa(selPurAll)}</span>`,'c-green')}
+    </div>
+    <div style="font-size:11px;color:var(--text3);margin-bottom:14px">
+      · <b>매출 현황</b>은 종합 현황 카드와 동일한 업로드 실측치(프로젝트 총매출액을 출고월에 귀속)이고, <b>목표·수주액·전년·매출액(표)</b>은 구매조달팀 연간분석 표(01-A/01-B) 수치입니다. 두 값은 <b>구조적으로 다릅니다</b>(2026-08-03 확인) — 실측은 <b>달력 월 · VAT 포함</b>이고, 표는 <b>출고리스트 마감 구간 · VAT 별도 공급가액</b>입니다. 표의 마감 구간은 달력 월이 아니라 예컨대 7월분이 <b>07-13 ~ 08-07</b>이며, 매출이 목표에 못 미치면 다음 달 초순 출고까지 당겨 잡습니다. 차이가 나는 것이 정상입니다.
+      · <b>매입 비중</b>은 매입 ÷ 매출 — <b>재고제외</b>는 원가분석의 원가율과 같은 정의(프로젝트 매출에 직접 대응하는 매입만), <b>재고포함</b>은 재고생산분까지 더한 총 매입 기준이라 항상 재고제외보다 큽니다.
+    </div>
+    <div class="card" style="margin-bottom:14px">
+      <div class="card-header"><div class="card-title">${P.prevYear} vs ${P.targetYear} 매출·수주 추이</div><div class="card-sub"><a href="javascript:void(0)" onclick="closeModal();nav(document.querySelector('.sb-item[onclick*=cost-analysis]'),'cost-analysis')">원가 분석 화면 →</a></div></div>
+      <div class="ch" style="height:260px"><canvas id="ch-rev-plan"></canvas></div>
+    </div>
+    <div class="tbl-wrap"><table class="tbl" style="min-width:940px">
+      <thead><tr><th style="min-width:150px">구분</th>${Array.from({length:12},(_,i)=>`<th class="num"${idxs.includes(i)?' style="color:var(--blue)"':''}>${i+1}월</th>`).join('')}<th class="num">합계</th></tr></thead>
+      <tbody>
+        ${planRow('목표 수주액',P.target,idxs)}
+        ${planRow(P.targetYear+' 수주액',P.curOrder,idxs)}
+        ${planRow(P.targetYear+' 매출액 (표)',P.curRevenue,idxs)}
+        ${planRow('매출 현황 (업로드 실측)',actRev,idxs)}
+        ${planRow(P.prevYear+' 수주액',P.prevOrder,idxs)}
+        <tr><td><b>목표 대비 (수주)</b></td>${P.target.map((t,i)=>{const v=P.curOrder[i]?pct(P.curOrder[i],t)-100:null;return `<td class="num" style="white-space:nowrap;color:${col(v)}${idxs.includes(i)?';background:var(--blue-light)':''}">${v===null?'-':sgn(v)}</td>`;}).join('')}<td class="num" style="color:${col(pct(P.curOrder.reduce((a,b)=>a+b,0),P.target.reduce((a,b)=>a+b,0))-100)}">${sgn(pct(P.curOrder.reduce((a,b)=>a+b,0),P.target.reduce((a,b)=>a+b,0))-100)}</td></tr>
+        <tr><td><b>전년 대비 (수주)</b></td>${P.prevOrder.map((p,i)=>{const v=P.curOrder[i]?pct(P.curOrder[i],p)-100:null;return `<td class="num" style="white-space:nowrap;color:${col(v)}${idxs.includes(i)?';background:var(--blue-light)':''}">${v===null?'-':sgn(v)}</td>`;}).join('')}<td class="num" style="color:${col(pct(P.curOrder.reduce((a,b)=>a+b,0),P.prevOrder.reduce((a,b)=>a+b,0))-100)}">${sgn(pct(P.curOrder.reduce((a,b)=>a+b,0),P.prevOrder.reduce((a,b)=>a+b,0))-100)}</td></tr>
+        ${planRow('매입금액 (재고제외)',purProj,idxs)}
+        ${ratioRow('매입 / 매출 비중 (재고제외)',purProj,actRev,idxs,rCol)}
+        ${planRow('매입금액 (재고포함)',purAll,idxs)}
+        ${ratioRow('매입 / 매출 비중 (재고포함)',purAll,actRev,idxs,rCol)}
+      </tbody>
+    </table></div>`;
+  dc('ch-rev-plan');
+  const ctx=getCtx('ch-rev-plan'); if(!ctx) return;
+  const zeroToNull=a=>a.map(v=>v>0?v:null);
+  CHARTS['ch-rev-plan']=new Chart(ctx,{type:'line',data:{
+    labels:Array.from({length:12},(_,i)=>(i+1)+'월'),
+    datasets:[
+      {label:P.targetYear+' 수주액',data:zeroToNull(P.curOrder),borderColor:'#1d4ed8',backgroundColor:'rgba(29,78,216,.08)',borderWidth:2.5,tension:.35,pointRadius:3,fill:true,spanGaps:false},
+      {label:P.targetYear+' 매출액',data:zeroToNull(P.curRevenue),borderColor:'#059669',borderWidth:2,tension:.35,pointRadius:3,fill:false,spanGaps:false},
+      {label:P.prevYear+' 수주액',data:zeroToNull(P.prevOrder),borderColor:'#94a3b8',borderWidth:2,borderDash:[5,4],tension:.35,pointRadius:2,fill:false},
+      {label:'목표 수주액',data:P.target,borderColor:'#cbd5e1',borderWidth:1.5,borderDash:[2,3],tension:.2,pointRadius:0,fill:false},
+    ]},options:{responsive:true,maintainAspectRatio:false,interaction:{mode:'index',intersect:false},
+      plugins:{legend:{position:'bottom',labels:{font:{size:10},boxWidth:12}},tooltip:{callbacks:{label:c=>c.dataset.label+': '+(c.raw==null?'—':fa(c.raw))}}},
+      scales:{x:{ticks:{font:{size:10}}},y:{ticks:{font:{size:10},callback:v=>fa(v)}}}}});
+}
+// 비중 행(분자 ÷ 분모 ×100) — 월별 셀 + 합계는 각 배열 총합끼리 나눈 값
+function ratioRow(label,num,den,idxs,colFn){
+  const cell=(v,hl)=>`<td class="num" style="white-space:nowrap;color:${colFn(v)}${hl?';background:var(--blue-light)':''}">${v===null?'-':v.toFixed(0)+'%'}</td>`;
+  const r=(a,b)=>b>0?(a/b*100):null;
+  const tot=r(num.reduce((a,b)=>a+b,0),den.reduce((a,b)=>a+b,0));
+  return `<tr><td style="white-space:nowrap"><b>${esc(label)}</b></td>${num.map((p,i)=>cell(r(p,den[i]),idxs.includes(i))).join('')}<td class="num" style="white-space:nowrap;color:${colFn(tot)}"><b>${tot===null?'-':tot.toFixed(0)+'%'}</b></td></tr>`;
+}
+function planRow(label,arr,idxs){
+  return `<tr><td style="white-space:nowrap">${esc(label)}</td>${arr.map((v,i)=>`<td class="num" style="white-space:nowrap${idxs.includes(i)?';background:var(--blue-light)':''}">${v>0?fa(v):'-'}</td>`).join('')}<td class="num" style="white-space:nowrap"><b>${fa(arr.reduce((a,b)=>a+b,0))}</b></td></tr>`;
+}
+
+// ===== CALENDAR (연간 이벤트 캘린더 — 구매조달팀 연간주요이벤트 마스터 기준) =====
+// v23.9: "연간 반복업무 타임라인"(업무×12개월 간트표) 대신 실제 달력 그리드로 전환
+//   (사용자 요청 2026-08-03 "캘린더 날짜를 띄우고 거기에 일정을 넣어주세요").
+//   여러 날에 걸친 업무는 주(행) 단위로 슬롯 번호를 고정해 연속 막대처럼 이어 보이게 하고,
+//   라벨은 시작일(또는 그 주의 첫 칸)에만 찍는다 — 일반 캘린더 앱의 종일 일정과 같은 표시.
+// days:(y,m)=>[시작일,종료일] — 기존 span 문구를 달력에 얹기 위한 실제 날짜 범위.
+//   생략하면 해당 월 전체(1일~말일)로 본다.
+const CAL_MASTER=[
+  {id:'v-eval',cat:'협력사',name:'협력사 평가',dept:'구매전략파트',months:[1,2,3,4,5,6,7,8,9,10,11,12],span:m=>`${m}월 1주 ~ ${m}월 3주`,days:()=>[1,21]},
+  {id:'v-visit',cat:'협력사',name:'협력사 순회',dept:'구매전략파트 · 구매조달팀',months:[1,2,3],span:()=>'1월 ~ 3월 말'},
+  {id:'r-audit',cat:'재고',name:'협력사 보유 재고 실사',dept:'외주생산파트',months:[3,6,9,12],span:m=>`${m}월 1주 ~ ${m}월 말`},
+  {id:'r-sop',cat:'재고',name:'S&OP',dept:'구매전략파트 · 구매조달팀',months:[1,2,3,4,5,6,7,8,9,10,11,12],span:m=>`${m}월 1주 ~ ${m}월 4주`,days:()=>[1,28]},
+  {id:'r-scrap',cat:'재고',name:'재고자산 폐기',dept:'구매조달팀',months:[4,5,6],span:()=>'4월 ~ 6월 말'},
+  {id:'p-cny',cat:'구매',name:'중국 춘절 대비 재고 매입',dept:'구매조달팀',months:[11,12,1,2],span:()=>'11월 ~ 1월 말'},
+  {id:'d-vac',cat:'납기',name:'협력사 여름휴가',dept:'외주생산파트',months:[6],span:()=>'6월 1주 ~ 6월 말'},
+  {id:'d-holi',cat:'납기',name:'명절연휴 택배·리드타임',dept:'외주생산파트 · 구매전략파트',months:[1,2,7,8,9,12],span:()=>'1월 · 9월 초 (사전 리드타임 확보)'},
+  {id:'a-close',cat:'관리',name:'매입 결산',dept:'구매전략파트',months:[1,2,3,4,5,6,7,8,9,10,11,12],span:()=>'매월 1일 ~ 14일',days:()=>[1,14]},
+];
+const CAL_DOW=['일','월','화','수','목','금','토'];
+const CAL_DAYNUM={'일요일':0,'월요일':1,'화요일':2,'수요일':3,'목요일':4,'금요일':5,'토요일':6};
+const calLastDay=(y,m)=>new Date(y,m,0).getDate(); // m은 1~12
+const calYmd=dt=>`${dt.getFullYear()}-${String(dt.getMonth()+1).padStart(2,'0')}-${String(dt.getDate()).padStart(2,'0')}`;
+const CAL_WEEKLY=[
+  {day:'금요일',time:'오전 11:00',name:'구매조달 파트장 회의'},
+  {day:'목요일',time:'오후 3:00',name:'외주생산파트 회의'},
+];
+const CAL_CAT_COLOR={협력사:'#2563eb',재고:'#059669',구매:'#7c3aed',납기:'#d97706',품질:'#dc2626',원가:'#0891b2',관리:'#64748b'};
+const CAL_NOTES_KEY='cal_special_notes_v2'; // v2: 기본 항목에 담당(dept) 추가 + 비벨라 휴가 표시월 8→7월(사전 대응 시점)
+const CAL_NOTES_PREV_KEY='cal_special_notes_v1';
+const CAL_NOTES_SEED=[
+  {id:'seed-1',cat:'납기',title:'비벨라 생산 이탈리아 공장 휴가',dept:'구매전략파트',months:[7],period:'2026-08-01 ~ 2026-08-31 (한달간 휴가) · 7월 중 사전 대응',note:'휴가 기간 리드타임 지연 유의 — 8월분 물량은 7월에 사전 확보 필요'},
+  {id:'seed-2',cat:'구매',title:'슬로건 다이어리 원단 확보 발주',dept:'',months:[7],period:'2026년 7월 3주 발주 마감',note:'해당 주까지 발주해야 원단 확보 가능'},
+];
+function calLoadNotes(){
+  try{ const raw=localStorage.getItem(CAL_NOTES_KEY); if(raw) return JSON.parse(raw); }catch(e){}
+  // v1 → v2 이관: 기본 항목(seed-*)은 최신 정의로 교체하되, 사용자가 직접 추가한 항목은 보존
+  let carried=[];
+  try{ const old=JSON.parse(localStorage.getItem(CAL_NOTES_PREV_KEY)||'[]'); carried=old.filter(n=>n&&!String(n.id||'').startsWith('seed-')); }catch(e){}
+  const init=CAL_NOTES_SEED.concat(carried);
+  calSaveNotes(init);
+  return init;
+}
+let CAL_NOTES_CACHE=null; // 달력은 칸마다 특이사항을 조회하므로 렌더 1회당 한 번만 파싱
+function calSaveNotes(list){ CAL_NOTES_CACHE=null; try{ localStorage.setItem(CAL_NOTES_KEY,JSON.stringify(list)); }catch(e){} }
+function calNotes(){ if(!CAL_NOTES_CACHE) CAL_NOTES_CACHE=calLoadNotes(); return CAL_NOTES_CACHE; }
+
+const _t=new Date();
+let CAL_VIEW_Y=_t.getFullYear(), CAL_VIEW_M=_t.getMonth()+1, CAL_SELECTED_DAY=null;
+
+// 특이사항이 이 달에서 차지하는 날짜 구간 → [시작일,종료일] (해당 없으면 null)
+// start/end(YYYY-MM-DD)가 있으면 그 구간을 이 달 범위로 잘라 쓰고, 없으면 months 기준 월 전체.
+function calNoteRange(n,y,m){
+  const last=calLastDay(y,m);
+  if(n.start){
+    const s=new Date(n.start+'T00:00:00'), e=new Date((n.end||n.start)+'T00:00:00');
+    if(isNaN(s)||isNaN(e)) return null;
+    const ms=new Date(y,m-1,1), me=new Date(y,m-1,last);
+    if(e<ms||s>me) return null;
+    return [s<ms?1:s.getDate(), e>me?last:e.getDate()];
+  }
+  return (n.months||[]).includes(m)?[1,last]:null;
+}
+// 특정 날짜에 걸리는 일정 전부 — 반복업무 + 특이사항 + 주간 정기회의
+// ord는 주(행) 안에서 슬롯 순서를 고정해 여러 날짜에 걸친 막대가 어긋나지 않게 하는 정렬키.
+function calEventsOn(dt){
+  const y=dt.getFullYear(), m=dt.getMonth()+1, d=dt.getDate(), last=calLastDay(y,m), out=[];
+  CAL_MASTER.forEach((t,i)=>{
+    if(!t.months.includes(m)) return;
+    const r=t.days?t.days(y,m):[1,last];
+    const a=Math.max(1,r[0]), b=Math.min(last,r[1]);
+    if(d<a||d>b) return;
+    out.push({key:'t-'+t.id,ord:i,cat:t.cat,name:t.name,dept:t.dept,span:t.span(m),kind:'task',from:a,to:b});
+  });
+  calNotes().forEach((n,i)=>{
+    const r=calNoteRange(n,y,m);
+    if(!r||d<r[0]||d>r[1]) return;
+    out.push({key:'n-'+(n.id||i),ord:100+i,cat:n.cat,name:n.title,dept:n.dept||'',span:n.period||'',note:n.note||'',kind:'note',from:r[0],to:r[1]});
+  });
+  CAL_WEEKLY.forEach((w,i)=>{
+    if(CAL_DAYNUM[w.day]!==dt.getDay()) return;
+    out.push({key:'w-'+i,ord:200+i,cat:'관리',name:w.name,dept:'',span:`매주 ${w.day} ${w.time}`,kind:'meeting',from:d,to:d});
+  });
+  return out;
+}
+// 월간 달력 그리드 — 주 단위로 슬롯을 고정해 여러 날 업무가 연속 막대로 이어지게 그린다
+function calMonthGridHtml(y,m){
+  // 슬롯 8개 = 가장 바쁜 달(1월: 반복업무 6종) + 주간 정기회의 2건까지 한 칸에 다 들어감.
+  // 넘치면 "+N건"으로 접고, 날짜를 클릭하면 아래 표에 전부 나온다.
+  const MAX_SLOT=8, last=calLastDay(y,m);
+  const start=new Date(y,m-1,1); start.setDate(1-start.getDay());          // 1일이 속한 주의 일요일
+  const endDow=new Date(y,m-1,last).getDay();
+  const end=new Date(y,m-1,last+(6-endDow));                               // 말일이 속한 주의 토요일
+  const cells=[]; for(let t=new Date(start);t<=end;t.setDate(t.getDate()+1)) cells.push(new Date(t));
+  const todayStr=calYmd(new Date());
+  // minmax(0,1fr) — 그냥 1fr이면 긴 일정 이름이 든 요일 칸만 넓어져 열 폭이 들쭉날쭉해진다
+  let h='<div style="display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:1px;background:var(--border);border:1px solid var(--border);border-radius:var(--r-sm);overflow:hidden">';
+  h+=CAL_DOW.map((d,i)=>`<div style="background:var(--surface);text-align:center;font-size:11px;font-weight:600;padding:6px 0;color:${i===0?'var(--red)':i===6?'var(--blue)':'var(--text2)'}">${d}</div>`).join('');
+  for(let r=0;r*7<cells.length;r++){
+    const row=cells.slice(r*7,r*7+7), slots=[];
+    row.forEach(dt=>calEventsOn(dt).forEach(e=>{ if(!slots.some(s=>s.key===e.key)) slots.push(e); }));
+    slots.sort((a,b)=>a.ord-b.ord);
+    const shown=slots.slice(0,MAX_SLOT);
+    row.forEach(dt=>{
+      const inM=dt.getMonth()+1===m, ds=calYmd(dt), dow=dt.getDay();
+      const evs=calEventsOn(dt), isToday=ds===todayStr, isSel=ds===CAL_SELECTED_DAY;
+      const bars=shown.map(s=>{
+        const on=evs.find(e=>e.key===s.key);
+        if(!on) return '<div style="height:14px;margin-bottom:2px"></div>'; // 슬롯 자리 유지(막대 어긋남 방지)
+        const c=CAL_CAT_COLOR[on.cat]||'#64748b';
+        const label=dt.getDate()===on.from||dow===0; // 시작일 또는 그 주 첫 칸에만 이름 표기
+        return `<div title="${esc(on.name+(on.dept?' · '+on.dept:'')+(on.span?' · '+on.span:''))}" style="height:14px;line-height:14px;margin-bottom:2px;font-size:9px;padding:0 3px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;border-radius:2px;background:${c}26;color:${c};border-left:${label?'3px solid '+c:'0'}">${label?esc(on.name):''}</div>`;
+      }).join('');
+      const hidden=evs.filter(e=>!shown.some(s=>s.key===e.key)).length;
+      h+=`<div onclick="calSelectDay('${ds}')" style="cursor:pointer;min-height:98px;padding:4px 4px 6px;background:${isSel?'var(--blue-light)':'var(--surface)'};opacity:${inM?1:.4};outline:${isToday?'2px solid var(--blue)':'none'};outline-offset:-2px">
+        <div style="font-size:11px;font-weight:${isToday?700:500};margin-bottom:3px;color:${dow===0?'var(--red)':dow===6?'var(--blue)':'var(--text)'}">${dt.getDate()}</div>
+        ${bars}${hidden?`<div style="font-size:9px;color:var(--text3);padding-left:3px">+${hidden}건</div>`:''}
+      </div>`;
+    });
+  }
+  return h+'</div>';
+}
+function renderCalendar(){
+  const el=document.getElementById('sec-calendar'); if(!el) return;
+  CAL_NOTES_CACHE=null;
+  const legend=Object.entries(CAL_CAT_COLOR).map(([cat,color])=>`<span style="display:inline-flex;align-items:center;gap:5px;font-size:11px;color:var(--text2)"><span style="width:9px;height:9px;border-radius:50%;background:${color};display:inline-block"></span>${cat}</span>`).join('');
+  el.innerHTML=`
+    <div class="card">
+      <div class="card-header"><div class="card-title">📅 주간 정기회의</div></div>
+      <div style="display:flex;gap:10px;flex-wrap:wrap">
+        ${CAL_WEEKLY.map(w=>`<div style="display:flex;align-items:center;gap:8px;padding:8px 14px;border:1px solid var(--border2);border-radius:20px;font-size:12px;color:var(--text2)"><b style="color:var(--text)">${esc(w.day)} ${esc(w.time)}</b> ${esc(w.name)}</div>`).join('')}
+      </div>
+    </div>
+    <div class="card" style="margin-top:14px">
+      <div class="card-header">
+        <div style="display:flex;align-items:center;gap:6px">
+          <button class="topbar-btn" onclick="calMove(-1)" title="이전 달">‹</button>
+          <div class="card-title" id="cal-title" style="min-width:118px;text-align:center"></div>
+          <button class="topbar-btn" onclick="calMove(1)" title="다음 달">›</button>
+          <button class="topbar-btn" onclick="calToday()" style="margin-left:4px">오늘</button>
+        </div>
+        <div class="card-sub" style="display:flex;gap:12px;flex-wrap:wrap">${legend}</div>
+      </div>
+      <div id="cal-grid"></div>
+      <div style="font-size:10px;color:var(--text3);margin-top:6px">날짜를 클릭하면 아래에 그 날의 일정이 나옵니다 · 막대는 여러 날에 걸친 업무(시작일에 이름 표기)</div>
+    </div>
+    <div class="card" style="margin-top:14px">
+      <div class="card-header"><div class="card-title" id="cal-detail-title">일정 상세</div><div class="card-sub">월 타일을 누르면 그 달 달력으로 이동합니다</div></div>
+      <div id="cal-month-tiles" style="display:grid;grid-template-columns:repeat(6,1fr);gap:8px;margin-bottom:14px"></div>
+      <div id="cal-month-detail"></div>
+    </div>
+    <div class="card" style="margin-top:14px">
+      <div class="card-header"><div class="card-title">⚠ 공급망 특이사항 · 수시 이슈</div><div class="card-sub">협력사 휴가·발주 마감 등 — 직접 추가 가능(브라우저 저장)</div></div>
+      <div id="cal-notes-list" style="display:flex;flex-direction:column;gap:8px;margin-bottom:12px"></div>
+      <div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center;border-top:1px dashed var(--border);padding-top:12px">
+        <select id="cal-note-cat" style="padding:5px 8px;border:1px solid var(--border2);border-radius:var(--r-sm);font-size:12px">${Object.keys(CAL_CAT_COLOR).map(c=>`<option>${c}</option>`).join('')}</select>
+        <input id="cal-note-title" placeholder="제목 (예: OO공장 휴가)" style="width:170px;padding:5px 8px;border:1px solid var(--border2);border-radius:var(--r-sm);font-size:12px">
+        <select id="cal-note-dept" style="padding:5px 8px;border:1px solid var(--border2);border-radius:var(--r-sm);font-size:12px"><option value="">담당 미지정</option><option>구매전략파트</option><option>외주생산파트</option><option>구매조달팀</option><option>구매전략파트 · 외주생산파트</option></select>
+        <label style="font-size:11px;color:var(--text3);display:flex;align-items:center;gap:4px">시작<input id="cal-note-start" type="date" style="padding:4px 6px;border:1px solid var(--border2);border-radius:var(--r-sm);font-size:12px"></label>
+        <label style="font-size:11px;color:var(--text3);display:flex;align-items:center;gap:4px">종료<input id="cal-note-end" type="date" style="padding:4px 6px;border:1px solid var(--border2);border-radius:var(--r-sm);font-size:12px"></label>
+        <input id="cal-note-month" type="number" min="1" max="12" placeholder="또는 월(1-12)" style="width:110px;padding:5px 8px;border:1px solid var(--border2);border-radius:var(--r-sm);font-size:12px">
+        <input id="cal-note-note" placeholder="비고" style="width:180px;padding:5px 8px;border:1px solid var(--border2);border-radius:var(--r-sm);font-size:12px">
+        <button class="topbar-btn primary" onclick="calAddNote()">+ 추가</button>
+      </div>
+      <div style="font-size:10px;color:var(--text3);margin-top:6px">시작·종료일을 넣으면 달력의 해당 날짜에 막대로 표시되고, 날짜 대신 월만 넣으면 그 달 전체로 표시됩니다.</div>
+    </div>
+  `;
+  calRenderAll();
+}
+function calRenderAll(){
+  CAL_NOTES_CACHE=null;
+  const t=document.getElementById('cal-title'); if(t) t.textContent=`${CAL_VIEW_Y}년 ${CAL_VIEW_M}월`;
+  const g=document.getElementById('cal-grid'); if(g) g.innerHTML=calMonthGridHtml(CAL_VIEW_Y,CAL_VIEW_M);
+  calRenderMonthTiles();
+  calRenderDetail();
+  calRenderNotes();
+}
+function calMove(delta){
+  let m=CAL_VIEW_M+delta, y=CAL_VIEW_Y;
+  if(m<1){ m=12; y--; } else if(m>12){ m=1; y++; }
+  CAL_VIEW_Y=y; CAL_VIEW_M=m; CAL_SELECTED_DAY=null;
+  calRenderAll();
+}
+function calToday(){
+  const n=new Date();
+  CAL_VIEW_Y=n.getFullYear(); CAL_VIEW_M=n.getMonth()+1; CAL_SELECTED_DAY=calYmd(n);
+  calRenderAll();
+}
+function calSelectDay(ds){
+  CAL_SELECTED_DAY=(CAL_SELECTED_DAY===ds)?null:ds; // 같은 날 다시 누르면 월 전체 보기로
+  calRenderAll();
+}
+function calSelectMonth(m){ CAL_VIEW_M=m; CAL_SELECTED_DAY=null; calRenderAll(); } // 월 타일 클릭
+function calRenderMonthTiles(){
+  const wrap=document.getElementById('cal-month-tiles'); if(!wrap) return;
+  const notes=calNotes();
+  const now=new Date(), curY=now.getFullYear(), curM=now.getMonth()+1;
+  wrap.innerHTML=Array.from({length:12},(_,i)=>i+1).map(m=>{
+    const taskCnt=CAL_MASTER.filter(t=>t.months.includes(m)).length;
+    const noteCnt=notes.filter(n=>calNoteRange(n,CAL_VIEW_Y,m)).length;
+    const active=m===CAL_VIEW_M, isCur=m===curM&&CAL_VIEW_Y===curY;
+    return `<div onclick="calSelectMonth(${m})" style="cursor:pointer;text-align:center;padding:10px 4px;border-radius:var(--r-sm);border:1px solid ${active?'var(--blue)':'var(--border2)'};background:${active?'var(--blue-light)':'var(--surface)'}">
+      <div style="font-size:13px;font-weight:600;color:${isCur?'var(--blue)':'var(--text)'}">${m}월${isCur?' ·':''}</div>
+      <div style="font-size:10px;color:var(--text3);margin-top:2px">${taskCnt}건${noteCnt?` · ⚠${noteCnt}`:''}</div>
+    </div>`;
+  }).join('');
+}
+// 날짜를 고르면 그 날 일정, 아니면 그 달 전체 일정
+function calRenderDetail(){
+  const el=document.getElementById('cal-month-detail'); if(!el) return;
+  const title=document.getElementById('cal-detail-title');
+  const m=CAL_VIEW_M, y=CAL_VIEW_Y;
+  let rows='', empty='';
+  if(CAL_SELECTED_DAY){
+    const dt=new Date(CAL_SELECTED_DAY+'T00:00:00');
+    if(title) title.textContent=`${y}년 ${m}월 ${dt.getDate()}일 (${CAL_DOW[dt.getDay()]}) 일정`;
+    const evs=calEventsOn(dt);
+    rows=evs.map(e=>{
+      const icon=e.kind==='note'?'⚠':e.kind==='meeting'?'🗓':'●';
+      const bg=e.kind==='note'?'background:var(--amber-light)':'';
+      return `<tr style="${bg}"><td style="color:${CAL_CAT_COLOR[e.cat]||'#64748b'}">${icon}</td><td>${esc(e.cat)}</td><td><b>${esc(e.name)}</b></td><td>${e.dept?esc(e.dept):'—'}</td><td colspan="2">${esc(e.span||'')}${e.note?` · ${esc(e.note)}`:''}</td></tr>`;
+    }).join('');
+    empty=`${m}월 ${dt.getDate()}일 일정 없음`;
+  } else {
+    if(title) title.textContent=`${y}년 ${m}월 전체 일정`;
+    const tasks=CAL_MASTER.filter(t=>t.months.includes(m));
+    const notes=calNotes().filter(n=>calNoteRange(n,y,m));
+    rows=[
+      ...tasks.map(t=>`<tr><td class="mono">${esc(t.id)}</td><td>${esc(t.cat)}</td><td><b>${esc(t.name)}</b></td><td>${esc(t.dept)}</td><td colspan="2">${esc(t.span(m))}</td></tr>`),
+      ...notes.map(n=>`<tr style="background:var(--amber-light)"><td class="mono">⚠</td><td>${esc(n.cat)}</td><td><b>${esc(n.title)}</b></td><td>${n.dept?esc(n.dept):'—'}</td><td colspan="2">${esc(n.period||'')}${n.note?` · ${esc(n.note)}`:''}</td></tr>`)
+    ].join('');
+    empty=`${m}월 등록된 일정 없음`;
+  }
+  el.innerHTML=`<div class="tbl-wrap"><table class="tbl"><thead><tr><th>구분</th><th>분류</th><th>업무명</th><th>담당</th><th colspan="2">기간 · 비고</th></tr></thead><tbody>${rows||`<tr><td colspan="6" class="empty" style="text-align:center;padding:20px;color:var(--text3)">${empty}</td></tr>`}</tbody></table></div>`;
+}
+function calRenderNotes(){
+  const wrap=document.getElementById('cal-notes-list'); if(!wrap) return;
+  const notes=calNotes();
+  if(!notes.length){ wrap.innerHTML='<div class="empty" style="color:var(--text3);font-size:12px">등록된 특이사항이 없습니다.</div>'; return; }
+  wrap.innerHTML=notes.map((n,i)=>`<div style="display:flex;align-items:center;gap:10px;padding:8px 12px;border:1px solid var(--border);border-radius:var(--r-sm)">
+    <span style="width:8px;height:8px;border-radius:50%;background:${CAL_CAT_COLOR[n.cat]||'#64748b'};flex-shrink:0"></span>
+    <div style="flex:1;min-width:0">
+      <div style="font-size:12px;font-weight:600;color:var(--text)">${esc(n.title)} <span style="font-weight:400;color:var(--text3);font-size:11px">(${esc(n.cat)})</span>${n.dept?`<span style="font-weight:500;color:var(--blue);font-size:11px;margin-left:6px">${esc(n.dept)}</span>`:''}</div>
+      <div style="font-size:11px;color:var(--text2)">${esc(n.period||'')}${n.note?` · ${esc(n.note)}`:''}</div>
+    </div>
+    ${n.start?`<button class="topbar-btn" onclick="calGoTo('${esc(n.start)}')" style="font-size:11px;padding:4px 10px">달력에서 보기</button>`:''}
+    <button class="topbar-btn" onclick="calDelNote(${i})" style="font-size:11px;padding:4px 10px">삭제</button>
+  </div>`).join('');
+}
+function calGoTo(ds){
+  const dt=new Date(ds+'T00:00:00'); if(isNaN(dt)) return;
+  CAL_VIEW_Y=dt.getFullYear(); CAL_VIEW_M=dt.getMonth()+1; CAL_SELECTED_DAY=ds;
+  calRenderAll();
+}
+// 기간이 걸쳐 있는 달 목록 — start/end 없이 저장된 기존 항목과의 호환용(months 필드)
+function calMonthsBetween(s,e){
+  const a=new Date(s+'T00:00:00'), b=new Date(e+'T00:00:00'), out=[];
+  for(let t=new Date(a.getFullYear(),a.getMonth(),1);t<=b;t.setMonth(t.getMonth()+1)) out.push(t.getMonth()+1);
+  return Array.from(new Set(out));
+}
+function calAddNote(){
+  const g=id=>{const e=document.getElementById(id); return e?String(e.value).trim():'';};
+  const cat=g('cal-note-cat'), title=g('cal-note-title'), dept=g('cal-note-dept');
+  const start=g('cal-note-start'), endRaw=g('cal-note-end'), note=g('cal-note-note');
+  const month=parseInt(g('cal-note-month'),10);
+  if(!title){ alert('제목을 입력해주세요.'); return; }
+  const rec={id:'note-'+Date.now(),cat,title,dept,note};
+  if(start){
+    const end=endRaw||start;
+    if(new Date(end+'T00:00:00')<new Date(start+'T00:00:00')){ alert('종료일이 시작일보다 빠릅니다.'); return; }
+    rec.start=start; rec.end=end; rec.months=calMonthsBetween(start,end);
+    rec.period=(start===end)?start:`${start} ~ ${end}`;
+  } else if(month>=1&&month<=12){
+    rec.months=[month]; rec.period=`${month}월`;
+  } else {
+    alert('시작일을 고르거나, 해당 월(1-12)을 입력해주세요.'); return;
+  }
+  const notes=calNotes().slice(); notes.push(rec); calSaveNotes(notes);
+  ['cal-note-title','cal-note-start','cal-note-end','cal-note-month','cal-note-note'].forEach(id=>{const e=document.getElementById(id); if(e) e.value='';});
+  const dp=document.getElementById('cal-note-dept'); if(dp) dp.value='';
+  calRenderAll();
+}
+function calDelNote(idx){
+  const notes=calNotes().slice(); notes.splice(idx,1); calSaveNotes(notes);
+  calRenderAll();
+}
+
 // ===== AUTO-LOAD RAW (배포용: 정적 CSV 자동 fetch) =====
 // 접속자가 매번 CSV를 수동 업로드하지 않도록, 호스팅 시 CSV/ 폴더의 RAW를 자동 로드.
 // 파일명은 CSV/_manifest.json 으로 주간 갱신 가능(HTML 수정 불필요). 없으면 아래 기본값 사용.
@@ -11226,12 +11724,12 @@ function openGhSettings(){
           <li>github.com 로그인 → 우측 상단 프로필 → <b>Settings</b> → 왼쪽 메뉴 맨 아래 <b>Developer settings</b></li>
           <li><b>Personal access tokens → Fine-grained tokens → Generate new token</b></li>
           <li>Repository access: <b>Only select repositories</b> → <b>SCMDASHBOARD</b> 선택</li>
-          <li>Permissions → Repository permissions → <b>Contents: Read and write</b> (비고 저장에 필요) + <b>Actions: Read and write</b>(v20 신규 — 상단 "🔄 지금 새로고침" 버튼으로 Airtable 재수집을 바로 트리거할 때 필요. 이 버튼을 안 쓸 거면 생략 가능)</li>
+          <li>Permissions → Repository permissions → <b>Contents: Read and write</b> — 이것 하나면 비고 저장과 상단 "🔄 지금 새로고침"이 모두 동작합니다. (v23.9: 새로고침이 repository_dispatch 방식으로 바뀌어 <b>Actions 권한은 더 이상 필요 없습니다</b>)</li>
           <li>만료(Expiration) 90일 권장 → <b>Generate token</b> → 표시된 <span class="mono">github_pat_...</span> 토큰 복사 (창을 닫으면 다시 볼 수 없음)</li>
           <li>위 입력창에 붙여넣고 <b>저장</b> → <b>연결 테스트</b>로 확인하면 끝!</li>
         </ol>
         <div style="font-size:11px;color:var(--red);margin-top:6px">⚠ 토큰은 지금 사용 중인 브라우저(localStorage)에만 저장됩니다. 공용 PC에서는 등록하지 마세요. 만료되면 같은 절차로 재발급 후 다시 저장하면 됩니다.</div>
-        <div style="font-size:11px;color:var(--text3);margin-top:4px">이미 발급한 토큰에 Actions 권한만 추가하려면: 발급 시 사용한 Fine-grained token 페이지 → 토큰 클릭 → <b>Edit</b> → Repository permissions에 Actions 추가 후 저장(토큰 값은 그대로 유지됨, 재발급 불필요).</div>
+        <div style="font-size:11px;color:var(--text3);margin-top:4px">기존 토큰이 있다면 그대로 쓰면 됩니다 — v20~v23.8에서 "권한 부족 — Actions:write" 오류로 새로고침이 막혔던 문제는 v23.9에서 해결되어, Contents 권한만 있으면 동작합니다. 토큰 자체가 만료됐다면 위 절차로 재발급 후 다시 저장해주세요.</div>
       </details>
     </div>`;
 }
@@ -11252,75 +11750,161 @@ function testGhToken(){
     .then(r=>{ if(st) st.textContent=r.ok?'✅ 연결 성공 — 저장소 접근 가능합니다.':'⚠ 실패(HTTP '+r.status+') — 토큰의 저장소 접근·Contents Read/Write 권한을 확인하세요.'; })
     .catch(()=>{ if(st) st.textContent='⚠ 네트워크 오류 — 인터넷 연결을 확인하세요.'; });
 }
-// ===== v20: "지금 새로고침" — Airtable 자동 갱신 워크플로를 즉시 트리거 =====
-// 매주 목요일 13:00 자동 실행되는 것과 별개로, 필요할 때 바로 최신 Airtable
-// 데이터를 반영하고 싶을 때 쓴다. GitHub Actions workflow_dispatch API를
-// 호출하므로 기존 "Contents: Read/write" 권한 토큰에 "Actions: write"(또는
-// classic PAT의 workflow 스코프)가 추가로 필요하다 — 없으면 GitHub이
-// 401/403/404로 거부하며, 그 경우 안내 메시지로 원인을 알려준다.
-const AIRTABLE_WORKFLOW_FILE='weekly-airtable.yml';
+// ===== v23.9: "지금 새로고침" — 데이터 수집 워크플로 전체를 즉시 트리거 =====
+// 매주 목요일 자동 실행과 별개로, 필요할 때 바로 최신 원천 데이터를 반영한다.
+//
+// [v20 → v23.9 변경 이유 — 사용자 제보 2026-08-03 "수동갱신이 안 된다"]
+//   v20은 workflow_dispatch API(POST .../actions/workflows/{file}/dispatches)를 썼는데,
+//   이 엔드포인트는 fine-grained PAT에 "Actions: write"를 요구한다. 그런데 ⚙ 설정에서
+//   안내하는 토큰은 비고 저장용 "Contents: Read/write"라, Actions를 따로 추가하지 않은
+//   대부분의 토큰이 403 "권한 부족"으로 거부됐다.
+//   → repository_dispatch(POST /repos/{owner}/{repo}/dispatches)로 전환. 이 엔드포인트는
+//     "Contents: write"만 요구하므로 기존 토큰 그대로 동작한다(GitHub REST 권한표 기준).
+//     Actions 권한이 있는 토큰을 위해 workflow_dispatch는 폴백으로 남겨둔다.
+//
+// [트리거 대상 — 발주 진행현황·매출현황 포함(사용자 요청 2026-08-03)]
+//   v20은 weekly-airtable.yml 하나만 트리거했다. 지금은 세 데이터 워크플로를 한 번에
+//   돌려 화면에 뜨는 모든 원천을 같이 최신화한다. 발주 진행현황(progress_YYYY_WNN.csv)과
+//   매출결산(project_YYYY_WNN.csv → proj_rev.csv)은 weekly-airtable.yml이 만든다.
+//
+// [폴링] 실행 상태 조회(GET .../actions/runs)는 Actions:read가 필요하지만 이 저장소는
+//   public이라 토큰 없이도 조회된다 — 401/403이면 익명 요청으로 자동 전환한다.
+//   익명 API는 IP당 시간당 60회 제한이라(사무실은 공인 IP 공유), 워크플로별로 각각
+//   조회하지 않고 저장소 전체 runs를 한 번에 받아 path로 구분한다(폴링 1회 = 요청 1회).
+const REFRESH_EVENT_TYPE='refresh-all'; // 각 워크플로의 repository_dispatch types와 일치해야 함
+const REFRESH_WORKFLOWS=[
+  {file:'weekly-airtable.yml',      label:'발주·이슈·파츠·발주 진행현황·매출결산'},
+  {file:'weekly-google-sheets.yml', label:'구매 대시보드·파츠 마스터'},
+  {file:'weekly-meeting-agenda.yml',label:'회의자료'},
+  {file:'monthly-suppliers.yml',    label:'협력사 마스터'}, // v23.12 — 월 1회 자동이지만 버튼으로도 즉시 갱신
+];
+const REFRESH_POLL_SEC=20, REFRESH_MAX_TRIES=30; // 20초 × 30 = 10분
 let AIRTABLE_REFRESH_POLLING=false;
+let GH_RUNS_ANON=false; // Actions:read 없는 토큰으로 확인되면 이후 익명 조회로 전환
+
+// 저장소 최근 run 목록 → {워크플로 파일명: 최신 run} 맵 (실패 시 null)
+async function ghLatestRuns(){
+  const url=`https://api.github.com/repos/${GH_REPO}/actions/runs?per_page=30`;
+  const tok=ghToken();
+  let j=null;
+  if(tok&&!GH_RUNS_ANON){
+    try{
+      const r=await fetch(url,{headers:{'Authorization':'Bearer '+tok,'Accept':'application/vnd.github+json'}});
+      if(r.ok) j=await r.json();
+      else if(r.status===401||r.status===403) GH_RUNS_ANON=true; // 토큰에 Actions:read 없음 → 익명으로
+    }catch(e){}
+  }
+  if(!j){
+    try{ const r=await fetch(url,{headers:{'Accept':'application/vnd.github+json'}}); if(r.ok) j=await r.json(); }catch(e){}
+  }
+  if(!j||!j.workflow_runs) return null;
+  const map={};
+  j.workflow_runs.forEach(run=>{
+    const f=String(run.path||'').split('/').pop();
+    if(f&&!map[f]) map[f]=run; // 응답이 최신순 — 처음 만난 것이 그 워크플로의 최신 run
+  });
+  return map;
+}
+
+// repository_dispatch(Contents:write) 우선 → 실패 시 workflow_dispatch(Actions:write) 폴백
+// 성공하면 null, 실패하면 사용자에게 보여줄 원인 문구를 돌려준다.
+async function triggerRefreshWorkflows(headers){
+  let status=0;
+  try{
+    const rd=await fetch(`https://api.github.com/repos/${GH_REPO}/dispatches`,{
+      method:'POST',
+      headers:Object.assign({'Content-Type':'application/json'},headers),
+      body:JSON.stringify({event_type:REFRESH_EVENT_TYPE})
+    });
+    if(rd.ok) return null; // 204 No Content
+    status=rd.status;
+  }catch(e){ return '네트워크 오류 — 인터넷 연결을 확인하세요.'; }
+  let ok=0;
+  for(const w of REFRESH_WORKFLOWS){
+    try{
+      const r=await fetch(`https://api.github.com/repos/${GH_REPO}/actions/workflows/${w.file}/dispatches`,{
+        method:'POST',
+        headers:Object.assign({'Content-Type':'application/json'},headers),
+        body:JSON.stringify({ref:GH_BRANCH})
+      });
+      if(r.ok) ok++; else status=r.status;
+    }catch(e){}
+  }
+  if(ok) return null;
+  if(status===401) return '토큰이 만료되었거나 잘못되었습니다 — ⚙ GitHub 연동 설정에서 새 토큰을 발급해 저장해주세요.';
+  if(status===403) return '권한 부족 — 토큰에 '+GH_REPO+' 저장소의 "Contents: Read and write" 권한이 필요합니다(⚙ 설정 → 따라하기 참고).';
+  if(status===404) return '저장소를 찾을 수 없습니다 — 토큰의 Repository access에 '+GH_REPO+'가 포함됐는지 확인해주세요.';
+  return '요청 실패 (HTTP '+status+')';
+}
+
 async function refreshAirtableNow(){
   const btn=document.getElementById('airtable-refresh-btn');
   const st=document.getElementById('airtable-refresh-status');
+  const setSt=t=>{ if(st) st.textContent=t; };
   const tok=ghToken();
   if(!tok){
-    if(confirm('Airtable 새로고침에는 GitHub 연동 토큰이 필요합니다(Actions 실행 권한 포함). 지금 설정하시겠습니까?')) openGhSettings();
+    if(confirm('데이터 새로고침에는 GitHub 연동 토큰이 필요합니다(비고 저장과 동일한 Contents 권한). 지금 설정하시겠습니까?')) openGhSettings();
     return;
   }
   if(AIRTABLE_REFRESH_POLLING) return; // 이미 진행 중인 요청이 있음
   AIRTABLE_REFRESH_POLLING=true;
   if(btn) btn.disabled=true;
-  if(st) st.textContent='요청 중…';
+  setSt('요청 중…');
   const headers={'Authorization':'Bearer '+tok,'Accept':'application/vnd.github+json'};
   try{
-    const runsUrl=`https://api.github.com/repos/${GH_REPO}/actions/workflows/${AIRTABLE_WORKFLOW_FILE}/runs?per_page=1`;
-    const before=await fetch(runsUrl,{headers}).then(r=>r.ok?r.json():null).catch(()=>null);
-    const beforeLatestId=before&&before.workflow_runs&&before.workflow_runs[0]?before.workflow_runs[0].id:null;
-    const dr=await fetch(`https://api.github.com/repos/${GH_REPO}/actions/workflows/${AIRTABLE_WORKFLOW_FILE}/dispatches`,{
-      method:'POST',
-      headers:Object.assign({'Content-Type':'application/json'},headers),
-      body:JSON.stringify({ref:GH_BRANCH})
-    });
-    if(!dr.ok){
-      let msg='요청 실패 (HTTP '+dr.status+')';
-      if(dr.status===404) msg='요청 실패 — 워크플로를 찾을 수 없거나 토큰에 Actions 실행 권한이 없습니다.';
-      else if(dr.status===401||dr.status===403) msg='권한 부족 — GitHub 연동 설정에서 토큰에 Actions:write 권한을 추가해주세요.';
-      if(st) st.textContent='⚠ '+msg;
-      return;
-    }
-    if(st) st.textContent='요청됨 — 실행 시작 대기 중…';
-    await pollAirtableRefresh(beforeLatestId,headers,st);
+    // 트리거 직전 각 워크플로의 최신 run id를 기록 — 새 run이 생겼는지 판별용
+    const beforeMap=await ghLatestRuns();
+    const before={};
+    REFRESH_WORKFLOWS.forEach(w=>{ before[w.file]=beforeMap&&beforeMap[w.file]?beforeMap[w.file].id:null; });
+    const err=await triggerRefreshWorkflows(headers);
+    if(err){ setSt('⚠ '+err); return; }
+    setSt('요청됨 — 실행 시작 대기 중…');
+    await pollAirtableRefresh(before,setSt);
   }catch(e){
-    if(st) st.textContent='⚠ 오류: '+(e.message||e);
+    setSt('⚠ 오류: '+(e.message||e));
   }finally{
     if(btn) btn.disabled=false;
     AIRTABLE_REFRESH_POLLING=false;
   }
 }
-async function pollAirtableRefresh(beforeLatestId,headers,st){
-  const runsUrl=`https://api.github.com/repos/${GH_REPO}/actions/workflows/${AIRTABLE_WORKFLOW_FILE}/runs?per_page=1`;
-  const maxTries=40; // 15초 × 40 = 10분
-  for(let i=0;i<maxTries;i++){
-    await new Promise(r=>setTimeout(r,15000));
-    const j=await fetch(runsUrl,{headers}).then(r=>r.ok?r.json():null).catch(()=>null);
-    const run=j&&j.workflow_runs&&j.workflow_runs[0];
-    if(!run) continue;
-    const isNewRun=!beforeLatestId||run.id!==beforeLatestId;
-    if(!isNewRun){ if(st) st.textContent='실행 시작 대기 중… ('+((i+1)*15)+'초 경과)'; continue; }
-    if(run.status!=='completed'){ if(st) st.textContent='실행 중… ('+((i+1)*15)+'초 경과)'; continue; }
-    if(run.conclusion==='success'){
-      if(st) st.textContent='✅ 커밋 완료 — GitHub Pages 재배포 대기 중… (약 60초)';
-      await new Promise(res=>setTimeout(res,60000));
-      if(st) st.textContent='✅ 최신 데이터 불러오는 중…';
-      autoLoadRaw();
-      setTimeout(()=>{ if(st) st.textContent='✅ '+new Date().toLocaleTimeString('ko-KR')+' 새로고침 완료'; },1500);
-    } else {
-      if(st) st.textContent='⚠ 실행 실패('+run.conclusion+') — Actions 탭 로그 확인 필요';
-    }
-    return;
+
+async function pollAirtableRefresh(before,setSt){
+  const done={}, failed={}, nAll=REFRESH_WORKFLOWS.length;
+  let anyStarted=false;
+  for(let i=1;i<=REFRESH_MAX_TRIES;i++){
+    await new Promise(r=>setTimeout(r,REFRESH_POLL_SEC*1000));
+    const map=await ghLatestRuns();
+    if(map) REFRESH_WORKFLOWS.forEach(w=>{
+      if(done[w.file]||failed[w.file]) return;
+      const run=map[w.file];
+      if(!run) return;
+      if(before[w.file]&&run.id===before[w.file]) return; // 아직 새 실행이 안 잡힘
+      anyStarted=true;
+      if(run.status!=='completed') return;
+      if(run.conclusion==='success') done[w.file]=true; else failed[w.file]=run.conclusion||'failure';
+    });
+    const nDone=Object.keys(done).length, nFail=Object.keys(failed).length;
+    if(nDone+nFail>=nAll) break;
+    const sec=i*REFRESH_POLL_SEC;
+    if(anyStarted){ setSt(`실행 중… ${nDone+nFail}/${nAll} 완료 (${sec}초 경과)`); continue; }
+    // 2분 넘게 새 실행이 안 잡히면 트리거 자체가 먹히지 않은 것 — 원인을 짚어준다
+    if(sec>=120){ setSt('⚠ 실행이 시작되지 않았습니다 — 저장소 워크플로에 repository_dispatch 트리거가 배포됐는지, 토큰 권한(Contents: Read and write)을 확인해주세요.'); return; }
+    setSt(`실행 시작 대기 중… (${sec}초 경과)`);
   }
-  if(st) st.textContent='⏱ 시간 초과 — Actions 탭에서 진행 상황을 확인해주세요.';
+  const okList=REFRESH_WORKFLOWS.filter(w=>done[w.file]);
+  const failList=REFRESH_WORKFLOWS.filter(w=>failed[w.file]);
+  if(!okList.length&&!failList.length){ setSt('⏱ 시간 초과 — GitHub Actions 탭에서 진행 상황을 확인해주세요.'); return; }
+  if(okList.length){
+    setSt('✅ 수집 완료 — GitHub Pages 재배포 대기 중… (약 60초)');
+    await new Promise(r=>setTimeout(r,60000));
+    setSt('✅ 최신 데이터 불러오는 중…');
+    autoLoadRaw();
+    await new Promise(r=>setTimeout(r,1500));
+  }
+  const t=new Date().toLocaleTimeString('ko-KR');
+  setSt(failList.length
+    ? `⚠ ${t} 일부 실패 — ${failList.map(w=>w.label).join(' / ')} (Actions 탭 로그 확인)`
+    : `✅ ${t} 새로고침 완료 (${okList.length}/${nAll})`);
 }
 
 // ===== v13: 주간 CSV 로더 (progress_/project_ — ISO 주차 파일명) =====
@@ -11520,13 +12104,23 @@ function renderProgressSection(){
     return;
   }
   if(wk) wk.textContent=`기준 ${PROGRESS_WEEK?PROGRESS_WEEK.label:''}${PROGRESS_PREV_WEEK?' · 비교 '+PROGRESS_PREV_WEEK.label:' · 전주 파일 없음 (신규/완료 분류는 다음 주 파일부터)'}`;
-  // v19: 이번 주 파일이 아직 커밋되지 않았으면 눈에 띄는 경고 — 표시 중인 데이터가 지난 주 것임을 명시
+  // v19: 이번 주 파일이 아직 없으면 표시 중인 데이터가 지난 주 것임을 알린다.
+  // v23.9 수정(사용자 제보 2026-08-03 "발주 진행현황이 자동 업데이트 안 되는 것 같다"):
+  //   ① 옛 문구가 "자동 커밋 워크플로가 없어 매주 수동 커밋이 필요합니다"였는데, 지금은
+  //      weekly-airtable.yml이 progress_YYYY_WNN.csv를 매주 자동 커밋한다 — 화면이 사실과
+  //      반대로 안내하고 있었다.
+  //   ② 수집은 목요일 13:00 KST라, 월~수에는 이번 주 파일이 없는 게 정상인데도 매주 절반은
+  //      경고가 떴다. 수집 예정 시각 전이면 경고 대신 회색 안내로 낮춘다.
   const nowWk=isoWeekOf(new Date());
   const nowLabel=nowWk.y+'-W'+String(nowWk.w).padStart(2,'0');
   const staleEl=document.getElementById('prog-stale-warn');
   if(staleEl) staleEl.remove();
   if(PROGRESS_WEEK&&(PROGRESS_WEEK.y!==nowWk.y||PROGRESS_WEEK.w!==nowWk.w)){
-    sumEl.insertAdjacentHTML('beforebegin',`<div id="prog-stale-warn" style="margin-bottom:12px;padding:10px 14px;background:var(--amber-light,#FEF3C7);border:1px solid var(--amber,#D97706);border-radius:6px;font-size:12px;color:var(--text)">⚠ <b>이번 주(${nowLabel}) 진행현황 CSV가 아직 업로드되지 않았습니다.</b> 현재 <b>${PROGRESS_WEEK.label}</b> 파일 기준으로 표시 중입니다 — 에어테이블 진행현황 뷰에서 CSV를 내려받아 <code>CSV/${weeklyFileName('progress',nowWk.y,nowWk.w)}</code> 이름으로 커밋해주세요. (이 저장소에는 자동 커밋 워크플로가 없어 매주 수동 커밋이 필요합니다)</div>`);
+    const now=new Date(), dow=now.getDay(); // 0=일, 4=목 (팀 근무지가 KST라 브라우저 로컬시각 기준)
+    const collectedYet=(dow===4&&now.getHours()>=14)||dow===5||dow===6||dow===0; // 목 13:00 수집 + 여유 1시간
+    sumEl.insertAdjacentHTML('beforebegin', collectedYet
+      ? `<div id="prog-stale-warn" style="margin-bottom:12px;padding:10px 14px;background:var(--amber-light,#FEF3C7);border:1px solid var(--amber,#D97706);border-radius:6px;font-size:12px;color:var(--text)">⚠ <b>이번 주(${nowLabel}) 진행현황 CSV가 아직 없습니다.</b> 목요일 13:00 자동 수집이 실행됐어야 하는 시점인데 <code>CSV/${weeklyFileName('progress',nowWk.y,nowWk.w)}</code>가 올라오지 않았습니다 — 현재 <b>${PROGRESS_WEEK.label}</b> 파일 기준으로 표시 중입니다. 상단 <b>🔄 지금 새로고침</b>으로 재수집하거나, GitHub Actions 탭에서 <code>weekly-airtable-progress</code> 실행 로그를 확인해주세요.</div>`
+      : `<div id="prog-stale-warn" style="margin-bottom:12px;padding:9px 14px;background:var(--surface);border:1px solid var(--border2);border-radius:6px;font-size:12px;color:var(--text2)">ℹ 이번 주(${nowLabel}) 진행현황은 <b>목요일 13:00 자동 수집</b> 후 반영됩니다 — 지금은 <b>${PROGRESS_WEEK.label}</b> 파일 기준입니다. 더 빨리 보려면 상단 <b>🔄 지금 새로고침</b>을 눌러주세요.</div>`);
   }
   const {byMgr,hasPrev}=progressDiff();
   const mgrs=Object.keys(byMgr).sort((a,b)=>((byMgr[b].neu.length+byMgr[b].ongoing.length)-(byMgr[a].neu.length+byMgr[a].ongoing.length)));
