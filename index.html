@@ -5957,10 +5957,13 @@ function genWeeklyOutsource() {
   const curProj = curOrders.filter(r => !isStock(r));
   const prevProj = prevOrders.filter(r => !isStock(r));
   const curStock = curOrders.filter(isStock);
+  const prevStock = prevOrders.filter(isStock);
   const curUrg = urgF(curProj).length, prevUrg = urgF(prevProj).length;
   const urgRate = curProj.length ? (curUrg/curProj.length*100).toFixed(1) : '0.0';
   const prevUrgRate = prevProj.length ? (prevUrg/prevProj.length*100).toFixed(1) : '0.0';
   const curAmt = sumAmt(curOrders), prevAmt = sumAmt(prevOrders);
+  const curStockAmt = sumAmt(curStock), prevStockAmt = sumAmt(prevStock);
+  const stockPct = a => a[0] ? (a[1]/a[0]*100).toFixed(1) : '0.0'; // [총액, 재고생산액] → 비중(%)
   const curMiipha = miiphaF(curProj), prevMiipha = miiphaF(prevProj);
   const miiphaRate = curProj.length ? (curMiipha.length/curProj.length*100).toFixed(1) : '0.0';
   const prevMiiphaRate = prevProj.length ? (prevMiipha.length/prevProj.length*100).toFixed(1) : '0.0';
@@ -6098,6 +6101,7 @@ function genWeeklyOutsource() {
   md += `| 발주 TASK (프로젝트) | ${curProj.length}건 | ${prevProj.length}건 | ${wow(curProj.length, prevProj.length, false)} |\n`;
   md += `| 재고생산 TASK | ${curStock.length}건 | - | - |\n`;
   md += `| 매입금액 (과업지시일자 기준) | ${faFull(curAmt)} | ${faFull(prevAmt)} | ${curAmt!==prevAmt?(curAmt>prevAmt?'+':'-')+Math.round(Math.abs(curAmt-prevAmt)).toLocaleString()+'원':'유지'} |\n`;
+  md += `| ㄴ 재고생산 매입금액 | ${faFull(curStockAmt)} (전체의 ${stockPct([curAmt,curStockAmt])}%) | ${faFull(prevStockAmt)} (전체의 ${stockPct([prevAmt,prevStockAmt])}%) | - |\n`;
   md += `| 긴급건수 (서디협 제외) | ${curUrg}건 (${urgRate}%) | ${prevUrg}건 (${prevUrgRate}%) | ${wow(curUrg, prevUrg)} |\n`;
   md += `| 미입하 TASK | ${curMiipha.length}건 (${miiphaRate}%) | ${prevMiipha.length}건 (${prevMiiphaRate}%) | ${wow(curMiipha.length, prevMiipha.length, true)} |\n`;
   md += `| 품질이슈 | ${curQuality.length}건 | ${prevQuality.length}건 | ${wow(curQuality.length, prevQuality.length, true)} |\n`;
