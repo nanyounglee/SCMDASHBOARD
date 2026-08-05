@@ -9559,6 +9559,30 @@ function renderCostMonthly(el, tabHtml) {
 // 그래서 ① 프로젝트 원가율 분포(전량) ② 굿즈코드별 마진(**단일 굿즈코드 프로젝트만**)으로 나눈다.
 // ②에서 여러 코드가 섞인 프로젝트를 제외하는 이유: 매출을 제품별로 쪼갤 근거가 없고, 원가 비율로
 // 배분하면 모든 제품의 마진이 같아져 분포 자체가 무의미해진다.
+// 굿즈코드 → 제품명. goods_master(Goods Code/Goods Name, 373종)가 정본이고, 거기 없는 코드는
+// 그 코드로 발주된 산출물 최빈값으로 보완한다(발주 산출물은 "레더스킨다이어리+인쇄"처럼 공정명이
+// 붙거나 부속품명이 잡히는 경우가 있어 정본이 있으면 항상 정본을 쓴다).
+var GOODS_NAME_MAP=null, GOODS_NAME_SRC=null;
+function goodsNameOf(code){
+  if(!code) return '';
+  if(!GOODS_NAME_MAP||GOODS_NAME_SRC!==D.goods_master){
+    const m={};
+    (D.goods_master||[]).forEach(r=>{
+      const c=(r['Goods Code']||'').trim(), n=(r['Goods Name']||'').trim();
+      if(c&&n&&!m[c]) m[c]=n;
+    });
+    GOODS_NAME_MAP=m; GOODS_NAME_SRC=D.goods_master;
+  }
+  if(GOODS_NAME_MAP[code]) return GOODS_NAME_MAP[code];
+  // 폴백 — 그 코드의 발주 산출물 최빈값
+  if(!D.order) return '';
+  const cnt={};
+  D.order.forEach(r=>{ if(isStock(r)) return;
+    if(goodsCode(r)!==code) return;
+    const s=(r['산출물']||'').trim(); if(s) cnt[s]=(cnt[s]||0)+1; });
+  const top=Object.entries(cnt).sort((a,b)=>b[1]-a[1])[0];
+  return top?top[0]:'';
+}
 const MARGIN_BANDS=[{lo:-Infinity,hi:30,l:'~30%'},{lo:30,hi:40,l:'30~40%'},{lo:40,hi:45,l:'40~45%'},
   {lo:45,hi:50,l:'45~50%'},{lo:50,hi:60,l:'50~60%'},{lo:60,hi:70,l:'60~70%'},{lo:70,hi:Infinity,l:'70%+'}];
 function marginRows(projList){
@@ -9608,8 +9632,8 @@ function marginDistHTML(projList){
     <div class="card" style="margin-top:14px">
       <div class="card-header"><div class="card-title">굿즈코드별 마진</div>
         <div class="card-sub">단일 굿즈코드 프로젝트 ${single.length}개 기준 (매출 ${fa(covRev)} · 실측 매출의 ${allRev>0?(covRev/allRev*100).toFixed(0):0}%) — 여러 제품이 섞인 프로젝트는 매출을 제품별로 나눌 근거가 없어 제외</div></div>
-      <div class="tbl-wrap"><table class="tbl"><thead><tr><th class="rank">#</th><th>굿즈코드</th><th class="num">프로젝트</th><th class="num">매출</th><th class="num">원가</th><th class="num">원가율</th><th class="num">마진율</th></tr></thead><tbody>
-      ${codeList.slice(0,20).map((x,i)=>`<tr><td class="rank">${i+1}</td><td><span class="tag tag-gray">${esc(x.c)}</span></td><td class="num">${x.n}건</td><td class="num">${faFull(x.rev)}</td><td class="num">${faFull(x.rev*x.rate/100)}</td><td class="num" style="color:${x.rate>=45?'var(--red)':x.rate>=40?'var(--amber)':'var(--green)'}">${x.rate.toFixed(1)}%</td><td class="num" style="font-weight:600;color:${mCol(100-x.rate)}">${(100-x.rate).toFixed(1)}%</td></tr>`).join('')||emptyRow(7,'단일 굿즈코드 프로젝트 없음')}
+      <div class="tbl-wrap"><table class="tbl"><thead><tr><th class="rank">#</th><th>굿즈코드</th><th>제품명</th><th class="num">프로젝트</th><th class="num">매출</th><th class="num">원가</th><th class="num">원가율</th><th class="num">마진율</th></tr></thead><tbody>
+      ${codeList.slice(0,20).map((x,i)=>`<tr><td class="rank">${i+1}</td><td><span class="tag tag-gray">${esc(x.c)}</span></td><td style="font-size:11px">${esc(crop(goodsNameOf(x.c),28))||'—'}</td><td class="num">${x.n}건</td><td class="num">${faFull(x.rev)}</td><td class="num">${faFull(x.rev*x.rate/100)}</td><td class="num" style="color:${x.rate>=45?'var(--red)':x.rate>=40?'var(--amber)':'var(--green)'}">${x.rate.toFixed(1)}%</td><td class="num" style="font-weight:600;color:${mCol(100-x.rate)}">${(100-x.rate).toFixed(1)}%</td></tr>`).join('')||emptyRow(8,'단일 굿즈코드 프로젝트 없음')}
       </tbody></table></div>
       <div style="font-size:10px;color:var(--text3);padding:8px 12px">원가 = 외주가공비(공급가액) + 선매입 재고 투입원가. 물류비·공통고정비는 제외라 실제 마진은 이보다 낮습니다. 목표 원가율 45%(마진 55%) 기준으로 색을 구분합니다.</div>
     </div>`;
