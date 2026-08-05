@@ -3298,6 +3298,70 @@ function ciManualCostByMonth() {
   });
   return byMonth;
 }
+// v23.14(사용자 요청 2026-08-04): 누계 실패비용 카드 클릭 → 발생 건별 상세
+// 카드 수치(ytdCur)는 자동(재제작 취득원가) + 수기(고객인지이슈 입력액) 합이므로 여기서도 둘 다
+// 보여준다 — 한쪽만 나열하면 합계가 카드와 달라져 신뢰를 잃는다.
+// 재제작 비용은 세금계산서작성월이 여러 달이면 reworkCostByMonth()가 균등 분할하므로, 그 해에
+// 귀속된 금액만 집계한다(그래서 한 행의 취득원가 전액과 다를 수 있고, 표에 분할 여부를 표기한다).
+function failCostRows(year){
+  const auto=[], manual=[];
+  [D.order,D.orderPrevYear].forEach(list=>(list||[]).forEach(r=>{
+    const bm=reworkCostByMonth(r); if(!Object.keys(bm).length) return;
+    let amt=0; const months=[];
+    Object.entries(bm).forEach(([m,a])=>{ if(m.split('.')[0]===String(year)){ amt+=a; months.push(m); } });
+    if(!amt) return;
+    auto.push({
+      proj:(r['project']||'').trim(), prod:(r['산출물']||'').trim(),
+      date:(r['과업지시일자']||'').trim(), sup:(r['수주처']||'').trim(),
+      ord:(r['발주번호']||'').trim(), amt, months,
+      split:Object.keys(bm).length>1, full:pa(r['취득원가'])
+    });
+  }));
+  (D.ci||[]).forEach(r=>{
+    const idx=r['idx_issue']; if(!idx) return;
+    const ov=CI_OVERRIDES[idx]; if(!ov||!ov.cost) return;
+    const amt=pa(String(ov.cost)); if(!amt) return;
+    const m=pOrderMonth(r['등록일자']||''); if(!m||m.split('.')[0]!==String(year)) return;
+    manual.push({ proj:(r['프로젝트명']||'').trim(), prod:(r['관련제품']||'').trim(),
+      date:(r['등록일자']||'').trim(), amt, note:(r['이슈내용']||'').trim() });
+  });
+  auto.sort((a,b)=>b.amt-a.amt); manual.sort((a,b)=>b.amt-a.amt);
+  return {auto,manual};
+}
+function openFailCostDetail(year){
+  const ov=document.getElementById('modal-overlay');
+  document.getElementById('modal-tabs-el').innerHTML='';
+  document.getElementById('modal-title').textContent=`${year}년 실패비용 상세 — 발생 건별`;
+  const body=document.getElementById('modal-body');
+  ov.classList.add('open');
+  const {auto,manual}=failCostRows(year);
+  const aSum=auto.reduce((s,x)=>s+x.amt,0), mSum=manual.reduce((s,x)=>s+x.amt,0);
+  if(!auto.length&&!manual.length){ body.innerHTML='<div class="empty">해당 연도에 집계된 실패비용이 없습니다.</div>'; return; }
+  const chip=(l,v,c)=>`<span style="background:var(--surface2);padding:4px 10px;border-radius:20px;font-size:12px">${l} <b${c?` style="color:${c}"`:''}>${v}</b></span>`;
+  // 제품별 집계 — 어느 제품에서 반복적으로 터지는지
+  const byProd={};
+  auto.forEach(x=>{ const k=x.prod||'(산출물 없음)'; if(!byProd[k]) byProd[k]={amt:0,cnt:0}; byProd[k].amt+=x.amt; byProd[k].cnt++; });
+  const prodList=Object.entries(byProd).sort((a,b)=>b[1].amt-a[1].amt);
+  body.innerHTML=`
+    <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:8px">
+      ${chip('총 실패비용',faFull(Math.round(aSum+mSum)),'var(--red)')}
+      ${chip('재제작(자동)',auto.length+'건 · '+faFull(Math.round(aSum)))}
+      ${chip('고객인지이슈(수기)',manual.length+'건 · '+faFull(Math.round(mSum)))}
+    </div>
+    <div style="font-size:10px;color:var(--text3);margin-bottom:12px">※ 재제작 비용은 <b>세금계산서작성월</b> 기준으로 귀속됩니다 — 여러 달에 걸쳐 청구된 건은 그 해에 해당하는 금액만 잡히므로(표에 <span class="tag tag-gray" style="font-size:9px">분할</span> 표시) 취득원가 전액과 다를 수 있습니다. 세금계산서월이 없으면 과업지시일자 기준입니다.</div>
+    ${prodList.length>1?`<div style="font-size:12px;font-weight:700;margin:10px 0 6px">제품별 실패비용 <span style="font-weight:400;font-size:10px;color:var(--text3)">(재제작 기준 · 반복 발생 제품 확인용)</span></div>
+    <table class="tbl"><thead><tr><th class="rank">#</th><th>제품</th><th class="num">건수</th><th class="num">실패비용</th><th class="num">비중</th></tr></thead><tbody>
+    ${prodList.slice(0,10).map(([k,v],i)=>`<tr><td class="rank">${i+1}</td><td style="font-size:11px">${esc(crop(k,34))}</td><td class="num">${v.cnt}건</td><td class="num">${faFull(Math.round(v.amt))}</td><td class="num">${aSum>0?(v.amt/aSum*100).toFixed(1)+'%':'—'}</td></tr>`).join('')}
+    </tbody></table>`:''}
+    <div style="font-size:12px;font-weight:700;margin:14px 0 6px">재제작 발생 건 <span style="font-weight:400;font-size:10px;color:var(--text3)">(${auto.length}건 · 비용 내림차순)</span></div>
+    ${auto.length?`<div class="tbl-wrap"><table class="tbl"><thead><tr><th class="rank">#</th><th>프로젝트</th><th>제품</th><th>재제작일</th><th>협력사</th><th>발주번호</th><th class="num">실패비용</th></tr></thead><tbody>
+    ${auto.map((x,i)=>`<tr><td class="rank">${i+1}</td><td style="font-size:11px">${esc(crop(x.proj,26))||'—'}</td><td style="font-size:11px">${esc(crop(x.prod,24))||'—'}</td><td style="font-size:11px">${esc(x.date)||'—'}</td><td style="font-size:11px">${esc(crop(x.sup,16))||'—'}</td><td class="mono" style="font-size:11px">${esc(x.ord)||'—'}</td><td class="num" style="color:var(--red);font-weight:600">${faFull(Math.round(x.amt))}${x.split?' <span class="tag tag-gray" style="font-size:9px" title="세금계산서월이 여러 달로 나뉜 건 — 취득원가 전액 '+faFull(Math.round(x.full))+' 중 이 해 귀속분">분할</span>':''}</td></tr>`).join('')}
+    </tbody></table></div>`:'<div style="font-size:11px;color:var(--text3)">재제작 건 없음</div>'}
+    ${manual.length?`<div style="font-size:12px;font-weight:700;margin:16px 0 6px">고객인지이슈 수기 입력 <span style="font-weight:400;font-size:10px;color:var(--text3)">(${manual.length}건 · 등록일자 기준)</span></div>
+    <div class="tbl-wrap"><table class="tbl"><thead><tr><th class="rank">#</th><th>프로젝트</th><th>관련제품</th><th>등록일</th><th>이슈내용</th><th class="num">실패비용</th></tr></thead><tbody>
+    ${manual.map((x,i)=>`<tr><td class="rank">${i+1}</td><td style="font-size:11px">${esc(crop(x.proj,26))||'—'}</td><td style="font-size:11px">${esc(crop(x.prod,22))||'—'}</td><td style="font-size:11px">${esc(x.date)||'—'}</td><td style="font-size:11px;color:var(--text2)">${esc(crop(x.note,40))||'—'}</td><td class="num" style="color:var(--red);font-weight:600">${faFull(Math.round(x.amt))}</td></tr>`).join('')}
+    </tbody></table></div>`:''}`;
+}
 // v12: 실패비용 현황 — 자동(재제작)+수기(고객인지) 합산, YoY, 월별 추이, 매입금액 대비 비중
 function renderCIFailCostPanel() {
   const wrap=document.getElementById('ci-failcost-wrap'); if(!wrap) return;
@@ -3345,8 +3409,9 @@ function renderCIFailCostPanel() {
   const prevCostPct=curAmt>0?(prevCostYtd/curAmt*100):null;
   wrap.innerHTML=`
     <div style="display:flex;gap:12px;margin-bottom:14px;flex-wrap:wrap">
-      <div style="background:var(--red-light);color:var(--red);padding:8px 14px;border-radius:6px">
-        <div style="font-size:10px;font-weight:600">${curYear}년 누계 실패비용(전체 제품)</div>
+      <div onclick="openFailCostDetail('${curYear}')" title="클릭 — 실패비용이 발생한 프로젝트·제품·재제작일·비용 상세"
+        style="background:var(--red-light);color:var(--red);padding:8px 14px;border-radius:6px;cursor:pointer">
+        <div style="font-size:10px;font-weight:600">${curYear}년 누계 실패비용(전체 제품) 🔍</div>
         <div style="font-size:16px;font-weight:700">${faFull(ytdCur)}</div>
         <div style="font-size:10px;margin-top:2px">매입 대비 <b>${pctOfAmt===null?'—':pctOfAmt.toFixed(3)+'%'}</b></div>
       </div>
