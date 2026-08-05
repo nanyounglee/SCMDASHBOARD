@@ -5929,11 +5929,11 @@ function genWeeklyOutsource() {
   const fmtYMD = d => d.getFullYear() + '-' + String(d.getMonth()+1).padStart(2,'0') + '-' + String(d.getDate()).padStart(2,'0');
   const thursMMDD = fmtMMDD(thursDate);
   const baseDate = fmtYMD(thursDate);
-  const aggregatePeriod = `${fmtShort(prevThursDate)}(목)13:00~${fmtShort(thursDate)}(목)12:59`;
+  const aggregatePeriod = `${fmtShort(prevThursDate)}(목)13:00-${fmtShort(thursDate)}(목)12:59`;
 
   // ISO week 표시 기간 (월~일)
   const sundayDate = new Date(mondayDate); sundayDate.setDate(mondayDate.getDate() + 6);
-  const weekRange = `${fmtShort(mondayDate)}~${fmtShort(sundayDate)}`;
+  const weekRange = `${fmtShort(mondayDate)}-${fmtShort(sundayDate)}`;
 
   // ============================================================
   //  필드 레지스트리 (WR_FIELDS) — 이 리포트가 의존하는 원천 CSV 헤더의 "단일 출처".
@@ -5995,13 +5995,6 @@ function genWeeklyOutsource() {
       goods:    '굿즈연결',
       sup:      '수주처',
       category: '굿즈카테고리',
-    },
-    quarterEval: {
-      sup:     '협력사',
-      grade1Q: '1Q_공급망관리등급',
-      grade2Q: '2Q_공급망관리등급',
-      score1Q: '1Q_공급망관리점수',
-      score2Q: '2Q_공급망관리점수',
     },
     stockout: {
       status:  '판매상태',
@@ -6131,6 +6124,12 @@ function genWeeklyOutsource() {
 
   // --- 월별 누적 ---
   const curYear = cy, curMonth = today.getMonth() + 1;
+  // 1-2 매입금액은 1-1(과업지시일자 기준)과 달리 세금계산서작성월 기준 — 회계 실측(발행월)과
+  // 정합시키기 위함(대시보드 전역에서 쓰는 purchaseByMonth()와 동일 기준, 분할계산서 반영).
+  const taxAmtByMonth = {};
+  (D.order || []).forEach(r => {
+    Object.entries(purchaseByMonth(r)).forEach(([m, a]) => { taxAmtByMonth[m] = (taxAmtByMonth[m] || 0) + a; });
+  });
   const monthlyRows = [];
   for (let m = 1; m <= curMonth; m++) {
     const mk = `${curYear}.${m}`;
@@ -6151,7 +6150,7 @@ function genWeeklyOutsource() {
     monthlyRows.push({
       mk,
       proj: mProj.length,
-      amt: sumAmt(mOrders),
+      amt: taxAmtByMonth[mk] || 0,
       quality: mQuality.length,
       qty: issuesByType(mIssues, '수량').length,
       op: issuesByType(mIssues, '운영').length,
@@ -6201,7 +6200,7 @@ function genWeeklyOutsource() {
   md += `| 발주 TASK (프로젝트) | ${curProj.length}건 | ${prevProj.length}건 | ${wow(curProj.length, prevProj.length, false)} |\n`;
   md += `| 재고생산 TASK | ${curStock.length}건 | - | - |\n`;
   md += `| 매입금액 (과업지시일자 기준) | ${faFull(curAmt)} | ${faFull(prevAmt)} | ${curAmt!==prevAmt?(curAmt>prevAmt?'+':'-')+Math.round(Math.abs(curAmt-prevAmt)).toLocaleString()+'원':'유지'} |\n`;
-  md += `| ㄴ 재고생산 매입금액 | ${faFull(curStockAmt)} (전체의 ${stockPct([curAmt,curStockAmt])}%) | ${faFull(prevStockAmt)} (전체의 ${stockPct([prevAmt,prevStockAmt])}%) | - |\n`;
+  md += `| 재고생산 매입금액 | ${faFull(curStockAmt)} (전체의 ${stockPct([curAmt,curStockAmt])}%) | ${faFull(prevStockAmt)} (전체의 ${stockPct([prevAmt,prevStockAmt])}%) | - |\n`;
   md += `| 긴급건수 (서디협 제외) | ${curUrg}건 (${urgRate}%) | ${prevUrg}건 (${prevUrgRate}%) | ${wow(curUrg, prevUrg)} |\n`;
   md += `| 미입하 TASK | ${curMiipha.length}건 (${miiphaRate}%) | ${prevMiipha.length}건 (${prevMiiphaRate}%) | ${wow(curMiipha.length, prevMiipha.length, true)} |\n`;
   md += `| 품질이슈 | ${curQuality.length}건 | ${prevQuality.length}건 | ${wow(curQuality.length, prevQuality.length, true)} |\n`;
@@ -6218,7 +6217,7 @@ function genWeeklyOutsource() {
   md += `| 지표 | ${mHdr.join(' | ')} |\n`;
   md += `|---|${mHdr.map(() => '---').join('|')}|\n`;
   md += `| 발주 TASK | ${monthlyRows.map(r => r.proj+'건').join(' | ')} |\n`;
-  md += `| 매입금액 | ${monthlyRows.map(r => faFull(r.amt)).join(' | ')} |\n`;
+  md += `| 매입금액 (세금계산서 발행월 기준) | ${monthlyRows.map(r => faFull(r.amt)).join(' | ')} |\n`;
   md += `| 품질이슈 | ${monthlyRows.map(r => r.quality+'건').join(' | ')} |\n`;
   md += `| 품질등급일치율 | ${monthlyRows.map(r => r.gradeRate).join(' | ')} |\n`;
   md += `| 긴급건수 | ${monthlyRows.map(r => r.urg+'건').join(' | ')} |\n`;
@@ -6391,9 +6390,9 @@ function genWeeklyOutsource() {
         const why = String(pick(r, F.priceChg.cause)).substring(0,30);
         md += `| ${sup} | ${item} | ${change} | ${when} | ${why} |\n`;
       });
-      md += `\n> 해당 기간(${prevLabel}~${curLabel}) 단가 변동 ${priceChanges.length}건 (요청일자 ±1주 또는 적용시점 기준)\n\n`;
+      md += `\n> 해당 기간(${prevLabel}-${curLabel}) 단가 변동 ${priceChanges.length}건 (요청일자 ±1주 또는 적용시점 기준)\n\n`;
     } else {
-      md += `> 해당 기간(${prevLabel}~${curLabel}) 단가 변동 없음\n\n`;
+      md += `> 해당 기간(${prevLabel}-${curLabel}) 단가 변동 없음\n\n`;
     }
   } else {
     md += `| 협력사 | 품목 | 변동 내용 | 적용시점 | 비고 |\n`;
@@ -6425,7 +6424,7 @@ function genWeeklyOutsource() {
   const prevIssueSups = new Set(prevIssues.map(getIssueSup).filter(Boolean));
   const repeatSups = curIssueSups.filter(s => prevIssueSups.has(s));
 
-  md += `**이번 주 이슈 발생 협력사** (품질 중요도 중~상: 등급 C↓ 또는 실패비용 발생, 2주 연속만)\n`;
+  md += `**이번 주 이슈 발생 협력사** (품질 중요도 중-상: 등급 C↓ 또는 실패비용 발생, 2주 연속만)\n`;
   {
     // ponytail: "중요도 중~상"을 품질등급 C·D 또는 재제작(실패비용)으로 해석. 별도 중요도 필드 생기면 교체.
     // 신규(1주차) 발생은 "신규"라는 표현이 모호해 제외 — 2주 연속 발생분만 표기.
@@ -6551,7 +6550,7 @@ function genWeeklyOutsource() {
   }
   md += '\n';
 
-  md += `### 5-1~5-5. 카테고리별 요약 (이슈·단가·품절)\n\n`;
+  md += `### 5-1. 카테고리별 요약 (이슈·단가·품절)\n\n`;
   md += `> 상세(수주처·내용·SCM대응)는 위 2·4-1·5-0 참조 — 아래는 카테고리별 한눈 요약\n\n`;
   {
     const uniq = arr => [...new Set(arr.map(x => String(x).trim()).filter(Boolean))];
@@ -6613,7 +6612,7 @@ function genWeeklyOutsource() {
     if (!hasCatContent) md += `> 이번 기간 이슈·단가·품절 없음 — parts_master 카테고리 기반 자동 분류\n\n`;
   }
 
-  md += `### 5-6. 재배치 검토표\n\n`;
+  md += `### 5-2. 재배치 검토표\n\n`;
   const vcData = (typeof VC_CHANGE_CACHE !== 'undefined' && VC_CHANGE_CACHE) ? (VC_CHANGE_CACHE.reports || []) : [];
   // 전환 검토중·확정·완료 모든 상태 포함, 상태 진행도 역순(완료→확정→검토중) 정렬
   const vcAll = vcData.filter(r => ['전환 검토중','확정','완료'].includes(r.workflowStatus))
@@ -6633,36 +6632,33 @@ function genWeeklyOutsource() {
 
   // 섹션 6
   md += `## 6. 공급망 등급 요약\n\n`;
-  if (D.quarter_eval) {
-    const gradeMid = {A:13.5, B:8.5, C:4, D:1};
-    const gradeOf = s => s >= 12 ? 'A' : s >= 6 ? 'B' : s >= 3 ? 'C' : 'D';
-    const gradeDist = {A:0, B:0, C:0, D:0};
-    const gradeSups = {A:[], B:[], C:[], D:[]};
-    D.quarter_eval.forEach(row => {
-      const g1 = String(pick(row, F.quarterEval.grade1Q)).trim(), g2 = String(pick(row, F.quarterEval.grade2Q)).trim();
-      const t1 = parseFloat(pick(row, F.quarterEval.score1Q))||0, t2 = parseFloat(pick(row, F.quarterEval.score2Q))||0;
-      let g = '';
-      if (g1 && g2 && g1 !== g2) { const avg = ((t1||gradeMid[g1]||0)+(t2||gradeMid[g2]||0))/2; g = gradeOf(avg); }
-      else g = g2 || g1;
-      if (g && gradeDist[g] !== undefined) {
-        gradeDist[g]++;
-        const sn = String(pick(row, F.quarterEval.sup)).trim();
-        if (sn) gradeSups[g].push(sn);
-      }
+  // v23.15: quarter_eval.csv 원본 등급 컬럼을 별도로 재계산하지 않고, 공급망 포트폴리오 탭과
+  // 동일한 정식 평가 단일 기준(getEvaluatedPortfolioVendors)을 그대로 재사용. 화면 표시도
+  // 포트폴리오 탭의 QCD×관계 Tier(Core/Performer/Developing/General) 4분면 기준으로 통일
+  // (사용자 확인: 대시보드 화면과 다른 A/B/C/D 등급 기준을 쓰면 혼동됨).
+  const portfolioVendors = getEvaluatedPortfolioVendors();
+  if (portfolioVendors.length) {
+    const quadOrder = ['Core','Performer','Developing','General'];
+    const quadDesc = {Core:'Tier1·Core', Performer:'Tier2·Performer', Developing:'Tier3·Developing', General:'Tier4·General'};
+    const quadDist = {Core:0, Performer:0, Developing:0, General:0};
+    const quadSups = {Core:[], Performer:[], Developing:[], General:[]};
+    portfolioVendors.forEach(v => {
+      const q = v._quad;
+      if (q && quadDist[q] !== undefined) { quadDist[q]++; quadSups[q].push(v.name); }
     });
-    const total = Object.values(gradeDist).reduce((s,v) => s+v, 0);
-    md += `### 6-1. 등급 분포 (상반기 기준)\n\n`;
-    md += `| 등급 | 건수 | 비율 | 주요 협력사 |\n`;
+    const total = Object.values(quadDist).reduce((s,v) => s+v, 0);
+    const winLabel = (window._portfolioWindowLabel || '반기 누적').replace(/~/g, '-');
+    md += `### 6-1. 공급망 포트폴리오 Tier 분포 (${winLabel})\n\n`;
+    md += `| Tier | 건수 | 비율 | 주요 협력사 |\n`;
     md += `|---|---|---|---|\n`;
-    const gradeLabel = {A:'Core (A등급)', B:'Performer (B등급)', C:'Developing (C등급)', D:'General (D등급)'};
-    ['A','B','C','D'].forEach(g => {
-      const topS = gradeSups[g].slice(0,5).join('·') || '—';
-      const extra = gradeSups[g].length > 5 ? ` 외 ${gradeSups[g].length-5}개사` : '';
-      md += `| **${gradeLabel[g]}** | ${gradeDist[g]}개사 | ${total ? (gradeDist[g]/total*100).toFixed(1) : '0.0'}% | ${topS}${extra} |\n`;
+    quadOrder.forEach(q => {
+      const topS = quadSups[q].slice(0,5).join('·') || '—';
+      const extra = quadSups[q].length > 5 ? ` 외 ${quadSups[q].length-5}개사` : '';
+      md += `| **${quadDesc[q]}** | ${quadDist[q]}개사 | ${total ? (quadDist[q]/total*100).toFixed(1) : '0.0'}% | ${topS}${extra} |\n`;
     });
-    md += `\n> ※ 등급 평가 주기: 반기. 현재 상반기 기준 집계.\n`;
+    md += `\n> ※ 대시보드 공급망 포트폴리오 탭과 동일한 정식 평가 기준(QCD+관계 15점, 반기 발주 0건은 General 고정) — 상세는 대시보드 공급망 포트폴리오 탭 참조.\n`;
   } else {
-    md += `> [quarter_eval.csv 미로드 — 대시보드 공급망 포트폴리오 탭 참조]\n`;
+    md += `> [발주·이슈·공급망 마스터 데이터 미로드 — 대시보드 공급망 포트폴리오 탭 참조]\n`;
   }
   md += '\n';
 
@@ -6739,7 +6735,7 @@ function genWeeklyOutsource() {
     if (compound.length) md += `- ⚠️ 복합 리스크: ${compound.join(', ')} — 단가 변동 + 이슈 동시, 대응 방안 검토\n`;
     md += '\n';
   } else {
-    md += `- 해당 기간(${prevLabel}~${curLabel}) 단가 변동 없음\n\n`;
+    md += `- 해당 기간(${prevLabel}-${curLabel}) 단가 변동 없음\n\n`;
   }
 
   // ── D: 납기 (지표 + 협력사 · 줄글) ───────────────────────────
@@ -6758,7 +6754,7 @@ function genWeeklyOutsource() {
       dHas = true;
       const urgBySup = {};
       urgF(curProj).forEach(r => { const s = cleanSup(pick(r, [F.order.sup, F.order.supText])) || '(미확인)'; urgBySup[s] = (urgBySup[s]||0) + 1; });
-      const sups = Object.entries(urgBySup).sort((a,b)=>b[1]-a[1]).slice(0,5).map(([s,c]) => `${s}(${c}건)`);
+      const sups = Object.entries(urgBySup).sort((a,b)=>b[1]-a[1]).slice(0,3).map(([s,c]) => `${s}(${c}건)`);
       md += `- 긴급률 ${urgRate}% (전주대비 ${urgRateDiff>=0?'+':''}${urgRateDiff.toFixed(1)}%p) — ${sups.join(', ')} 리드타임 단축 가능 여부 검토\n`;
     }
     if (!dHas) md += `- 납기 리스크 없음 (미입하 ${curMiipha.length}건 · 긴급률 ${urgRate}%)\n`;
