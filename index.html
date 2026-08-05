@@ -7139,8 +7139,12 @@ async function startDashboardTour(){
         popover:{ title:'⑤ 공급망 포트폴리오', description:'QCD×관계 Tier로 협력사를 분류하고, "이번 달 방문 추천 협력사"를 사유와 함께 알려줍니다.' } },
       { element:()=>{ tourInvokeFirst('#sec-portfolio [onclick^="openSupplierDetailModal("]'); return document.querySelector('.modal'); },
         popover:{ title:'🔍 협력사명 클릭 → 협력사 상세', description:'전년 동기 비교(발주·매입·이슈 YoY), 월별 매입추이, 이 협력사가 만든 전체 제품 목록까지 확인할 수 있어요. PDF 저장·분석 리포트 버튼도 여기 있습니다.' } },
+      { element:()=>{ const s=tourGoto('cost-analysis'); COST_VIEW='project'; renderCostAnalysis(); const c=document.getElementById('ch-margin-dist'); if(c) void c.offsetHeight; return c||s; },
+        popover:{ title:'⑥ 마진 분포 (원가 분석 → 프로젝트별 상세)', description:'프로젝트마다 원가율이 어디에 몰려 있는지 봅니다. 막대가 왼쪽(초록)에 몰릴수록 건강하고, 오른쪽(빨강)이 두꺼우면 목표 원가율 45%를 넘는 프로젝트가 많다는 뜻이에요. 바로 위 "📖 마진 분포 읽는 법" 카드에 해석 기준을 정리해 뒀습니다.' } },
+      { element:()=>{ const t=[...document.querySelectorAll('#sec-cost-analysis .card-title')].find(x=>x.innerText.includes('굿즈코드별 마진')); const card=t?t.closest('.card'):null; if(card) void card.offsetHeight; return card; },
+        popover:{ title:'🔍 굿즈코드별 마진 — 어디를 손봐야 하나', description:'마진율이 낮은 제품군부터 보세요. 매출은 큰데 마진율이 낮은 코드가 개선 우선순위입니다. 단일 굿즈코드 프로젝트만 집계하므로(여러 제품이 섞이면 매출을 나눌 근거가 없음) 건수가 적은 코드는 추세로 단정하지 마세요.' } },
       { element:()=>tourGoto('ai'),
-        popover:{ title:'⑥ AI 어시스턴트', description:'제품명을 입력하면 제품 정의서 링크와 리드타임·단가 관련 과거 답변을 바로 찾아줍니다.' } },
+        popover:{ title:'⑦ AI 어시스턴트', description:'제품명을 입력하면 제품 정의서 링크와 리드타임·단가 관련 과거 답변을 바로 찾아줍니다.' } },
       { popover:{ title:'투어 끝! 🎉', description:'더 자세한 내용은 배포된 사용자 가이드 PDF를 참고하시고, 궁금한 점은 언제든 팀에 물어봐 주세요.' } },
     ]
   });
@@ -9548,14 +9552,90 @@ function renderCostMonthly(el, tabHtml) {
   if(ctx2){const rates=months.map(m=>byMonth[m].revenue>0?(byMonth[m].cost/byMonth[m].revenue*100):0);
     CHARTS['ch-cost-rate-monthly']=new Chart(ctx2,{type:'line',data:{labels:months.map(fmtMonthShort),datasets:[{label:'원가율',data:rates,borderColor:'#dc2626',backgroundColor:'rgba(220,38,38,.08)',fill:true,tension:.4,pointRadius:4,borderWidth:2}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},scales:{y:{ticks:{callback:v=>v+'%',font:{size:10}}}}}});}
 }
+// ===== v23.14(사용자 요청 2026-08-04): 마진 분포도 2종 =====
+// 제품(산출물) 단위 매출 실측이 없어 제품별 마진을 직접 계산할 수 없다 — proj_rev는 프로젝트
+// 단위이고, 행 단위 판매가 필드(R) 판매가(최종)·R1) 판매가·제품군_판매가)는 전부 공란,
+// '본품 매출 합계액'은 프로젝트 실측과 3배 가까이 어긋나 쓸 수 없다.
+// 그래서 ① 프로젝트 원가율 분포(전량) ② 굿즈코드별 마진(**단일 굿즈코드 프로젝트만**)으로 나눈다.
+// ②에서 여러 코드가 섞인 프로젝트를 제외하는 이유: 매출을 제품별로 쪼갤 근거가 없고, 원가 비율로
+// 배분하면 모든 제품의 마진이 같아져 분포 자체가 무의미해진다.
+const MARGIN_BANDS=[{lo:-Infinity,hi:30,l:'~30%'},{lo:30,hi:40,l:'30~40%'},{lo:40,hi:45,l:'40~45%'},
+  {lo:45,hi:50,l:'45~50%'},{lo:50,hi:60,l:'50~60%'},{lo:60,hi:70,l:'60~70%'},{lo:70,hi:Infinity,l:'70%+'}];
+function marginRows(projList){
+  // 실측 매출이 있는 프로젝트만 — 근사(R) 판매가) 폴백은 위 사유로 마진 산출에 부적합
+  return projList.filter(p=>p.revActual&&p.revenue>0&&p.taskCost>0)
+    .map(p=>({name:p.name,rate:p.taskCost/p.revenue*100,rev:p.revenue,cost:p.taskCost,codes:[...p.codes]}));
+}
+function marginDistHTML(projList){
+  const rows=marginRows(projList);
+  if(!rows.length) return '';
+  const band=MARGIN_BANDS.map(b=>({...b,n:0,rev:0}));
+  rows.forEach(r=>{ const b=band.find(x=>r.rate>=x.lo&&r.rate<x.hi); if(b){b.n++;b.rev+=r.rev;} });
+  const sorted=rows.map(r=>r.rate).sort((a,b)=>a-b);
+  const q=p=>sorted[Math.floor((sorted.length-1)*p)];
+  const over=rows.filter(r=>r.rate>=45).length;
+  // 굿즈코드별 — 단일 코드 프로젝트만
+  const single=rows.filter(r=>r.codes.length===1);
+  const byCode={};
+  single.forEach(r=>{ const c=r.codes[0];
+    if(!byCode[c]) byCode[c]={rev:0,cost:0,n:0};
+    byCode[c].rev+=r.rev; byCode[c].cost+=r.cost; byCode[c].n++; });
+  const codeList=Object.entries(byCode).filter(([,v])=>v.rev>0)
+    .map(([c,v])=>({c,rate:v.cost/v.rev*100,rev:v.rev,n:v.n})).sort((a,b)=>b.rev-a.rev);
+  const covRev=single.reduce((s,r)=>s+r.rev,0), allRev=rows.reduce((s,r)=>s+r.rev,0);
+  const mCol=v=>v>=55?'var(--green)':v>=40?'var(--amber)':'var(--red)'; // 마진 기준(원가율 45%↔마진 55%)
+  const medRate=q(.5), overPct=rows.length?(over/rows.length*100):0;
+  return `
+    <div class="card" style="margin-top:14px;background:var(--surface2)">
+      <div class="card-header"><div class="card-title">📖 마진 분포 읽는 법</div></div>
+      <div style="font-size:11.5px;color:var(--text2);line-height:1.9;padding:0 16px 14px">
+        <b>무엇을 보는 화면인가</b> — 프로젝트 하나하나가 목표 마진을 지키고 있는지, 그리고 어떤 제품군이 구조적으로 마진이 낮은지를 봅니다. 원가율이 낮을수록(=마진이 높을수록) 좋습니다.<br>
+        <b>목표선은 원가율 45%</b>(마진 55%) — 매출 100 = 외주생산제조비 45 + 물류비·판관비 15 + 마진 40. 여기 원가는 <b>외주가공비 + 선매입 재고 투입원가</b>만 담고 물류비·공통고정비는 빠져 있어, <b>실제 마진은 표시값보다 낮습니다</b>.<br>
+        <b>① 분포 차트</b> — 막대가 <b style="color:var(--green)">왼쪽(초록)</b>에 몰릴수록 건강합니다. <b style="color:var(--red)">오른쪽(빨강)</b>이 두꺼우면 목표 미달 프로젝트가 많다는 뜻이에요. 지금은 중앙값 <b>${medRate.toFixed(1)}%</b>, 목표 초과가 <b style="color:var(--red)">${overPct.toFixed(0)}%</b>입니다 — 몇 건의 예외가 아니라 분포 전체가 오른쪽으로 쏠려 있습니다.<br>
+        <b>② 굿즈코드별 마진</b> — <b>마진율이 낮은 제품군부터</b> 보세요. 매출 규모가 크면서 마진율이 낮은 코드가 개선 우선순위입니다(매출은 큰데 남는 게 적다는 뜻). 건수가 적은 코드(3~5건)는 프로젝트 한두 건에 좌우되니 추세로 단정하지 마세요.<br>
+        <b>주의</b> — ②는 <b>단일 굿즈코드 프로젝트만</b> 집계합니다. 여러 제품이 섞인 프로젝트는 매출을 제품별로 나눌 근거가 없어 제외했습니다(원가 비율로 나누면 모든 제품의 마진이 같아져 의미가 없어집니다). 그래서 ②의 매출 합은 ①보다 작습니다.<br>
+        <b>개별 프로젝트를 파고들려면</b> 위쪽 <b>프로젝트 원가율 순위</b> 표에서 행을 클릭하면 그 프로젝트의 원가 상세로 이동합니다.
+      </div>
+    </div>
+    <div class="card" style="margin-top:14px">
+      <div class="card-header"><div class="card-title">프로젝트 원가율 분포</div>
+        <div class="card-sub">실측 매출 프로젝트 ${rows.length}개 · 중앙값 <b>${q(.5).toFixed(1)}%</b> · P25 ${q(.25).toFixed(1)}% · P75 ${q(.75).toFixed(1)}% · <b style="color:var(--red)">목표 45% 초과 ${over}개(${(over/rows.length*100).toFixed(0)}%)</b></div></div>
+      <div class="ch" style="height:240px"><canvas id="ch-margin-dist"></canvas></div>
+      <div class="tbl-wrap"><table class="tbl"><thead><tr><th>원가율 구간</th>${band.map(b=>`<th class="num">${b.l}</th>`).join('')}</tr></thead>
+      <tbody><tr><td>프로젝트 수</td>${band.map(b=>`<td class="num">${b.n}</td>`).join('')}</tr>
+      <tr><td>매출</td>${band.map(b=>`<td class="num">${fa(b.rev)}</td>`).join('')}</tr></tbody></table></div>
+    </div>
+    <div class="card" style="margin-top:14px">
+      <div class="card-header"><div class="card-title">굿즈코드별 마진</div>
+        <div class="card-sub">단일 굿즈코드 프로젝트 ${single.length}개 기준 (매출 ${fa(covRev)} · 실측 매출의 ${allRev>0?(covRev/allRev*100).toFixed(0):0}%) — 여러 제품이 섞인 프로젝트는 매출을 제품별로 나눌 근거가 없어 제외</div></div>
+      <div class="tbl-wrap"><table class="tbl"><thead><tr><th class="rank">#</th><th>굿즈코드</th><th class="num">프로젝트</th><th class="num">매출</th><th class="num">원가</th><th class="num">원가율</th><th class="num">마진율</th></tr></thead><tbody>
+      ${codeList.slice(0,20).map((x,i)=>`<tr><td class="rank">${i+1}</td><td><span class="tag tag-gray">${esc(x.c)}</span></td><td class="num">${x.n}건</td><td class="num">${faFull(x.rev)}</td><td class="num">${faFull(x.rev*x.rate/100)}</td><td class="num" style="color:${x.rate>=45?'var(--red)':x.rate>=40?'var(--amber)':'var(--green)'}">${x.rate.toFixed(1)}%</td><td class="num" style="font-weight:600;color:${mCol(100-x.rate)}">${(100-x.rate).toFixed(1)}%</td></tr>`).join('')||emptyRow(7,'단일 굿즈코드 프로젝트 없음')}
+      </tbody></table></div>
+      <div style="font-size:10px;color:var(--text3);padding:8px 12px">원가 = 외주가공비(공급가액) + 선매입 재고 투입원가. 물류비·공통고정비는 제외라 실제 마진은 이보다 낮습니다. 목표 원가율 45%(마진 55%) 기준으로 색을 구분합니다.</div>
+    </div>`;
+}
+function renderMarginDistChart(projList){
+  const rows=marginRows(projList); if(!rows.length) return;
+  const band=MARGIN_BANDS.map(b=>({...b,n:0}));
+  rows.forEach(r=>{ const b=band.find(x=>r.rate>=x.lo&&r.rate<x.hi); if(b) b.n++; });
+  dc('ch-margin-dist'); const ctx=getCtx('ch-margin-dist'); if(!ctx) return;
+  CHARTS['ch-margin-dist']=new Chart(ctx,{type:'bar',
+    data:{labels:band.map(b=>b.l),datasets:[{label:'프로젝트 수',data:band.map(b=>b.n),
+      backgroundColor:band.map(b=>b.hi<=45?'#059669':b.lo>=60?'#dc2626':'#d97706'),borderRadius:4}]},
+    options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false},
+      tooltip:{callbacks:{label:c=>`${c.parsed.y}개 프로젝트`}}},
+      scales:{y:{ticks:{font:{size:10}},title:{display:true,text:'프로젝트 수',font:{size:10}}},
+              x:{ticks:{font:{size:10}},title:{display:true,text:'원가율 (목표 45% 미만 = 초록)',font:{size:10}}}}}});
+}
 function renderCostByProject(el, tabHtml) {
   const revMap=getProjRevMap(); // v21.13: 총매출액 실측 우선, 미매칭은 R) 판매가 근사 폴백
   const projects={};
   D.order.filter(r=>!isStock(r)).forEach(r=>{
     const proj=(r['project']||'').trim(); if(!proj) return;
-    if(!projects[proj]) projects[proj]={name:proj,revenue:0,approxRev:0,taskCost:0,tasks:[],goods:'',revActual:false};
-    projects[proj].approxRev+=pa(r['R) 판매가(최종)']);projects[proj].taskCost+=pa(r['공급가액']);
-    const gc=goodsCode(r);if(gc&&!projects[proj].goods)projects[proj].goods=gc;
+    if(!projects[proj]) projects[proj]={name:proj,revenue:0,approxRev:0,taskCost:0,tasks:[],goods:'',revActual:false,codes:new Set()};
+    // v23.14: 외주가공비(공급가액) + 선매입 재고 투입원가 — 매출 현황 모달의 '원가율(프로젝트 귀속)'과 같은 정의
+    projects[proj].approxRev+=pa(r['R) 판매가(최종)']);projects[proj].taskCost+=pa(r['공급가액'])+stockInputCost(r);
+    const gc=goodsCode(r);if(gc){ if(!projects[proj].goods)projects[proj].goods=gc; projects[proj].codes.add(gc); }
     projects[proj].tasks.push(r);
   });
   Object.values(projects).forEach(p=>{
@@ -9588,8 +9668,10 @@ function renderCostByProject(el, tabHtml) {
         return `<tr style="cursor:pointer" onclick="COST_SEL_PROJECT='${esc(p.name).replace(/'/g,"\\'")}';document.getElementById('cost-proj-sel').value=COST_SEL_PROJECT;renderCostProjectDetail()"><td class="rank">${i+1}</td><td style="font-size:11px">${esc(crop(p.name,35))}</td><td><span class="tag tag-gray">${p.goods||'—'}</span></td><td class="num">${faFull(p.revenue)}${p.revActual?'':' <span class="tag tag-gray" title="proj_rev 미매칭 — R) 판매가(최종) 합산 근사">근사</span>'}</td><td class="num">${faFull(p.taskCost)}</td><td class="num" style="${cc}">${cr.toFixed(1)}%</td><td class="num">${faFull(p.revenue-p.taskCost)}</td></tr>`;
       }).join('')}
       </tbody></table></div>
-    </div>`;
+    </div>
+    ${marginDistHTML(projList)}`;
   renderCostProjectDetail();
+  renderMarginDistChart(projList);
 }
 function renderCostProjectDetail() {
   const el=document.getElementById('cost-project-detail');
