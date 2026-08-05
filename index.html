@@ -11662,6 +11662,53 @@ let CAL_NOTES_CACHE=null; // 달력은 칸마다 특이사항을 조회하므로
 function calSaveNotes(list){ CAL_NOTES_CACHE=null; try{ localStorage.setItem(CAL_NOTES_KEY,JSON.stringify(list)); }catch(e){} }
 function calNotes(){ if(!CAL_NOTES_CACHE) CAL_NOTES_CACHE=calLoadNotes(); return CAL_NOTES_CACHE; }
 
+// ===== v23.14(사용자 요청 2026-08-04): 캘린더 특이사항 GitHub 커밋 =====
+// 지금까지 특이사항은 localStorage에만 남아 등록한 브라우저에서만 보였다. 진행현황 비고
+// (progress_notes.json)와 같은 방식으로 data/cal_notes.json에 커밋해 팀 전체가 공유한다.
+// 병합 안전장치: 저장 직전에 배포본을 다시 받아, **이 브라우저가 직접 건드린 항목만** 얹는다
+// (추가분은 id로 덮어쓰고, 삭제분은 id로 제거) — 그 사이 다른 사람이 올린 항목을 덮어쓰지 않는다.
+const CAL_NOTES_FILE='data/cal_notes.json';
+let CAL_DIRTY_ADD=new Set(), CAL_DIRTY_DEL=new Set();
+// 배포본을 받아 로컬과 합친다 — seed 기본 항목은 코드 정의가 정본이라 배포본 값으로 덮지 않는다
+function loadCalNotesDeployed(){
+  fetch(CAL_NOTES_FILE+'?_='+Date.now()).then(r=>r.ok?r.json():null).catch(()=>null).then(dep=>{
+    if(!Array.isArray(dep)||!dep.length) return;
+    const local=calNotes();
+    const byId={};
+    dep.forEach(n=>{ if(n&&n.id&&!String(n.id).startsWith('seed-')) byId[n.id]=n; });
+    local.forEach(n=>{ if(n&&n.id&&(String(n.id).startsWith('seed-')||CAL_DIRTY_ADD.has(n.id))) byId[n.id]=n; });
+    CAL_DIRTY_DEL.forEach(id=>{ delete byId[id]; });
+    const seeds=local.filter(n=>n&&String(n.id||'').startsWith('seed-'));
+    const rest=Object.values(byId).filter(n=>!String(n.id||'').startsWith('seed-'));
+    calSaveNotes(seeds.concat(rest));
+    if(typeof calRenderAll==='function'&&document.getElementById('cal-notes-list')) calRenderAll();
+  });
+}
+async function mergeCalNotesForSave(){
+  let deployed=[];
+  try{ const r=await fetch(CAL_NOTES_FILE+'?_='+Date.now()); if(r.ok){ const j=await r.json(); if(Array.isArray(j)) deployed=j; } }catch(e){}
+  const byId={};
+  deployed.forEach(n=>{ if(n&&n.id) byId[n.id]=n; });
+  calNotes().forEach(n=>{ if(n&&n.id&&CAL_DIRTY_ADD.has(n.id)) byId[n.id]=n; });
+  CAL_DIRTY_DEL.forEach(id=>{ delete byId[id]; });
+  // 기본 항목(seed-*)은 코드에 정의돼 있으므로 파일에 넣지 않는다 — 정의가 바뀌면 파일이 낡아버린다
+  return Object.values(byId).filter(n=>!String(n.id||'').startsWith('seed-'));
+}
+function calSetStatus(msg){ const el=document.getElementById('cal-save-status'); if(el) el.innerHTML=msg; }
+function commitCalNotes(){
+  if(!ghToken()){
+    calSetStatus('<span style="color:var(--amber)">⚙ GitHub 연동이 필요합니다 — 오른쪽 위 ⚙ 버튼에서 토큰을 등록하면 이 브라우저 밖에서도 보입니다</span>');
+    return;
+  }
+  calSetStatus('GitHub 커밋 중...');
+  mergeCalNotesForSave()
+    .then(merged=>commitFileToGitHub(CAL_NOTES_FILE,JSON.stringify(merged,null,2),
+      '캘린더 특이사항 업데이트 '+new Date().toISOString().slice(0,16).replace('T',' ')))
+    .then(()=>{ CAL_DIRTY_ADD.clear(); CAL_DIRTY_DEL.clear();
+      calSetStatus('<span style="color:var(--green)">✅ 커밋 완료 · '+new Date().toLocaleTimeString('ko-KR')+' — 1~2분 후 배포에 반영되어 팀 전체가 봅니다</span>'); })
+    .catch(e=>calSetStatus('<span style="color:var(--red)">⚠ 커밋 실패(HTTP '+(e.status||'?')+') — ⚙에서 토큰·권한 확인 · 이 브라우저에는 저장됨</span>'));
+}
+
 const _t=new Date();
 let CAL_VIEW_Y=_t.getFullYear(), CAL_VIEW_M=_t.getMonth()+1, CAL_SELECTED_DAY=null;
 
@@ -11778,8 +11825,10 @@ function renderCalendar(){
         <input id="cal-note-month" type="number" min="1" max="12" placeholder="또는 월(1-12)" style="width:110px;padding:5px 8px;border:1px solid var(--border2);border-radius:var(--r-sm);font-size:12px">
         <input id="cal-note-note" placeholder="비고" style="width:180px;padding:5px 8px;border:1px solid var(--border2);border-radius:var(--r-sm);font-size:12px">
         <button class="topbar-btn primary" onclick="calAddNote()">+ 추가</button>
+        <button class="topbar-btn" onclick="commitCalNotes()" title="지금 등록된 특이사항을 data/cal_notes.json으로 커밋합니다. 1~2분 후 배포에 반영되어 팀 전체가 같은 내용을 봅니다.">🔄 GitHub에 커밋</button>
       </div>
-      <div style="font-size:10px;color:var(--text3);margin-top:6px">시작·종료일을 넣으면 달력의 해당 날짜에 막대로 표시되고, 날짜 대신 월만 넣으면 그 달 전체로 표시됩니다.</div>
+      <div id="cal-save-status" style="font-size:11px;color:var(--text3);margin-top:6px;min-height:16px"></div>
+      <div style="font-size:10px;color:var(--text3);margin-top:2px">시작·종료일을 넣으면 달력의 해당 날짜에 막대로 표시되고, 날짜 대신 월만 넣으면 그 달 전체로 표시됩니다. <b>추가·삭제하면 GitHub에 자동 커밋</b>되어 팀 전체가 같은 내용을 봅니다(⚙ 토큰 등록 시). 토큰이 없으면 이 브라우저에만 저장되고, 나중에 토큰을 등록한 뒤 <b>🔄 GitHub에 커밋</b>을 누르면 반영됩니다.</div>
     </div>
   `;
   calRenderAll();
@@ -11893,13 +11942,21 @@ function calAddNote(){
     alert('시작일을 고르거나, 해당 월(1-12)을 입력해주세요.'); return;
   }
   const notes=calNotes().slice(); notes.push(rec); calSaveNotes(notes);
+  CAL_DIRTY_ADD.add(rec.id); CAL_DIRTY_DEL.delete(rec.id);
   ['cal-note-title','cal-note-start','cal-note-end','cal-note-month','cal-note-note'].forEach(id=>{const e=document.getElementById(id); if(e) e.value='';});
   const dp=document.getElementById('cal-note-dept'); if(dp) dp.value='';
   calRenderAll();
+  // v23.14: 토큰이 있으면 추가 즉시 커밋 — 없으면 로컬 저장만 하고 안내
+  if(ghToken()) commitCalNotes();
+  else calSetStatus('저장됨(이 브라우저) · ⚙ GitHub 연동 설정 시 자동 커밋되어 팀 전체가 봅니다');
 }
 function calDelNote(idx){
-  const notes=calNotes().slice(); notes.splice(idx,1); calSaveNotes(notes);
+  const notes=calNotes().slice();
+  const gone=notes[idx];
+  notes.splice(idx,1); calSaveNotes(notes);
+  if(gone&&gone.id&&!String(gone.id).startsWith('seed-')){ CAL_DIRTY_DEL.add(gone.id); CAL_DIRTY_ADD.delete(gone.id); }
   calRenderAll();
+  if(gone&&gone.id&&!String(gone.id).startsWith('seed-')&&ghToken()) commitCalNotes();
 }
 
 // ===== AUTO-LOAD RAW (배포용: 정적 CSV 자동 fetch) =====
@@ -12528,6 +12585,7 @@ window.addEventListener('load',()=>{
   loadPartsMaster();
   loadCIOverrides();
   loadProgressNotes();
+  loadCalNotesDeployed(); // v23.14: 캘린더 특이사항 배포본 병합
   loadProgressData();
   loadChangeLog();
   loadProjectRevenue();
