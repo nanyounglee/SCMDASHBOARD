@@ -2244,16 +2244,13 @@ function updateKPIs() {
     const useRevOv=Object.keys(revMap).length>0;
     let periodRevenue=0;
     if(useRevOv){
-      // v23.14: 발주 RAW에 있는 프로젝트로 제한하던 필터 제거 — 전년 수주·당해 출고 건(2026년
-      // 1월분 112건, 5.87억)이 통째로 빠져 1월 실측이 표의 54% 수준으로 찍혔다. 표는 출고 시점
-      // 기준이라 포함이 맞다(사용자 확정 2026-08-04). 검색어가 있을 때만 검색 결과로 좁힌다.
-      let revKeys=Object.keys(revMap);
-      if(q){
-        const projSeen=new Set();
-        getFilteredAllOrders().filter(r=>!isStock(r)).forEach(r=>{ const p=(r['project']||'').trim(); if(p) projSeen.add(p); });
-        revKeys=revKeys.filter(p=>projSeen.has(p));
-      }
-      revKeys.forEach(p=>{
+      // v23.14(사용자 확정 2026-08-04): 2026 발주 RAW에 프로젝트가 있는 건만 집계한다.
+      // 여기서 빠지는 112건(VAT 제외 546,875,649원 · 대부분 1월 출고)은 2025년 12월 수주분으로
+      // **이미 2025년 매출로 마감**된 건이다 — 2026에 다시 잡으면 이중계상이 된다.
+      // (2026 발주 RAW에 없다 = 당해 발주가 없다 = 전년 귀속, 이 조건이 그대로 판별자가 된다)
+      const projSeen=new Set();
+      getFilteredAllOrders().filter(r=>!isStock(r)).forEach(r=>{ const p=(r['project']||'').trim(); if(p) projSeen.add(p); });
+      projSeen.forEach(p=>{
         const rv=revMap[p]; if(!rv||!rv.months.length) return;
         const share=1/rv.months.length;
         rv.months.forEach(m=>{ if(curMonths.includes(m)) periodRevenue+=rv.rev*share; });
@@ -3301,6 +3298,70 @@ function ciManualCostByMonth() {
   });
   return byMonth;
 }
+// v23.14(사용자 요청 2026-08-04): 누계 실패비용 카드 클릭 → 발생 건별 상세
+// 카드 수치(ytdCur)는 자동(재제작 취득원가) + 수기(고객인지이슈 입력액) 합이므로 여기서도 둘 다
+// 보여준다 — 한쪽만 나열하면 합계가 카드와 달라져 신뢰를 잃는다.
+// 재제작 비용은 세금계산서작성월이 여러 달이면 reworkCostByMonth()가 균등 분할하므로, 그 해에
+// 귀속된 금액만 집계한다(그래서 한 행의 취득원가 전액과 다를 수 있고, 표에 분할 여부를 표기한다).
+function failCostRows(year){
+  const auto=[], manual=[];
+  [D.order,D.orderPrevYear].forEach(list=>(list||[]).forEach(r=>{
+    const bm=reworkCostByMonth(r); if(!Object.keys(bm).length) return;
+    let amt=0; const months=[];
+    Object.entries(bm).forEach(([m,a])=>{ if(m.split('.')[0]===String(year)){ amt+=a; months.push(m); } });
+    if(!amt) return;
+    auto.push({
+      proj:(r['project']||'').trim(), prod:(r['산출물']||'').trim(),
+      date:(r['과업지시일자']||'').trim(), sup:(r['수주처']||'').trim(),
+      ord:(r['발주번호']||'').trim(), amt, months,
+      split:Object.keys(bm).length>1, full:pa(r['취득원가'])
+    });
+  }));
+  (D.ci||[]).forEach(r=>{
+    const idx=r['idx_issue']; if(!idx) return;
+    const ov=CI_OVERRIDES[idx]; if(!ov||!ov.cost) return;
+    const amt=pa(String(ov.cost)); if(!amt) return;
+    const m=pOrderMonth(r['등록일자']||''); if(!m||m.split('.')[0]!==String(year)) return;
+    manual.push({ proj:(r['프로젝트명']||'').trim(), prod:(r['관련제품']||'').trim(),
+      date:(r['등록일자']||'').trim(), amt, note:(r['이슈내용']||'').trim() });
+  });
+  auto.sort((a,b)=>b.amt-a.amt); manual.sort((a,b)=>b.amt-a.amt);
+  return {auto,manual};
+}
+function openFailCostDetail(year){
+  const ov=document.getElementById('modal-overlay');
+  document.getElementById('modal-tabs-el').innerHTML='';
+  document.getElementById('modal-title').textContent=`${year}년 실패비용 상세 — 발생 건별`;
+  const body=document.getElementById('modal-body');
+  ov.classList.add('open');
+  const {auto,manual}=failCostRows(year);
+  const aSum=auto.reduce((s,x)=>s+x.amt,0), mSum=manual.reduce((s,x)=>s+x.amt,0);
+  if(!auto.length&&!manual.length){ body.innerHTML='<div class="empty">해당 연도에 집계된 실패비용이 없습니다.</div>'; return; }
+  const chip=(l,v,c)=>`<span style="background:var(--surface2);padding:4px 10px;border-radius:20px;font-size:12px">${l} <b${c?` style="color:${c}"`:''}>${v}</b></span>`;
+  // 제품별 집계 — 어느 제품에서 반복적으로 터지는지
+  const byProd={};
+  auto.forEach(x=>{ const k=x.prod||'(산출물 없음)'; if(!byProd[k]) byProd[k]={amt:0,cnt:0}; byProd[k].amt+=x.amt; byProd[k].cnt++; });
+  const prodList=Object.entries(byProd).sort((a,b)=>b[1].amt-a[1].amt);
+  body.innerHTML=`
+    <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:8px">
+      ${chip('총 실패비용',faFull(Math.round(aSum+mSum)),'var(--red)')}
+      ${chip('재제작(자동)',auto.length+'건 · '+faFull(Math.round(aSum)))}
+      ${chip('고객인지이슈(수기)',manual.length+'건 · '+faFull(Math.round(mSum)))}
+    </div>
+    <div style="font-size:10px;color:var(--text3);margin-bottom:12px">※ 재제작 비용은 <b>세금계산서작성월</b> 기준으로 귀속됩니다 — 여러 달에 걸쳐 청구된 건은 그 해에 해당하는 금액만 잡히므로(표에 <span class="tag tag-gray" style="font-size:9px">분할</span> 표시) 취득원가 전액과 다를 수 있습니다. 세금계산서월이 없으면 과업지시일자 기준입니다.</div>
+    ${prodList.length>1?`<div style="font-size:12px;font-weight:700;margin:10px 0 6px">제품별 실패비용 <span style="font-weight:400;font-size:10px;color:var(--text3)">(재제작 기준 · 반복 발생 제품 확인용)</span></div>
+    <table class="tbl"><thead><tr><th class="rank">#</th><th>제품</th><th class="num">건수</th><th class="num">실패비용</th><th class="num">비중</th></tr></thead><tbody>
+    ${prodList.slice(0,10).map(([k,v],i)=>`<tr><td class="rank">${i+1}</td><td style="font-size:11px">${esc(crop(k,34))}</td><td class="num">${v.cnt}건</td><td class="num">${faFull(Math.round(v.amt))}</td><td class="num">${aSum>0?(v.amt/aSum*100).toFixed(1)+'%':'—'}</td></tr>`).join('')}
+    </tbody></table>`:''}
+    <div style="font-size:12px;font-weight:700;margin:14px 0 6px">재제작 발생 건 <span style="font-weight:400;font-size:10px;color:var(--text3)">(${auto.length}건 · 비용 내림차순)</span></div>
+    ${auto.length?`<div class="tbl-wrap"><table class="tbl"><thead><tr><th class="rank">#</th><th>프로젝트</th><th>제품</th><th>재제작일</th><th>협력사</th><th>발주번호</th><th class="num">실패비용</th></tr></thead><tbody>
+    ${auto.map((x,i)=>`<tr><td class="rank">${i+1}</td><td style="font-size:11px">${esc(crop(x.proj,26))||'—'}</td><td style="font-size:11px">${esc(crop(x.prod,24))||'—'}</td><td style="font-size:11px">${esc(x.date)||'—'}</td><td style="font-size:11px">${esc(crop(x.sup,16))||'—'}</td><td class="mono" style="font-size:11px">${esc(x.ord)||'—'}</td><td class="num" style="color:var(--red);font-weight:600">${faFull(Math.round(x.amt))}${x.split?' <span class="tag tag-gray" style="font-size:9px" title="세금계산서월이 여러 달로 나뉜 건 — 취득원가 전액 '+faFull(Math.round(x.full))+' 중 이 해 귀속분">분할</span>':''}</td></tr>`).join('')}
+    </tbody></table></div>`:'<div style="font-size:11px;color:var(--text3)">재제작 건 없음</div>'}
+    ${manual.length?`<div style="font-size:12px;font-weight:700;margin:16px 0 6px">고객인지이슈 수기 입력 <span style="font-weight:400;font-size:10px;color:var(--text3)">(${manual.length}건 · 등록일자 기준)</span></div>
+    <div class="tbl-wrap"><table class="tbl"><thead><tr><th class="rank">#</th><th>프로젝트</th><th>관련제품</th><th>등록일</th><th>이슈내용</th><th class="num">실패비용</th></tr></thead><tbody>
+    ${manual.map((x,i)=>`<tr><td class="rank">${i+1}</td><td style="font-size:11px">${esc(crop(x.proj,26))||'—'}</td><td style="font-size:11px">${esc(crop(x.prod,22))||'—'}</td><td style="font-size:11px">${esc(x.date)||'—'}</td><td style="font-size:11px;color:var(--text2)">${esc(crop(x.note,40))||'—'}</td><td class="num" style="color:var(--red);font-weight:600">${faFull(Math.round(x.amt))}</td></tr>`).join('')}
+    </tbody></table></div>`:''}`;
+}
 // v12: 실패비용 현황 — 자동(재제작)+수기(고객인지) 합산, YoY, 월별 추이, 매입금액 대비 비중
 function renderCIFailCostPanel() {
   const wrap=document.getElementById('ci-failcost-wrap'); if(!wrap) return;
@@ -3348,8 +3409,9 @@ function renderCIFailCostPanel() {
   const prevCostPct=curAmt>0?(prevCostYtd/curAmt*100):null;
   wrap.innerHTML=`
     <div style="display:flex;gap:12px;margin-bottom:14px;flex-wrap:wrap">
-      <div style="background:var(--red-light);color:var(--red);padding:8px 14px;border-radius:6px">
-        <div style="font-size:10px;font-weight:600">${curYear}년 누계 실패비용(전체 제품)</div>
+      <div onclick="openFailCostDetail('${curYear}')" title="클릭 — 실패비용이 발생한 프로젝트·제품·재제작일·비용 상세"
+        style="background:var(--red-light);color:var(--red);padding:8px 14px;border-radius:6px;cursor:pointer">
+        <div style="font-size:10px;font-weight:600">${curYear}년 누계 실패비용(전체 제품) 🔍</div>
         <div style="font-size:16px;font-weight:700">${faFull(ytdCur)}</div>
         <div style="font-size:10px;margin-top:2px">매입 대비 <b>${pctOfAmt===null?'—':pctOfAmt.toFixed(3)+'%'}</b></div>
       </div>
@@ -7142,8 +7204,12 @@ async function startDashboardTour(){
         popover:{ title:'⑤ 공급망 포트폴리오', description:'QCD×관계 Tier로 협력사를 분류하고, "이번 달 방문 추천 협력사"를 사유와 함께 알려줍니다.' } },
       { element:()=>{ tourInvokeFirst('#sec-portfolio [onclick^="openSupplierDetailModal("]'); return document.querySelector('.modal'); },
         popover:{ title:'🔍 협력사명 클릭 → 협력사 상세', description:'전년 동기 비교(발주·매입·이슈 YoY), 월별 매입추이, 이 협력사가 만든 전체 제품 목록까지 확인할 수 있어요. PDF 저장·분석 리포트 버튼도 여기 있습니다.' } },
+      { element:()=>{ const s=tourGoto('cost-analysis'); COST_VIEW='project'; renderCostAnalysis(); const c=document.getElementById('ch-margin-dist'); if(c) void c.offsetHeight; return c||s; },
+        popover:{ title:'⑥ 마진 분포 (원가 분석 → 프로젝트별 상세)', description:'프로젝트마다 원가율이 어디에 몰려 있는지 봅니다. 막대가 왼쪽(초록)에 몰릴수록 건강하고, 오른쪽(빨강)이 두꺼우면 목표 원가율 45%를 넘는 프로젝트가 많다는 뜻이에요. 바로 위 "📖 마진 분포 읽는 법" 카드에 해석 기준을 정리해 뒀습니다.' } },
+      { element:()=>{ const t=[...document.querySelectorAll('#sec-cost-analysis .card-title')].find(x=>x.innerText.includes('굿즈코드별 마진')); const card=t?t.closest('.card'):null; if(card) void card.offsetHeight; return card; },
+        popover:{ title:'🔍 굿즈코드별 마진 — 어디를 손봐야 하나', description:'마진율이 낮은 제품군부터 보세요. 매출은 큰데 마진율이 낮은 코드가 개선 우선순위입니다. 단일 굿즈코드 프로젝트만 집계하므로(여러 제품이 섞이면 매출을 나눌 근거가 없음) 건수가 적은 코드는 추세로 단정하지 마세요.' } },
       { element:()=>tourGoto('ai'),
-        popover:{ title:'⑥ AI 어시스턴트', description:'제품명을 입력하면 제품 정의서 링크와 리드타임·단가 관련 과거 답변을 바로 찾아줍니다.' } },
+        popover:{ title:'⑦ AI 어시스턴트', description:'제품명을 입력하면 제품 정의서 링크와 리드타임·단가 관련 과거 답변을 바로 찾아줍니다.' } },
       { popover:{ title:'투어 끝! 🎉', description:'더 자세한 내용은 배포된 사용자 가이드 PDF를 참고하시고, 궁금한 점은 언제든 팀에 물어봐 주세요.' } },
     ]
   });
@@ -9370,11 +9436,22 @@ const REV_VAT_DIV=1.1; // 총 매출액(VAT 포함) → 공급가액
 // v23.14: 매출 귀속월을 '출고 날짜(월)'(달력월)에서 **출고리스트 마감 컷오프**로 교체.
 // 연간분석 01-A/01-B 표의 매출액은 달력월이 아니라 매달 출고리스트를 마감한 시점까지의 출고분
 // 합계라, 달력월로 집계하면 월별로 ±30%씩 어긋났다(3월 -32% · 4월 +38% · 6월 +27%).
-// 아래 날짜는 2026 실측 proj_rev를 표의 월별 누계에 맞춰 역산한 값 — 'N월분 = 직전 컷오프 다음날
-// ~ 이 날짜까지 최종 출고된 건'. 역산 결과 누적 오차는 전 구간 0.7억 이내(최대 6월 -0.64억).
-// ※ 매달 마감일이 달라 고정 규칙이 없다. 새 달이 확정되면 이 배열에 날짜를 추가해야 하고,
-//   배열에 없는 달은 달력월로 폴백하되 마지막 확정월 이전으로는 귀속시키지 않는다.
-const REV_CUTOFF={2026:['2026-01-30','2026-02-24','2026-04-06','2026-04-27','2026-05-26','2026-06-22','2026-07-08']};
+// 사용자 확정(2026-08-04). **출고리스트는 그 달 출고분을 다음 달 중순~하순까지 받아서 마감한다**
+// — 'N월분 = 직전 컷오프 다음날 ~ 이 날짜까지 최종 출고된 건'이고, 컷오프가 다음 달로 넘어간다.
+// 이 패턴은 2025년 12월 수주분(2026년 1월 출고, 이미 2025 매출로 마감된 112건)을 집계에서
+// 빼고 나서야 드러났다 — 그 5.5억이 1월에 섞여 있는 동안에는 컷오프가 월말 근처로 잘못 잡혔다.
+// 결과 월별 오차(표 대비): 1월 -0.4 · 2월 +2.2 · 3월 +3.1 · 4월 +0.0 · 5월 -1.1 · 6월 +1.6 ·
+// 7월 -1.7% · 1~7월 누계 +0.67%. 전 구간 ±3.2% 이내(|오차|합 10.2%p · 최악 3.11%는 3월).
+// ※ 정확히 0.0%는 날짜 단위로 불가능하다 — 하루치 출고 중앙값이 3,455만원이라 경계를 한 칸
+//   옮길 때마다 월 금액이 3~5%씩 점프한다. 전 구간 최적화 시 월별 최악의 하한은 2.17%.
+// ※ 5·6·7월은 1~4월 고정 상태에서 전수 탐색한 최적값이다. 6월분을 07-07로 하루 당기면
+//   6월 +1.6%→-4.5% · 7월 -1.7%→+5.8%로 둘 다 나빠진다(07-08에 6월 몫이 몰려 있음).
+//
+// ※ 달력월(월말) 기준으로 바꾸지 말 것 — 1~7월 누계가 +9.9%로 벌어지고 월별로 ±38%까지 튄다.
+//   예: 6/24~6/30 출고분은 표에서 6월이 아니라 7월분 리스트에 들어가 있다.
+// ※ 배열에 없는 달은 달력월로 폴백하되 마지막 확정월 이전으로는 귀속시키지 않는다.
+//   새 달이 확정되면 날짜를 추가한다(마감일이 매달 달라 고정 규칙이 없다).
+const REV_CUTOFF={2026:['2026-02-23','2026-03-17','2026-04-22','2026-05-21','2026-06-17','2026-07-08','2026-08-04']};
 // 최종 출고일 → 매출 귀속월('YYYY.M')
 function revMonthOfShipDate(s){
   const d=parseAnyDate(s); if(!d) return null;
@@ -9540,14 +9617,114 @@ function renderCostMonthly(el, tabHtml) {
   if(ctx2){const rates=months.map(m=>byMonth[m].revenue>0?(byMonth[m].cost/byMonth[m].revenue*100):0);
     CHARTS['ch-cost-rate-monthly']=new Chart(ctx2,{type:'line',data:{labels:months.map(fmtMonthShort),datasets:[{label:'원가율',data:rates,borderColor:'#dc2626',backgroundColor:'rgba(220,38,38,.08)',fill:true,tension:.4,pointRadius:4,borderWidth:2}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},scales:{y:{ticks:{callback:v=>v+'%',font:{size:10}}}}}});}
 }
+// ===== v23.14(사용자 요청 2026-08-04): 마진 분포도 2종 =====
+// 제품(산출물) 단위 매출 실측이 없어 제품별 마진을 직접 계산할 수 없다 — proj_rev는 프로젝트
+// 단위이고, 행 단위 판매가 필드(R) 판매가(최종)·R1) 판매가·제품군_판매가)는 전부 공란,
+// '본품 매출 합계액'은 프로젝트 실측과 3배 가까이 어긋나 쓸 수 없다.
+// 그래서 ① 프로젝트 원가율 분포(전량) ② 굿즈코드별 마진(**단일 굿즈코드 프로젝트만**)으로 나눈다.
+// ②에서 여러 코드가 섞인 프로젝트를 제외하는 이유: 매출을 제품별로 쪼갤 근거가 없고, 원가 비율로
+// 배분하면 모든 제품의 마진이 같아져 분포 자체가 무의미해진다.
+// 굿즈코드 → 제품명. goods_master(Goods Code/Goods Name, 373종)가 정본이고, 거기 없는 코드는
+// 그 코드로 발주된 산출물 최빈값으로 보완한다(발주 산출물은 "레더스킨다이어리+인쇄"처럼 공정명이
+// 붙거나 부속품명이 잡히는 경우가 있어 정본이 있으면 항상 정본을 쓴다).
+var GOODS_NAME_MAP=null, GOODS_NAME_SRC=null;
+function goodsNameOf(code){
+  if(!code) return '';
+  if(!GOODS_NAME_MAP||GOODS_NAME_SRC!==D.goods_master){
+    const m={};
+    (D.goods_master||[]).forEach(r=>{
+      const c=(r['Goods Code']||'').trim(), n=(r['Goods Name']||'').trim();
+      if(c&&n&&!m[c]) m[c]=n;
+    });
+    GOODS_NAME_MAP=m; GOODS_NAME_SRC=D.goods_master;
+  }
+  if(GOODS_NAME_MAP[code]) return GOODS_NAME_MAP[code];
+  // 폴백 — 그 코드의 발주 산출물 최빈값
+  if(!D.order) return '';
+  const cnt={};
+  D.order.forEach(r=>{ if(isStock(r)) return;
+    if(goodsCode(r)!==code) return;
+    const s=(r['산출물']||'').trim(); if(s) cnt[s]=(cnt[s]||0)+1; });
+  const top=Object.entries(cnt).sort((a,b)=>b[1]-a[1])[0];
+  return top?top[0]:'';
+}
+const MARGIN_BANDS=[{lo:-Infinity,hi:30,l:'~30%'},{lo:30,hi:40,l:'30~40%'},{lo:40,hi:45,l:'40~45%'},
+  {lo:45,hi:50,l:'45~50%'},{lo:50,hi:60,l:'50~60%'},{lo:60,hi:70,l:'60~70%'},{lo:70,hi:Infinity,l:'70%+'}];
+function marginRows(projList){
+  // 실측 매출이 있는 프로젝트만 — 근사(R) 판매가) 폴백은 위 사유로 마진 산출에 부적합
+  return projList.filter(p=>p.revActual&&p.revenue>0&&p.taskCost>0)
+    .map(p=>({name:p.name,rate:p.taskCost/p.revenue*100,rev:p.revenue,cost:p.taskCost,codes:[...p.codes]}));
+}
+function marginDistHTML(projList){
+  const rows=marginRows(projList);
+  if(!rows.length) return '';
+  const band=MARGIN_BANDS.map(b=>({...b,n:0,rev:0}));
+  rows.forEach(r=>{ const b=band.find(x=>r.rate>=x.lo&&r.rate<x.hi); if(b){b.n++;b.rev+=r.rev;} });
+  const sorted=rows.map(r=>r.rate).sort((a,b)=>a-b);
+  const q=p=>sorted[Math.floor((sorted.length-1)*p)];
+  const over=rows.filter(r=>r.rate>=45).length;
+  // 굿즈코드별 — 단일 코드 프로젝트만
+  const single=rows.filter(r=>r.codes.length===1);
+  const byCode={};
+  single.forEach(r=>{ const c=r.codes[0];
+    if(!byCode[c]) byCode[c]={rev:0,cost:0,n:0};
+    byCode[c].rev+=r.rev; byCode[c].cost+=r.cost; byCode[c].n++; });
+  const codeList=Object.entries(byCode).filter(([,v])=>v.rev>0)
+    .map(([c,v])=>({c,rate:v.cost/v.rev*100,rev:v.rev,n:v.n})).sort((a,b)=>b.rev-a.rev);
+  const covRev=single.reduce((s,r)=>s+r.rev,0), allRev=rows.reduce((s,r)=>s+r.rev,0);
+  const mCol=v=>v>=55?'var(--green)':v>=40?'var(--amber)':'var(--red)'; // 마진 기준(원가율 45%↔마진 55%)
+  const medRate=q(.5), overPct=rows.length?(over/rows.length*100):0;
+  return `
+    <div class="card" style="margin-top:14px;background:var(--surface2)">
+      <div class="card-header"><div class="card-title">📖 마진 분포 읽는 법</div></div>
+      <div style="font-size:11.5px;color:var(--text2);line-height:1.9;padding:0 16px 14px">
+        <b>무엇을 보는 화면인가</b> — 프로젝트 하나하나가 목표 마진을 지키고 있는지, 그리고 어떤 제품군이 구조적으로 마진이 낮은지를 봅니다. 원가율이 낮을수록(=마진이 높을수록) 좋습니다.<br>
+        <b>목표선은 원가율 45%</b>(마진 55%) — 매출 100 = 외주생산제조비 45 + 물류비·판관비 15 + 마진 40. 여기 원가는 <b>외주가공비 + 선매입 재고 투입원가</b>만 담고 물류비·공통고정비는 빠져 있어, <b>실제 마진은 표시값보다 낮습니다</b>.<br>
+        <b>① 분포 차트</b> — 막대가 <b style="color:var(--green)">왼쪽(초록)</b>에 몰릴수록 건강합니다. <b style="color:var(--red)">오른쪽(빨강)</b>이 두꺼우면 목표 미달 프로젝트가 많다는 뜻이에요. 지금은 중앙값 <b>${medRate.toFixed(1)}%</b>, 목표 초과가 <b style="color:var(--red)">${overPct.toFixed(0)}%</b>입니다 — 몇 건의 예외가 아니라 분포 전체가 오른쪽으로 쏠려 있습니다.<br>
+        <b>② 굿즈코드별 마진</b> — <b>마진율이 낮은 제품군부터</b> 보세요. 매출 규모가 크면서 마진율이 낮은 코드가 개선 우선순위입니다(매출은 큰데 남는 게 적다는 뜻). 건수가 적은 코드(3~5건)는 프로젝트 한두 건에 좌우되니 추세로 단정하지 마세요.<br>
+        <b>주의</b> — ②는 <b>단일 굿즈코드 프로젝트만</b> 집계합니다. 여러 제품이 섞인 프로젝트는 매출을 제품별로 나눌 근거가 없어 제외했습니다(원가 비율로 나누면 모든 제품의 마진이 같아져 의미가 없어집니다). 그래서 ②의 매출 합은 ①보다 작습니다.<br>
+        <b>개별 프로젝트를 파고들려면</b> 위쪽 <b>프로젝트 원가율 순위</b> 표에서 행을 클릭하면 그 프로젝트의 원가 상세로 이동합니다.
+      </div>
+    </div>
+    <div class="card" style="margin-top:14px">
+      <div class="card-header"><div class="card-title">프로젝트 원가율 분포</div>
+        <div class="card-sub">실측 매출 프로젝트 ${rows.length}개 · 중앙값 <b>${q(.5).toFixed(1)}%</b> · P25 ${q(.25).toFixed(1)}% · P75 ${q(.75).toFixed(1)}% · <b style="color:var(--red)">목표 45% 초과 ${over}개(${(over/rows.length*100).toFixed(0)}%)</b></div></div>
+      <div class="ch" style="height:240px"><canvas id="ch-margin-dist"></canvas></div>
+      <div class="tbl-wrap"><table class="tbl"><thead><tr><th>원가율 구간</th>${band.map(b=>`<th class="num">${b.l}</th>`).join('')}</tr></thead>
+      <tbody><tr><td>프로젝트 수</td>${band.map(b=>`<td class="num">${b.n}</td>`).join('')}</tr>
+      <tr><td>매출</td>${band.map(b=>`<td class="num">${fa(b.rev)}</td>`).join('')}</tr></tbody></table></div>
+    </div>
+    <div class="card" style="margin-top:14px">
+      <div class="card-header"><div class="card-title">굿즈코드별 마진</div>
+        <div class="card-sub">단일 굿즈코드 프로젝트 ${single.length}개 기준 (매출 ${fa(covRev)} · 실측 매출의 ${allRev>0?(covRev/allRev*100).toFixed(0):0}%) — 여러 제품이 섞인 프로젝트는 매출을 제품별로 나눌 근거가 없어 제외</div></div>
+      <div class="tbl-wrap"><table class="tbl"><thead><tr><th class="rank">#</th><th>굿즈코드</th><th>제품명</th><th class="num">프로젝트</th><th class="num">매출</th><th class="num">원가</th><th class="num">원가율</th><th class="num">마진율</th></tr></thead><tbody>
+      ${codeList.slice(0,20).map((x,i)=>`<tr><td class="rank">${i+1}</td><td><span class="tag tag-gray">${esc(x.c)}</span></td><td style="font-size:11px">${esc(crop(goodsNameOf(x.c),28))||'—'}</td><td class="num">${x.n}건</td><td class="num">${faFull(x.rev)}</td><td class="num">${faFull(x.rev*x.rate/100)}</td><td class="num" style="color:${x.rate>=45?'var(--red)':x.rate>=40?'var(--amber)':'var(--green)'}">${x.rate.toFixed(1)}%</td><td class="num" style="font-weight:600;color:${mCol(100-x.rate)}">${(100-x.rate).toFixed(1)}%</td></tr>`).join('')||emptyRow(8,'단일 굿즈코드 프로젝트 없음')}
+      </tbody></table></div>
+      <div style="font-size:10px;color:var(--text3);padding:8px 12px">원가 = 외주가공비(공급가액) + 선매입 재고 투입원가. 물류비·공통고정비는 제외라 실제 마진은 이보다 낮습니다. 목표 원가율 45%(마진 55%) 기준으로 색을 구분합니다.</div>
+    </div>`;
+}
+function renderMarginDistChart(projList){
+  const rows=marginRows(projList); if(!rows.length) return;
+  const band=MARGIN_BANDS.map(b=>({...b,n:0}));
+  rows.forEach(r=>{ const b=band.find(x=>r.rate>=x.lo&&r.rate<x.hi); if(b) b.n++; });
+  dc('ch-margin-dist'); const ctx=getCtx('ch-margin-dist'); if(!ctx) return;
+  CHARTS['ch-margin-dist']=new Chart(ctx,{type:'bar',
+    data:{labels:band.map(b=>b.l),datasets:[{label:'프로젝트 수',data:band.map(b=>b.n),
+      backgroundColor:band.map(b=>b.hi<=45?'#059669':b.lo>=60?'#dc2626':'#d97706'),borderRadius:4}]},
+    options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false},
+      tooltip:{callbacks:{label:c=>`${c.parsed.y}개 프로젝트`}}},
+      scales:{y:{ticks:{font:{size:10}},title:{display:true,text:'프로젝트 수',font:{size:10}}},
+              x:{ticks:{font:{size:10}},title:{display:true,text:'원가율 (목표 45% 미만 = 초록)',font:{size:10}}}}}});
+}
 function renderCostByProject(el, tabHtml) {
   const revMap=getProjRevMap(); // v21.13: 총매출액 실측 우선, 미매칭은 R) 판매가 근사 폴백
   const projects={};
   D.order.filter(r=>!isStock(r)).forEach(r=>{
     const proj=(r['project']||'').trim(); if(!proj) return;
-    if(!projects[proj]) projects[proj]={name:proj,revenue:0,approxRev:0,taskCost:0,tasks:[],goods:'',revActual:false};
-    projects[proj].approxRev+=pa(r['R) 판매가(최종)']);projects[proj].taskCost+=pa(r['공급가액']);
-    const gc=goodsCode(r);if(gc&&!projects[proj].goods)projects[proj].goods=gc;
+    if(!projects[proj]) projects[proj]={name:proj,revenue:0,approxRev:0,taskCost:0,tasks:[],goods:'',revActual:false,codes:new Set()};
+    // v23.14: 외주가공비(공급가액) + 선매입 재고 투입원가 — 매출 현황 모달의 '원가율(프로젝트 귀속)'과 같은 정의
+    projects[proj].approxRev+=pa(r['R) 판매가(최종)']);projects[proj].taskCost+=pa(r['공급가액'])+stockInputCost(r);
+    const gc=goodsCode(r);if(gc){ if(!projects[proj].goods)projects[proj].goods=gc; projects[proj].codes.add(gc); }
     projects[proj].tasks.push(r);
   });
   Object.values(projects).forEach(p=>{
@@ -9580,8 +9757,10 @@ function renderCostByProject(el, tabHtml) {
         return `<tr style="cursor:pointer" onclick="COST_SEL_PROJECT='${esc(p.name).replace(/'/g,"\\'")}';document.getElementById('cost-proj-sel').value=COST_SEL_PROJECT;renderCostProjectDetail()"><td class="rank">${i+1}</td><td style="font-size:11px">${esc(crop(p.name,35))}</td><td><span class="tag tag-gray">${p.goods||'—'}</span></td><td class="num">${faFull(p.revenue)}${p.revActual?'':' <span class="tag tag-gray" title="proj_rev 미매칭 — R) 판매가(최종) 합산 근사">근사</span>'}</td><td class="num">${faFull(p.taskCost)}</td><td class="num" style="${cc}">${cr.toFixed(1)}%</td><td class="num">${faFull(p.revenue-p.taskCost)}</td></tr>`;
       }).join('')}
       </tbody></table></div>
-    </div>`;
+    </div>
+    ${marginDistHTML(projList)}`;
   renderCostProjectDetail();
+  renderMarginDistChart(projList);
 }
 function renderCostProjectDetail() {
   const el=document.getElementById('cost-project-detail');
@@ -11281,15 +11460,10 @@ function revenueByMonthAll(year){
   const out={};
   const revMap=getProjRevMap();
   if(Object.keys(revMap).length){
-    // v23.14: updateKPIs와 동일 — 발주 RAW 매칭 필터 제거(전년 수주·당해 출고 건 포함)
-    const q=getSearchQuery();
-    let revKeys=Object.keys(revMap);
-    if(q){
-      const projSeen=new Set();
-      getFilteredAllOrders().filter(r=>!isStock(r)).forEach(r=>{ const p=(r['project']||'').trim(); if(p) projSeen.add(p); });
-      revKeys=revKeys.filter(p=>projSeen.has(p));
-    }
-    revKeys.forEach(p=>{
+    // v23.14: updateKPIs와 동일 — 2026 발주 RAW에 있는 프로젝트만(전년 귀속 112건 제외)
+    const projSeen=new Set();
+    getFilteredAllOrders().filter(r=>!isStock(r)).forEach(r=>{ const p=(r['project']||'').trim(); if(p) projSeen.add(p); });
+    projSeen.forEach(p=>{
       const rv=revMap[p]; if(!rv||!rv.months.length) return;
       const share=1/rv.months.length;
       rv.months.forEach(m=>{ out[m]=(out[m]||0)+rv.rev*share; });
@@ -11300,6 +11474,64 @@ function revenueByMonthAll(year){
       out[mo]=(out[mo]||0)+pa(r['R) 판매가(최종)']);
     });
   }
+  return Array.from({length:12},(_,i)=>out[year+'.'+(i+1)]||0);
+}
+// v23.14(사용자 요청 2026-08-04): 프로젝트 귀속 매입원가 — 세금계산서작성월 기준 매입 마감
+// (purchaseByMonthAll)과 **별개로**, 각 발주 프로젝트의 공급가액 합계를 그 프로젝트의 **매출
+// 귀속월**(REV_CUTOFF 기준)에 그대로 얹는다. 매출과 원가가 같은 프로젝트·같은 달에 묶이므로
+// 여기서 나오는 원가율이 실제 프로젝트 원가율이다.
+// 세금계산서월 기준은 발주·청구 시점이 출고와 어긋나 매출과 달이 밀리는데(원가율이 달마다 튐),
+// 이 함수는 그 왜곡이 없다. 원가 분석 '월별 원가 요약'(renderCostMonthly)과 같은 귀속 규칙.
+// 대상은 매출 쪽과 동일 — 2026 발주 RAW에 있고 proj_rev에도 있는 프로젝트(전년 귀속분 제외).
+// v23.14(사용자 요청 2026-08-04): 선매입 재고에서 나간 분의 원가.
+// 재고생산 발주는 특정 프로젝트에 귀속되지 않아 공급가액이 0으로 잡히는데, 그 프로젝트가 실제로는
+// 재고를 투입해 출고한 것이므로 원가가 통째로 누락된다(2026 기준 원가 0원 프로젝트 61건·매출 1.51억).
+// 재고생산 원가 전체를 얹으면 과대계상이므로 **실제 투입 수량 × 파츠 표준원가**로만 배분한다.
+// `출고자재_수량`에는 여분이 이미 반영돼 있다(고객주문 100 → 출고 103) — 별도 1.03 계수 불필요.
+// ※ `출고자재`·`출고자재_수량`은 콤마로 나열된 다중값이라 pa()로 읽으면 "55, 55"가 5555가 된다.
+//   두 목록을 인덱스로 짝지어 파츠별로 계산한다(개수가 안 맞으면 단일값일 때만 공통 적용).
+function stockInputCost(r){
+  const mats=String(r['출고자재 (from movement_투입이동)']||'').split(',').map(s=>s.trim()).filter(Boolean);
+  if(!mats.length) return 0;
+  const qs=String(r['출고자재_수량']||'').split(',').map(s=>parseFloat(s.replace(/[^\d.]/g,''))||0);
+  if(!qs.length) return 0;
+  const pm=(typeof PARTS_STD_COST!=='undefined'&&PARTS_STD_COST)||buildPartsStdCost();
+  let c=0;
+  mats.forEach((m,i)=>{
+    const pt=(m.match(/PT\d{3,}/)||[])[0]; if(!pt) return;
+    const q=qs.length===mats.length?qs[i]:(qs.length===1?qs[0]:0);
+    const u=pm[pt]; if(!u||!q) return;
+    c+=q*u;
+  });
+  return c;
+}
+var PARTS_STD_COST=null, PARTS_STD_SRC=null;
+function buildPartsStdCost(){
+  if(PARTS_STD_COST&&PARTS_STD_SRC===D.parts_master) return PARTS_STD_COST;
+  const m={};
+  (D.parts_master||[]).forEach(r=>{
+    const k=(r['파츠번호']||'').trim(), c=pa(r['표준원가']);
+    if(k&&c>0) m[k]=c;
+  });
+  PARTS_STD_COST=m; PARTS_STD_SRC=D.parts_master;
+  return m;
+}
+function projectCostByMonth(year){
+  const revMap=getProjRevMap();
+  if(!Object.keys(revMap).length||!D.order) return Array.from({length:12},()=>0);
+  const costByProj={};
+  getFilteredAllOrders().filter(r=>!isStock(r)).forEach(r=>{
+    const p=(r['project']||'').trim(); if(!p) return;
+    // 외주가공비(공급가액) + 그 행에서 투입된 선매입 재고 원가 — 재고 투입 행은 공급가액이 0이거나
+    // 가공비만 담고 있어 둘은 중복되지 않는다
+    costByProj[p]=(costByProj[p]||0)+pa(r['공급가액'])+stockInputCost(r);
+  });
+  const out={};
+  Object.entries(costByProj).forEach(([p,c])=>{
+    const rv=revMap[p]; if(!rv||!rv.months.length) return;
+    const share=1/rv.months.length;
+    rv.months.forEach(m=>{ out[m]=(out[m]||0)+c*share; });
+  });
   return Array.from({length:12},(_,i)=>out[year+'.'+(i+1)]||0);
 }
 // 월별 매입금액(세금계산서작성월 기준). stockIncl=false면 재고제외(totProj) — 매입비중은 카드와 동일하게 재고제외 기준
@@ -11322,8 +11554,9 @@ function renderRevenueModal(){
   const body=document.getElementById('modal-body');
   const P=SALES_PLAN;
   const actRev=revenueByMonthAll(P.targetYear);        // 대시보드 업로드 실측 매출
-  const purProj=purchaseByMonthAll(P.targetYear,false); // 재고제외 매입
-  const purAll=purchaseByMonthAll(P.targetYear,true);   // 재고포함 매입
+  const purProj=purchaseByMonthAll(P.targetYear,false); // 재고제외 매입(세금계산서작성월 기준)
+  const purAll=purchaseByMonthAll(P.targetYear,true);   // 재고포함 매입(세금계산서작성월 기준)
+  const projCost=projectCostByMonth(P.targetYear);      // v23.14: 프로젝트 귀속 원가(매출과 같은 달)
   const idxs=planSelMonthIdx();
   const sum=(arr,ii)=>ii.reduce((s,i)=>s+(arr[i]||0),0);
   const pct=(a,b)=>b>0?(a/b*100):null;
@@ -11331,27 +11564,47 @@ function renderRevenueModal(){
   const col=v=>v===null?'var(--text3)':v>=0?'var(--green)':'var(--red)';
   // 선택 기간 합계
   const selTarget=sum(P.target,idxs), selAct=sum(actRev,idxs), selPlanRev=sum(P.curRevenue,idxs),
-        selOrder=sum(P.curOrder,idxs), selPrev=sum(P.prevOrder,idxs), selPurProj=sum(purProj,idxs), selPurAll=sum(purAll,idxs);
+        selOrder=sum(P.curOrder,idxs), selPrev=sum(P.prevOrder,idxs), selPurProj=sum(purProj,idxs), selPurAll=sum(purAll,idxs),
+        selProjCost=sum(projCost,idxs);
   const achAct=pct(selAct,selTarget), achOrder=pct(selOrder,selTarget), ratio=pct(selPurProj,selAct);
+  const projRate=pct(selProjCost,selAct); // v23.14: 프로젝트 귀속 원가율 — 원가율 검토용
   const label=selPeriodLabel()||`${P.targetYear}년`;
   const noSel=!idxs.length;
   const ratioAll=pct(selPurAll,selAct);
   const rCol=v=>v===null?'var(--text3)':v>70?'var(--red)':v>50?'var(--amber)':'var(--green)';
+  // v23.14(사용자 기준 2026-08-04): 이 원가율은 **순수 외주생산제조비**만 담는다 — 물류비·
+  // 공통고정비(판관비)는 빠져 있어 실제 제조원가는 이보다 크다. 목표선 산출:
+  //   매출 100 = 외주생산제조비 45 + 물류비·판관비 15 + 마진 40  →  이 지표의 목표는 45% 미만.
+  // (평균 판매가에 마진 40%를 붙이므로 총원가는 60% 미만이어야 하고, 그중 15%p가 물류·판관비)
+  // 40~45%는 목표 근접(주황), 45%↑는 초과(빨강).
+  const COST_RATE_TARGET=45;
+  const cCol=v=>v===null?'var(--text3)':v>=COST_RATE_TARGET?'var(--red)':v>=40?'var(--amber)':'var(--green)';
   const ratioColor=rCol(ratio), ratioAllColor=rCol(ratioAll);
   const kpi=(lbl,val,sub,cls)=>`<div class="kpi-card ${cls||''}" style="cursor:default"><div class="kpi-label">${lbl}</div><div class="kpi-val" style="font-size:20px">${val}</div><div class="kpi-sub">${sub}</div></div>`;
   body.innerHTML=`
     ${noSel?`<div style="padding:8px 12px;background:var(--amber-light);border-radius:var(--r-sm);font-size:11.5px;color:var(--text2);margin-bottom:12px">선택 기간이 ${P.targetYear}년 밖이라 목표 대비는 표시할 수 없습니다. 아래 추이·표는 ${P.targetYear}년 연간 기준입니다.</div>`:''}
-    <div class="kpi-row-3" style="margin-bottom:6px">
+    <div class="kpi-row-4" style="margin-bottom:6px">
       ${kpi('목표 수주액',noSel?'—':fa(selTarget),`${label} · 연간 목표의 ${noSel?'—':(selTarget/P.target.reduce((a,b)=>a+b,0)*100).toFixed(1)+'%'}`,'c-slate')}
       ${kpi('매출 현황 (업로드 실측)',noSel?'—':fa(selAct),`목표 대비 <b style="color:${col(achAct===null?null:achAct-100)}">${achAct===null?'—':achAct.toFixed(0)+'%'}</b> (${achAct===null?'—':sgn(achAct-100)})`,'c-blue')}
       ${kpi('매입 / 매출 비중 <span style="font-weight:400;color:var(--text3)">(재고제외)</span>',
         noSel?'—':`<span style="color:${ratioColor}">${ratio===null?'—':ratio.toFixed(1)+'%'}</span>`,
-        `재고포함 <b style="color:${ratioAllColor}">${ratioAll===null?'—':ratioAll.toFixed(1)+'%'}</b><br><span style="font-size:10px;color:var(--text3)">매입 재고제외 ${noSel?'—':fa(selPurProj)} · 재고포함 ${noSel?'—':fa(selPurAll)}</span>`,'c-green')}
+        `재고포함 <b style="color:${ratioAllColor}">${ratioAll===null?'—':ratioAll.toFixed(1)+'%'}</b><br><span style="font-size:10px;color:var(--text3)">세금계산서작성월 기준 · <b>월별 지출 파악용</b><br>매입 재고제외 ${noSel?'—':fa(selPurProj)} · 재고포함 ${noSel?'—':fa(selPurAll)}</span>`,'c-green')}
+      ${kpi('원가율 <span style="font-weight:400;color:var(--text3)">(프로젝트 귀속)</span>',
+        noSel?'—':`<span style="color:${cCol(projRate)}">${projRate===null?'—':projRate.toFixed(1)+'%'}</span>`,
+        `목표 <b>${COST_RATE_TARGET}% 미만</b>${projRate===null?'':` · <b style="color:${cCol(projRate)}">${projRate<COST_RATE_TARGET?'달성 (여유 '+(COST_RATE_TARGET-projRate).toFixed(1)+'%p)':'초과 (+'+(projRate-COST_RATE_TARGET).toFixed(1)+'%p)'}</b>`}<br><span style="font-size:10px;color:var(--text3)">마감 매입원가 ${noSel?'—':fa(selProjCost)} · <b>원가율 검토용</b></span>`,'c-amber')}
     </div>
     <div style="font-size:11px;color:var(--text3);margin-bottom:14px">
-      · <b>매출 현황</b>은 업로드 실측치(proj_rev 프로젝트 총매출액)이고, <b>목표·수주액·전년·매출액(표)</b>은 구매조달팀 연간분석 표(01-A/01-B) 수치입니다. <b>v23.14(2026-08-04)에서 두 값의 기준을 맞췄습니다</b> — ① 금액을 <b>VAT 별도 공급가액</b>으로 통일(proj_rev '총 매출액'은 VAT 포함이라 ÷1.1) ② 귀속월을 달력 월이 아니라 <b>출고리스트 마감 컷오프</b>(아래 '마감 출고일' 행)로 변경 ③ 전년 수주·당해 출고 건도 출고 시점 매출로 포함. 그 결과 1~7월 누계 오차가 <b>0.11%</b>로 좁혀졌습니다(이전 +10.7%).
-      · <b>마감 출고일</b>은 표의 월별 누계에 맞춰 역산한 값입니다. 매달 마감일이 달라 고정 규칙이 없으므로, 새 달이 확정되면 <code>REV_CUTOFF</code>에 날짜를 추가해야 합니다. 아직 추가되지 않은 달은 <b>달력 월</b>로 집계되어 표와 어긋날 수 있습니다.
-      · <b>매입 비중</b>은 매입 ÷ 매출 — <b>재고제외</b>는 원가분석의 원가율과 같은 정의(프로젝트 매출에 직접 대응하는 매입만), <b>재고포함</b>은 재고생산분까지 더한 총 매입 기준이라 항상 재고제외보다 큽니다.
+      · <b>매출 현황</b>은 업로드 실측치(proj_rev 프로젝트 총매출액)이고, <b>목표·수주액·전년·매출액(표)</b>은 구매조달팀 연간분석 표(01-A/01-B) 수치입니다. <b>v23.14(2026-08-04)에서 두 값의 기준을 맞췄습니다</b> — ① 금액을 <b>VAT 별도 공급가액</b>으로 통일(proj_rev '총 매출액'은 VAT 포함이라 ÷1.1) ② 귀속월을 달력 월이 아니라 <b>출고리스트 마감 컷오프</b>(아래 '마감 출고일' 행)로 변경 ③ 2025년 매출로 이미 마감된 건(2025년 12월 수주·2026년 1월 출고)은 제외. 그 결과 1~7월 누계 오차가 <b>+0.67%</b>, 월별 오차가 <b>±3.2% 이내</b>로 좁혀졌습니다(이전 +10.7% · 월별 ±38%).
+      · <b>마감 출고일</b>은 달력 월말이 아닙니다 — 출고리스트가 그 달 출고분을 <b>다음 달 중순~하순까지 받아서 마감</b>하기 때문에 컷오프가 다음 달로 넘어갑니다(예: 1월분은 2/23 출고분까지). 이 기준으로 1~7월 <b>전 구간 오차 ±3.2% 이내 · 누계 +0.67%</b>입니다. 정확히 0.0%는 날짜 단위로 불가능합니다 — 하루치 출고 중앙값이 3,455만원이라 경계를 한 칸 옮길 때마다 월 금액이 3~5%씩 점프하며, 전 구간 최적화해도 월별 최악의 하한은 2.17%입니다.
+      · <b>2025년 매출로 마감된 건은 제외</b>합니다 — 2025년 12월 수주·2026년 1월 출고 프로젝트 112건(5.47억)은 이미 2025년 매출로 잡혀 있어 2026에 다시 세면 이중계상이 됩니다. 2026 발주 RAW에 해당 프로젝트가 없다는 점이 그대로 판별자가 됩니다.
+      · 매달 마감일이 달라 고정 규칙이 없으므로, 새 달이 확정되면 <code>REV_CUTOFF</code>에 날짜를 추가해야 합니다. 아직 추가되지 않은 달은 <b>달력 월</b>로 집계되어 표와 어긋납니다.
+      · <b>매입 지표가 두 종류인 이유 — 목적이 다릅니다.</b><br>
+      &nbsp;&nbsp;① <b>매입 / 매출 비중 (재고제외·재고포함)</b> = <b>세금계산서작성월</b> 기준. <b>한 달에 얼마씩 지출하고 있는지</b>를 보는 지표입니다. 재고제외는 프로젝트 매출에 대응하는 매입만, 재고포함은 재고생산분까지 더한 총 매입이라 항상 재고제외보다 큽니다.<br>
+      &nbsp;&nbsp;② <b>원가율 (프로젝트 귀속)</b> = 각 발주 프로젝트의 매입원가를 <b>그 프로젝트의 매출이 찍힌 달</b>에 얹은 것. <b>매출 대비 원가가 몇 %인지 검토</b>하는 지표입니다. 예컨대 매입 마감은 3월에 됐어도 그 프로젝트 매출이 4월에 찍히면 <b>그 매입금은 4월 원가</b>로 봅니다 — 그래야 같은 프로젝트의 매출과 원가가 같은 달에서 대조됩니다.<br>
+      &nbsp;&nbsp;세금계산서월 기준으로는 발주·청구 시점이 출고와 어긋나 월별 원가율이 24~54%로 튀지만, 프로젝트 귀속 기준으로는 29~42%로 안정적입니다.<br>
+      &nbsp;&nbsp;<b>원가율 목표는 ${COST_RATE_TARGET}% 미만</b>입니다 — 매출 100 = <b>외주생산제조비 ${COST_RATE_TARGET}</b> + 물류비·판관비 15 + 마진 40. 평균 판매가에 마진 40%를 붙이므로 총원가는 60% 미만이어야 하고, 그중 15%p가 물류비·판관비입니다. 표와 카드에서 <b style="color:var(--red)">${COST_RATE_TARGET}%↑ 빨강</b> · <b style="color:var(--amber)">40~${COST_RATE_TARGET}% 주황</b>으로 표시합니다.<br>
+      &nbsp;&nbsp;<b>선매입 재고 투입분 포함</b> — 재고에서 출고된 분은 재고생산 발주가 프로젝트에 귀속되지 않아 공급가액이 0으로 잡힙니다. 재고생산 원가를 통째로 얹으면 과대계상이므로 <b>실제 투입 수량(<code>출고자재_수량</code>) × 파츠 표준원가</b>로만 배분합니다(출고 수량에 여분이 이미 반영돼 있습니다 — 고객주문 100 → 출고 103). 2026년 기준 <b>1,369행 · 10.4억원</b>이 이 경로로 잡히며, 반영 전에는 원가율이 36.4%로 과소평가됐습니다.<br>
+      &nbsp;&nbsp;⚠ <b>그래도 물류비·공통고정비(판관비)는 빠져 있습니다</b> — 이 지표는 <b>순수 외주생산제조비</b>이므로 실제 총원가는 이보다 큽니다. 표준원가가 없는 파츠는 배분에서 제외되므로 재고 투입 원가는 <b>다소 과소</b>일 수 있습니다.
     </div>
     <div class="card" style="margin-bottom:14px">
       <div class="card-header"><div class="card-title">${P.prevYear} vs ${P.targetYear} 매출·수주 추이</div><div class="card-sub"><a href="javascript:void(0)" onclick="closeModal();nav(document.querySelector('.sb-item[onclick*=cost-analysis]'),'cost-analysis')">원가 분석 화면 →</a></div></div>
@@ -11373,6 +11626,9 @@ function renderRevenueModal(){
         ${ratioRow('매입 / 매출 비중 (재고제외)',purProj,actRev,idxs,rCol)}
         ${planRow('매입금액 (재고포함)',purAll,idxs)}
         ${ratioRow('매입 / 매출 비중 (재고포함)',purAll,actRev,idxs,rCol)}
+        <tr><td colspan="14" style="padding:6px 8px;background:var(--surface2);font-size:11px;color:var(--text2)"><b>원가율 검토용 — 프로젝트 귀속 기준</b> (위 매입 2행은 <b>월별 지출 파악용</b>, 세금계산서작성월 기준). 아래는 각 발주 프로젝트의 매입원가를 <b>그 프로젝트의 매출이 찍힌 달</b>에 얹은 것입니다 — 매입 마감이 3월이어도 매출이 4월이면 4월 원가로 봅니다. 같은 프로젝트의 매출과 원가가 같은 달에서 대조되므로 이 값이 <b>실제 원가율</b>입니다(원가 분석 '월별 원가 요약'과 동일 규칙).</td></tr>
+        ${planRow('매입원가 (프로젝트 귀속)',projCost,idxs)}
+        ${ratioRow(`원가율 (프로젝트 귀속) — 목표 ${COST_RATE_TARGET}% 미만`,projCost,actRev,idxs,cCol)}
       </tbody>
     </table></div>`;
   dc('ch-rev-plan');
@@ -11470,6 +11726,63 @@ function calLoadNotes(){
 let CAL_NOTES_CACHE=null; // 달력은 칸마다 특이사항을 조회하므로 렌더 1회당 한 번만 파싱
 function calSaveNotes(list){ CAL_NOTES_CACHE=null; try{ localStorage.setItem(CAL_NOTES_KEY,JSON.stringify(list)); }catch(e){} }
 function calNotes(){ if(!CAL_NOTES_CACHE) CAL_NOTES_CACHE=calLoadNotes(); return CAL_NOTES_CACHE; }
+
+// ===== v23.14(사용자 요청 2026-08-04): 캘린더 특이사항 GitHub 커밋 =====
+// 지금까지 특이사항은 localStorage에만 남아 등록한 브라우저에서만 보였다. 진행현황 비고
+// (progress_notes.json)와 같은 방식으로 data/cal_notes.json에 커밋해 팀 전체가 공유한다.
+// 병합 안전장치: 저장 직전에 배포본을 다시 받아, **이 브라우저가 직접 건드린 항목만** 얹는다
+// (추가분은 id로 덮어쓰고, 삭제분은 id로 제거) — 그 사이 다른 사람이 올린 항목을 덮어쓰지 않는다.
+const CAL_NOTES_FILE='data/cal_notes.json';
+let CAL_DIRTY_ADD=new Set(), CAL_DIRTY_DEL=new Set();
+// 배포본을 받아 로컬과 합친다 — seed 기본 항목은 코드 정의가 정본이라 배포본 값으로 덮지 않는다
+function loadCalNotesDeployed(){
+  fetch(CAL_NOTES_FILE+'?_='+Date.now()).then(r=>r.ok?r.json():null).catch(()=>null).then(dep=>{
+    if(!Array.isArray(dep)||!dep.length) return;
+    const local=calNotes();
+    const byId={};
+    dep.forEach(n=>{ if(n&&n.id&&!String(n.id).startsWith('seed-')) byId[n.id]=n; });
+    local.forEach(n=>{ if(n&&n.id&&(String(n.id).startsWith('seed-')||CAL_DIRTY_ADD.has(n.id))) byId[n.id]=n; });
+    CAL_DIRTY_DEL.forEach(id=>{ delete byId[id]; });
+    const seeds=local.filter(n=>n&&String(n.id||'').startsWith('seed-'));
+    const rest=Object.values(byId).filter(n=>!String(n.id||'').startsWith('seed-'));
+    calSaveNotes(seeds.concat(rest));
+    if(typeof calRenderAll==='function'&&document.getElementById('cal-notes-list')) calRenderAll();
+  });
+}
+async function mergeCalNotesForSave(){
+  let deployed=[];
+  try{ const r=await fetch(CAL_NOTES_FILE+'?_='+Date.now()); if(r.ok){ const j=await r.json(); if(Array.isArray(j)) deployed=j; } }catch(e){}
+  const byId={};
+  deployed.forEach(n=>{ if(n&&n.id) byId[n.id]=n; });
+  calNotes().forEach(n=>{ if(n&&n.id&&CAL_DIRTY_ADD.has(n.id)) byId[n.id]=n; });
+  CAL_DIRTY_DEL.forEach(id=>{ delete byId[id]; });
+  // 기본 항목(seed-*)은 코드에 정의돼 있으므로 파일에 넣지 않는다 — 정의가 바뀌면 파일이 낡아버린다
+  return Object.values(byId).filter(n=>!String(n.id||'').startsWith('seed-'));
+}
+function calSetStatus(msg){ const el=document.getElementById('cal-save-status'); if(el) el.innerHTML=msg; }
+function commitCalNotes(){
+  if(!ghToken()){
+    calSetStatus('<span style="color:var(--amber)">⚙ 이 브라우저에 GitHub 토큰이 없습니다</span> — 오른쪽 위 <b>⚙</b> 버튼에서 등록해주세요. '
+      +'토큰은 <b>진행현황 비고와 같은 것을 공유</b>하므로 한 번만 넣으면 됩니다(저장 키 <code>gh_pat</code>). '
+      +'※ 토큰은 브라우저·주소별로 따로 저장됩니다 — 다른 PC나 다른 주소(localhost ↔ github.io)에서 넣으셨다면 여기서 다시 등록해야 합니다.');
+    return;
+  }
+  calSetStatus('GitHub 커밋 중...');
+  mergeCalNotesForSave()
+    .then(merged=>commitFileToGitHub(CAL_NOTES_FILE,JSON.stringify(merged,null,2),
+      '캘린더 특이사항 업데이트 '+new Date().toISOString().slice(0,16).replace('T',' ')))
+    .then(()=>{ CAL_DIRTY_ADD.clear(); CAL_DIRTY_DEL.clear();
+      calSetStatus('<span style="color:var(--green)">✅ 커밋 완료 · '+new Date().toLocaleTimeString('ko-KR')+' — 1~2분 후 배포에 반영되어 팀 전체가 봅니다</span>'); })
+    .catch(e=>{
+      const hint=e.status===401?'토큰이 만료됐거나 잘못됐습니다 — ⚙에서 새 토큰을 발급·등록해주세요.'
+        :e.status===403?'토큰에 이 저장소 <b>Contents 쓰기 권한</b>이 없습니다 — 권한을 포함해 재발급해주세요.'
+        :e.status===404?'저장소·경로를 찾을 수 없습니다 — 토큰이 이 저장소에 접근 가능한지 확인해주세요.'
+        :'⚙에서 토큰·권한을 확인해주세요.';
+      calSetStatus('<span style="color:var(--red)">⚠ 커밋 실패 (HTTP '+(e.status||'?')+')</span> — '+hint
+        +(e.ghMessage?'<br><span style="font-size:10px;color:var(--text3)">GitHub 응답: '+esc(e.ghMessage)+'</span>':'')
+        +'<br><span style="font-size:10px;color:var(--text3)">입력한 내용은 이 브라우저에 저장돼 있으니, 원인 해결 후 🔄 버튼을 다시 누르면 그대로 올라갑니다.</span>');
+    });
+}
 
 const _t=new Date();
 let CAL_VIEW_Y=_t.getFullYear(), CAL_VIEW_M=_t.getMonth()+1, CAL_SELECTED_DAY=null;
@@ -11587,8 +11900,10 @@ function renderCalendar(){
         <input id="cal-note-month" type="number" min="1" max="12" placeholder="또는 월(1-12)" style="width:110px;padding:5px 8px;border:1px solid var(--border2);border-radius:var(--r-sm);font-size:12px">
         <input id="cal-note-note" placeholder="비고" style="width:180px;padding:5px 8px;border:1px solid var(--border2);border-radius:var(--r-sm);font-size:12px">
         <button class="topbar-btn primary" onclick="calAddNote()">+ 추가</button>
+        <button class="topbar-btn" onclick="commitCalNotes()" title="지금 등록된 특이사항을 data/cal_notes.json으로 커밋합니다. 1~2분 후 배포에 반영되어 팀 전체가 같은 내용을 봅니다.">🔄 GitHub에 커밋</button>
       </div>
-      <div style="font-size:10px;color:var(--text3);margin-top:6px">시작·종료일을 넣으면 달력의 해당 날짜에 막대로 표시되고, 날짜 대신 월만 넣으면 그 달 전체로 표시됩니다.</div>
+      <div id="cal-save-status" style="font-size:11px;color:var(--text3);margin-top:6px;min-height:16px"></div>
+      <div style="font-size:10px;color:var(--text3);margin-top:2px">시작·종료일을 넣으면 달력의 해당 날짜에 막대로 표시되고, 날짜 대신 월만 넣으면 그 달 전체로 표시됩니다. <b>추가·삭제하면 GitHub에 자동 커밋</b>되어 팀 전체가 같은 내용을 봅니다(⚙ 토큰 등록 시). 토큰이 없으면 이 브라우저에만 저장되고, 나중에 토큰을 등록한 뒤 <b>🔄 GitHub에 커밋</b>을 누르면 반영됩니다.</div>
     </div>
   `;
   calRenderAll();
@@ -11702,13 +12017,21 @@ function calAddNote(){
     alert('시작일을 고르거나, 해당 월(1-12)을 입력해주세요.'); return;
   }
   const notes=calNotes().slice(); notes.push(rec); calSaveNotes(notes);
+  CAL_DIRTY_ADD.add(rec.id); CAL_DIRTY_DEL.delete(rec.id);
   ['cal-note-title','cal-note-start','cal-note-end','cal-note-month','cal-note-note'].forEach(id=>{const e=document.getElementById(id); if(e) e.value='';});
   const dp=document.getElementById('cal-note-dept'); if(dp) dp.value='';
   calRenderAll();
+  // v23.14: 토큰이 있으면 추가 즉시 커밋 — 없으면 로컬 저장만 하고 안내
+  if(ghToken()) commitCalNotes();
+  else calSetStatus('저장됨(이 브라우저) · ⚙ GitHub 연동 설정 시 자동 커밋되어 팀 전체가 봅니다');
 }
 function calDelNote(idx){
-  const notes=calNotes().slice(); notes.splice(idx,1); calSaveNotes(notes);
+  const notes=calNotes().slice();
+  const gone=notes[idx];
+  notes.splice(idx,1); calSaveNotes(notes);
+  if(gone&&gone.id&&!String(gone.id).startsWith('seed-')){ CAL_DIRTY_DEL.add(gone.id); CAL_DIRTY_ADD.delete(gone.id); }
   calRenderAll();
+  if(gone&&gone.id&&!String(gone.id).startsWith('seed-')&&ghToken()) commitCalNotes();
 }
 
 // ===== AUTO-LOAD RAW (배포용: 정적 CSV 자동 fetch) =====
@@ -11771,11 +12094,19 @@ async function commitFileToGitHub(path,content,message){
   const tok=ghToken(); if(!tok){ const e=new Error('토큰 미설정'); e.status='no-token'; throw e; }
   const api=`https://api.github.com/repos/${GH_REPO}/contents/${path}`;
   const headers={'Authorization':'Bearer '+tok,'Accept':'application/vnd.github+json'};
-  async function getSha(){ const r=await fetch(api+'?ref='+GH_BRANCH,{headers}); if(r.status===404) return null; if(!r.ok){ const e=new Error('조회 실패'); e.status=r.status; throw e; } const j=await r.json(); return j.sha||null; }
+  // v23.14: GitHub가 돌려주는 사유(message)를 error에 실어 보낸다 — 이전엔 HTTP 코드만 남아
+  // "401인지 403인지"만 알 수 있었고, 토큰 만료·권한 부족·경로 오류를 구분할 수 없었다.
+  async function ghMsg(r){ try{ const j=await r.json(); return j&&j.message?j.message:''; }catch(e){ return ''; } }
+  async function getSha(){
+    const r=await fetch(api+'?ref='+GH_BRANCH,{headers});
+    if(r.status===404) return null;
+    if(!r.ok){ const e=new Error('조회 실패'); e.status=r.status; e.ghMessage=await ghMsg(r); throw e; }
+    const j=await r.json(); return j.sha||null;
+  }
   async function put(sha){
     const body={message,content:utf8b64(content),branch:GH_BRANCH}; if(sha) body.sha=sha;
     const r=await fetch(api,{method:'PUT',headers,body:JSON.stringify(body)});
-    if(!r.ok){ const e=new Error('커밋 실패'); e.status=r.status; throw e; }
+    if(!r.ok){ const e=new Error('커밋 실패'); e.status=r.status; e.ghMessage=await ghMsg(r); throw e; }
     return r.json();
   }
   let sha=await getSha();
@@ -12337,6 +12668,7 @@ window.addEventListener('load',()=>{
   loadPartsMaster();
   loadCIOverrides();
   loadProgressNotes();
+  loadCalNotesDeployed(); // v23.14: 캘린더 특이사항 배포본 병합
   loadProgressData();
   loadChangeLog();
   loadProjectRevenue();
