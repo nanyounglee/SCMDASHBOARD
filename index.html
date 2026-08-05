@@ -1384,6 +1384,25 @@ function goodsCode(r) {
   return m ? m[1] : '';
 }
 function partsType(r) { return r['파츠유형']||''; }
+// ===== 빅딜(대량 발주) 판정 — 제품별 공통 기준 =====
+// v23.14(사용자 확정 2026-08-04): "제품별 표준분포에서 가중치 80%를 벗어나는 수량"을 빅딜 기준으로
+// 통일. 그 제품의 전체 발주수량 분포를 정규분포로 보고 중앙 80% 구간의 상단(μ+1.2816σ)을 넘는
+// 발주만 빅딜로 본다(상위 10% 경계).
+// 이전에는 화면마다 기준이 달라 같은 발주 건이 한쪽에선 빅딜, 다른 쪽에선 정상으로 잡혔다 —
+// 발주 현황 제품상세는 '건당 평균×1.1'(v22.17), 제품별 판매량 추이는 IQR 울타리(Q3+1.5×IQR,
+// v23.7). 두 곳 모두 이 함수 하나를 쓰도록 바꿔 기준을 일치시킨다.
+// 표본 5건 미만이거나 전 건이 같은 수량(σ=0)이면 분포 판정이 무의미해 빅딜 없음으로 둔다.
+var BIGDEAL_Z=1.2816; // 정규분포 중앙 80% 구간 상단의 z값
+function bigDealStat(qtys){
+  const a=(qtys||[]).filter(n=>n>0);
+  const n=a.length;
+  if(n<5) return {cut:Infinity,mean:0,sd:0,n};
+  const mean=a.reduce((s,v)=>s+v,0)/n;
+  const sd=Math.sqrt(a.reduce((s,v)=>s+(v-mean)*(v-mean),0)/n);
+  return {cut:sd>0?mean+BIGDEAL_Z*sd:Infinity,mean,sd,n};
+}
+// 표시용 최소 빅딜 수량(정수) — "cut 초과" 판정과 경계가 정확히 같다
+function bigDealMinQty(cut){ return cut===Infinity?0:Math.floor(cut)+1; }
 function purchaseByMonth(r) {
   const taxMonths=pTaxMonth(r['세금계산서작성월 (from 지출결의)']||'');
   if (!taxMonths.length) return {};
@@ -2225,9 +2244,16 @@ function updateKPIs() {
     const useRevOv=Object.keys(revMap).length>0;
     let periodRevenue=0;
     if(useRevOv){
-      const projSeen=new Set();
-      getFilteredAllOrders().filter(r=>!isStock(r)).forEach(r=>{ const p=(r['project']||'').trim(); if(p) projSeen.add(p); });
-      projSeen.forEach(p=>{
+      // v23.14: 발주 RAW에 있는 프로젝트로 제한하던 필터 제거 — 전년 수주·당해 출고 건(2026년
+      // 1월분 112건, 5.87억)이 통째로 빠져 1월 실측이 표의 54% 수준으로 찍혔다. 표는 출고 시점
+      // 기준이라 포함이 맞다(사용자 확정 2026-08-04). 검색어가 있을 때만 검색 결과로 좁힌다.
+      let revKeys=Object.keys(revMap);
+      if(q){
+        const projSeen=new Set();
+        getFilteredAllOrders().filter(r=>!isStock(r)).forEach(r=>{ const p=(r['project']||'').trim(); if(p) projSeen.add(p); });
+        revKeys=revKeys.filter(p=>projSeen.has(p));
+      }
+      revKeys.forEach(p=>{
         const rv=revMap[p]; if(!rv||!rv.months.length) return;
         const share=1/rv.months.length;
         rv.months.forEach(m=>{ if(curMonths.includes(m)) periodRevenue+=rv.rev*share; });
@@ -2241,7 +2267,7 @@ function updateKPIs() {
     const revRatio=periodRevenue>0?(totProj/periodRevenue*100):null;
     const revRatioColor=revRatio===null?'var(--text3)':revRatio>70?'var(--red)':revRatio>50?'var(--amber)':'var(--green)';
     setValue('k-revenue',fa(periodRevenue));
-    document.getElementById('k-revenue-sub').innerHTML=`${useRevOv?'실측(CX 매출결산)':'근사(R) 판매가)'} · 매입 비중 <b style="color:${revRatioColor}">${revRatio!==null?revRatio.toFixed(1)+'%':'—'}</b>${q?' <span style="color:var(--text3)">(필터)</span>':''}`;
+    document.getElementById('k-revenue-sub').innerHTML=`${useRevOv?'실측(CX 매출결산 · VAT 제외)':'근사(R) 판매가)'} · 매입 비중 <b style="color:${revRatioColor}">${revRatio!==null?revRatio.toFixed(1)+'%':'—'}</b>${q?' <span style="color:var(--text3)">(필터)</span>':''}${useRevOv&&revCutoffLabel(SEL_MONTH)?`<br><span style="font-size:10px;color:var(--text3)">${SEL_MONTH}분 마감 — <b>${revCutoffLabel(SEL_MONTH)}</b>까지 최종 출고된 건 기준(달력월 아님 · 연간분석 표와 동일)</span>`:''}`;
   }
   if (D.issue) {
     let fi=D.issue.filter(r=>inSelDateRange(issueDateStr(r)));
@@ -2845,12 +2871,15 @@ function openProductOrderDetail(prod){
   } else {
     bufHtml=`<div style="font-size:11px;color:var(--text3);margin:10px 0">이슈 이력이 없어 여분 권장 산식 대상이 아닙니다 — 현재 관행 여분율만 참고하세요.</div>`;
   }
-  // v22.17: 건당 평균 발주수량·빅딜 기준 수량(평균 +10%↑)·집중 발주 시즌(월별 발주빈도 평균+표준편차 초과 월)
+  // v22.17: 건당 평균 발주수량·빅딜 기준 수량·집중 발주 시즌(월별 발주빈도 평균+표준편차 초과 월)
   // — 당해+전년 전체 이력(재제작 제외) 기준. 이력이 적으면(6건 미만) 시즌 판단은 보류.
+  // v23.14: 빅딜 기준을 '건당 평균×1.1'에서 제품별 분포 기준(μ+1.2816σ, bigDealStat)으로 교체 —
+  // 제품별 판매량 추이 화면과 같은 함수를 써서 두 화면의 빅딜 판정을 일치시킨다.
   const nonReworkOrders=orders.filter(r=>!String(r['task_id']||'').includes('재제작'));
   const avgQtyPerOrder=taskCnt>0?qty/taskCnt:0;
-  const bigDealQty=avgQtyPerOrder>0?Math.ceil(avgQtyPerOrder*1.1):0;
-  const bigDealOrders=bigDealQty>0?nonReworkOrders.filter(r=>pa(String(r['발주지시수량']||''))>=bigDealQty):[];
+  const bdStat=bigDealStat(nonReworkOrders.map(r=>pa(String(r['발주지시수량']||''))));
+  const bigDealQty=bigDealMinQty(bdStat.cut);
+  const bigDealOrders=nonReworkOrders.filter(r=>pa(String(r['발주지시수량']||''))>bdStat.cut);
   const monthCnt=Array(13).fill(0);
   nonReworkOrders.forEach(r=>{ const d=parseAnyDate(r['과업지시일자']); if(d) monthCnt[d.getMonth()+1]++; });
   const monthVals=monthCnt.slice(1);
@@ -2862,7 +2891,7 @@ function openProductOrderDetail(prod){
   const patternHtml=`<div class="card" style="margin:12px 0;padding:12px 16px">
     <div style="font-size:12px;font-weight:700;margin-bottom:6px">발주 패턴 <span style="font-weight:400;font-size:10px;color:var(--text3)">— 당해+전년 전체 이력(재제작 제외) 기준</span></div>
     <div style="font-size:12px;line-height:2">건당 평균 발주수량: <b>${avgQtyPerOrder?Math.round(avgQtyPerOrder).toLocaleString()+'개':'—'}</b>
-    · 빅딜 기준 수량(평균 대비 +10%↑): <b style="color:var(--blue)">${bigDealQty?bigDealQty.toLocaleString()+'개 이상':'—'}</b>${bigDealOrders.length?` <span style="font-size:11px;color:var(--text3)">(이력상 ${bigDealOrders.length}건 해당)</span>`:''}<br>
+    · 빅딜 기준 수량: <b style="color:var(--blue)">${bigDealQty?bigDealQty.toLocaleString()+'개 이상':'—'}</b>${bigDealQty?`${bigDealOrders.length?` <span style="font-size:11px;color:var(--text3)">(이력상 ${bigDealOrders.length}건 해당)</span>`:''} <span style="font-size:10px;color:var(--text3)">(이 제품 발주수량 분포의 표준분포 80% 범위 상단 초과 — 평균 ${Math.round(bdStat.mean).toLocaleString()}개·표준편차 ${Math.round(bdStat.sd).toLocaleString()} 기준 μ+1.28σ, 표본 ${bdStat.n}건)</span>`:` <span style="font-size:10px;color:var(--text3)">(${bdStat.n<5?'표본 부족(5건 미만) — 분포 판정 보류':'전 건 동일 수량 — 튀는 발주 없음'})</span>`}<br>
     집중 발주 시즌: <b style="color:${peakMonths.length?'var(--amber)':'var(--text)'}">${seasonTxt}</b> <span style="font-size:10px;color:var(--text3)">(월별 발주횟수 평균 ${mMean.toFixed(1)}건·표준편차 ${mStd.toFixed(1)} — 평균+표준편차 초과 월을 집중 시즌으로 판정)</span></div>
   </div>`;
   const recent=orders.slice().sort((a,c)=>{const da=parseAnyDate(a['과업지시일자']),dc=parseAnyDate(c['과업지시일자']);return (da&&dc)?dc-da:0;}).slice(0,30);
@@ -2872,8 +2901,8 @@ function openProductOrderDetail(prod){
       const rw=String(r['task_id']||'').includes('재제작');
       const oq=pa(String(r['발주지시수량']||'')), cq=pCustQty(r['고객주문수량'])*bomMultiplier(r);
       const bf=(cq>0&&oq>=cq&&!rw)?oq-cq:null;
-      const isBigDeal=!rw&&bigDealQty>0&&oq>=bigDealQty;
-      return `<tr><td class="rank">${i+1}</td><td style="font-size:11px">${esc(r['과업지시일자']||'—')}</td><td class="mono" style="font-size:11px">${esc(r['발주번호']||'—')}</td><td style="font-size:11px">${esc(r['수주처']||'—')}</td><td class="num">${oq.toLocaleString()}</td><td class="num">${cq?cq.toLocaleString():'—'}</td><td class="num">${bf!==null?bf.toLocaleString():'—'}</td><td class="num">${faFull(pa(r['공급가액']))}</td><td>${rw?'<span class="tag" style="background:var(--red-light);color:var(--red)">재제작</span>':''}${isBigDeal?' <span class="tag" style="background:var(--blue-light);color:var(--blue)" title="건당 평균 발주수량 대비 +10% 이상">빅딜</span>':''}</td></tr>`;
+      const isBigDeal=!rw&&oq>bdStat.cut;
+      return `<tr><td class="rank">${i+1}</td><td style="font-size:11px">${esc(r['과업지시일자']||'—')}</td><td class="mono" style="font-size:11px">${esc(r['발주번호']||'—')}</td><td style="font-size:11px">${esc(r['수주처']||'—')}</td><td class="num">${oq.toLocaleString()}</td><td class="num">${cq?cq.toLocaleString():'—'}</td><td class="num">${bf!==null?bf.toLocaleString():'—'}</td><td class="num">${faFull(pa(r['공급가액']))}</td><td>${rw?'<span class="tag" style="background:var(--red-light);color:var(--red)">재제작</span>':''}${isBigDeal?` <span class="tag" style="background:var(--blue-light);color:var(--blue)" title="이 제품 발주수량 분포의 표준분포 80% 범위 상단(μ+1.28σ=${bigDealQty.toLocaleString()}개) 초과">빅딜</span>`:''}</td></tr>`;
     }).join('')}
     </tbody></table>`;
   const issHtml=`<div style="font-size:12px;font-weight:700;margin:14px 0 6px">제품 이슈 이력 <span style="font-weight:400;font-size:10px;color:var(--text3)">(당해+전년 · 여분 산식과 동일 매칭)</span></div>
@@ -9334,19 +9363,54 @@ function onCostProjSearch(val){
 // v21.13: 프로젝트별 총매출액(proj_rev.csv, Airtable CX_매출결산) — 실제 청구 매출 기준.
 // 기존 R) 판매가(최종) 합산은 근사치라, proj_rev가 로드되면 이것을 매출 원본으로 사용(미매칭은 근사 폴백).
 let PROJ_REV_MAP=null, PROJ_REV_SRC=null;
+// v23.14(사용자 확정 2026-08-04): proj_rev의 '총 매출액'은 출고리스트 '출고처리 금액'과 같은
+// **VAT 포함** 금액인데, 비교 대상인 매입금액(공급가액)과 연간분석 01-A/01-B 표는 모두 **VAT 별도**라
+// 기준이 어긋나 있었다 — 원가율은 분자만 VAT 제외라 구조적으로 과소계산됐고, 매출 실측은 표보다
+// 10% 부풀려 보였다. 근거: proj_rev 총매출액을 '발주 신청일' 월로 묶고 ÷1.1 하면 표의 수주액과
+// 원 단위까지 일치한다(1월 -965원 · 2월 +2,191원 · 4월 -3,491원 · 6월 -79,136원 / 2026 실측 검증).
+// 그래서 소스인 여기 한 곳에서 나눠 매출을 쓰는 모든 화면(매출 현황 모달·종합현황 KPI·원가율·
+// 프로젝트별 상세)을 공급가액 기준으로 통일한다.
+const REV_VAT_DIV=1.1; // 총 매출액(VAT 포함) → 공급가액
+// v23.14: 매출 귀속월을 '출고 날짜(월)'(달력월)에서 **출고리스트 마감 컷오프**로 교체.
+// 연간분석 01-A/01-B 표의 매출액은 달력월이 아니라 매달 출고리스트를 마감한 시점까지의 출고분
+// 합계라, 달력월로 집계하면 월별로 ±30%씩 어긋났다(3월 -32% · 4월 +38% · 6월 +27%).
+// 아래 날짜는 2026 실측 proj_rev를 표의 월별 누계에 맞춰 역산한 값 — 'N월분 = 직전 컷오프 다음날
+// ~ 이 날짜까지 최종 출고된 건'. 역산 결과 누적 오차는 전 구간 0.7억 이내(최대 6월 -0.64억).
+// ※ 매달 마감일이 달라 고정 규칙이 없다. 새 달이 확정되면 이 배열에 날짜를 추가해야 하고,
+//   배열에 없는 달은 달력월로 폴백하되 마지막 확정월 이전으로는 귀속시키지 않는다.
+const REV_CUTOFF={2026:['2026-01-30','2026-02-24','2026-04-06','2026-04-27','2026-05-26','2026-06-22','2026-07-08']};
+// 최종 출고일 → 매출 귀속월('YYYY.M')
+function revMonthOfShipDate(s){
+  const d=parseAnyDate(s); if(!d) return null;
+  const y=d.getFullYear(), cuts=REV_CUTOFF[y];
+  if(cuts&&cuts.length){
+    for(let i=0;i<cuts.length;i++){
+      const c=parseAnyDate(cuts[i]);
+      if(c&&d<=c) return y+'.'+(i+1);
+    }
+    // 마지막 확정 컷오프 이후 출고분 — 이미 마감된 달로 되돌리지 않고 다음 달로 넘긴다
+    if(d.getMonth()+1<=cuts.length) return y+'.'+(cuts.length+1);
+  }
+  return y+'.'+(d.getMonth()+1);
+}
+// 그 달분의 마감 출고일(화면 표기용) — 확정 전이면 null
+function revCutoffLabel(mk){
+  const p=String(mk||'').split('.'); const cuts=REV_CUTOFF[+p[0]];
+  return (cuts&&cuts[+p[1]-1])||null;
+}
 function getProjRevMap() {
   if (PROJ_REV_SRC!==D.proj_rev) {
     PROJ_REV_MAP={};
     (D.proj_rev||[]).forEach(r=>{
       const k=(r['프로젝트명 (Short ver.)']||'').trim(); if(!k) return;
-      const rev=pa(String(r['총 매출액']||''));
-      // 출고 날짜(월) "2026-01" 또는 "2026-01, 2026-02"(복수 출고) → 'YYYY.M' 목록. #ERROR!·공란은 월 미상
-      const months=String(r['출고 날짜(월)']||'').split(',').map(s=>s.trim()).map(s=>{
-        const m=s.match(/^(\d{4})-(\d{1,2})$/); return m?(+m[1])+'.'+(+m[2]):null;
-      }).filter(Boolean);
+      // 원 단위 반올림 — ÷1.1은 소수를 만들고, 이 값이 원가 요약 표 등에 그대로 찍히면 "515,687,710.909원"이 된다
+      const rev=Math.round(pa(String(r['총 매출액']||''))/REV_VAT_DIV);
+      // v23.14: 귀속월 산출을 '출고 날짜(월)' → '최종 출고일 + 컷오프'로 교체. 복수 출고월도
+      // 최종 출고일 하나로 귀속되므로 기존의 균등분할은 사라진다(표와 동일한 처리).
+      const mk=revMonthOfShipDate(r['최종 출고일']);
       if(!PROJ_REV_MAP[k]) PROJ_REV_MAP[k]={rev:0,months:[]};
       PROJ_REV_MAP[k].rev+=rev;
-      months.forEach(m=>{ if(!PROJ_REV_MAP[k].months.includes(m)) PROJ_REV_MAP[k].months.push(m); });
+      if(mk&&!PROJ_REV_MAP[k].months.includes(mk)) PROJ_REV_MAP[k].months.push(mk);
     });
     PROJ_REV_SRC=D.proj_rev;
   }
@@ -9533,7 +9597,7 @@ function renderCostProjectDetail() {
   // v21.13: 총매출액(CX 매출결산 실측) 우선, 미매칭은 R) 판매가 합산 근사 폴백
   const rvActual=getProjRevMap()[COST_SEL_PROJECT];
   const revenue=rvActual?rvActual.rev:taskRows.reduce((s,r)=>s+pa(r['R) 판매가(최종)']),0);
-  const revSrcLabel=rvActual?'총매출액 실측 (CX 매출결산)':'R) 판매가(최종) 합산 근사';
+  const revSrcLabel=rvActual?'총매출액 실측 (CX 매출결산 · VAT 제외 공급가액)':'R) 판매가(최종) 합산 근사';
   const taskCostTotal=taskRows.reduce((s,r)=>s+pa(r['공급가액']),0);
 
   // Movement data from cost_reduction
@@ -9685,15 +9749,12 @@ function renderProductTrend() {
   const bucketCmp=bucketMode==='month'?monthCmp:undefined; // week/quarter 키는 사전순 정렬로 충분
   const unitLabel={week:'주간',month:'월간',quarter:'분기'}[bucketMode];
   const avgLabel={week:'주평균',month:'월평균',quarter:'분기평균'}[bucketMode];
-  // v23.7: 빅딜(그 제품 발주수량 분포에서 중앙값 대비 크게 벗어나는 이상치) 제외 — 사용자
-  // 요청(2026-07-27), 기준 확정(2026-07-29: "전체 주문량 중앙값에서 크게 벗어나는 수치").
-  // "제품 전체 대비 80%"·"그 달 버킷 대비 80%"·"중앙값의 고정 배수"를 차례로 시도했으나 각각
-  // 반복 대량발주 누락/정상 소량주문 오탐/정상 고매출 제품 과다 제외 문제가 있었음 — 표본 크기에
-  // 흔들리지 않고 "분포에서 확 튀는 값"을 잡아내는 표준 통계 기법인 IQR(사분위범위) 이상치
-  // 판정으로 교체. Q1·Q3(1·3사분위수)를 구해 Q3+1.5×IQR을 넘는 값만 이상치로 제외한다
-  // (박스플롯의 통상적인 "울타리" 기준과 동일 — 예: UV펜은 정상 범위가 50~635개인데 1,005개부터
-  // 뚜렷한 간격을 두고 튀어 그 이상만 제외, 410~635개 같은 정상 변동은 그대로 유지).
-  // 표본이 5건 미만이면 사분위수가 불안정해 제외 대상에서 뺀다.
+  // 빅딜(그 제품 발주수량 분포에서 크게 벗어나는 대량 발주) 제외 — 사용자 요청(2026-07-27).
+  // 기준 변천: "제품 전체 대비 80%"·"그 달 버킷 대비 80%"·"중앙값의 고정 배수"(각각 반복 대량발주
+  // 누락/정상 소량주문 오탐/정상 고매출 제품 과다 제외 문제) → IQR 울타리 Q3+1.5×IQR(v23.7)
+  // → v23.14(사용자 확정 2026-08-04) 제품별 표준분포 80% 범위 상단 초과(μ+1.2816σ, bigDealStat).
+  // 발주 현황 제품상세와 같은 함수를 쓴다 — 이전에는 그쪽이 '평균×1.1'이라 같은 발주 건의 빅딜
+  // 판정이 두 화면에서 엇갈렸다. 표본 5건 미만이면 분포 판정을 보류해 제외 대상에서 뺀다.
   const rowsByProduct={};
   D.order.filter(r=>!isStock(r)&&(!q||matchesSearch(r,q)||catTokenMatch(getOrderRowCategoryStr(r),nq))
     &&(!isCustom||inSelDateRange(r['과업지시일자']))
@@ -9704,20 +9765,10 @@ function renderProductTrend() {
     const s=(r['수주처']||'').trim();
     (rowsByProduct[name]=rowsByProduct[name]||[]).push({mk,qty,s});
   });
-  function percentileOf(sortedArr,p){
-    if(!sortedArr.length) return 0;
-    const idx=(sortedArr.length-1)*p, lo=Math.floor(idx), hi=Math.ceil(idx);
-    return lo===hi?sortedArr[lo]:sortedArr[lo]+(sortedArr[hi]-sortedArr[lo])*(idx-lo);
-  }
   const byProduct={};
   Object.entries(rowsByProduct).forEach(([name,rows])=>{
-    const qtys=rows.map(x=>x.qty).sort((a,b)=>a-b);
-    let cut=Infinity;
-    if(qtys.length>=5){
-      const q1=percentileOf(qtys,0.25), q3=percentileOf(qtys,0.75);
-      cut=q3+1.5*(q3-q1);
-    }
-    const v={name,total:0,months:{},supCnt:{},bigDealQty:0,bigDealCnt:0};
+    const cut=bigDealStat(rows.map(x=>x.qty)).cut;
+    const v={name,total:0,months:{},supCnt:{},bigDealQty:0,bigDealCnt:0,bigDealMin:bigDealMinQty(cut)};
     rows.forEach(x=>{
       if(x.qty>cut){ v.bigDealQty+=x.qty; v.bigDealCnt++; return; }
       v.months[x.mk]=(v.months[x.mk]||0)+x.qty;
@@ -9742,11 +9793,11 @@ function renderProductTrend() {
   el.innerHTML=`
     <div class="card"><div class="card-header"><div class="card-title">제품별 ${unitLabel} 발주수량 추이 (Top 10)</div><div class="card-sub">총 ${sorted.length}개 제품 · 발주지시수량 기준 · 재고생산 제외 · ${periodNote} · <b>파츠유형 Product Parts 포함 발주만</b>(인쇄·포장 전용 발주 행 제외로 중복 집계 방지, 신시어리웨일즈 제작 건은 예외) · 검색창에 <b>Goods Category</b>(예: Drinkware, Stationery)를 입력하면 해당 카테고리 제품 전체 표시${q?' · <b>검색 필터 적용</b>':''}</div></div>
     <div class="ch" style="height:320px"><canvas id="ch-prod-trend"></canvas></div></div>
-    <div class="card" style="margin-top:12px"><div class="card-header"><div class="card-title">제품별 발주 요약 <span style="font-weight:400;font-size:11px;color:var(--text3)">(${URGENT_EXCLUDE_SUP} 제작 제품 제외${q?' · 검색 필터 적용':''} · 한 건이 그 제품 전체의 80% 이상을 차지하는 빅딜 건은 추이·합계에서 제외하고 별도 표기)</span></div></div>
+    <div class="card" style="margin-top:12px"><div class="card-header"><div class="card-title">제품별 발주 요약 <span style="font-weight:400;font-size:11px;color:var(--text3)">(${URGENT_EXCLUDE_SUP} 제작 제품 제외${q?' · 검색 필터 적용':''} · 제품별 발주수량 분포의 <b>표준분포 80% 범위 상단(μ+1.28σ)</b>을 넘는 빅딜 건은 추이·합계에서 제외하고 별도 표기 · 표본 5건 미만 제품은 판정 보류)</span></div></div>
     <div class="tbl-wrap"><table class="tbl"><thead><tr><th class="rank">#</th><th>제품명</th><th>제작 협력사</th><th class="num">누적 발주수량</th><th class="num">${avgLabel}</th>${shownMonths.map(m=>`<th class="num" style="font-size:10px">${shownLbl(m)}</th>`).join('')}</tr></thead><tbody>
     ${summarySorted.slice(0,20).map(([k,v],i)=>{
       const avg=allMonths.length>0?Math.round(v.total/allMonths.length):0;
-      const bigDealBadge=v.bigDealQty>0?` <span class="tag tag-gray" style="font-size:9px" title="추이·합계에서 제외됨">빅딜 제외 ${fmtN(v.bigDealQty)}개(${v.bigDealCnt}건)</span>`:'';
+      const bigDealBadge=v.bigDealQty>0?` <span class="tag tag-gray" style="font-size:9px" title="추이·합계에서 제외됨 — 이 제품 빅딜 기준 ${fmtN(v.bigDealMin)}개 이상(표준분포 80% 범위 상단 μ+1.28σ 초과)">빅딜 제외 ${fmtN(v.bigDealQty)}개(${v.bigDealCnt}건)</span>`:'';
       return `<tr><td class="rank">${i+1}</td><td>${esc(v.name||k)}</td><td style="font-size:11px;color:var(--text3)">${esc(crop(mainSup(v),16))}</td><td class="num">${fmtN(v.total)}${bigDealBadge}</td><td class="num">${fmtN(avg)}</td>${shownMonths.map(m=>`<td class="num">${v.months[m]?fmtN(v.months[m]):'—'}</td>`).join('')}</tr>`;
     }).join('')||emptyRow(5,q?'검색 결과 없음':'데이터 없음')}
     </tbody></table></div></div>`;
@@ -11234,9 +11285,15 @@ function revenueByMonthAll(year){
   const out={};
   const revMap=getProjRevMap();
   if(Object.keys(revMap).length){
-    const projSeen=new Set();
-    getFilteredAllOrders().filter(r=>!isStock(r)).forEach(r=>{ const p=(r['project']||'').trim(); if(p) projSeen.add(p); });
-    projSeen.forEach(p=>{
+    // v23.14: updateKPIs와 동일 — 발주 RAW 매칭 필터 제거(전년 수주·당해 출고 건 포함)
+    const q=getSearchQuery();
+    let revKeys=Object.keys(revMap);
+    if(q){
+      const projSeen=new Set();
+      getFilteredAllOrders().filter(r=>!isStock(r)).forEach(r=>{ const p=(r['project']||'').trim(); if(p) projSeen.add(p); });
+      revKeys=revKeys.filter(p=>projSeen.has(p));
+    }
+    revKeys.forEach(p=>{
       const rv=revMap[p]; if(!rv||!rv.months.length) return;
       const share=1/rv.months.length;
       rv.months.forEach(m=>{ out[m]=(out[m]||0)+rv.rev*share; });
@@ -11296,7 +11353,8 @@ function renderRevenueModal(){
         `재고포함 <b style="color:${ratioAllColor}">${ratioAll===null?'—':ratioAll.toFixed(1)+'%'}</b><br><span style="font-size:10px;color:var(--text3)">매입 재고제외 ${noSel?'—':fa(selPurProj)} · 재고포함 ${noSel?'—':fa(selPurAll)}</span>`,'c-green')}
     </div>
     <div style="font-size:11px;color:var(--text3);margin-bottom:14px">
-      · <b>매출 현황</b>은 종합 현황 카드와 동일한 업로드 실측치(프로젝트 총매출액을 출고월에 귀속)이고, <b>목표·수주액·전년·매출액(표)</b>은 구매조달팀 연간분석 표(01-A/01-B) 수치입니다. 두 값은 <b>구조적으로 다릅니다</b>(2026-08-03 확인) — 실측은 <b>달력 월 · VAT 포함</b>이고, 표는 <b>출고리스트 마감 구간 · VAT 별도 공급가액</b>입니다. 표의 마감 구간은 달력 월이 아니라 예컨대 7월분이 <b>07-13 ~ 08-07</b>이며, 매출이 목표에 못 미치면 다음 달 초순 출고까지 당겨 잡습니다. 차이가 나는 것이 정상입니다.
+      · <b>매출 현황</b>은 업로드 실측치(proj_rev 프로젝트 총매출액)이고, <b>목표·수주액·전년·매출액(표)</b>은 구매조달팀 연간분석 표(01-A/01-B) 수치입니다. <b>v23.14(2026-08-04)에서 두 값의 기준을 맞췄습니다</b> — ① 금액을 <b>VAT 별도 공급가액</b>으로 통일(proj_rev '총 매출액'은 VAT 포함이라 ÷1.1) ② 귀속월을 달력 월이 아니라 <b>출고리스트 마감 컷오프</b>(아래 '마감 출고일' 행)로 변경 ③ 전년 수주·당해 출고 건도 출고 시점 매출로 포함. 그 결과 1~7월 누계 오차가 <b>0.11%</b>로 좁혀졌습니다(이전 +10.7%).
+      · <b>마감 출고일</b>은 표의 월별 누계에 맞춰 역산한 값입니다. 매달 마감일이 달라 고정 규칙이 없으므로, 새 달이 확정되면 <code>REV_CUTOFF</code>에 날짜를 추가해야 합니다. 아직 추가되지 않은 달은 <b>달력 월</b>로 집계되어 표와 어긋날 수 있습니다.
       · <b>매입 비중</b>은 매입 ÷ 매출 — <b>재고제외</b>는 원가분석의 원가율과 같은 정의(프로젝트 매출에 직접 대응하는 매입만), <b>재고포함</b>은 재고생산분까지 더한 총 매입 기준이라 항상 재고제외보다 큽니다.
     </div>
     <div class="card" style="margin-bottom:14px">
@@ -11310,6 +11368,8 @@ function renderRevenueModal(){
         ${planRow(P.targetYear+' 수주액',P.curOrder,idxs)}
         ${planRow(P.targetYear+' 매출액 (표)',P.curRevenue,idxs)}
         ${planRow('매출 현황 (업로드 실측)',actRev,idxs)}
+        ${cutoffRow(P.targetYear,idxs)}
+        ${diffRow('실측 − 표 (매출)',actRev,P.curRevenue,idxs)}
         ${planRow(P.prevYear+' 수주액',P.prevOrder,idxs)}
         <tr><td><b>목표 대비 (수주)</b></td>${P.target.map((t,i)=>{const v=P.curOrder[i]?pct(P.curOrder[i],t)-100:null;return `<td class="num" style="white-space:nowrap;color:${col(v)}${idxs.includes(i)?';background:var(--blue-light)':''}">${v===null?'-':sgn(v)}</td>`;}).join('')}<td class="num" style="color:${col(pct(P.curOrder.reduce((a,b)=>a+b,0),P.target.reduce((a,b)=>a+b,0))-100)}">${sgn(pct(P.curOrder.reduce((a,b)=>a+b,0),P.target.reduce((a,b)=>a+b,0))-100)}</td></tr>
         <tr><td><b>전년 대비 (수주)</b></td>${P.prevOrder.map((p,i)=>{const v=P.curOrder[i]?pct(P.curOrder[i],p)-100:null;return `<td class="num" style="white-space:nowrap;color:${col(v)}${idxs.includes(i)?';background:var(--blue-light)':''}">${v===null?'-':sgn(v)}</td>`;}).join('')}<td class="num" style="color:${col(pct(P.curOrder.reduce((a,b)=>a+b,0),P.prevOrder.reduce((a,b)=>a+b,0))-100)}">${sgn(pct(P.curOrder.reduce((a,b)=>a+b,0),P.prevOrder.reduce((a,b)=>a+b,0))-100)}</td></tr>
@@ -11342,6 +11402,31 @@ function ratioRow(label,num,den,idxs,colFn){
 }
 function planRow(label,arr,idxs){
   return `<tr><td style="white-space:nowrap">${esc(label)}</td>${arr.map((v,i)=>`<td class="num" style="white-space:nowrap${idxs.includes(i)?';background:var(--blue-light)':''}">${v>0?fa(v):'-'}</td>`).join('')}<td class="num" style="white-space:nowrap"><b>${fa(arr.reduce((a,b)=>a+b,0))}</b></td></tr>`;
+}
+// v23.14: 그 달분이 "며칠자 출고까지" 반영된 것인지 표기 — 미확정 월은 달력월 집계임을 명시
+function cutoffRow(year,idxs){
+  const cells=Array.from({length:12},(_,i)=>{
+    const c=revCutoffLabel(year+'.'+(i+1));
+    const hl=idxs.includes(i)?';background:var(--blue-light)':'';
+    return c?`<td class="num" style="white-space:nowrap;font-size:10px;color:var(--text2)${hl}">~${esc(c.slice(5))}</td>`
+            :`<td class="num" style="white-space:nowrap;font-size:10px;color:var(--text3)${hl}">달력월</td>`;
+  }).join('');
+  return `<tr><td style="white-space:nowrap;font-size:11px;color:var(--text2)">마감 출고일 <span style="font-size:10px;color:var(--text3)">(이 날짜까지 최종 출고분)</span></td>${cells}<td class="num" style="font-size:10px;color:var(--text3)">—</td></tr>`;
+}
+// v23.14: 실측 − 표 차액 행 — 기준을 맞춘 뒤 남은 격차를 월별로 바로 보이게
+function diffRow(label,act,tbl,idxs){
+  const col=v=>v===null?'var(--text3)':Math.abs(v)>=15?'var(--red)':Math.abs(v)>=5?'var(--amber)':'var(--green)';
+  const cells=act.map((v,i)=>{
+    const t=tbl[i]; const hl=idxs.includes(i)?';background:var(--blue-light)':'';
+    if(!t||!v) return `<td class="num" style="white-space:nowrap;color:var(--text3)${hl}">-</td>`;
+    const p=(v-t)/t*100;
+    return `<td class="num" style="white-space:nowrap;font-size:11px;color:${col(p)}${hl}">${p>=0?'+':''}${p.toFixed(1)}%</td>`;
+  }).join('');
+  // 합계는 양쪽 모두 값이 있는 달만 — 표가 아직 안 채워진 달(예: 8월)까지 더하면 격차가 부풀려진다
+  let sa=0,st=0;
+  act.forEach((v,i)=>{ if(tbl[i]>0&&v>0){ sa+=v; st+=tbl[i]; } });
+  const tp=st>0?(sa-st)/st*100:null;
+  return `<tr><td style="white-space:nowrap;font-size:11px;color:var(--text2)"><b>${esc(label)}</b> <span style="font-size:10px;color:var(--text3)">(양쪽 마감월만)</span></td>${cells}<td class="num" style="white-space:nowrap;color:${col(tp)}"><b>${tp===null?'-':(tp>=0?'+':'')+tp.toFixed(1)+'%'}</b></td></tr>`;
 }
 
 // ===== CALENDAR (연간 이벤트 캘린더 — 구매조달팀 연간주요이벤트 마스터 기준) =====
