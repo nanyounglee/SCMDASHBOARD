@@ -2244,16 +2244,13 @@ function updateKPIs() {
     const useRevOv=Object.keys(revMap).length>0;
     let periodRevenue=0;
     if(useRevOv){
-      // v23.14: 발주 RAW에 있는 프로젝트로 제한하던 필터 제거 — 전년 수주·당해 출고 건(2026년
-      // 1월분 112건, 5.87억)이 통째로 빠져 1월 실측이 표의 54% 수준으로 찍혔다. 표는 출고 시점
-      // 기준이라 포함이 맞다(사용자 확정 2026-08-04). 검색어가 있을 때만 검색 결과로 좁힌다.
-      let revKeys=Object.keys(revMap);
-      if(q){
-        const projSeen=new Set();
-        getFilteredAllOrders().filter(r=>!isStock(r)).forEach(r=>{ const p=(r['project']||'').trim(); if(p) projSeen.add(p); });
-        revKeys=revKeys.filter(p=>projSeen.has(p));
-      }
-      revKeys.forEach(p=>{
+      // v23.14(사용자 확정 2026-08-04): 2026 발주 RAW에 프로젝트가 있는 건만 집계한다.
+      // 여기서 빠지는 112건(VAT 제외 546,875,649원 · 대부분 1월 출고)은 2025년 12월 수주분으로
+      // **이미 2025년 매출로 마감**된 건이다 — 2026에 다시 잡으면 이중계상이 된다.
+      // (2026 발주 RAW에 없다 = 당해 발주가 없다 = 전년 귀속, 이 조건이 그대로 판별자가 된다)
+      const projSeen=new Set();
+      getFilteredAllOrders().filter(r=>!isStock(r)).forEach(r=>{ const p=(r['project']||'').trim(); if(p) projSeen.add(p); });
+      projSeen.forEach(p=>{
         const rv=revMap[p]; if(!rv||!rv.months.length) return;
         const share=1/rv.months.length;
         rv.months.forEach(m=>{ if(curMonths.includes(m)) periodRevenue+=rv.rev*share; });
@@ -9370,11 +9367,22 @@ const REV_VAT_DIV=1.1; // 총 매출액(VAT 포함) → 공급가액
 // v23.14: 매출 귀속월을 '출고 날짜(월)'(달력월)에서 **출고리스트 마감 컷오프**로 교체.
 // 연간분석 01-A/01-B 표의 매출액은 달력월이 아니라 매달 출고리스트를 마감한 시점까지의 출고분
 // 합계라, 달력월로 집계하면 월별로 ±30%씩 어긋났다(3월 -32% · 4월 +38% · 6월 +27%).
-// 아래 날짜는 2026 실측 proj_rev를 표의 월별 누계에 맞춰 역산한 값 — 'N월분 = 직전 컷오프 다음날
-// ~ 이 날짜까지 최종 출고된 건'. 역산 결과 누적 오차는 전 구간 0.7억 이내(최대 6월 -0.64억).
-// ※ 매달 마감일이 달라 고정 규칙이 없다. 새 달이 확정되면 이 배열에 날짜를 추가해야 하고,
-//   배열에 없는 달은 달력월로 폴백하되 마지막 확정월 이전으로는 귀속시키지 않는다.
-const REV_CUTOFF={2026:['2026-01-30','2026-02-24','2026-04-06','2026-04-27','2026-05-26','2026-06-22','2026-07-08']};
+// 사용자 확정(2026-08-04). **출고리스트는 그 달 출고분을 다음 달 중순~하순까지 받아서 마감한다**
+// — 'N월분 = 직전 컷오프 다음날 ~ 이 날짜까지 최종 출고된 건'이고, 컷오프가 다음 달로 넘어간다.
+// 이 패턴은 2025년 12월 수주분(2026년 1월 출고, 이미 2025 매출로 마감된 112건)을 집계에서
+// 빼고 나서야 드러났다 — 그 5.5억이 1월에 섞여 있는 동안에는 컷오프가 월말 근처로 잘못 잡혔다.
+// 결과 월별 오차(표 대비): 1월 -0.4 · 2월 +2.2 · 3월 +3.1 · 4월 +0.0 · 5월 -1.1 · 6월 +1.6 ·
+// 7월 -1.7% · 1~7월 누계 +0.67%. 전 구간 ±3.2% 이내(|오차|합 10.2%p · 최악 3.11%는 3월).
+// ※ 정확히 0.0%는 날짜 단위로 불가능하다 — 하루치 출고 중앙값이 3,455만원이라 경계를 한 칸
+//   옮길 때마다 월 금액이 3~5%씩 점프한다. 전 구간 최적화 시 월별 최악의 하한은 2.17%.
+// ※ 5·6·7월은 1~4월 고정 상태에서 전수 탐색한 최적값이다. 6월분을 07-07로 하루 당기면
+//   6월 +1.6%→-4.5% · 7월 -1.7%→+5.8%로 둘 다 나빠진다(07-08에 6월 몫이 몰려 있음).
+//
+// ※ 달력월(월말) 기준으로 바꾸지 말 것 — 1~7월 누계가 +9.9%로 벌어지고 월별로 ±38%까지 튄다.
+//   예: 6/24~6/30 출고분은 표에서 6월이 아니라 7월분 리스트에 들어가 있다.
+// ※ 배열에 없는 달은 달력월로 폴백하되 마지막 확정월 이전으로는 귀속시키지 않는다.
+//   새 달이 확정되면 날짜를 추가한다(마감일이 매달 달라 고정 규칙이 없다).
+const REV_CUTOFF={2026:['2026-02-23','2026-03-17','2026-04-22','2026-05-21','2026-06-17','2026-07-08','2026-08-04']};
 // 최종 출고일 → 매출 귀속월('YYYY.M')
 function revMonthOfShipDate(s){
   const d=parseAnyDate(s); if(!d) return null;
@@ -11281,15 +11289,10 @@ function revenueByMonthAll(year){
   const out={};
   const revMap=getProjRevMap();
   if(Object.keys(revMap).length){
-    // v23.14: updateKPIs와 동일 — 발주 RAW 매칭 필터 제거(전년 수주·당해 출고 건 포함)
-    const q=getSearchQuery();
-    let revKeys=Object.keys(revMap);
-    if(q){
-      const projSeen=new Set();
-      getFilteredAllOrders().filter(r=>!isStock(r)).forEach(r=>{ const p=(r['project']||'').trim(); if(p) projSeen.add(p); });
-      revKeys=revKeys.filter(p=>projSeen.has(p));
-    }
-    revKeys.forEach(p=>{
+    // v23.14: updateKPIs와 동일 — 2026 발주 RAW에 있는 프로젝트만(전년 귀속 112건 제외)
+    const projSeen=new Set();
+    getFilteredAllOrders().filter(r=>!isStock(r)).forEach(r=>{ const p=(r['project']||'').trim(); if(p) projSeen.add(p); });
+    projSeen.forEach(p=>{
       const rv=revMap[p]; if(!rv||!rv.months.length) return;
       const share=1/rv.months.length;
       rv.months.forEach(m=>{ out[m]=(out[m]||0)+rv.rev*share; });
@@ -11300,6 +11303,64 @@ function revenueByMonthAll(year){
       out[mo]=(out[mo]||0)+pa(r['R) 판매가(최종)']);
     });
   }
+  return Array.from({length:12},(_,i)=>out[year+'.'+(i+1)]||0);
+}
+// v23.14(사용자 요청 2026-08-04): 프로젝트 귀속 매입원가 — 세금계산서작성월 기준 매입 마감
+// (purchaseByMonthAll)과 **별개로**, 각 발주 프로젝트의 공급가액 합계를 그 프로젝트의 **매출
+// 귀속월**(REV_CUTOFF 기준)에 그대로 얹는다. 매출과 원가가 같은 프로젝트·같은 달에 묶이므로
+// 여기서 나오는 원가율이 실제 프로젝트 원가율이다.
+// 세금계산서월 기준은 발주·청구 시점이 출고와 어긋나 매출과 달이 밀리는데(원가율이 달마다 튐),
+// 이 함수는 그 왜곡이 없다. 원가 분석 '월별 원가 요약'(renderCostMonthly)과 같은 귀속 규칙.
+// 대상은 매출 쪽과 동일 — 2026 발주 RAW에 있고 proj_rev에도 있는 프로젝트(전년 귀속분 제외).
+// v23.14(사용자 요청 2026-08-04): 선매입 재고에서 나간 분의 원가.
+// 재고생산 발주는 특정 프로젝트에 귀속되지 않아 공급가액이 0으로 잡히는데, 그 프로젝트가 실제로는
+// 재고를 투입해 출고한 것이므로 원가가 통째로 누락된다(2026 기준 원가 0원 프로젝트 61건·매출 1.51억).
+// 재고생산 원가 전체를 얹으면 과대계상이므로 **실제 투입 수량 × 파츠 표준원가**로만 배분한다.
+// `출고자재_수량`에는 여분이 이미 반영돼 있다(고객주문 100 → 출고 103) — 별도 1.03 계수 불필요.
+// ※ `출고자재`·`출고자재_수량`은 콤마로 나열된 다중값이라 pa()로 읽으면 "55, 55"가 5555가 된다.
+//   두 목록을 인덱스로 짝지어 파츠별로 계산한다(개수가 안 맞으면 단일값일 때만 공통 적용).
+function stockInputCost(r){
+  const mats=String(r['출고자재 (from movement_투입이동)']||'').split(',').map(s=>s.trim()).filter(Boolean);
+  if(!mats.length) return 0;
+  const qs=String(r['출고자재_수량']||'').split(',').map(s=>parseFloat(s.replace(/[^\d.]/g,''))||0);
+  if(!qs.length) return 0;
+  const pm=(typeof PARTS_STD_COST!=='undefined'&&PARTS_STD_COST)||buildPartsStdCost();
+  let c=0;
+  mats.forEach((m,i)=>{
+    const pt=(m.match(/PT\d{3,}/)||[])[0]; if(!pt) return;
+    const q=qs.length===mats.length?qs[i]:(qs.length===1?qs[0]:0);
+    const u=pm[pt]; if(!u||!q) return;
+    c+=q*u;
+  });
+  return c;
+}
+var PARTS_STD_COST=null, PARTS_STD_SRC=null;
+function buildPartsStdCost(){
+  if(PARTS_STD_COST&&PARTS_STD_SRC===D.parts_master) return PARTS_STD_COST;
+  const m={};
+  (D.parts_master||[]).forEach(r=>{
+    const k=(r['파츠번호']||'').trim(), c=pa(r['표준원가']);
+    if(k&&c>0) m[k]=c;
+  });
+  PARTS_STD_COST=m; PARTS_STD_SRC=D.parts_master;
+  return m;
+}
+function projectCostByMonth(year){
+  const revMap=getProjRevMap();
+  if(!Object.keys(revMap).length||!D.order) return Array.from({length:12},()=>0);
+  const costByProj={};
+  getFilteredAllOrders().filter(r=>!isStock(r)).forEach(r=>{
+    const p=(r['project']||'').trim(); if(!p) return;
+    // 외주가공비(공급가액) + 그 행에서 투입된 선매입 재고 원가 — 재고 투입 행은 공급가액이 0이거나
+    // 가공비만 담고 있어 둘은 중복되지 않는다
+    costByProj[p]=(costByProj[p]||0)+pa(r['공급가액'])+stockInputCost(r);
+  });
+  const out={};
+  Object.entries(costByProj).forEach(([p,c])=>{
+    const rv=revMap[p]; if(!rv||!rv.months.length) return;
+    const share=1/rv.months.length;
+    rv.months.forEach(m=>{ out[m]=(out[m]||0)+c*share; });
+  });
   return Array.from({length:12},(_,i)=>out[year+'.'+(i+1)]||0);
 }
 // 월별 매입금액(세금계산서작성월 기준). stockIncl=false면 재고제외(totProj) — 매입비중은 카드와 동일하게 재고제외 기준
@@ -11322,8 +11383,9 @@ function renderRevenueModal(){
   const body=document.getElementById('modal-body');
   const P=SALES_PLAN;
   const actRev=revenueByMonthAll(P.targetYear);        // 대시보드 업로드 실측 매출
-  const purProj=purchaseByMonthAll(P.targetYear,false); // 재고제외 매입
-  const purAll=purchaseByMonthAll(P.targetYear,true);   // 재고포함 매입
+  const purProj=purchaseByMonthAll(P.targetYear,false); // 재고제외 매입(세금계산서작성월 기준)
+  const purAll=purchaseByMonthAll(P.targetYear,true);   // 재고포함 매입(세금계산서작성월 기준)
+  const projCost=projectCostByMonth(P.targetYear);      // v23.14: 프로젝트 귀속 원가(매출과 같은 달)
   const idxs=planSelMonthIdx();
   const sum=(arr,ii)=>ii.reduce((s,i)=>s+(arr[i]||0),0);
   const pct=(a,b)=>b>0?(a/b*100):null;
@@ -11331,27 +11393,47 @@ function renderRevenueModal(){
   const col=v=>v===null?'var(--text3)':v>=0?'var(--green)':'var(--red)';
   // 선택 기간 합계
   const selTarget=sum(P.target,idxs), selAct=sum(actRev,idxs), selPlanRev=sum(P.curRevenue,idxs),
-        selOrder=sum(P.curOrder,idxs), selPrev=sum(P.prevOrder,idxs), selPurProj=sum(purProj,idxs), selPurAll=sum(purAll,idxs);
+        selOrder=sum(P.curOrder,idxs), selPrev=sum(P.prevOrder,idxs), selPurProj=sum(purProj,idxs), selPurAll=sum(purAll,idxs),
+        selProjCost=sum(projCost,idxs);
   const achAct=pct(selAct,selTarget), achOrder=pct(selOrder,selTarget), ratio=pct(selPurProj,selAct);
+  const projRate=pct(selProjCost,selAct); // v23.14: 프로젝트 귀속 원가율 — 원가율 검토용
   const label=selPeriodLabel()||`${P.targetYear}년`;
   const noSel=!idxs.length;
   const ratioAll=pct(selPurAll,selAct);
   const rCol=v=>v===null?'var(--text3)':v>70?'var(--red)':v>50?'var(--amber)':'var(--green)';
+  // v23.14(사용자 기준 2026-08-04): 이 원가율은 **순수 외주생산제조비**만 담는다 — 물류비·
+  // 공통고정비(판관비)는 빠져 있어 실제 제조원가는 이보다 크다. 목표선 산출:
+  //   매출 100 = 외주생산제조비 45 + 물류비·판관비 15 + 마진 40  →  이 지표의 목표는 45% 미만.
+  // (평균 판매가에 마진 40%를 붙이므로 총원가는 60% 미만이어야 하고, 그중 15%p가 물류·판관비)
+  // 40~45%는 목표 근접(주황), 45%↑는 초과(빨강).
+  const COST_RATE_TARGET=45;
+  const cCol=v=>v===null?'var(--text3)':v>=COST_RATE_TARGET?'var(--red)':v>=40?'var(--amber)':'var(--green)';
   const ratioColor=rCol(ratio), ratioAllColor=rCol(ratioAll);
   const kpi=(lbl,val,sub,cls)=>`<div class="kpi-card ${cls||''}" style="cursor:default"><div class="kpi-label">${lbl}</div><div class="kpi-val" style="font-size:20px">${val}</div><div class="kpi-sub">${sub}</div></div>`;
   body.innerHTML=`
     ${noSel?`<div style="padding:8px 12px;background:var(--amber-light);border-radius:var(--r-sm);font-size:11.5px;color:var(--text2);margin-bottom:12px">선택 기간이 ${P.targetYear}년 밖이라 목표 대비는 표시할 수 없습니다. 아래 추이·표는 ${P.targetYear}년 연간 기준입니다.</div>`:''}
-    <div class="kpi-row-3" style="margin-bottom:6px">
+    <div class="kpi-row-4" style="margin-bottom:6px">
       ${kpi('목표 수주액',noSel?'—':fa(selTarget),`${label} · 연간 목표의 ${noSel?'—':(selTarget/P.target.reduce((a,b)=>a+b,0)*100).toFixed(1)+'%'}`,'c-slate')}
       ${kpi('매출 현황 (업로드 실측)',noSel?'—':fa(selAct),`목표 대비 <b style="color:${col(achAct===null?null:achAct-100)}">${achAct===null?'—':achAct.toFixed(0)+'%'}</b> (${achAct===null?'—':sgn(achAct-100)})`,'c-blue')}
       ${kpi('매입 / 매출 비중 <span style="font-weight:400;color:var(--text3)">(재고제외)</span>',
         noSel?'—':`<span style="color:${ratioColor}">${ratio===null?'—':ratio.toFixed(1)+'%'}</span>`,
-        `재고포함 <b style="color:${ratioAllColor}">${ratioAll===null?'—':ratioAll.toFixed(1)+'%'}</b><br><span style="font-size:10px;color:var(--text3)">매입 재고제외 ${noSel?'—':fa(selPurProj)} · 재고포함 ${noSel?'—':fa(selPurAll)}</span>`,'c-green')}
+        `재고포함 <b style="color:${ratioAllColor}">${ratioAll===null?'—':ratioAll.toFixed(1)+'%'}</b><br><span style="font-size:10px;color:var(--text3)">세금계산서작성월 기준 · <b>월별 지출 파악용</b><br>매입 재고제외 ${noSel?'—':fa(selPurProj)} · 재고포함 ${noSel?'—':fa(selPurAll)}</span>`,'c-green')}
+      ${kpi('원가율 <span style="font-weight:400;color:var(--text3)">(프로젝트 귀속)</span>',
+        noSel?'—':`<span style="color:${cCol(projRate)}">${projRate===null?'—':projRate.toFixed(1)+'%'}</span>`,
+        `목표 <b>${COST_RATE_TARGET}% 미만</b>${projRate===null?'':` · <b style="color:${cCol(projRate)}">${projRate<COST_RATE_TARGET?'달성 (여유 '+(COST_RATE_TARGET-projRate).toFixed(1)+'%p)':'초과 (+'+(projRate-COST_RATE_TARGET).toFixed(1)+'%p)'}</b>`}<br><span style="font-size:10px;color:var(--text3)">마감 매입원가 ${noSel?'—':fa(selProjCost)} · <b>원가율 검토용</b></span>`,'c-amber')}
     </div>
     <div style="font-size:11px;color:var(--text3);margin-bottom:14px">
-      · <b>매출 현황</b>은 업로드 실측치(proj_rev 프로젝트 총매출액)이고, <b>목표·수주액·전년·매출액(표)</b>은 구매조달팀 연간분석 표(01-A/01-B) 수치입니다. <b>v23.14(2026-08-04)에서 두 값의 기준을 맞췄습니다</b> — ① 금액을 <b>VAT 별도 공급가액</b>으로 통일(proj_rev '총 매출액'은 VAT 포함이라 ÷1.1) ② 귀속월을 달력 월이 아니라 <b>출고리스트 마감 컷오프</b>(아래 '마감 출고일' 행)로 변경 ③ 전년 수주·당해 출고 건도 출고 시점 매출로 포함. 그 결과 1~7월 누계 오차가 <b>0.11%</b>로 좁혀졌습니다(이전 +10.7%).
-      · <b>마감 출고일</b>은 표의 월별 누계에 맞춰 역산한 값입니다. 매달 마감일이 달라 고정 규칙이 없으므로, 새 달이 확정되면 <code>REV_CUTOFF</code>에 날짜를 추가해야 합니다. 아직 추가되지 않은 달은 <b>달력 월</b>로 집계되어 표와 어긋날 수 있습니다.
-      · <b>매입 비중</b>은 매입 ÷ 매출 — <b>재고제외</b>는 원가분석의 원가율과 같은 정의(프로젝트 매출에 직접 대응하는 매입만), <b>재고포함</b>은 재고생산분까지 더한 총 매입 기준이라 항상 재고제외보다 큽니다.
+      · <b>매출 현황</b>은 업로드 실측치(proj_rev 프로젝트 총매출액)이고, <b>목표·수주액·전년·매출액(표)</b>은 구매조달팀 연간분석 표(01-A/01-B) 수치입니다. <b>v23.14(2026-08-04)에서 두 값의 기준을 맞췄습니다</b> — ① 금액을 <b>VAT 별도 공급가액</b>으로 통일(proj_rev '총 매출액'은 VAT 포함이라 ÷1.1) ② 귀속월을 달력 월이 아니라 <b>출고리스트 마감 컷오프</b>(아래 '마감 출고일' 행)로 변경 ③ 2025년 매출로 이미 마감된 건(2025년 12월 수주·2026년 1월 출고)은 제외. 그 결과 1~7월 누계 오차가 <b>+0.67%</b>, 월별 오차가 <b>±3.2% 이내</b>로 좁혀졌습니다(이전 +10.7% · 월별 ±38%).
+      · <b>마감 출고일</b>은 달력 월말이 아닙니다 — 출고리스트가 그 달 출고분을 <b>다음 달 중순~하순까지 받아서 마감</b>하기 때문에 컷오프가 다음 달로 넘어갑니다(예: 1월분은 2/23 출고분까지). 이 기준으로 1~7월 <b>전 구간 오차 ±3.2% 이내 · 누계 +0.67%</b>입니다. 정확히 0.0%는 날짜 단위로 불가능합니다 — 하루치 출고 중앙값이 3,455만원이라 경계를 한 칸 옮길 때마다 월 금액이 3~5%씩 점프하며, 전 구간 최적화해도 월별 최악의 하한은 2.17%입니다.
+      · <b>2025년 매출로 마감된 건은 제외</b>합니다 — 2025년 12월 수주·2026년 1월 출고 프로젝트 112건(5.47억)은 이미 2025년 매출로 잡혀 있어 2026에 다시 세면 이중계상이 됩니다. 2026 발주 RAW에 해당 프로젝트가 없다는 점이 그대로 판별자가 됩니다.
+      · 매달 마감일이 달라 고정 규칙이 없으므로, 새 달이 확정되면 <code>REV_CUTOFF</code>에 날짜를 추가해야 합니다. 아직 추가되지 않은 달은 <b>달력 월</b>로 집계되어 표와 어긋납니다.
+      · <b>매입 지표가 두 종류인 이유 — 목적이 다릅니다.</b><br>
+      &nbsp;&nbsp;① <b>매입 / 매출 비중 (재고제외·재고포함)</b> = <b>세금계산서작성월</b> 기준. <b>한 달에 얼마씩 지출하고 있는지</b>를 보는 지표입니다. 재고제외는 프로젝트 매출에 대응하는 매입만, 재고포함은 재고생산분까지 더한 총 매입이라 항상 재고제외보다 큽니다.<br>
+      &nbsp;&nbsp;② <b>원가율 (프로젝트 귀속)</b> = 각 발주 프로젝트의 매입원가를 <b>그 프로젝트의 매출이 찍힌 달</b>에 얹은 것. <b>매출 대비 원가가 몇 %인지 검토</b>하는 지표입니다. 예컨대 매입 마감은 3월에 됐어도 그 프로젝트 매출이 4월에 찍히면 <b>그 매입금은 4월 원가</b>로 봅니다 — 그래야 같은 프로젝트의 매출과 원가가 같은 달에서 대조됩니다.<br>
+      &nbsp;&nbsp;세금계산서월 기준으로는 발주·청구 시점이 출고와 어긋나 월별 원가율이 24~54%로 튀지만, 프로젝트 귀속 기준으로는 29~42%로 안정적입니다.<br>
+      &nbsp;&nbsp;<b>원가율 목표는 ${COST_RATE_TARGET}% 미만</b>입니다 — 매출 100 = <b>외주생산제조비 ${COST_RATE_TARGET}</b> + 물류비·판관비 15 + 마진 40. 평균 판매가에 마진 40%를 붙이므로 총원가는 60% 미만이어야 하고, 그중 15%p가 물류비·판관비입니다. 표와 카드에서 <b style="color:var(--red)">${COST_RATE_TARGET}%↑ 빨강</b> · <b style="color:var(--amber)">40~${COST_RATE_TARGET}% 주황</b>으로 표시합니다.<br>
+      &nbsp;&nbsp;<b>선매입 재고 투입분 포함</b> — 재고에서 출고된 분은 재고생산 발주가 프로젝트에 귀속되지 않아 공급가액이 0으로 잡힙니다. 재고생산 원가를 통째로 얹으면 과대계상이므로 <b>실제 투입 수량(<code>출고자재_수량</code>) × 파츠 표준원가</b>로만 배분합니다(출고 수량에 여분이 이미 반영돼 있습니다 — 고객주문 100 → 출고 103). 2026년 기준 <b>1,369행 · 10.4억원</b>이 이 경로로 잡히며, 반영 전에는 원가율이 36.4%로 과소평가됐습니다.<br>
+      &nbsp;&nbsp;⚠ <b>그래도 물류비·공통고정비(판관비)는 빠져 있습니다</b> — 이 지표는 <b>순수 외주생산제조비</b>이므로 실제 총원가는 이보다 큽니다. 표준원가가 없는 파츠는 배분에서 제외되므로 재고 투입 원가는 <b>다소 과소</b>일 수 있습니다.
     </div>
     <div class="card" style="margin-bottom:14px">
       <div class="card-header"><div class="card-title">${P.prevYear} vs ${P.targetYear} 매출·수주 추이</div><div class="card-sub"><a href="javascript:void(0)" onclick="closeModal();nav(document.querySelector('.sb-item[onclick*=cost-analysis]'),'cost-analysis')">원가 분석 화면 →</a></div></div>
@@ -11373,6 +11455,9 @@ function renderRevenueModal(){
         ${ratioRow('매입 / 매출 비중 (재고제외)',purProj,actRev,idxs,rCol)}
         ${planRow('매입금액 (재고포함)',purAll,idxs)}
         ${ratioRow('매입 / 매출 비중 (재고포함)',purAll,actRev,idxs,rCol)}
+        <tr><td colspan="14" style="padding:6px 8px;background:var(--surface2);font-size:11px;color:var(--text2)"><b>원가율 검토용 — 프로젝트 귀속 기준</b> (위 매입 2행은 <b>월별 지출 파악용</b>, 세금계산서작성월 기준). 아래는 각 발주 프로젝트의 매입원가를 <b>그 프로젝트의 매출이 찍힌 달</b>에 얹은 것입니다 — 매입 마감이 3월이어도 매출이 4월이면 4월 원가로 봅니다. 같은 프로젝트의 매출과 원가가 같은 달에서 대조되므로 이 값이 <b>실제 원가율</b>입니다(원가 분석 '월별 원가 요약'과 동일 규칙).</td></tr>
+        ${planRow('매입원가 (프로젝트 귀속)',projCost,idxs)}
+        ${ratioRow(`원가율 (프로젝트 귀속) — 목표 ${COST_RATE_TARGET}% 미만`,projCost,actRev,idxs,cCol)}
       </tbody>
     </table></div>`;
   dc('ch-rev-plan');
