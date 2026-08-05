@@ -1,4 +1,24 @@
 ﻿에어테이블 DB 업데이트,슬랙 URL,대상 굿즈명,대상 파츠명 (Shift+Space),No.,구글 DB 업데이트 완료 버튼 (슬랙용) ,변동사항 적용 시점,Confirmation,업무요청 유형,관련 굿즈 리스트 (슬랙용),아이템,에어테이블 DB 입력완료 (슬랙용),슬랙 Ts,Name (from 신청자),관련 아이템 리스트,판매가 업데이트 완료 버튼 (슬랙용),관계자 태그,요청일자,Name (from 에어테이블 DB 입력자),변동원인,관련 굿즈 리스트,협력사,slack id tag (from 신청자),Last Modified (에어테이블 DB),변동사항 (Shift+Space로 전체 내용을 확인하세요),신청자,협력사 이름,프린팅 파츠 Rollup,구글 DB 업데이트 보류 버튼 (슬랙용),에어테이블 DB 입력자,에어테이블 DB 입력_특이사항,구글 DB 업데이트 현황,Last Modified (구글DB),구글DB 바로가기,판매가 업데이트 현황,Last Modified (견적서)
+,https://sincerelygroup.slack.com/archives/CKH9TB0HX/p1785913446638749,밸류 메모큐브,"- PT4716-밸류메모큐브(ver2)(점착.S)
+- PT4718-밸류메모큐브(ver2)(비점착.S)
+- PT5072-밸류메모큐브(ver2)(점착.S.낱장인쇄)_화이트+블랙인쇄
+- PT5074-밸류메모큐브(ver2)(비점착.S.낱장인쇄)_화이트+블랙인쇄",451,https://app.miniextensions.com/form/FZYJ1iMzlELxh3tDklPB/recXEwoCRI7ZKtBSO?prefill_%EA%B5%AC%EA%B8%80%20DB%20%EC%97%85%EB%8D%B0%EC%9D%B4%ED%8A%B8%20%ED%98%84%ED%99%A9=%EA%B5%AC%EA%B8%80%20DB%20%EC%97%85%EB%8D%B0%EC%9D%B4%ED%8A%B8%20%EC%99%84%EB%A3%8C,2026.8.5,checked,특정 품목 단가 변동사항,"*관련 굿즈 (동일 파츠 사용)* : 재고생산, 밸류 메모큐브, 밸류 메모큐브","VMCB_PT4716-밸류메모큐브(ver2)(점착.S), VMCB_PT4718-밸류메모큐브(ver2)(비점착.S), VMCB_PT5072-밸류메모큐브(ver2)(점착.S.낱장인쇄)_화이트+블랙인쇄, VMCB_PT5074-밸류메모큐브(ver2)(비점착.S.낱장인쇄)_화이트+블랙인쇄",https://web.miniextensions.com/Rb3qHYSZVDo6pwVifGJc/recXEwoCRI7ZKtBSO,1785913446.638749,김민지,"VMCB_PT4716-밸류메모큐브(ver2)(점착.S)
+VMCB_PT4718-밸류메모큐브(ver2)(비점착.S)
+VMCB_PT5072-밸류메모큐브(ver2)(점착.S.낱장인쇄)_화이트+블랙인쇄
+VMCB_PT5074-밸류메모큐브(ver2)(비점착.S.낱장인쇄)_화이트+블랙인쇄",https://app.miniextensions.com/form/i4tFO83LH0iqxLbIQLBL/recXEwoCRI7ZKtBSO?prefill_%ED%8C%90%EB%A7%A4%EA%B0%80%20%EC%97%85%EB%8D%B0%EC%9D%B4%ED%8A%B8%20%ED%98%84%ED%99%A9=%ED%8C%90%EB%A7%A4%EA%B0%80%20%EC%97%85%EB%8D%B0%EC%9D%B4%ED%8A%B8%20%EC%99%84%EB%A3%8C,<!subteam^S01AV8VE1AQ>,2026.8.5 4:03오후,,협력사에서 재고 단가 인하 공유 받음,"재고생산, 밸류 메모큐브, 밸류 메모큐브",,<@U01PU03BJ6P>,,"### 무지 (500개 기준)
+
+### PT4716-밸류메모큐브(ver2)(점착.S) : 1,920원 → 1,632원 (-15.0%)
+
+### PT4718-밸류메모큐브(ver2)(비점착.S) : 1,000원 → 850원 (-15.0%)
+
+
+
+### 낱장인쇄 (300개 기준)
+
+### PT5072-밸류메모큐브(ver2)(점착.S.낱장인쇄) : 2,250원 → 1,913원 (-15.0%)
+
+### PT5074-밸류메모큐브(ver2)(비점착.S.낱장인쇄) : 1,500원 → 1,275원 (-15.0%) 
+",김민지,,,https://app.miniextensions.com/form/FZYJ1iMzlELxh3tDklPB/recXEwoCRI7ZKtBSO?prefill_%EA%B5%AC%EA%B8%80%20DB%20%EC%97%85%EB%8D%B0%EC%9D%B4%ED%8A%B8%20%ED%98%84%ED%99%A9=%EA%B5%AC%EA%B8%80%20DB%20%EC%97%85%EB%8D%B0%EC%9D%B4%ED%8A%B8%20%EB%B3%B4%EB%A5%98,,,,,,,
 에어테이블 DB 업데이트 완료,https://sincerelygroup.slack.com/archives/CKH9TB0HX/p1785397633102079,재고생산,- PT1093-유광덮개파우치_투명_000-3,450,https://app.miniextensions.com/form/FZYJ1iMzlELxh3tDklPB/reckArhle4xQpUkRy?prefill_%EA%B5%AC%EA%B8%80%20DB%20%EC%97%85%EB%8D%B0%EC%9D%B4%ED%8A%B8%20%ED%98%84%ED%99%A9=%EA%B5%AC%EA%B8%80%20DB%20%EC%97%85%EB%8D%B0%EC%9D%B4%ED%8A%B8%20%EC%99%84%EB%A3%8C,2026.7.30,checked,특정 품목 단가 변동사항,"*관련 굿즈 (동일 파츠 사용)* : 센텐스 펜, 스펙트럼 컬러펜, 재고생산, 트리플 컬러펜 | JETSTREAM, 아이콘 펜, 와이드클립 펜, 라이트 샤오미펜",STCK_PT1093-유광덮개파우치_투명_000-3,https://web.miniextensions.com/Rb3qHYSZVDo6pwVifGJc/reckArhle4xQpUkRy,1785397633.102079,육승미,STCK_PT1093-유광덮개파우치_투명_000-3,https://app.miniextensions.com/form/i4tFO83LH0iqxLbIQLBL/reckArhle4xQpUkRy?prefill_%ED%8C%90%EB%A7%A4%EA%B0%80%20%EC%97%85%EB%8D%B0%EC%9D%B4%ED%8A%B8%20%ED%98%84%ED%99%A9=%ED%8C%90%EB%A7%A4%EA%B0%80%20%EC%97%85%EB%8D%B0%EC%9D%B4%ED%8A%B8%20%EC%99%84%EB%A3%8C,<!subteam^S01AV8VE1AQ>,2026.7.30 4:46오후,육승미,pvc 원단비 상승,"센텐스 펜, 스펙트럼 컬러펜, 재고생산, 트리플 컬러펜 | JETSTREAM, 아이콘 펜, 와이드클립 펜, 라이트 샤오미펜",,<@U094VP02G6L>,2026.7.30 4:50오후,"기존 대비 10% 인상
 
 - 기존 : 230원
