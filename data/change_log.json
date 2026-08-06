@@ -267,13 +267,6 @@
       "detail": ""
     },
     {
-      "id": "part_price|PT2228|2026_W31",
-      "type": "part_price",
-      "name": "브랜디드노트북백_블랙",
-      "date": "2026-07-30",
-      "detail": "평균 23.9% 인하 · (주)에스씨인터내셔널"
-    },
-    {
       "id": "part_price|PT5541|2026_W31",
       "type": "part_price",
       "name": "색박(음각)_베러댄텀블러_유엘상사",
@@ -286,6 +279,13 @@
       "name": "공박(음각)_베러댄텀블러_유엘상사",
       "date": "2026-07-30",
       "detail": "평균 56250.0% 상승 · 유엘상사"
+    },
+    {
+      "id": "part_price|PT2228|2026_W31",
+      "type": "part_price",
+      "name": "브랜디드노트북백_블랙",
+      "date": "2026-07-30",
+      "detail": "평균 23.9% 인하 · (주)에스씨인터내셔널"
     },
     {
       "id": "part_new|PT5582|2026_W31",
@@ -365,6 +365,20 @@
       "detail": "개미기획"
     },
     {
+      "id": "part_new|PT5580|2026_W30",
+      "type": "part_new",
+      "name": "PT5580-에폭시스티커_디지털풀컬러_동일시안_이지굿스",
+      "date": "2026-07-24",
+      "detail": "이지굿스"
+    },
+    {
+      "id": "part_new|PT5578|2026_W30",
+      "type": "part_new",
+      "name": "PT5578-캐리어저울_화이트",
+      "date": "2026-07-24",
+      "detail": "(주) 퓨전에프앤씨"
+    },
+    {
       "id": "part_price|PT1330|2026_W30",
       "type": "part_price",
       "name": "덮개박스(커스텀인쇄)_화이트+옵셋풀컬러_200-1",
@@ -393,25 +407,60 @@
       "detail": ""
     },
     {
-      "id": "part_new|PT5580|2026_W30",
-      "type": "part_new",
-      "name": "PT5580-에폭시스티커_디지털풀컬러_동일시안_이지굿스",
-      "date": "2026-07-24",
-      "detail": "이지굿스"
-    },
-    {
-      "id": "part_new|PT5578|2026_W30",
-      "type": "part_new",
-      "name": "PT5578-캐리어저울_화이트",
-      "date": "2026-07-24",
-      "detail": "(주) 퓨전에프앤씨"
-    },
-    {
       "id": "product_launched|TWKB|2026-07-23",
       "type": "product_launched",
       "name": "Window 스트랩 박스 (TWKB)",
       "date": "2026-07-23",
       "detail": ""
+    },
+    {
+      "id": "part_price|PT4415|2026_W30",
+      "type": "part_price",
+      "name": "샘플(레이저)_20x60_주식회사에벤에셀기업",
+      "date": "2026-07-22",
+      "detail": "평균 9.0% 상승 · 주식회사 에벤에셀기업"
+    },
+    {
+      "id": "part_price|PT5021|2026_W30",
+      "type": "part_price",
+      "name": "워크데이런치백본품",
+      "date": "2026-07-22",
+      "detail": "평균 58.4% 인하 · \"Longgang Xingqing Bag Co.,Ltd.\""
+    },
+    {
+      "id": "part_price|PT2080|2026_W30",
+      "type": "part_price",
+      "name": "트라이탄빨대_투명",
+      "date": "2026-07-22",
+      "detail": "평균 0.0% 인하 · 주식회사 아조아(AJOAH)"
+    },
+    {
+      "id": "part_price|PT3401|2026_W30",
+      "type": "part_price",
+      "name": "스탠리데일리텀블러_해머톤그린",
+      "date": "2026-07-22",
+      "detail": "평균 6.7% 상승 · 주식회사 에벤에셀기업"
+    },
+    {
+      "id": "part_price|PT3400|2026_W30",
+      "type": "part_price",
+      "name": "스탠리데일리텀블러_폴라화이트",
+      "date": "2026-07-22",
+      "detail": "평균 6.7% 상승 · 주식회사 에벤에셀기업"
+    },
+    {
+      "id": "part_price|PT4391|2026_W30",
+      "type": "part_price",
+      "name": "스탠리데일리텀블러_매트블랙",
+      "date": "2026-07-22",
+      "detail": "평균 6.7% 상승 · 주식회사 에벤에셀기업"
+    },
+    {
+      "id": "part_new|PT5575|2026_W30",
+      "type": "part_new",
+      "name": "PT5575-조립산출물_페어링캘린더",
+      "date": "2026-07-22",
+      "detail": "(주)청산인쇄"
     },
     {
       "id": "goods_unlinked|에디트 캘린더|2026_W30",
@@ -1982,55 +2031,6 @@
       "detail": "파츠 연결 해제"
     },
     {
-      "id": "part_price|PT4415|2026_W30",
-      "type": "part_price",
-      "name": "샘플(레이저)_20x60_주식회사에벤에셀기업",
-      "date": "2026-07-22",
-      "detail": "평균 9.0% 상승 · 주식회사 에벤에셀기업"
-    },
-    {
-      "id": "part_price|PT5021|2026_W30",
-      "type": "part_price",
-      "name": "워크데이런치백본품",
-      "date": "2026-07-22",
-      "detail": "평균 58.4% 인하 · \"Longgang Xingqing Bag Co.,Ltd.\""
-    },
-    {
-      "id": "part_price|PT2080|2026_W30",
-      "type": "part_price",
-      "name": "트라이탄빨대_투명",
-      "date": "2026-07-22",
-      "detail": "평균 0.0% 인하 · 주식회사 아조아(AJOAH)"
-    },
-    {
-      "id": "part_price|PT3401|2026_W30",
-      "type": "part_price",
-      "name": "스탠리데일리텀블러_해머톤그린",
-      "date": "2026-07-22",
-      "detail": "평균 6.7% 상승 · 주식회사 에벤에셀기업"
-    },
-    {
-      "id": "part_price|PT3400|2026_W30",
-      "type": "part_price",
-      "name": "스탠리데일리텀블러_폴라화이트",
-      "date": "2026-07-22",
-      "detail": "평균 6.7% 상승 · 주식회사 에벤에셀기업"
-    },
-    {
-      "id": "part_price|PT4391|2026_W30",
-      "type": "part_price",
-      "name": "스탠리데일리텀블러_매트블랙",
-      "date": "2026-07-22",
-      "detail": "평균 6.7% 상승 · 주식회사 에벤에셀기업"
-    },
-    {
-      "id": "part_new|PT5575|2026_W30",
-      "type": "part_new",
-      "name": "PT5575-조립산출물_페어링캘린더",
-      "date": "2026-07-22",
-      "detail": "(주)청산인쇄"
-    },
-    {
       "id": "part_price|PT2234|3q-backfill",
       "type": "part_price",
       "name": "OPP_300-2",
@@ -2521,5 +2521,5 @@
       "detail": ""
     }
   ],
-  "updatedAt": "2026-08-06T05:07:34.478Z"
+  "updatedAt": "2026-08-06T05:07:57.483Z"
 }
