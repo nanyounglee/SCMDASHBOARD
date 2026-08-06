@@ -5993,10 +5993,6 @@ function genWeeklyOutsource() {
   const baseDate = fmtYMD(thursDate);
   const aggregatePeriod = `${fmtShort(prevThursDate)}(목)13:00-${fmtShort(thursDate)}(목)12:59`;
 
-  // ISO week 표시 기간 (월~일)
-  const sundayDate = new Date(mondayDate); sundayDate.setDate(mondayDate.getDate() + 6);
-  const weekRange = `${fmtShort(mondayDate)}-${fmtShort(sundayDate)}`;
-
   // ============================================================
   //  필드 레지스트리 (WR_FIELDS) — 이 리포트가 의존하는 원천 CSV 헤더의 "단일 출처".
   //  원천 시트(Airtable/GSheets) 헤더가 바뀌면 여기 한 곳만 고치면 리포트 전체가 따라온다.
@@ -6093,8 +6089,20 @@ function genWeeklyOutsource() {
   const stripPt = s => String(s).replace(/^PT\d+-/, ''); // 표시용 PT코드 접두어 제거
 
   // --- 집계 헬퍼 ---
-  const orderInWeek = (r, lbl) => getISOWeek(pick(r, F.order.date) || '') === lbl;
-  const issueInWeek = (r, lbl) => { const d=parseAnyDate(getIssueDateStr(r)); return d ? getISOWeek(`${d.getFullYear()}.${d.getMonth()+1}.${d.getDate()}`) === lbl : false; };
+  // 목요일 13:00~익주 목요일 12:59 컷오프(회의 준비 기준) — 날짜 단위 데이터라 시간은 반영 못하고
+  // "전주 목요일 다음날 ~ 이번주 목요일" 7일 구간으로 근사한다. ISO 월~일 캘린더 주(getISOWeek)와는
+  // 다르므로 curLabel/prevLabel(주차 "이름")과 실제 집계 구간(endDate 기준)을 혼동하지 말 것.
+  const inThuWindow = (dateVal, endDate) => {
+    const d = (dateVal instanceof Date) ? dateVal : parseAnyDate(dateVal);
+    if (!d || !endDate) return false;
+    const start = new Date(endDate); start.setDate(start.getDate() - 6);
+    const dOnly = new Date(d.getFullYear(), d.getMonth(), d.getDate()).getTime();
+    const sOnly = new Date(start.getFullYear(), start.getMonth(), start.getDate()).getTime();
+    const eOnly = new Date(endDate.getFullYear(), endDate.getMonth(), endDate.getDate()).getTime();
+    return dOnly >= sOnly && dOnly <= eOnly;
+  };
+  const orderInWeek = (r, endDate) => inThuWindow(pick(r, F.order.date) || '', endDate);
+  const issueInWeek = (r, endDate) => { const d=parseAnyDate(getIssueDateStr(r)); return d ? inThuWindow(d, endDate) : false; };
   const sumAmt = rows => rows.reduce((s, r) => s + pa(pick(r, F.order.amount)), 0);
   const urgF = rows => rows.filter(r => pick(r, F.order.urgent) === '긴급' && String(pick(r, F.order.sup)).trim() !== URGENT_EXCLUDE_SUP);
   const miiphaF = rows => rows.filter(r => String(pick(r, F.order.miipha)).includes('1 checked out of'));
@@ -6107,8 +6115,8 @@ function genWeeklyOutsource() {
   const supOfIssue = r => issueSupplierOf(r, projMap, mvMap) || String(pick(r, F.issue.supText)).replace(/^"+|"+$/g,'').trim() || '';
 
   // --- 이번 주 / 전주 order ---
-  const curOrders = D.order ? D.order.filter(r => orderInWeek(r, curLabel)) : [];
-  const prevOrders = D.order ? D.order.filter(r => orderInWeek(r, prevLabel)) : [];
+  const curOrders = D.order ? D.order.filter(r => orderInWeek(r, thursDate)) : [];
+  const prevOrders = D.order ? D.order.filter(r => orderInWeek(r, prevThursDate)) : [];
   const curProj = curOrders.filter(r => !isStock(r));
   const prevProj = prevOrders.filter(r => !isStock(r));
   const curStock = curOrders.filter(isStock);
@@ -6116,17 +6124,20 @@ function genWeeklyOutsource() {
   const curUrg = urgF(curProj).length, prevUrg = urgF(prevProj).length;
   const urgRate = curProj.length ? (curUrg/curProj.length*100).toFixed(1) : '0.0';
   const prevUrgRate = prevProj.length ? (prevUrg/prevProj.length*100).toFixed(1) : '0.0';
-  const curAmt = sumAmt(curOrders), prevAmt = sumAmt(prevOrders);
+  // 공급가액이 아직 안 들어온(0) 건은 매입금액 합계에서 자연히 0으로 빠지므로, 표에는 "확정"(공급가액>0) 건수를 별도 표기한다.
+  const confirmedCnt = rows => rows.filter(r => pa(pick(r, F.order.amount)) > 0).length;
+  const curProjConf = confirmedCnt(curProj), prevProjConf = confirmedCnt(prevProj);
+  const curStockConf = confirmedCnt(curStock), prevStockConf = confirmedCnt(prevStock);
+  const curProjAmt = sumAmt(curProj), prevProjAmt = sumAmt(prevProj);
   const curStockAmt = sumAmt(curStock), prevStockAmt = sumAmt(prevStock);
-  const stockPct = a => a[0] ? (a[1]/a[0]*100).toFixed(1) : '0.0'; // [총액, 재고생산액] → 비중(%)
   const curMiipha = miiphaF(curProj), prevMiipha = miiphaF(prevProj);
   const miiphaRate = curProj.length ? (curMiipha.length/curProj.length*100).toFixed(1) : '0.0';
   const prevMiiphaRate = prevProj.length ? (prevMiipha.length/prevProj.length*100).toFixed(1) : '0.0';
   const curFailCost = sumAmt(failCostF(curOrders)), prevFailCost = sumAmt(failCostF(prevOrders));
 
   // --- 이번 주 / 전주 issue ---
-  const curIssues = D.issue ? D.issue.filter(r => issueInWeek(r, curLabel)) : [];
-  const prevIssues = D.issue ? D.issue.filter(r => issueInWeek(r, prevLabel)) : [];
+  const curIssues = D.issue ? D.issue.filter(r => issueInWeek(r, thursDate)) : [];
+  const prevIssues = D.issue ? D.issue.filter(r => issueInWeek(r, prevThursDate)) : [];
   const curQuality = issuesByPrimary(curIssues, '품질'), prevQuality = issuesByPrimary(prevIssues, '품질');
   const curQty = issuesByPrimary(curIssues, '수량').length, prevQty = issuesByPrimary(prevIssues, '수량').length;
   const curOp = issuesByPrimary(curIssues, '운영').length, prevOp = issuesByPrimary(prevIssues, '운영').length;
@@ -6140,8 +6151,8 @@ function genWeeklyOutsource() {
   const curGradeRate = gradeMatchRate(curQuality), prevGradeRate = gradeMatchRate(prevQuality);
 
   // --- CI 이슈 ---
-  const curCI = D.ci ? D.ci.filter(r => getISOWeek(pick(r, F.ci.date)) === curLabel) : [];
-  const prevCI = D.ci ? D.ci.filter(r => getISOWeek(pick(r, F.ci.date)) === prevLabel) : [];
+  const curCI = D.ci ? D.ci.filter(r => inThuWindow(pick(r, F.ci.date), thursDate)) : [];
+  const prevCI = D.ci ? D.ci.filter(r => inThuWindow(pick(r, F.ci.date), prevThursDate)) : [];
 
   // --- WoW 헬퍼 ---
   const wow = (cur, prev) => {
@@ -6158,19 +6169,20 @@ function genWeeklyOutsource() {
     return `${sign}${diff.toFixed(1)}%p`;
   };
 
-  // --- 최근 4주 추이 ---
+  // --- 최근 4주 추이 --- (목요일 컷오프 기준 — lbl은 표시용 명목 주차 태그일 뿐, 실제 구간은 wThuEnd 기준 7일)
   const recentWeeks = [];
-  let ty = cy, tw = cw;
+  let wThuEnd = new Date(thursDate);
   for (let i = 0; i < 4; i++) {
-    const lbl = ty + '-W' + String(tw).padStart(2, '0');
-    const wOrders = D.order ? D.order.filter(r => orderInWeek(r, lbl)) : [];
+    const {y: wy, w: ww} = isoWeekOf(wThuEnd);
+    const lbl = wy + '-W' + String(ww).padStart(2, '0');
+    const wOrders = D.order ? D.order.filter(r => orderInWeek(r, wThuEnd)) : [];
     const wProj = wOrders.filter(r => !isStock(r));
     const wUrg = urgF(wProj).length;
-    const wIssues = D.issue ? D.issue.filter(r => issueInWeek(r, lbl)) : [];
-    const wCI = D.ci ? D.ci.filter(r => getISOWeek(pick(r, F.ci.date)) === lbl) : [];
+    const wIssues = D.issue ? D.issue.filter(r => issueInWeek(r, wThuEnd)) : [];
+    const wCI = D.ci ? D.ci.filter(r => inThuWindow(pick(r, F.ci.date), wThuEnd)) : [];
     const wQuality = issuesByPrimary(wIssues, '품질');
     recentWeeks.unshift({
-      lbl: ty + '-W' + String(tw).padStart(2,'0'),
+      lbl, thuEnd: new Date(wThuEnd),
       proj: wProj.length, urg: wUrg,
       urgRate: wProj.length ? (wUrg/wProj.length*100).toFixed(1) : '0.0',
       miipha: miiphaF(wProj).length,
@@ -6179,9 +6191,9 @@ function genWeeklyOutsource() {
       op: issuesByPrimary(wIssues, '운영').length,
       ci: wCI.length,
       failCost: sumAmt(failCostF(wOrders)),
-      amt: sumAmt(wOrders),
+      amt: sumAmt(wProj),
     });
-    const prev2 = prevIsoWeek(ty, tw); ty = prev2.y; tw = prev2.w;
+    wThuEnd.setDate(wThuEnd.getDate() - 7);
   }
 
   // --- 월별 누적 ---
@@ -6250,7 +6262,7 @@ function genWeeklyOutsource() {
   let md = '';
 
   md += `# [주간 외주생산 리포트]\n`;
-  md += `기준일: ${baseDate} | 기준주차: ${curLabel} (${weekRange}) | 집계구간: ${aggregatePeriod}\n`;
+  md += `기준일: ${baseDate} | 기준주차: ${curLabel} | 집계구간: ${aggregatePeriod}\n`;
   md += `작성: 외주생산파트 담당자 | 참여: (참석자)\n\n`;
 
   // 섹션 1
@@ -6262,8 +6274,8 @@ function genWeeklyOutsource() {
   md += `|---|---|---|---|\n`;
   md += `| 발주 TASK | ${curProj.length}건 | ${prevProj.length}건 | ${wow(curProj.length, prevProj.length, false)} |\n`;
   md += `| 재고생산 TASK | ${curStock.length}건 | ${prevStock.length}건 | ${wow(curStock.length, prevStock.length)} |\n`;
-  md += `| 발주 매입금액 | ${faFull(curAmt)} | ${faFull(prevAmt)} | ${curAmt!==prevAmt?(curAmt>prevAmt?'+':'-')+Math.round(Math.abs(curAmt-prevAmt)).toLocaleString()+'원':'유지'} |\n`;
-  md += `| 재고생산 매입금액 | ${faFull(curStockAmt)} (전체의 ${stockPct([curAmt,curStockAmt])}%) | ${faFull(prevStockAmt)} (전체의 ${stockPct([prevAmt,prevStockAmt])}%) | - |\n`;
+  md += `| 발주 매입금액 | ${faFull(curProjAmt)} (확정 ${curProjConf}건) | ${faFull(prevProjAmt)} (확정 ${prevProjConf}건) | ${curProjAmt!==prevProjAmt?(curProjAmt>prevProjAmt?'+':'-')+Math.round(Math.abs(curProjAmt-prevProjAmt)).toLocaleString()+'원':'유지'} |\n`;
+  md += `| 재고생산 매입금액 | ${faFull(curStockAmt)} (확정 ${curStockConf}건) | ${faFull(prevStockAmt)} (확정 ${prevStockConf}건) | - |\n`;
   md += `| 긴급건수 | ${curUrg}건 (${urgRate}%) | ${prevUrg}건 (${prevUrgRate}%) | ${wow(curUrg, prevUrg)} |\n`;
   md += `| 미입하 TASK | ${curMiipha.length}건 (${miiphaRate}%) | ${prevMiipha.length}건 (${prevMiiphaRate}%) | ${wow(curMiipha.length, prevMiipha.length, true)} |\n`;
   md += `| 품질이슈 | ${curQuality.length}건 | ${prevQuality.length}건 | ${wow(curQuality.length, prevQuality.length, true)} |\n`;
@@ -6272,7 +6284,8 @@ function genWeeklyOutsource() {
   md += `| 고객인지이슈 | ${curCI.length}건 | ${prevCI.length}건 | ${wow(curCI.length, prevCI.length, true)} |\n`;
   md += `| 품질등급 일치율 | ${curGradeRate !== null ? curGradeRate+'%' : '-'} | ${prevGradeRate !== null ? prevGradeRate+'%' : '-'} | - |\n`;
   md += `| 실패비용 (재제작 공급가액) | ${faFull(curFailCost)} | ${faFull(prevFailCost)} | - |\n`;
-  md += `\n> 운영 평가: (담당자 작성)\n\n`;
+  md += `\n> 매입금액은 공급가액이 입력된(확정) 건만 합산한 값이며, 미확정 건은 금액이 아직 입력되지 않은 상태임.\n`;
+  md += `> 운영 평가: (담당자 작성)\n\n`;
 
   md += `### 1-2. 월별 KPI 누적 현황\n\n`;
   const mHdr = monthlyRows.map(r => r.mk);
@@ -6730,7 +6743,7 @@ function genWeeklyOutsource() {
 
   // 3주 연속 이슈 협력사 분석
   const allWeekIssueSups = recentWeeks.map(w => {
-    const wIss = D.issue ? D.issue.filter(r => issueInWeek(r, w.lbl)) : [];
+    const wIss = D.issue ? D.issue.filter(r => issueInWeek(r, w.thuEnd)) : [];
     return new Set(wIss.map(getIssueSup).filter(Boolean));
   });
   const consec3Sups = [];
