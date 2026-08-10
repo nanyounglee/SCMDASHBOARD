@@ -1176,6 +1176,28 @@ function histTiersAt(ptId,dateStr){
   eps.forEach(e=>{ if(e.from<=dateStr&&(!best||e.from>best.from)) best=e; });
   return best?best.tiers:null;
 }
+// v23.18(2026.08.10): 단가 변동 건의 "N개 구간 기준" 변경 전/후 단가를 이력에서 뽑는다.
+//   주간리포트 4-1이 "변동 내용 (300개 기준)"을 자동으로 채우는 데 쓴다(담당자가 원문에 300개
+//   기준을 안 적으면 그동안 수기로 단가 히스토리를 뒤져 채워 넣었음).
+//   ※ 에폭의 from은 update_price_history.mjs가 "워크플로를 실행한 날"이지 실제 단가 변경일이 아니다.
+//     그래서 기준일(요청일자) 하루 전 ~ 14일 뒤 창에서 첫 에폭을 이번 변동으로 간주한다
+//     (실측 15건: 대부분 요청일 당일~+1일에 찍힘. cron은 주 1회지만 "지금 새로고침"으로 자주 돎).
+//   반환: {before,after,pct,when} | {fail:사유} — 실패 사유를 남겨야 어느 건을 수기로 채울지 보인다.
+function priceTierChange(ptId,baseDate,tier){
+  if(!PRICE_HISTORY||!PRICE_HISTORY.epochs) return {fail:'단가이력 미로드 — 새로고침 후 재생성'};
+  const idx=((PRICE_HISTORY.tierSteps)||PRICE_TIER_STEPS).indexOf(tier);
+  const eps=PRICE_HISTORY.epochs[ptId];
+  if(!ptId||!eps||eps.length<2||!baseDate||idx<0) return {fail:'파츠DB 미반영 — 수기확인'};
+  const iso=d=>d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');
+  const lo=new Date(baseDate); lo.setDate(lo.getDate()-1);
+  const hi=new Date(baseDate); hi.setDate(hi.getDate()+14);
+  const s=[...eps].sort((a,b)=>a.from<b.from?-1:1);
+  const i=s.findIndex(e=>e.from>=iso(lo)&&e.from<=iso(hi));
+  if(i<1) return {fail:'파츠DB 미반영 — 수기확인'};  // i===0이면 비교할 직전 에폭이 없다
+  const a=s[i-1].tiers[idx], b=s[i].tiers[idx];
+  if(!a||!b||a===b) return {fail:`${tier}개 구간 변동 없음 — 수기확인`};
+  return {before:a,after:b,pct:(b-a)/a*100,when:s[i].from};
+}
 function getProcStdUnit(proc,qty,dateStr){
   const pts=[...new Set(String(proc.items||'').match(/PT\d+/g)||[])];
   if(!pts.length||!D.parts) return getCostTierValue(proc,qty);
@@ -6010,9 +6032,7 @@ function genWeeklyOutsource() {
   const mondayDate = parseAnyDate(mondayStr);
   const thursDate = new Date(mondayDate); thursDate.setDate(mondayDate.getDate() + 3);
   const prevThursDate = new Date(thursDate); prevThursDate.setDate(thursDate.getDate() - 7);
-  const nextMondayDate = new Date(mondayDate); nextMondayDate.setDate(mondayDate.getDate() + 7);
-  const {y: ny, w: nw} = isoWeekOf(nextMondayDate);
-  const nextLabel = ny + '-W' + String(nw).padStart(2, '0');
+  // (nextLabel: 단가 변동을 "요청일자 ISO주 ±1주"로 잡던 시절의 잔재 — 2026.08.10 요청일자 ±1일로 바뀌며 제거)
   const fmtMMDD = d => String(d.getMonth()+1).padStart(2,'0') + String(d.getDate()).padStart(2,'0');
   const fmtShort = d => (d.getMonth()+1) + '.' + String(d.getDate()).padStart(2,'0');
   const fmtYMD = d => d.getFullYear() + '-' + String(d.getMonth()+1).padStart(2,'0') + '-' + String(d.getDate()).padStart(2,'0');
@@ -6303,27 +6323,57 @@ function genWeeklyOutsource() {
   const ytdMismatch = ytdQuality.filter(r => wrGrades(r).mismatch).length;
 
   // 단가 변동 데이터 (섹션 4-1 및 5 카테고리별 서술에서 공통 사용)
-  // 요청일자 iso week +-1주 OR 변동사항 적용 시점 iso week -1~해당주
+  // 2026.08.10(사용자 요청): **요청일자 단독 기준**. 이전에는 "요청일자 ISO주 ±1주 OR
+  //   변동사항 적용시점 ISO주 -1~해당주"라 같은 건이 최대 3주 넘게 리포트에 계속 남았다.
+  //   집계구간(목~목 7일)에 앞뒤 1일씩만 여유를 둬서, 경계에 걸린 건이 어느 주에도
+  //   안 잡히는 일만 막는다(구간이 9일이라 경계 건은 2주 연속 노출될 수 있음 — 누락보다 낫다는 판단).
+  const pcFrom = new Date(thursDate); pcFrom.setDate(pcFrom.getDate() - 7); // 구간 시작(-6일) - 1일
+  const pcTo   = new Date(thursDate); pcTo.setDate(pcTo.getDate() + 1);     // 구간 종료 + 1일
+  const dayNum = d => new Date(d.getFullYear(), d.getMonth(), d.getDate()).getTime();
   const priceChanges = D.price_chg ? D.price_chg.filter(r => {
     if (String(pick(r, F.priceChg.confirm)).trim() === '반려') return false;
-    const reqWk = getISOWeek(String(pick(r, F.priceChg.reqDate)).trim());
-    if (reqWk && (reqWk === prevLabel || reqWk === curLabel || reqWk === nextLabel)) return true;
-    const applyWk = getISOWeek(String(pick(r, F.priceChg.applyWhen)).trim());
-    if (applyWk && (applyWk === prevLabel || applyWk === curLabel)) return true;
-    return false;
+    const d = parseAnyDate(String(pick(r, F.priceChg.reqDate)).trim());
+    return !!d && dayNum(d) >= dayNum(pcFrom) && dayNum(d) <= dayNum(pcTo);
   }) : [];
   // 단가 변동 표기 헬퍼 (4-1 · 5-1 카테고리 요약 · 7-C 공용 — 인상/인하 판정을 한 곳에서만 한다)
   const pcNm  = r => String(pick(r, [F.priceChg.goods, F.priceChg.parts])).trim() || '(품목미상)';
-  const pcDir = r => { const t = String(pick(r, F.priceChg.change)) + ' ' + String(pick(r, F.priceChg.cause)); return /인상|상승|증액/.test(t) ? '인상' : /인하|하락|감소|절감/.test(t) ? '인하' : '변동'; };
-  // 변동사항 원문에서 "A원 → B원" 패턴을 찾아 증감률을 계산한다.
-  // 원문에 이미 %가 적혀 있거나 패턴이 없으면 빈 문자열 — 틀린 %를 붙이느니 원문 그대로 두는 편이 낫다.
+  // 이 행이 가리키는 PT코드. 대상 파츠명·굿즈명이 비어 있고 변동사항 본문에만 PT코드를 적는 담당자가
+  //   있어(실측: 대상 필드 공란 + 본문에 "PT5408-..." 기재) 본문을 마지막 폴백으로 둔다.
+  //   협력사 폴백(partsCsvSup)과 300개 단가 조회가 같은 코드를 봐야 두 컬럼이 어긋나지 않는다.
+  const pcPt = r => ptCodeOf(pick(r, [F.priceChg.parts, F.priceChg.goods])) || ptCodeOf(pick(r, F.priceChg.change));
+  // 4-1 "변동 내용 (300개 기준)" 자동 산출 (2026.08.10 사용자 요청) — 판정은 공용 priceTierChange().
+  //   산출 실패는 조용히 넘기지 않고 사유를 셀에 남긴다. 특히 '파츠DB 미반영'은 price_chg에만 쓰고
+  //   파츠 표준원가는 안 고친 건이라, 그 표기 자체가 담당자 확인 대상 목록이 된다.
+  const pc300 = r => {
+    const pt = pcPt(r);
+    if (!pt) return { fail: 'PT코드 미기재 — 수기확인' };
+    return priceTierChange(pt, parseAnyDate(String(pick(r, F.priceChg.reqDate)).trim()), 300);
+  };
+  // 변동사항 원문의 "A원 → B원" 패턴 → {a,b}. 없으면 null.
+  const pcArrow = txt => {
+    const m = String(txt).match(/([\d,]+)\s*원?\s*(?:→|->|=>|>)\s*([\d,]+)\s*원/);
+    if (!m) return null;
+    const a = Number(m[1].replace(/,/g, '')), b = Number(m[2].replace(/,/g, ''));
+    return (a && b && a !== b) ? { a, b } : null;
+  };
+  // 인상/인하 판정 — 신뢰도 순으로 3단계.
+  //   1) 300개 실측값(4-1과 7-C가 같은 값을 보게 된다)
+  //   2) 원문의 "A원 → B원" 숫자
+  //   3) 키워드 — 실측 오탐 사례: PT5408은 11,000→12,000 인상인데 본문에 "100원 인하된 것으로
+  //      처리되어"라는 설명이 섞여 있어 키워드만 보면 '인하'로 뒤집힌다. 그래서 숫자를 먼저 본다.
+  const pcDir = r => {
+    const s = pc300(r);
+    if (s.before != null) return s.after > s.before ? '인상' : '인하';
+    const n = pcArrow(pick(r, F.priceChg.change));
+    if (n) return n.b > n.a ? '인상' : '인하';
+    const t = String(pick(r, F.priceChg.change)) + ' ' + String(pick(r, F.priceChg.cause));
+    return /인상|상승|증액/.test(t) ? '인상' : /인하|하락|감소|절감/.test(t) ? '인하' : '변동';
+  };
+  // 원문에 이미 %가 적혀 있거나 화살표 패턴이 없으면 빈 문자열 — 틀린 %를 붙이느니 원문 그대로 두는 편이 낫다.
   const pcPct = txt => {
     if (/%/.test(txt)) return '';
-    const m = txt.match(/([\d,]+)\s*원?\s*(?:→|->|=>|>)\s*([\d,]+)\s*원/);
-    if (!m) return '';
-    const a = Number(m[1].replace(/,/g, '')), b = Number(m[2].replace(/,/g, ''));
-    if (!a || !b || a === b) return '';
-    return ` (**${b > a ? '+' : '-'}${Math.abs((b - a) / a * 100).toFixed(1)}%**)`;
+    const n = pcArrow(txt);
+    return n ? ` (**${n.b > n.a ? '+' : '-'}${Math.abs((n.b - n.a) / n.a * 100).toFixed(1)}%**)` : '';
   };
 
   // --- 마크다운 생성 ---
@@ -6529,25 +6579,31 @@ function genWeeklyOutsource() {
   // 섹션 4
   md += `## 4. 원가 관리 지표\n\n`;
   md += `### 4-1. 단가 변동 현황\n\n`;
-  // priceChanges: 요청일자 iso week +-1주 OR 변동사항 적용 시점 iso week -1~해당주 (함수 스코프에서 계산)
+  // priceChanges: 요청일자 기준 집계구간 ±1일 (함수 스코프에서 계산) — 적용시점은 표시만 하고 집계에는 안 쓴다
   if (D.price_chg) {
     if (priceChanges.length) {
       md += `| 협력사 | 품목 | 변동 내용 (300개 기준) | 적용시점 | 변동원인 |\n`;
       md += `|---|---|---|---|---|\n`;
       priceChanges.forEach(r => {
-        const sup = String(pick(r, F.priceChg.sup)).trim() || partsCsvSup(pick(r, [F.priceChg.parts, F.priceChg.goods])) || '—';
+        const sup = String(pick(r, F.priceChg.sup)).trim() || partsCsvSup(pcPt(r)) || '—';
         const item = cut(pcNm(r), 40);
         const rawChange = String(pick(r, F.priceChg.change))
           .replace(/\[([^\]]+)\]\(https?:\/\/[^\s)]*\)?/g,'$1') // 마크다운 링크 → 텍스트만 (닫는 괄호 없어도 매치)
           .replace(/https?:\/\/\S+/g,'');
-        const change = cut(rawChange, 110) + pcPct(rawChange); // %는 자르기 뒤에 붙여야 잘리지 않음
+        // 300개 기준값(있으면) + 원문 병기. 원문은 담당자 기재 그대로라 항상 남긴다(사용자 요청).
+        const s = pc300(r);
+        const head = s.before != null
+          ? `**${faFull(s.before)} → ${faFull(s.after)} (${s.pct > 0 ? '+' : '-'}${Math.abs(s.pct).toFixed(1)}%)**`
+          : `(${s.fail})`;
+        // 자동 산출이 됐으면 원문에서 %를 또 뽑지 않는다(두 수치가 어긋나 보이는 것을 막는다)
+        const change = `${head} · 원문: ${cut(rawChange, 110)}${s.before != null ? '' : pcPct(rawChange)}`;
         const when = String(pick(r, F.priceChg.applyWhen)).trim();
         const why = cut(pick(r, F.priceChg.cause), 120);
         md += `| ${sup} | ${item} | ${change} | ${when} | ${why} |\n`;
       });
       md += '\n';
     } else {
-      md += `> 해당 기간(${prevLabel}-${curLabel}) 단가 변동 없음\n\n`;
+      md += `> ${curLabel} 단가 변동 없음\n\n`;
     }
   } else {
     md += `| 협력사 | 품목 | 변동 내용 | 적용시점 | 비고 |\n`;
@@ -6967,7 +7023,7 @@ function genWeeklyOutsource() {
     if (compound.length) md += `\n> 복합 리스크: ${compound.join(', ')} — 단가 변동 + 이슈 동시 발생, 대응 방안 검토 필요\n`;
     md += '\n';
   } else {
-    md += `- 해당 기간(${prevLabel}-${curLabel}) 단가 변동 없음\n\n`;
+    md += `- ${curLabel} 단가 변동 없음\n\n`;
   }
 
   // ── D: 납기 (지표 표 + 긴급 상위 협력사) ─────────────────────
