@@ -6,8 +6,12 @@ import vm from 'vm';
 import assert from 'assert';
 
 const html = fs.readFileSync('index.html', 'utf8');
+// 메인 인라인 <script> 범위는 매번 찾는다 — 줄 번호를 박아두면 index.html을 고칠 때마다 밀린다
 const lines = html.split('\n');
-const src = lines.slice(1039, 12905).join('\n'); // 메인 인라인 <script> 본문
+const start = lines.findIndex((l, i) => i > 500 && l.trim() === '<script>');
+const end = lines.findIndex((l, i) => i > start && l.trim() === '</script>');
+assert(start > 0 && end > start, '메인 <script> 블록을 찾지 못함');
+const src = lines.slice(start + 1, end).join('\n');
 
 const ctx = vm.createContext({ console, document: null, window: {}, Chart: function () {}, URLSearchParams, location: { search: '' }, localStorage: { getItem: () => null, setItem: () => {} } });
 try { vm.runInContext(src, ctx); } catch (e) { if (!/document|window|localStorage|Chart|location/.test(String(e))) throw e; }

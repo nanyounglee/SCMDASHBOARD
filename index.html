@@ -6239,7 +6239,7 @@ function genWeeklyOutsource() {
       lbl, thuEnd: new Date(wThuEnd),
       proj: wProj.length, urg: wUrg,
       urgRate: wProj.length ? (wUrg/wProj.length*100).toFixed(1) : '0.0',
-      miipha: miiphaF(wDue).length, due: wDue.length,
+      miipha: miiphaF(wDue).length,
       quality: wQuality.length,
       qty: issuesByPrimary(wIssues, '수량').length,
       op: issuesByPrimary(wIssues, '운영').length,
@@ -6335,8 +6335,9 @@ function genWeeklyOutsource() {
 
   // 섹션 1
   md += `## 1. KPI 항목 운영 리뷰\n\n`;
-  md += `> ※ 매입금액 기준: **주 단위**(1-1, 1-3)는 **과업지시일자** 기준 · **월 단위**(1-2)는 **세금계산서 발행월** 기준 — 집계 시점이 달라 두 금액은 서로 일치하지 않을 수 있음\n`;
-  md += `> ※ 미입하만 **입하예정일 기준**(판정일 = 입하예정일+1일 09:00, 물류 체크 시점과 동일) — 나머지 지표(과업지시일자 기준)와 모수가 다름\n\n`;
+  // 미입하는 내부적으로 판정일(입하예정일+1일) 기준으로 집계하지만, 리포트 독자에게는 불필요한
+  //   내부 사정이라 표기하지 않는다(2026.08.10 사용자 요청 — 기준 주석·모수 병기 모두 제거). 산식은 §4-31b.
+  md += `> ※ 매입금액 기준: **주 단위**(1-1, 1-3)는 **과업지시일자** 기준 · **월 단위**(1-2)는 **세금계산서 발행월** 기준 — 집계 시점이 달라 두 금액은 서로 일치하지 않을 수 있음\n\n`;
 
   md += `### 1-1. 이번 주 KPI 상세\n\n`;
   md += `| 지표 | 이번 주 (${curLabel}) | 전주 (${prevLabel}) | WoW |\n`;
@@ -6352,7 +6353,7 @@ function genWeeklyOutsource() {
   md += `| 금액 입력완료율 (발주) | ${fillCell(curProjConf, curProj.length)} | ${fillCell(prevProjConf, prevProj.length)} | ${wowPct(fillRate(curProjConf,curProj.length), fillRate(prevProjConf,prevProj.length))} |\n`;
   md += `| 금액 입력완료율 (재고생산) | ${fillCell(curStockConf, curStock.length)} | ${fillCell(prevStockConf, prevStock.length)} | ${wowPct(fillRate(curStockConf,curStock.length), fillRate(prevStockConf,prevStock.length))} |\n`;
   md += `| 긴급건수 | ${curUrg}건 (${urgRate}%) | ${prevUrg}건 (${prevUrgRate}%) | ${wow(curUrg, prevUrg)} |\n`;
-  md += `| 미입하 (입하예정일 기준) | ${curMiipha.length}건 / 예정 ${curDue.length}건 (${miiphaRate}%) | ${prevMiipha.length}건 / 예정 ${prevDue.length}건 (${prevMiiphaRate}%) | ${wow(curMiipha.length, prevMiipha.length, true)} |\n`;
+  md += `| 미입하 TASK | ${curMiipha.length}건 (${miiphaRate}%) | ${prevMiipha.length}건 (${prevMiiphaRate}%) | ${wow(curMiipha.length, prevMiipha.length, true)} |\n`;
   md += `| 품질이슈 | ${curQuality.length}건 | ${prevQuality.length}건 | ${wow(curQuality.length, prevQuality.length, true)} |\n`;
   md += `| 수량이슈 | ${curQty}건 | ${prevQty}건 | ${wow(curQty, prevQty, true)} |\n`;
   md += `| 운영이슈 | ${curOp}건 | ${prevOp}건 | ${wow(curOp, prevOp, true)} |\n`;
@@ -6370,7 +6371,7 @@ function genWeeklyOutsource() {
   md += `| 품질등급일치율 | ${monthlyRows.map(r => r.gradeRate).join(' | ')} |\n`;
   md += `| 긴급건수 | ${monthlyRows.map(r => r.urg+'건').join(' | ')} |\n`;
   md += `| 긴급률 | ${monthlyRows.map(r => r.urgRate).join(' | ')} |\n`;
-  md += `| 미입하 (입하예정일 기준) | ${monthlyRows.map(r => r.miipha+'건('+r.miiphaRate+')').join(' | ')} |\n`;
+  md += `| 미입하 TASK | ${monthlyRows.map(r => r.miipha+'건('+r.miiphaRate+')').join(' | ')} |\n`;
   md += `| 실패비용 | ${monthlyRows.map(r => faFull(r.failCost)).join(' | ')} |\n`;
   const ytdProjAll = monthlyRows.reduce((s,r) => s+r.proj, 0);
   const ytdAmtAll = monthlyRows.reduce((s,r) => s+r.amt, 0);
@@ -6386,7 +6387,7 @@ function genWeeklyOutsource() {
   md += `| 발주건수 | ${recentWeeks.map(w => wcell(w, w.proj+'건')).join(' | ')} |\n`;
   md += `| 긴급건수 | ${recentWeeks.map(w => wcell(w, w.urg+'건')).join(' | ')} |\n`;
   md += `| 품질이슈 | ${recentWeeks.map(w => wcell(w, w.quality+'건')).join(' | ')} |\n`;
-  md += `| 미입하 (입하예정일 기준) | ${recentWeeks.map(w => wcell(w, w.miipha+'건/예정'+w.due+'건')).join(' | ')} |\n`;
+  md += `| 미입하 | ${recentWeeks.map(w => wcell(w, w.miipha+'건')).join(' | ')} |\n`;
   md += `| 발주 매입금액 | ${recentWeeks.map(w => wcell(w, faFull(w.amt))).join(' | ')} |\n`;
   md += `| 고객인지이슈 | ${recentWeeks.map(w => wcell(w, w.ci+'건')).join(' | ')} |\n`;
   md += '\n';
@@ -6982,7 +6983,7 @@ function genWeeklyOutsource() {
     const urgRateDiff = parseFloat(urgRate) - parseFloat(prevUrgRate);
     md += `| 지표 | 값 | 비고 |\n`;
     md += `|---|---|---|\n`;
-    md += `| 미입하 (입하예정일 기준) | ${curMiipha.length}건 / 예정 ${curDue.length}건 (${miiphaRate}%) | ${miiphaNote} |\n`;
+    md += `| 미입하 | ${curMiipha.length}건 (${miiphaRate}%) | ${miiphaNote} |\n`;
     md += `| 긴급건수 | ${curUrg}건 (${urgRate}%) | 전주 ${prevUrg}건(${prevUrgRate}%) 대비 ${wow(curUrg, prevUrg)}, ${wowPct(urgRate, prevUrgRate)} |\n`;
     const urgBySup = {};
     urgF(curProj).forEach(r => { const s = cleanSup(pick(r, [F.order.sup, F.order.supText])) || '(미확인)'; urgBySup[s] = (urgBySup[s]||0) + 1; });
