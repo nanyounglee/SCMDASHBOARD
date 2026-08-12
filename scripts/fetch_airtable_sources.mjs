@@ -163,13 +163,15 @@ function archiveBeforeOverwrite(file) {
   const { y, w } = isoWeekOf(commitDate);
   const destDir = path.join('CSV_BANK', wk(y, w));
   fs.mkdirSync(destDir, { recursive: true });
-  let dest = path.join(destDir, file);
-  if (fs.existsSync(dest)) {
-    const stamp = new Date().toISOString().replace(/[-:TZ.]/g, '').slice(0, 14);
-    const ext = path.extname(file), base = path.basename(file, ext);
-    dest = path.join(destDir, `${base}_${stamp}${ext}`);
-  }
-  fs.renameSync(p, dest);
+  // v23.20: 한 주차 폴더에는 파일 1개만 남긴다(사용자 제보 2026-08-12).
+  // 이전에는 같은 이름이 이미 있으면 <이름>_YYYYMMDDHHMMSS.csv로 새로 만들어서,
+  // 대시보드 "지금 새로고침"(repository_dispatch)을 누를 때마다 order 63MB + parts 18MB
+  // + issue 3MB가 영구히 쌓였다 — 2026_W32 한 주에만 751MB, CSV_BANK 전체 2.0GB.
+  // 덮어쓰면 그 주에 마지막으로 아카이브된 = 가장 최신 스냅샷만 남는다.
+  // 대시보드 detectPartsChanges()가 읽는 것도 이 고정 이름(CSV_BANK/<주차>/parts.csv)이라
+  // 최신 스냅샷을 남기는 쪽이 파츠 변경 감지 정확도에도 맞다(타임스탬프 사본은 아무도 안 읽음).
+  const dest = path.join(destDir, file);
+  fs.renameSync(p, dest); // 대상이 있으면 덮어씀 (POSIX·Windows 공통)
   console.log(`  아카이브: CSV/${file} → ${dest}`);
 }
 

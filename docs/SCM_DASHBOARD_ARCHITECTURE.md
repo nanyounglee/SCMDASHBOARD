@@ -1210,6 +1210,16 @@ SCMDASHBOARD/
 
 공통: Airtable API를 `cellFormat=string`+`timeZone=Asia/Seoul`로 호출해 UI 표시 형식 그대로(예: 날짜 `2026.7.14`) 수신하고, 기존 CSV의 헤더 순서를 재사용해 대시보드 컬럼 호환을 유지한다.
 
+**아카이브 보존 원칙 — 주차 폴더당 소스별 파일 1개 (v23.20에서 복구)**: `CSV_BANK/연도_W주차/`에는 소스별로 **그 주 최종 스냅샷 1개만** 둔다. 같은 주에 여러 번 갱신되면 고정 이름에 그대로 덮어써서, 그 주 마지막으로 아카이브된 = 가장 최신 버전이 남는다.
+
+- v23.20 이전에는 대상 파일이 이미 있으면 `<이름>_YYYYMMDDHHMMSS.csv`로 **사본을 새로 만들었다**. 주간 크론뿐 아니라 대시보드 "🔄 지금 새로고침"(`repository_dispatch: refresh-all`)도 같은 워크플로를 돌리므로 버튼 1회 = 약 85MB(order 63 + parts 18 + issue 3)가 영구 적립됐고, `CSV_BANK`가 2.0GB까지 불어났다(2026_W32 한 주만 751MB).
+- 더 중요한 부작용은 **정확도**였다. 고정 이름이 그 주의 *가장 오래된* 스냅샷으로 고정되는데, `detectPartsChanges()`가 읽는 경로가 바로 `CSV_BANK/<주차>/parts.csv`다 — W30에 0.8MB 구본(실데이터 18.0MB), W33 `order.csv`에 1.4MB 잘린 파일(실데이터 64.0MB)이 남아 잘못된 기준과 비교하고 있었다. 덮어쓰기로 바꾸면서 함께 해소됐다.
+- 같은 수정을 `scripts/fetch_google_sheets_csv.mjs`(→ `CSV_BANK/연도_W주차/google_sheets/`)에도 적용했다. 두 곳 모두 `fs.renameSync`가 기존 대상을 덮어쓰는 동작에 의존한다(POSIX·Windows 공통).
+- **대시보드가 `CSV_BANK`에서 읽는 경로는 고정 이름 4가지뿐**이다 — `<주차>/parts.csv`(`detectPartsChanges`), `<주차>/progress_·project_YYYY_WNN.csv`(`fetchWeeklyFile` 폴백), `sup_YYYY_MM.csv`(§4-24), `archive/{연도}/`(전년 YoY). 타임스탬프 사본을 읽는 코드는 없었으므로 정리해도 기능 영향이 없다.
+- 정리는 작업 트리 기준이라 **git 히스토리의 blob은 그대로 남는다**(`.git` 약 756MB). 클론 용량까지 줄이려면 `git filter-repo` 히스토리 재작성이 필요하고 모든 커밋 SHA가 바뀐다 — GitHub Pages 배포·자동 커밋이 도는 저장소라 팀원 재클론 합의 후에만 진행할 것.
+
+**자동화 대상이 아닌 고정 파일명 CSV(2026-08 기준)**: `stockout_list.csv`·`goods_master.csv`는 위 목록에 이름이 있지만 실제로는 `AIRTABLE_SOURCES`에 등록된 적이 없어 계속 수동 업로드만 반영돼 왔다(각 최종 2026-07-03 / 2026-07-15). 자동 갱신을 원하면 아래 "1회 설정 필요" 절차로 항목을 추가하면 된다. `quarter_eval.csv`는 GSheets 소스라 이 자동화 대상이 아니다(§ Google Sheets 절차 참고).
+
 **1회 설정 필요**:
 1. 저장소 Settings → Secrets: `AIRTABLE_TOKEN`(PAT, **`data.records:read` + `schema.bases:read`** 스코프 — 후자는 아래 탐색 워크플로에 필요)
 2. **먼저 base/table/view 식별자를 확인**: Actions 탭 → `airtable-discover` → Run workflow. 접근 가능한 모든 Base/Table/View 이름과 ID가 로그에 출력된다(아무것도 커밋하지 않는 읽기 전용 워크플로). `scripts/list_airtable_schema.mjs` 참고.

@@ -153,14 +153,10 @@ function archiveBeforeOverwrite(file) {
   const destDir = path.join('CSV_BANK', wk(y, w), 'google_sheets');
   fs.mkdirSync(destDir, { recursive: true });
 
-  let dest = path.join(destDir, file);
-  if (fs.existsSync(dest)) {
-    const stamp = new Date().toISOString().replace(/[-:TZ.]/g, '').slice(0, 14);
-    const ext = path.extname(file);
-    const base = path.basename(file, ext);
-    dest = path.join(destDir, `${base}_${stamp}${ext}`);
-  }
-  fs.renameSync(currentPath, dest);
+  // v23.20: 한 주차 폴더에는 파일 1개만 — fetch_airtable_sources.mjs와 동일 수정.
+  // 같은 주에 여러 번 갱신하면 타임스탬프 사본이 무한히 쌓이던 문제(아무도 읽지 않는 파일).
+  const dest = path.join(destDir, file);
+  fs.renameSync(currentPath, dest); // 대상이 있으면 덮어씀
   console.log(`  archived CSV/${file} -> ${dest}`);
 }
 
