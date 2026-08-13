@@ -2432,8 +2432,20 @@ function printMethod(r){
 // 자기 자신 토큰(옵션 없음)과 다른 파츠(단품박스·OPP·슬리브 등)는 접두 일치로 걸러낸다.
 // 구성옵션을 먼저 보고, 거기서 아무것도 못 찾을 때만 산출물_옵션으로 내려간다(전자가 더 정확).
 // 한 행에서 옵션이 2종 이상 나오면 어느 쪽인지 단정할 수 없어 '' 반환(전체 6,499행 중 26행).
+// v23.25(사용자 확인 2026-08-12): 인쇄 산출물명에서 실제 제품명을 꺼낸다.
+// 산출물이 `실크(바이브 캠핑쿨러)`·`UV(슈가케인 펜)`처럼 «인쇄방식(제품명)» 형태인 행이 많은데,
+// 제품명 자리를 산출물 이름 그대로 쓰면 파츠 카탈로그의 굿즈와 매칭되지 않아 옵션이 전부
+// «(옵션 미상)»으로 빠졌다(미매칭 행의 57%, 1,510건). 괄호 안을 제품명으로 삼아 해소한다.
+// `밸류메모큐브(ver2)`처럼 앞이 인쇄어가 아니면 건드리지 않는다.
+const PRINT_WRAP_WORDS=PRINT_WORDS.concat(['레이저','불박','공박','색박','박','인쇄','도금','에폭시']);
+function unwrapPrintName(name){
+  const s=String(name||'').trim();
+  const m=s.match(/^([^(]+)\((.+)\)$/); if(!m) return s;
+  const head=m[1].replace(/\s+/g,'');
+  return PRINT_WRAP_WORDS.some(w=>head===w||head.startsWith(w))?m[2].trim():s;
+}
 function itemOption(r){
-  const core=coreProdName(prodKey(r)); if(!core) return '';
+  const core=coreProdName(unwrapPrintName(prodKey(r))); if(!core) return '';
   const found=new Set();
   for(const col of ['구성옵션(인쇄제외)','산출물_옵션']){
     for(const tok of String(r[col]||'').split(',').map(s=>s.replace(/\s+/g,'')).filter(Boolean)){
@@ -2764,7 +2776,7 @@ function bufferIssueProductKey(r,productSet){
 //   예) '밸류메모큐브(ver2)(비점착.M), 밸류메모큐브(ver2), 밸류메모큐브(ver2)' → '비점착.M'
 // itemOption()과 같은 접두 일치 규칙을 쓰되 대상 컬럼만 다르다.
 function issueItemOption(r,prod){
-  const core=coreProdName(prod); if(!core) return '';
+  const core=coreProdName(unwrapPrintName(prod)); if(!core) return '';
   const found=new Set();
   for(const tok of String(r['item (통합) (from order)']||'').split(',').map(s=>s.replace(/\s+/g,'')).filter(Boolean)){
     if(tok===core||!tok.startsWith(core)) continue;
@@ -2780,7 +2792,7 @@ function optionSkuMetrics(prod){
   if(!D.dashboard_sku_snapshot) return null;
   const p=getLatestAggPeriod('weekly'); if(!p) return null;
   const rows=getAggSkuRows('weekly',p.period_key);
-  const core=coreProdName(prod); if(!core) return null;
+  const core=coreProdName(unwrapPrintName(prod)); if(!core) return null;
   const out={};
   rows.forEach(r=>{
     const nm=String(r.parts_name||'').replace(/\s+/g,'').replace(/^PT\d+-/,'');
@@ -2800,7 +2812,7 @@ function optionSkuMetrics(prod){
 const PARTS_QTY_TIERS=['100개','300개','500개','1000개','3000개'];
 function goodsOptionCatalog(prod){
   if(!D.parts) return null;
-  const core=coreProdName(prod); if(!core) return null;
+  const core=coreProdName(unwrapPrintName(prod)); if(!core) return null;
   const K='파츠명 (Long ver)';
   const out={product:[],printing:[]};
   (D.parts||[]).forEach(r=>{
@@ -3246,7 +3258,7 @@ function openGoodsDetail(gc){
   const PSETS=(function(){
     const prod=new Set(), nonProd=new Set();
     if(!D.parts) return {prod,nonProd};
-    const gname=coreProdName(goodsNameOf(gc)||''), K='파츠명 (Long ver)';
+    const gname=coreProdName(unwrapPrintName(goodsNameOf(gc)||'')), K='파츠명 (Long ver)';
     D.parts.forEach(r=>{
       const ty=String(r['파츠 유형']||'');
       const links=String(r['굿즈 연결 현황 (from item)']||'').split(',').map(x=>coreProdName(x)).filter(Boolean);
