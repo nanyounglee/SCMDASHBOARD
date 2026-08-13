@@ -5326,20 +5326,63 @@ function getOrderNamePartsIndex() {
 // 배타 옵션 문제가 원천적으로 사라진다. 단가는 **그 행의 발주지시수량 구간**을 적용한다.
 // 커버리지도 좋아진다 — 발주서명칭 매칭 3,063행(63%) → 실제 PT 기준 4,852행.
 function orderRowParts(r){ return [...new Set(String(r&&r['sync_itemdb']||'').match(/PT\d+/g)||[])]; }
+// v23.24(사용자 확인 2026-08-12): **재고생산품은 재고생산 수량 구간의 단가를 쓴다.**
+// 이전에는 그 발주행의 수량으로 구간을 골랐는데, 재고생산품은 미리 대량으로 만들어 둔 것이라
+// 프로젝트 발주 수량(소량)의 구간을 적용하면 단가가 폭증한다 — 올웨이즈 양우산 본품(PT4795)은
+// 실크 인쇄 발주 101개 기준으로 100개 구간 177,500원이 잡혔지만, 실제로는 재고생산에서
+// 3,000개씩 만든 물건이라 3000개 구간 6,400원이 맞다(실측 재고생산 발주 단가 5,130~6,135원).
+// 이 한 건이 «실크(올웨이즈 양우산)» 표준원가를 취득원가의 54.6배로 부풀리고 있었다.
+// PT별로 실제 STCK 발주에서 나온 수량(최대값)을 색인해 두고, 재고생산 이력이 있는 파츠는
+// 그 수량으로 구간을 고른다. 재고생산 이력이 없으면 종전대로 그 발주행 수량을 쓴다.
+// v23.24b(사용자 지시): **STCK 아이템이 있는 제품의 Product 파츠는 재고생산 원가 기준.**
+// 판정은 실제 STCK 발주행뿐 아니라 parts.csv의 `굿즈 연결 현황`에 «재고생산»이 걸린 파츠(521개)
+// 전체로 넓힌다 — 발주 이력이 없어도 재고생산 대상이면 소량 구간 단가는 애초에 실단가가 아니다.
+// 소량 구간이 못 쓰는 값인 이유: 원천이 **MOQ 총액 ÷ 수량**으로 구간을 채워서다. PT4795를 보면
+// 1개 17,700,500 · 100개 177,500 · 3000개 6,400 — 전부 곱하면 약 1,770~1,920만원으로 수렴한다.
+// 즉 실제 단가는 «실제로 만든 수량» 구간에만 있고, 그게 재고생산 수량이다.
+// 재고생산 수량을 못 찾으면 등록된 **최대 구간**을 쓴다(MOQ를 가장 크게 나눈 값 = 실단가에 가장 근접).
+let STOCK_PT_QTY=null, STOCK_PT_QTY_SRC=null;
+function getStockPartQtyIndex(){
+  const src=D.order;
+  if(STOCK_PT_QTY&&STOCK_PT_QTY_SRC===src) return STOCK_PT_QTY;
+  const idx={};
+  // ① 실제 재고생산 발주에서 나온 수량(최대값)
+  [...(D.order||[]),...(D.orderPrevYear||[])].forEach(r=>{
+    if(!isStock(r)) return;
+    const q=pa(String(r['발주지시수량']||'')); if(q<=0) return;
+    orderRowParts(r).forEach(id=>{ if(!idx[id]||q>idx[id]) idx[id]=q; });
+  });
+  // ② 발주 이력이 없어도 «재고생산»에 연결된 Product 파츠는 등록된 최대 구간 수량으로
+  (D.parts||[]).forEach(row=>{
+    const m=String(row['파츠명 (Long ver)']||'').match(/PT\d+/); if(!m) return;
+    const id=m[0]; if(idx[id]) return;
+    if(!String(row['파츠 유형']||'').includes('Product Parts')) return;
+    if(!String(row['굿즈 연결 현황 (from item)']||'').includes('재고생산')) return;
+    for(let i=COST_TIERS.length-1;i>=0;i--){
+      const v=pa((row[COST_TIERS[i]+'개_표준원가']||'').trim());
+      if(v>0){ idx[id]=COST_TIERS[i]; break; }
+    }
+  });
+  STOCK_PT_QTY=idx; STOCK_PT_QTY_SRC=src;
+  return idx;
+}
 function calcOrderRowStdCost(r){
   const qty=pa(String(r['발주지시수량']||'')); if(qty<=0) return null;
   const ids=orderRowParts(r); if(!ids.length) return null;
-  const idx=getPartsPTIndex();
-  let unit=0,priced=0,missing=0; const detail=[];
+  const idx=getPartsPTIndex(), sq=getStockPartQtyIndex(), rowIsStock=isStock(r);
+  let unit=0,priced=0,missing=0,stockPriced=0; const detail=[];
   ids.forEach(id=>{
     const pr=idx[id];
     if(!pr){ missing++; return; }
-    const t=partTierCost(pr,qty);
+    // 재고생산 이력이 있는 파츠는 그 재고생산 수량 구간으로 — 단, 재고생산 발주행 자체는 제 수량대로
+    const useQty=(!rowIsStock&&sq[id]>qty)?sq[id]:qty;
+    const t=partTierCost(pr,useQty);
     if(!t){ missing++; return; }   // 추상적산출물 등 단가 없는 Phantom 파츠는 0원 기여
     unit+=t.value; priced++;
-    detail.push({pt:id,unit:t.value,tier:t.tier,name:String(pr['파츠명 (Long ver)']||'').replace(/^PT\d+-/,'')});
+    if(useQty!==qty) stockPriced++;
+    detail.push({pt:id,unit:t.value,tier:t.tier,fromStock:useQty!==qty,name:String(pr['파츠명 (Long ver)']||'').replace(/^PT\d+-/,'')});
   });
-  return priced?{qty,unitCost:unit,cost:unit*qty,priced,missing,detail}:null;
+  return priced?{qty,unitCost:unit,cost:unit*qty,priced,missing,stockPriced,detail}:null;
 }
 // PNA 프로젝트(별건 task 묶음) 단위 표준원가 — 그 프로젝트의 모든 발주행을 위 규칙으로 합산
 function calcProjectStdCost(pna,opt){
