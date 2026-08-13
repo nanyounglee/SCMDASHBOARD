@@ -625,7 +625,8 @@ a{color:var(--blue);text-decoration:none}
       <div id="ord-tab-main" class="tab-panel active">
       <div id="tab-ord-top" class="card">
         <div class="card-header"><div class="card-title">전체 제품 발주량 <span style="font-weight:400;font-size:11px;color:var(--text3)">(재고생산 제외 · 검색창 반영 · 헤더 클릭 시 해당 기준 내림차순 · <b>산출물 클릭 시 제품 상세 발주 현황 드릴다운</b>)</span></div></div>
-        <div class="tbl-wrap"><table class="tbl tbl-ord-top"><thead><tr><th class="rank">#</th><th>산출물</th><th class="num th-sort sort-active" data-sort="qty" onclick="sortOrdTop('qty')">발주수량 ▾</th><th class="num" title="고객이 실제 구매(결제)한 수량 합계">고객주문수량</th><th class="num" title="현재 여분 발주율 = (발주지시수량 − 고객주문수량) ÷ 고객주문수량 — 고객주문>0 & 발주≥고객 행 기준(분할발주·재제작 제외), 5% 이상 주황">여분 발주율</th><th class="num" id="th-ord-adjacent">MoM</th><th class="num" id="th-ord-yoy">YoY</th><th class="num th-sort" data-sort="freq" onclick="sortOrdTop('freq')">월간발주빈도 ▾</th><th class="num">연간발주량합</th><th class="num th-sort" data-sort="amt" onclick="sortOrdTop('amt')">공급가액 ▾</th><th>담당자</th></tr></thead><tbody id="tb-ord-top"></tbody></table></div>
+        <div id="ord-group-chips" style="display:flex;gap:6px;align-items:center;margin:0 0 8px"><span style="font-size:11px;color:var(--text3)">묶음 단위</span><span class="m-chip active" data-mode="goods" onclick="setOrdGroupMode('goods')" title="같은 굿즈코드의 옵션·부자재를 한 줄로 — 발주수량은 완제품(추상적산출물) 기준">굿즈</span><span class="m-chip" data-mode="output" onclick="setOrdGroupMode('output')" title="기존 방식 — 산출물(추상적산출물·부자재·인쇄) 각각을 한 줄로">산출물</span></div>
+        <div class="tbl-wrap"><table class="tbl tbl-ord-top"><thead><tr><th class="rank">#</th><th id="th-ord-name">굿즈</th><th class="num th-sort sort-active" id="th-ord-qty" data-sort="qty" onclick="sortOrdTop('qty')">발주수량 ▾</th><th class="num" title="고객이 실제 구매(결제)한 수량 합계">고객주문수량</th><th class="num" title="현재 여분 발주율 = (발주지시수량 − 고객주문수량) ÷ 고객주문수량 — 고객주문>0 & 발주≥고객 행 기준(분할발주·재제작 제외), 5% 이상 주황">여분 발주율</th><th class="num" id="th-ord-adjacent">MoM</th><th class="num" id="th-ord-yoy">YoY</th><th class="num th-sort" data-sort="freq" onclick="sortOrdTop('freq')">월간발주빈도 ▾</th><th class="num">연간발주량합</th><th class="num th-sort" data-sort="amt" onclick="sortOrdTop('amt')">공급가액 ▾</th><th>담당자</th></tr></thead><tbody id="tb-ord-top"></tbody></table></div>
       </div>
       </div>
       <!-- v22: 여분(버퍼) 발주수량 추천 — 이슈 이력 기반 예방원가 분석 (v21.5: 부족 이벤트 개수 기반 산식) -->
@@ -1406,6 +1407,52 @@ function goodsCode(r) {
   return m ? m[1] : '';
 }
 function partsType(r) { return r['파츠유형']||''; }
+// ===== v23.22: 굿즈코드 단위 집계 (사용자 요청 2026-08-12) =====
+// 원천 DB 구조: parts(최소단위) → item(사양) → product+print 조합이 추상적산출물(Phantom)로
+// 조립 → 여기에 package(박스·OPP·스티커·부자재)가 붙어 goods가 된다. 그런데 대시보드는
+// 지금까지 3층(추상적산출물=`산출물` 문자열) 하나만 집계 키로 써서, 같은 굿즈의 옵션·부자재가
+// 제각기 다른 행으로 흩어져 있었다(발주 6,064행 → 산출물 559종 vs 굿즈코드 204개).
+//
+// 굿즈코드 추출은 이미 있는 goodsCode(r)를 그대로 쓴다(원가 분석·매출 화면이 쓰는 것과 같은 함수).
+// 별도 정의를 두면 화면마다 코드가 갈려 같은 굿즈가 다르게 묶이므로 통일 — 실측으로도 두 방식이
+// 재고생산 제외 6,064행 전부 동일한 결과(고유 코드 204개)임을 확인했다.
+// 발주행의 역할 — 파츠유형으로 판정. Phantom이 섞여 있으면 그 발주는 "조립된 완제품 산출"이다
+// (실측: 완제품 3,168행 / 부자재 2,267 / 제품파츠 단독 496 / 인쇄 133, 미분류 0).
+// 굿즈 대표 발주수량은 완제품 행만 합산한다(사용자 확정 2026-08-12) — 부자재까지 더하면
+// "제품 몇 개"가 아니게 되고, 골프공+볼마커처럼 Product 파츠가 2종인 세트는 이중계산된다.
+function orderRole(r){
+  const t=String(r['파츠유형']||'');
+  if(t.includes('Phantom Parts')) return 'assembled';
+  if(t.includes('Product Parts')) return 'product';
+  if(t.includes('Printing Parts')) return 'printing';
+  if(t.includes('Package Parts')) return 'package';
+  return 'etc';
+}
+const ORDER_ROLE_LABEL={assembled:'완제품(조립산출)',product:'제품 파츠',printing:'인쇄',package:'부자재',etc:'기타'};
+// 굿즈명은 기존 goodsNameOf(code)를 쓴다 — goods_master의 Goods Code→Goods Name, 없으면 산출물 최빈값 폴백.
+// 그룹 안에서 옵션 라벨 뽑기 — 구성옵션 문자열들의 공통 접두를 떼어 구별되는 부분만 남긴다.
+// 산출물명과 옵션 접두가 어긋나는 굿즈(SPCP: 산출물 'UV(스펙트럼 컬러펜)' vs 옵션
+// '스펙트럼컬러펜(화이트.블랙잉크)')에서도 동작하도록 itemOption()과 달리 산출물명에 기대지 않는다.
+function stripCommonPrefix(list){
+  const arr=[...new Set(list.filter(Boolean))];
+  if(arr.length<2) return Object.fromEntries(arr.map(s=>[s,s]));
+  let p=arr[0];
+  for(const s of arr){ let i=0; while(i<p.length&&i<s.length&&p[i]===s[i]) i++; p=p.slice(0,i); }
+  return Object.fromEntries(arr.map(s=>{
+    let t=p?s.slice(p.length):s;
+    t=t.replace(/^[\s._,\-]+/,'').replace(/[\s._,\-]+$/,'');
+    if(/^\(.*\)$/.test(t)) t=t.slice(1,-1);            // 통째로 괄호면 벗긴다: '(점착.S)' → '점착.S'
+    // 접두를 떼면서 괄호 짝이 깨질 수 있다 — 균형을 되돌려 '스펀지패드(블랙' 같은 잘린 라벨을 막는다
+    const op=(t.match(/\(/g)||[]).length, cl=(t.match(/\)/g)||[]).length;
+    if(op>cl) t+=')'.repeat(op-cl);
+    else if(cl>op){ // 공통 접두가 여는 괄호까지 먹은 경우: '밸류메모큐브(ver2)(' → '점착.S)'
+      let n=cl-op;
+      while(n>0&&t.endsWith(')')){ t=t.slice(0,-1); n--; }
+      if(n>0) t=t.replace(/^\)+/,'');
+    }
+    return [s,t||s];
+  }));
+}
 // ===== 빅딜(대량 발주) 판정 — 제품별 공통 기준 =====
 // v23.14(사용자 확정 2026-08-04): "제품별 표준분포에서 가중치 80%를 벗어나는 수량"을 빅딜 기준으로
 // 통일. 그 제품의 전체 발주수량 분포를 정규분포로 보고 중앙 80% 구간의 상단(μ+1.2816σ)을 넘는
@@ -2419,6 +2466,21 @@ function sortOrdTop(key) {
   ORD_TOP_SORT=key;
   renderOrdTopTable();
 }
+// v23.22: 발주 현황 표 묶음 단위 — 'goods'(굿즈코드, 기본) | 'output'(기존 산출물)
+// 기본을 굿즈코드로 둔 이유: 같은 굿즈의 옵션·부자재가 산출물 단위로 흩어져 있어(559종 vs 204코드)
+// "이 굿즈가 얼마나 나갔나"를 한 줄로 볼 수 없었다. 산출물 단위도 그대로 남겨 기존 조회 방식을 유지.
+let ORD_GROUP_MODE=(function(){ try{ return localStorage.getItem('ord_group_mode')||'goods'; }catch(e){ return 'goods'; } })();
+function setOrdGroupMode(m){
+  ORD_GROUP_MODE=m;
+  try{ localStorage.setItem('ord_group_mode',m); }catch(e){}
+  const box=document.getElementById('ord-group-chips');
+  if(box) box.querySelectorAll('.m-chip').forEach(c=>c.classList.toggle('active',c.dataset.mode===m));
+  const th=document.getElementById('th-ord-name');
+  if(th) th.textContent=(m==='goods')?'굿즈':'산출물';
+  const qh=document.getElementById('th-ord-qty');
+  if(qh) qh.title=(m==='goods')?'완제품(추상적산출물) 발주 행만 합산 — 부자재·인쇄는 제외해 "제품 몇 개"가 되도록 함':'해당 산출물 발주수량 합계';
+  renderOrdTopTable();
+}
 function renderOrdTopTable() {
   if (!D.order||!SEL_MONTH||!SEL_DATE_RANGE) return;
   const q=getSearchQuery();
@@ -2426,14 +2488,34 @@ function renderOrdTopTable() {
   // 2025년에만 발주 이력이 있는 제품(예: 썸네일캘린더)이 기간을 2025년으로 잡아도 목록에서 사라졌음
   const allOrders=[...D.order,...(D.orderPrevYear||[])];
   const f=allOrders.filter(r=>inSelDateRange(r['과업지시일자'])&&!isStock(r)&&(!q||matchesSearch(r,q)));
+  // v23.22: 굿즈코드 단위 묶어보기(기본) ↔ 기존 산출물 단위 — 상단 칩으로 전환.
+  const gm=ORD_GROUP_MODE==='goods';
+  // 굿즈 대표 발주수량은 완제품(Phantom 포함) 행만 합산한다 — 부자재·인쇄까지 더하면 "제품 몇 개"가
+  // 아니게 되기 때문(사용자 확정). 다만 완제품 행이 하나도 없는 굿즈코드가 24개 있어(웰컴페이퍼·
+  // 띠지 등 부자재만 발주된 코드) 그 코드는 전체합으로 폴백한다. 현재기간·연간·전기·YoY 네 집계가
+  // 같은 기준을 쓰도록 폴백 대상을 먼저 확정해 둔다.
+  const gCodeOf=r=>goodsCode(r)||('P:'+prodKey(r));
+  const hasAssembled={};
+  if(gm) allOrders.forEach(r=>{ if(isStock(r)||!r['산출물'])return; if(orderRole(r)==='assembled') hasAssembled[gCodeOf(r)]=1; });
+  const keyOf=r=>gm?('G:'+gCodeOf(r)):rowGroupKey(r);
+  // 그 행이 대표수량에 계상될 수량 — 산출물 모드는 항상 전량
+  const qtyOf=r=>{
+    const oq=pa(r['발주지시수량']);
+    if(!gm) return oq;
+    if(!hasAssembled[gCodeOf(r)]) return oq;           // 완제품 행이 없는 코드 → 전체합 폴백
+    return orderRole(r)==='assembled'?oq:0;
+  };
   const byProd={};
   f.forEach(r=>{
     const prod=r['산출물']||'';
-    const key=rowGroupKey(r);
-    if (!byProd[key]) byProd[key]={qty:0,amt:0,freq:0,mgr:r['과업담당자_이름']||'',isBespoke:!prod,pn:r['발주번호']||'',cust:0,bufC:0,bufD:0,base:prodKey(r),variant:variantTag(r)};
-    const oq=pa(r['발주지시수량']);
+    const key=keyOf(r);
+    if (!byProd[key]) byProd[key]={qty:0,amt:0,freq:0,mgr:r['과업담당자_이름']||'',isBespoke:!prod,pn:r['발주번호']||'',cust:0,bufC:0,bufD:0,
+      base:gm?(goodsNameOf(goodsCode(r))||prodKey(r)):prodKey(r), variant:gm?'':variantTag(r),
+      gc:gm?goodsCode(r):'', outs:gm?new Set():null};
+    if(gm&&byProd[key].outs) byProd[key].outs.add(prod);
+    const oq=qtyOf(r);
     byProd[key].qty+=oq;
-    byProd[key].amt+=pa(r['공급가액']);
+    byProd[key].amt+=pa(r['공급가액']);   // 공급가액은 부자재 포함 전체 — 그 굿즈에 쓴 총액
     byProd[key].freq++;
     // v21.9: 고객주문수량(고객이 실제 구매한 수량) 합계 + 현재 여분 발주율 — v21.7 관행 산식과 동일
     // (여분율 분모·분자는 고객주문>0 & 발주≥고객 행만: 분할발주 음수·재제작 행 제외)
@@ -2445,27 +2527,30 @@ function renderOrdTopTable() {
   // v22.17: 같은 굿즈명에서 변형 값이 실제로 2종 이상 공존할 때만 분리 표기 — 변형 값이 하나뿐이면
   // (예: 항상 "디지털인쇄") 나눠도 정보가 없고, 변형 필드가 없는 2025 아카이브와 키가 어긋나 YoY가
   // 끊기기만 하므로 그런 경우는 원래 굿즈명 키로 되돌린다.
-  const baseKeyList={};
-  Object.entries(byProd).forEach(([k,v])=>{ (baseKeyList[v.base]=baseKeyList[v.base]||[]).push(k); });
+  // v23.22: 굿즈코드 모드에서는 키가 이미 코드 하나라 변형 합치기 자체가 필요 없다(적용 안 함).
   const collapseTo={};
-  Object.entries(baseKeyList).forEach(([base,keys])=>{ if(keys.length===1&&keys[0]!==base) collapseTo[keys[0]]=base; });
-  Object.entries(collapseTo).forEach(([oldKey,base])=>{ byProd[base]=byProd[oldKey]; byProd[base].variant=''; delete byProd[oldKey]; });
-  function resolvedKey(r){ const k=rowGroupKey(r); return collapseTo[k]||k; }
+  if(!gm){
+    const baseKeyList={};
+    Object.entries(byProd).forEach(([k,v])=>{ (baseKeyList[v.base]=baseKeyList[v.base]||[]).push(k); });
+    Object.entries(baseKeyList).forEach(([base,keys])=>{ if(keys.length===1&&keys[0]!==base) collapseTo[keys[0]]=base; });
+    Object.entries(collapseTo).forEach(([oldKey,base])=>{ byProd[base]=byProd[oldKey]; byProd[base].variant=''; delete byProd[oldKey]; });
+  }
+  function resolvedKey(r){ const k=keyOf(r); return collapseTo[k]||k; }
   // 연간발주량합: 선택 기간이 속한 연도 기준 누계(검색 필터 동일 적용, 재고생산 제외)
   const selYear=SEL_MONTH.split('.')[0];
   const yearQty={};
   allOrders.filter(r=>!isStock(r)&&(!q||matchesSearch(r,q))&&(pOrderMonth(r['과업지시일자'])||'').startsWith(selYear+'.')).forEach(r=>{
-    yearQty[resolvedKey(r)]=(yearQty[resolvedKey(r)]||0)+pa(r['발주지시수량']);
+    yearQty[resolvedKey(r)]=(yearQty[resolvedKey(r)]||0)+qtyOf(r);
   });
   // 직전 기간(WoW/MoM/QoQ) 제품별 발주수량 — 기간지정은 직전 기간 개념이 없어 생략
   const adjRange=getAdjacentDateRange();
   const prevByProd={};
   // v22.2 감사 수정: 전기/전년 집계에도 검색 필터 적용 — 필터된 당기 vs 무필터 전기의 왜곡 비교 방지
-  if(adjRange) allOrders.filter(r=>inDateRange(r['과업지시일자'],adjRange)&&!isStock(r)&&(!q||matchesSearch(r,q))).forEach(r=>{prevByProd[resolvedKey(r)]=(prevByProd[resolvedKey(r)]||0)+pa(r['발주지시수량']);});
+  if(adjRange) allOrders.filter(r=>inDateRange(r['과업지시일자'],adjRange)&&!isStock(r)&&(!q||matchesSearch(r,q))).forEach(r=>{prevByProd[resolvedKey(r)]=(prevByProd[resolvedKey(r)]||0)+qtyOf(r);});
   // 전년 동기(YoY) 제품별 발주수량 — 2025 원본 row(D.orderPrevYear)가 있으면 정확한 일자로 집계
   const yoyRange=getYoyDateRange();
   const yoyByProd={};
-  if(yoyRange&&D.orderPrevYear) D.orderPrevYear.filter(r=>inDateRange(r['과업지시일자'],yoyRange)&&!isStock(r)&&(!q||matchesSearch(r,q))).forEach(r=>{yoyByProd[resolvedKey(r)]=(yoyByProd[resolvedKey(r)]||0)+pa(r['발주지시수량']);});
+  if(yoyRange&&D.orderPrevYear) D.orderPrevYear.filter(r=>inDateRange(r['과업지시일자'],yoyRange)&&!isStock(r)&&(!q||matchesSearch(r,q))).forEach(r=>{yoyByProd[resolvedKey(r)]=(yoyByProd[resolvedKey(r)]||0)+qtyOf(r);});
   const adjTh=document.getElementById('th-ord-adjacent'), yoyTh=document.getElementById('th-ord-yoy');
   if(adjTh) adjTh.textContent=periodUnitAdjacentLabel()||'전기대비';
   if(yoyTh) yoyTh.textContent='YoY';
@@ -2482,7 +2567,14 @@ function renderOrdTopTable() {
     const bufHtml=bufRate===null?'<span style="color:var(--text3)">—</span>':`<span style="font-weight:600;color:${bufRate>=5?'var(--amber)':'var(--text)'}">${bufRate.toFixed(1)}%</span>`;
     // v22.17: 색상/인쇄방식 변형이 실제로 갈리는 제품만 굿즈명 뒤에 표기해 구분(예: "페이퍼링 캘린더 (그레이)")
     const label=v.variant?`${v.base} (${v.variant})`:v.base;
-    return `<tr><td class="rank">${i+1}</td><td>${v.isBespoke?`<span class="tag tag-gray">비스포크</span> <span class="mono">${esc(v.pn)}</span>`:`<span style="cursor:pointer;color:var(--blue);font-weight:600" title="클릭 시 제품 상세 발주 현황(이슈·여분·투자효과)" onclick="openProductOrderDetail('${esc(v.base).replace(/'/g,"\\'")}')">${esc(crop(label,30))}</span>`}</td><td class="num">${v.qty.toLocaleString()}</td><td class="num">${v.cust?v.cust.toLocaleString():'—'}</td><td class="num">${bufHtml}</td><td class="num">${momYoyBadge(v.qty,prevQty)}</td><td class="num">${momYoyBadge(v.qty,yoyQty)}</td><td class="num">${v.freq}</td><td class="num">${yTotal.toLocaleString()}</td><td class="num">${faFull(v.amt)}</td><td>${v.mgr||'—'}</td></tr>`;
+    // v23.22: 굿즈 모드는 굿즈코드 배지 + 산출물 종수를 병기하고 굿즈 상세 모달을 연다
+    const optCnt=(gm&&v.outs)?v.outs.size:0;
+    const nameCell=v.isBespoke
+      ?`<span class="tag tag-gray">비스포크</span> <span class="mono">${esc(v.pn)}</span>`
+      :((gm&&v.gc)
+        ?`<span style="cursor:pointer;color:var(--blue);font-weight:600" title="클릭 시 굿즈 상세 — 옵션별 발주 비중·재고회전율·수량별 단가" onclick="openGoodsDetail('${esc(v.gc).replace(/'/g,"\\'")}')">${esc(crop(v.base,26))}</span> <span class="mono" style="font-size:10px;color:var(--text3)">${esc(v.gc)}</span>${optCnt>1?` <span class="tag" style="background:var(--surface2);color:var(--text2);font-size:10px">산출물 ${optCnt}종</span>`:''}`
+        :`<span style="cursor:pointer;color:var(--blue);font-weight:600" title="클릭 시 제품 상세 발주 현황(이슈·여분·투자효과)" onclick="openProductOrderDetail('${esc(v.base).replace(/'/g,"\\'")}')">${esc(crop(label,30))}</span>`);
+    return `<tr><td class="rank">${i+1}</td><td>${nameCell}</td><td class="num">${v.qty.toLocaleString()}</td><td class="num">${v.cust?v.cust.toLocaleString():'—'}</td><td class="num">${bufHtml}</td><td class="num">${momYoyBadge(v.qty,prevQty)}</td><td class="num">${momYoyBadge(v.qty,yoyQty)}</td><td class="num">${v.freq}</td><td class="num">${yTotal.toLocaleString()}</td><td class="num">${faFull(v.amt)}</td><td>${v.mgr||'—'}</td></tr>`;
   }).join('');
   setTbody('tb-ord-top',topHTML||emptyRow(11,q?'검색 결과 없음':'발주 데이터 없음'));
   document.querySelectorAll('#tab-ord-top .th-sort').forEach(th=>{
@@ -3106,6 +3198,191 @@ function openProductOrderDetail(prod){
   body.innerHTML=`<div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:4px">${chips}</div>
     <div style="font-size:10px;color:var(--text3);margin:4px 0 8px">※ 위 수치는 <b>당해+전년 전체 발주 이력</b> 기준(재고생산 제외) — 발주 현황 상단 표는 현재 선택된 기간(${SEL_MONTH||'—'}) 기준이라 서로 범위가 달라 숫자가 다를 수 있습니다.</div>
     ${variantHtml}${catalogHtml}${bufHtml}${patternHtml}${ordHtml}${issHtml}`;
+}
+// ===== v23.22: 굿즈 단위 상세 모달 (사용자 요청 2026-08-12) =====
+// 발주 현황 표를 굿즈코드로 묶은 뒤, 그 안에서 옵션별 발주 비중(도넛)·재고회전율·수량별 단가를
+// 한 화면에서 본다. 산출물 단위 모달(openProductOrderDetail)과 달리 여기서는 한 굿즈에 딸린
+// 완제품·제품파츠·인쇄·부자재를 역할별로 갈라 보여준다(원천 DB의 parts→item→phantom→goods 계층).
+let GLOBAL_NONPROD_PARTS=null, GLOBAL_NONPROD_SRC=null;
+const GOODS_DONUT_COLORS=['#1d4ed8','#059669','#d97706','#7c3aed','#dc2626','#0891b2','#65a30d','#be185d','#0f766e','#94a3b8'];
+let SKU_BY_PARTNAME=null, SKU_BY_PARTNAME_SRC=null;
+function getSkuByPartName(){
+  // 옵션 원문(구성옵션 값)이 곧 파츠명이라 SKU 스냅샷과 정확히 이름으로 맞물린다
+  //   구성옵션 '밸류메모큐브(ver2)(점착.S)' ↔ parts_name 'PT4716-밸류메모큐브(ver2)(점착.S)'
+  if(SKU_BY_PARTNAME&&SKU_BY_PARTNAME_SRC===D.dashboard_sku_snapshot) return SKU_BY_PARTNAME;
+  const out={};
+  const p=getLatestAggPeriod('weekly');
+  if(p) getAggSkuRows('weekly',p.period_key).forEach(r=>{
+    const nm=String(r.parts_name||'').replace(/\s+/g,'').replace(/^PT\d+-/,'');
+    if(nm&&!out[nm]) out[nm]={partsNo:r.parts_no,inv:pa(r.inv_qty),price:pa(r.unit_price),
+      s3m:pa(r.sales_3m),sytd:pa(r.sales_ytd),tytd:parseFloat(r.turnover_ytd)||0,status:String(r.sales_status||'').trim()};
+  });
+  SKU_BY_PARTNAME=out; SKU_BY_PARTNAME_SRC=D.dashboard_sku_snapshot;
+  return out;
+}
+function openGoodsDetail(gc){
+  const ov=document.getElementById('modal-overlay');
+  document.getElementById('modal-tabs-el').innerHTML='';
+  const gname=goodsNameOf(gc)||gc;
+  document.getElementById('modal-title').textContent='굿즈 상세 — '+gname+' ('+gc+')';
+  const body=document.getElementById('modal-body');
+  ov.classList.add('open');
+  const all=[...(D.order||[]),...(D.orderPrevYear||[])].filter(r=>!isStock(r)&&goodsCode(r)===gc);
+  if(!all.length){ body.innerHTML='<div class="empty">해당 굿즈의 발주 이력이 없습니다.</div>'; return; }
+  const isRework=r=>String(r['task_id']||'').includes('재제작');
+  const byRole={assembled:[],product:[],printing:[],package:[],etc:[]};
+  all.forEach(r=>byRole[orderRole(r)].push(r));
+  const hasAsm=byRole.assembled.length>0;
+  // 대표 수량 기준 행 — 완제품 발주가 있으면 그것만, 없으면(부자재만 발주된 굿즈) 전체
+  const unitRows=hasAsm?byRole.assembled:all;
+  // ---- 옵션 분해 ----
+  // 구성옵션/산출물_옵션은 "그 발주에 들어간 구성요소 목록"이지 단일 옵션이 아니다
+  //   예) 데스크테리어: '데스크테리어 매트, 스탠다드단품박스(그레이.11호)' — 뒤는 부자재
+  //       에디션골프공: '틴케이스(블랙),스펀지패드(블랙)' ↔ 순서만 뒤집힌 값도 존재
+  // 그래서 문자열 전체를 키로 쓰면 부자재가 옵션으로 둔갑하고 순서 차이로 그룹이 갈린다.
+  // parts.csv에서 이 굿즈에 연결된 **Product Parts 이름 집합**을 만들어, 토큰 중 그 집합에
+  // 속한 것만 실제 제품 옵션으로 채택한다(사용자 설명: Product 파츠가 2개 이상 = 옵션이 나뉜 것).
+  // 이 굿즈에 연결된 파츠 이름을 유형별 집합으로 만든다(Product = 옵션 후보, Package/Printing = 제외 대상)
+  const PSETS=(function(){
+    const prod=new Set(), nonProd=new Set();
+    if(!D.parts) return {prod,nonProd};
+    const gname=coreProdName(goodsNameOf(gc)||''), K='파츠명 (Long ver)';
+    D.parts.forEach(r=>{
+      const ty=String(r['파츠 유형']||'');
+      const links=String(r['굿즈 연결 현황 (from item)']||'').split(',').map(x=>coreProdName(x)).filter(Boolean);
+      if(gname&&!links.some(l=>l===gname||gname.startsWith(l)||l.startsWith(gname))) return;
+      const nm=coreProdName(String(r[K]||'').replace(/^PT\d+-/,''));
+      if(!nm) return;
+      if(ty.includes('Product Parts')) prod.add(nm);
+      else if(ty.includes('Package Parts')||ty.includes('Printing Parts')) nonProd.add(nm);
+    });
+    return {prod,nonProd};
+  })();
+  // 굿즈 연결이 비어 있는 파츠도 많아(4,635개 중 1,332개) 굿즈별 집합만으로는 부자재를 다 못 거른다 —
+  // 전체 카탈로그의 Package/Printing 이름을 2차 제외 목록으로 함께 쓴다(틴케이스·스펀지패드 등).
+  if(!GLOBAL_NONPROD_PARTS||GLOBAL_NONPROD_SRC!==D.parts){
+    const g=new Set();
+    (D.parts||[]).forEach(r=>{
+      const ty=String(r['파츠 유형']||'');
+      if(ty.includes('Product Parts')) return;
+      if(!ty.includes('Package Parts')&&!ty.includes('Printing Parts')) return;
+      const nm=coreProdName(String(r['파츠명 (Long ver)']||'').replace(/^PT\d+-/,''));
+      if(nm) g.add(nm);
+    });
+    GLOBAL_NONPROD_PARTS=g; GLOBAL_NONPROD_SRC=D.parts;
+  }
+  // ① Product Parts 이름과 정확히 맞는 토큰이 최우선(데스크테리어 '기본형/대형', 메모큐브 '점착.S' 등)
+  // ② 못 찾으면 부자재·인쇄로 알려진 이름을 뺀 첫 토큰(에디션골프공처럼 발주 구성옵션의 제품명이
+  //    파츠 카탈로그와 표기가 달라 ①로 안 잡히는 경우) — 부자재가 옵션으로 둔갑하는 것만 막는다
+  const optRaw=r=>{
+    const cols=['구성옵션(인쇄제외)','산출물_옵션'];
+    for(const col of cols) for(const tok of String(r[col]||'').split(',').map(x=>coreProdName(x)).filter(Boolean))
+      if(PSETS.prod.has(tok)) return tok;
+    for(const col of cols) for(const tok of String(r[col]||'').split(',').map(x=>coreProdName(x)).filter(Boolean))
+      if(!PSETS.nonProd.has(tok)&&!GLOBAL_NONPROD_PARTS.has(tok)) return tok;
+    return '';
+  };
+  const labelMap=stripCommonPrefix(unitRows.filter(r=>!isRework(r)).map(optRaw));
+  const G={};
+  const gOf=k=>(G[k]||(G[k]={qty:0,cnt:0,cust:0,rework:0,iss:0,issQ:0,raw:''}));
+  unitRows.forEach(r=>{
+    const raw=optRaw(r);
+    const key=raw?(labelMap[raw]||raw):'(옵션 미상)';
+    const g=gOf(key); g.raw=raw;
+    if(isRework(r)){ g.rework++; return; }
+    const oq=pa(String(r['발주지시수량']||''));
+    const cq=pCustQty(r['고객주문수량'])*bomMultiplier(r);
+    g.qty+=oq; g.cnt++;
+    if(cq>0&&oq>=cq) g.cust+=cq;
+  });
+  // ---- 이슈: 이 굿즈의 산출물 집합으로 매칭한 뒤 옵션 라벨을 붙인다 ----
+  const prodSet=new Set(all.map(r=>(r['산출물']||'').trim()).filter(Boolean));
+  const issues=[...(D.issue||[]),...(D.issuePrevYear||[])]
+    .filter(r=>bufferIssueProductKey(r,prodSet))
+    .sort((a,c)=>{const da=parseAnyDate(getIssueDateStr(a)),dc=parseAnyDate(getIssueDateStr(c));return (da&&dc)?dc-da:0;});
+  const issOptOf=r=>{
+    const toks=String(r['item (통합) (from order)']||'').split(',').map(s=>s.replace(/\s+/g,'')).filter(Boolean);
+    for(const t of toks){ if(labelMap[t]) return labelMap[t]; }
+    return '';
+  };
+  issues.forEach(r=>{ const o=issOptOf(r); if(!o||!G[o]) return; G[o].iss++; if(String(r['이슈카테고리']||'').includes('품질')) G[o].issQ++; });
+  const ent=Object.entries(G).sort((a,b)=>b[1].qty-a[1].qty);
+  const totQty=ent.reduce((s,[,g])=>s+g.qty,0);
+  const skuIdx=getSkuByPartName();
+  const anySku=ent.some(([,g])=>g.raw&&skuIdx[g.raw]);
+  // ---- 요약 칩 ----
+  const totAmt=all.reduce((s,r)=>s+pa(r['공급가액']),0);
+  const reworkN=all.filter(isRework).length;
+  const chip=(l,v,c)=>`<span style="background:var(--surface2);padding:4px 10px;border-radius:20px;font-size:12px">${l} <b${c?` style="color:${c}"`:''}>${v}</b></span>`;
+  const chips=[
+    chip('완제품 발주',ent.reduce((s,[,g])=>s+g.cnt,0)+'건'),
+    chip(hasAsm?'발주수량(완제품)':'발주수량(전체)',totQty.toLocaleString()+'개'),
+    chip('공급가액(부자재 포함)',faFull(totAmt)),
+    chip('산출물',prodSet.size+'종'),
+    chip('이슈',issues.length+'건',issues.length?'var(--red)':undefined),
+    reworkN?chip('재제작',reworkN+'건','var(--red)'):''
+  ].filter(Boolean).join(' ');
+  // ---- 옵션별 표 + 도넛 ----
+  const optHtml=ent.length?`<div class="card" style="margin:12px 0;padding:12px 16px">
+    <div style="font-size:12px;font-weight:700;margin-bottom:8px">옵션별 발주 비중 <span style="font-weight:400;font-size:10px;color:var(--text3)">— 당해+전년 전체 이력 · ${hasAsm?'완제품(추상적산출물) 발주 기준':'완제품 발주가 없어 전체 발주 기준'}</span></div>
+    <div style="display:flex;gap:16px;flex-wrap:wrap;align-items:center">
+      <div style="width:200px;height:200px;flex:0 0 auto"><canvas id="ch-goods-opt"></canvas></div>
+      <div style="flex:1 1 320px;min-width:300px;overflow-x:auto">
+      <table class="tbl"><thead><tr><th>옵션</th><th class="num">발주수량</th><th class="num">비중</th><th class="num">건수</th><th class="num">재제작</th><th class="num">이슈(품질)</th>${anySku?'<th class="num">현재고</th><th class="num">판매 YTD</th><th class="num">회전율</th><th class="num">단가</th>':''}</tr></thead><tbody>
+      ${ent.map(([k,g],i)=>{
+        const s=g.raw?skuIdx[g.raw]:null;
+        const pct=totQty>0?(g.qty/totQty*100):0;
+        const tw=s?(s.tytd>=1.5?'var(--green)':(s.tytd<0.8?'var(--red)':undefined)):undefined;
+        return `<tr><td style="font-size:11px"><span style="display:inline-block;width:8px;height:8px;border-radius:2px;background:${GOODS_DONUT_COLORS[i%GOODS_DONUT_COLORS.length]};margin-right:6px"></span>${esc(k)}${s&&s.status&&s.status!=='판매가능'?` <span class="tag" style="background:var(--red-light);color:var(--red)">${esc(s.status)}</span>`:''}</td>`
+          +`<td class="num">${g.qty.toLocaleString()}</td><td class="num">${pct.toFixed(1)}%</td><td class="num">${g.cnt}</td>`
+          +`<td class="num"${g.rework?' style="color:var(--red);font-weight:600"':''}>${g.rework?g.rework+'건':'—'}</td>`
+          +`<td class="num"${g.iss?' style="color:var(--red);font-weight:600"':''}>${g.iss?g.iss+'건'+(g.issQ?`(${g.issQ})`:''):'—'}</td>`
+          +(anySku?(s?`<td class="num">${Math.round(s.inv).toLocaleString()}</td><td class="num">${s.sytd.toLocaleString()}</td><td class="num"${tw?` style="color:${tw};font-weight:600"`:''}>${s.tytd.toFixed(2)}</td><td class="num">${faFull(s.price)}</td>`
+            :'<td class="num">—</td><td class="num">—</td><td class="num">—</td><td class="num">—</td>'):'')+`</tr>`;
+      }).join('')}
+      </tbody></table></div>
+    </div>
+    <div style="font-size:10px;color:var(--text3);margin-top:6px">옵션은 <b>구성옵션(인쇄제외)</b> 원문에서 그룹 공통 접두를 떼어 표기합니다${anySku?' · 재고·판매·회전율·단가는 최신 주간 SKU 스냅샷(옵션 원문 = 파츠명으로 매칭)':' · 이 굿즈는 재고 SKU 스냅샷에 없어 재고·회전율을 산출할 수 없습니다(재고생산 이력 없음)'}. 옵션 표기가 없는 행은 <b>(옵션 미상)</b>으로 모이며, 2025 아카이브는 옵션 필드 자체가 없어 전부 여기 들어갑니다.</div>
+  </div>`:'';
+  // ---- 역할별 구성 (parts→item→phantom→goods 계층 노출) ----
+  const roleCard=(key)=>{
+    const rows=byRole[key]; if(!rows.length) return '';
+    const m={};
+    rows.forEach(r=>{const p=(r['산출물']||'(미상)').trim(); (m[p]=m[p]||{q:0,n:0}); m[p].q+=pa(String(r['발주지시수량']||'')); m[p].n++;});
+    const list=Object.entries(m).sort((a,b)=>b[1].q-a[1].q);
+    return `<tr><td style="font-size:11px;white-space:nowrap;vertical-align:top"><b>${ORDER_ROLE_LABEL[key]}</b><br><span style="color:var(--text3)">${list.length}종 · ${rows.length}행</span></td>
+      <td style="font-size:11px">${list.slice(0,8).map(([p,v])=>`${esc(crop(p,34))} <span style="color:var(--text3)">${v.q.toLocaleString()}</span>`).join(' · ')}${list.length>8?` <span style="color:var(--text3)">외 ${list.length-8}종</span>`:''}</td></tr>`;
+  };
+  const structHtml=`<div class="card" style="margin:12px 0;padding:12px 16px">
+    <div style="font-size:12px;font-weight:700;margin-bottom:6px">굿즈 구성 <span style="font-weight:400;font-size:10px;color:var(--text3)">— 파츠유형별 산출물 (product+print → 추상적산출물 → +package → goods)</span></div>
+    <table class="tbl"><tbody>${['assembled','product','printing','package','etc'].map(roleCard).join('')}</tbody></table>
+    <div style="font-size:10px;color:var(--text3);margin-top:6px">위 <b>발주수량</b> 대표값은 ${hasAsm?'<b>완제품(조립산출)</b> 행만 합산합니다 — 부자재·인쇄를 더하면 "제품 몇 개"가 아니게 되고, 한 세트에 Product 파츠가 2종인 상품(골프공+볼마커)은 이중계산됩니다.':'이 굿즈는 완제품 발주 행이 없어 <b>전체 행</b>을 합산했습니다.'} 공급가액은 부자재를 포함한 총액입니다.</div>
+  </div>`;
+  // ---- 이슈 이력 ----
+  const issHtml=`<div style="font-size:12px;font-weight:700;margin:14px 0 6px">이슈 이력 <span style="font-weight:400;font-size:10px;color:var(--text3)">(당해+전년 · 이 굿즈의 산출물 ${prodSet.size}종 기준)</span></div>
+    ${issues.length?`<table class="tbl"><thead><tr><th class="rank">#</th><th>일자</th><th>옵션</th><th>유형</th><th>내용</th><th>대응</th></tr></thead><tbody>
+    ${issues.slice(0,30).map((r,i)=>{
+      const resp=r['품질등급의견판단사유_SCM']||r['수량이슈대응방안_SCM']||r['운영이슈개선방안_SCM']||'';
+      const io=issOptOf(r);
+      return `<tr><td class="rank">${i+1}</td><td style="font-size:11px">${esc(getIssueDateStr(r)||'—')}</td><td style="font-size:11px;color:${io?'inherit':'var(--text3)'}">${esc(io||'미상')}</td><td>${catTags(r['이슈카테고리']||'')}</td><td style="font-size:11px">${esc(crop(r['품질이슈내용']||r['수량이슈내용']||r['운영이슈내용(by물류)']||'',48))}</td><td style="font-size:11px;color:var(--text2)">${esc(crop(resp,36))||'—'}</td></tr>`;
+    }).join('')}</tbody></table>`:'<div style="font-size:11px;color:var(--text3)">매칭된 이슈 없음</div>'}`;
+  body.innerHTML=`<div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:4px">${chips}</div>
+    <div style="font-size:10px;color:var(--text3);margin:4px 0 8px">※ 당해+전년 전체 발주 이력 기준(재고생산 제외) — 발주 현황 표는 선택 기간(${SEL_MONTH||'—'}) 기준이라 숫자가 다를 수 있습니다.</div>
+    ${optHtml}${structHtml}${issHtml}`;
+  // ---- 도넛 렌더 ----
+  if(ent.length&&typeof Chart!=='undefined'){
+    const cv=document.getElementById('ch-goods-opt');
+    if(cv){
+      if(CHARTS['ch-goods-opt']){ try{ CHARTS['ch-goods-opt'].destroy(); }catch(e){} }
+      CHARTS['ch-goods-opt']=new Chart(cv.getContext('2d'),{
+        type:'doughnut',
+        data:{labels:ent.map(([k])=>k.length>14?k.slice(0,14)+'…':k),
+          datasets:[{data:ent.map(([,g])=>g.qty),backgroundColor:ent.map((_,i)=>GOODS_DONUT_COLORS[i%GOODS_DONUT_COLORS.length]),borderWidth:2,borderColor:'#fff',hoverOffset:4}]},
+        options:{responsive:true,maintainAspectRatio:false,cutout:'58%',plugins:{legend:{display:false},
+          tooltip:{callbacks:{label:c=>`${c.label}: ${Number(c.raw).toLocaleString()}개 (${totQty>0?(c.raw/totQty*100).toFixed(1):0}%)`}}}}
+      });
+    }
+  }
 }
 function renderOrderBuffer(){
   const tbody=document.getElementById('tb-ord-buffer'); if(!tbody) return;
@@ -10357,12 +10634,14 @@ function renderProductTrend() {
     const mk=bucketOf(r['과업지시일자']); if(!mk) return;
     const qty=pa(r['발주지시수량']);
     const s=(r['수주처']||'').trim();
-    (rowsByProduct[name]=rowsByProduct[name]||[]).push({mk,qty,s});
+    (rowsByProduct[name]=rowsByProduct[name]||[]).push({mk,qty,s,gc:goodsCode(r)});
   });
   const byProduct={};
   Object.entries(rowsByProduct).forEach(([name,rows])=>{
     const cut=bigDealStat(rows.map(x=>x.qty)).cut;
-    const v={name,total:0,months:{},supCnt:{},bigDealQty:0,bigDealCnt:0,bigDealMin:bigDealMinQty(cut)};
+    // v23.22: 굿즈코드를 함께 담아 표에서 굿즈 상세 모달(옵션별 발주 비중 도넛)로 바로 들어가게 한다
+    const v={name,total:0,months:{},supCnt:{},bigDealQty:0,bigDealCnt:0,bigDealMin:bigDealMinQty(cut),
+      gc:(rows.find(x=>x.gc)||{}).gc||''};
     rows.forEach(x=>{
       if(x.qty>cut){ v.bigDealQty+=x.qty; v.bigDealCnt++; return; }
       v.months[x.mk]=(v.months[x.mk]||0)+x.qty;
@@ -10392,7 +10671,9 @@ function renderProductTrend() {
     ${summarySorted.slice(0,20).map(([k,v],i)=>{
       const avg=allMonths.length>0?Math.round(v.total/allMonths.length):0;
       const bigDealBadge=v.bigDealQty>0?` <span class="tag tag-gray" style="font-size:9px" title="추이·합계에서 제외됨 — 이 제품 빅딜 기준 ${fmtN(v.bigDealMin)}개 이상(표준분포 80% 범위 상단 μ+1.28σ 초과)">빅딜 제외 ${fmtN(v.bigDealQty)}개(${v.bigDealCnt}건)</span>`:'';
-      return `<tr><td class="rank">${i+1}</td><td>${esc(v.name||k)}</td><td style="font-size:11px;color:var(--text3)">${esc(crop(mainSup(v),16))}</td><td class="num">${fmtN(v.total)}${bigDealBadge}</td><td class="num">${fmtN(avg)}</td>${shownMonths.map(m=>`<td class="num">${v.months[m]?fmtN(v.months[m]):'—'}</td>`).join('')}</tr>`;
+      // v23.22: 제품명 클릭 → 굿즈 상세(옵션별 발주 비중·재고회전율·수량별 단가). 굿즈코드가 없으면 산출물 상세로.
+      const nm=esc(v.name||k), onc=v.gc?`openGoodsDetail('${esc(v.gc).replace(/'/g,"\'")}')`:`openProductOrderDetail('${nm.replace(/'/g,"\'")}')`;
+      return `<tr><td class="rank">${i+1}</td><td><span style="cursor:pointer;color:var(--blue);font-weight:600" title="클릭 시 상세 — 옵션별 발주 비중·이슈·수량별 단가" onclick="${onc}">${nm}</span>${v.gc?` <span class="mono" style="font-size:10px;color:var(--text3)">${esc(v.gc)}</span>`:''}</td><td style="font-size:11px;color:var(--text3)">${esc(crop(mainSup(v),16))}</td><td class="num">${fmtN(v.total)}${bigDealBadge}</td><td class="num">${fmtN(avg)}</td>${shownMonths.map(m=>`<td class="num">${v.months[m]?fmtN(v.months[m]):'—'}</td>`).join('')}</tr>`;
     }).join('')||emptyRow(5,q?'검색 결과 없음':'데이터 없음')}
     </tbody></table></div></div>`;
 
