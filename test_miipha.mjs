@@ -13,7 +13,7 @@ const end = lines.findIndex((l, i) => i > start && l.trim() === '</script>');
 assert(start > 0 && end > start, '메인 <script> 블록을 찾지 못함');
 const src = lines.slice(start + 1, end).join('\n');
 
-const ctx = vm.createContext({ console, document: null, window: {}, Chart: function () {}, URLSearchParams, location: { search: '' }, localStorage: { getItem: () => null, setItem: () => {} } });
+const ctx = vm.createContext({ console, document: { addEventListener: () => {}, getElementById: () => null }, window: {}, Chart: function () {}, URLSearchParams, location: { search: '' }, localStorage: { getItem: () => null, setItem: () => {} } });
 try { vm.runInContext(src, ctx); } catch (e) { if (!/document|window|localStorage|Chart|location/.test(String(e))) throw e; }
 const { hasNoReceipt, noReceiptCheckDate, noReceiptMonth } = ctx;
 assert(typeof hasNoReceipt === 'function', 'hasNoReceipt 로드 실패');
