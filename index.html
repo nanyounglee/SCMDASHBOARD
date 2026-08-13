@@ -2572,7 +2572,7 @@ function renderOrdTopTable() {
     const nameCell=v.isBespoke
       ?`<span class="tag tag-gray">비스포크</span> <span class="mono">${esc(v.pn)}</span>`
       :((gm&&v.gc)
-        ?`<span style="cursor:pointer;color:var(--blue);font-weight:600" title="클릭 시 굿즈 상세 — 옵션별 발주 비중·재고회전율·수량별 단가" onclick="openGoodsDetail('${esc(v.gc).replace(/'/g,"\\'")}')">${esc(crop(v.base,26))}</span> <span class="mono" style="font-size:10px;color:var(--text3)">${esc(v.gc)}</span>${optCnt>1?` <span class="tag" style="background:var(--surface2);color:var(--text2);font-size:10px">산출물 ${optCnt}종</span>`:''}`
+        ?`<span style="cursor:pointer;color:var(--blue);font-weight:600" title="클릭 시 굿즈 상세 — 옵션별 발주 비중·재고회전율·수량별 단가" onclick="openGoodsDetail('${esc(v.gc).replace(/'/g,"\\'")}')">${esc(crop(v.base,32))}</span>${optCnt>1?` <span class="tag" style="background:var(--surface2);color:var(--text2);font-size:10px">산출물 ${optCnt}종</span>`:''}`
         :`<span style="cursor:pointer;color:var(--blue);font-weight:600" title="클릭 시 제품 상세 발주 현황(이슈·여분·투자효과)" onclick="openProductOrderDetail('${esc(v.base).replace(/'/g,"\\'")}')">${esc(crop(label,30))}</span>`);
     return `<tr><td class="rank">${i+1}</td><td>${nameCell}</td><td class="num">${v.qty.toLocaleString()}</td><td class="num">${v.cust?v.cust.toLocaleString():'—'}</td><td class="num">${bufHtml}</td><td class="num">${momYoyBadge(v.qty,prevQty)}</td><td class="num">${momYoyBadge(v.qty,yoyQty)}</td><td class="num">${v.freq}</td><td class="num">${yTotal.toLocaleString()}</td><td class="num">${faFull(v.amt)}</td><td>${v.mgr||'—'}</td></tr>`;
   }).join('');
@@ -3224,7 +3224,7 @@ function openGoodsDetail(gc){
   const ov=document.getElementById('modal-overlay');
   document.getElementById('modal-tabs-el').innerHTML='';
   const gname=goodsNameOf(gc)||gc;
-  document.getElementById('modal-title').textContent='굿즈 상세 — '+gname+' ('+gc+')';
+  document.getElementById('modal-title').textContent='굿즈 상세 — '+gname;
   const body=document.getElementById('modal-body');
   ov.classList.add('open');
   const all=[...(D.order||[]),...(D.orderPrevYear||[])].filter(r=>!isStock(r)&&goodsCode(r)===gc);
@@ -10673,7 +10673,7 @@ function renderProductTrend() {
       const bigDealBadge=v.bigDealQty>0?` <span class="tag tag-gray" style="font-size:9px" title="추이·합계에서 제외됨 — 이 제품 빅딜 기준 ${fmtN(v.bigDealMin)}개 이상(표준분포 80% 범위 상단 μ+1.28σ 초과)">빅딜 제외 ${fmtN(v.bigDealQty)}개(${v.bigDealCnt}건)</span>`:'';
       // v23.22: 제품명 클릭 → 굿즈 상세(옵션별 발주 비중·재고회전율·수량별 단가). 굿즈코드가 없으면 산출물 상세로.
       const nm=esc(v.name||k), onc=v.gc?`openGoodsDetail('${esc(v.gc).replace(/'/g,"\'")}')`:`openProductOrderDetail('${nm.replace(/'/g,"\'")}')`;
-      return `<tr><td class="rank">${i+1}</td><td><span style="cursor:pointer;color:var(--blue);font-weight:600" title="클릭 시 상세 — 옵션별 발주 비중·이슈·수량별 단가" onclick="${onc}">${nm}</span>${v.gc?` <span class="mono" style="font-size:10px;color:var(--text3)">${esc(v.gc)}</span>`:''}</td><td style="font-size:11px;color:var(--text3)">${esc(crop(mainSup(v),16))}</td><td class="num">${fmtN(v.total)}${bigDealBadge}</td><td class="num">${fmtN(avg)}</td>${shownMonths.map(m=>`<td class="num">${v.months[m]?fmtN(v.months[m]):'—'}</td>`).join('')}</tr>`;
+      return `<tr><td class="rank">${i+1}</td><td><span style="cursor:pointer;color:var(--blue);font-weight:600" title="클릭 시 상세 — 옵션별 발주 비중·이슈·수량별 단가" onclick="${onc}">${nm}</span></td><td style="font-size:11px;color:var(--text3)">${esc(crop(mainSup(v),16))}</td><td class="num">${fmtN(v.total)}${bigDealBadge}</td><td class="num">${fmtN(avg)}</td>${shownMonths.map(m=>`<td class="num">${v.months[m]?fmtN(v.months[m]):'—'}</td>`).join('')}</tr>`;
     }).join('')||emptyRow(5,q?'검색 결과 없음':'데이터 없음')}
     </tbody></table></div></div>`;
 
