@@ -5318,18 +5318,63 @@ function getOrderNamePartsIndex() {
   }
   return ORDER_NAME_IDX;
 }
-function computeGoodsDbCostForOrder(goodsName,qty) {
+// v23.23(사용자 지시 2026-08-12): 발주행에 **실제로 들어간 파츠**로 원가를 계산한다.
+// 이전에는 `발주서명칭`이 같은 파츠를 카탈로그에서 전부 긁어 합산했다 — 고객은 옵션 하나만 사는데
+// 그 굿즈의 모든 옵션 단가가 더해져, 발주서명칭 그룹 79개 중 32개가 2배 이상 과대계상됐다
+// (애드온뱃지+인쇄: 택1이면 4,700원인데 12개 옵션 전부 더해 40,800원 = 8.7배).
+// 발주행의 `sync_itemdb`에는 그 발주에 실제 투입된 PT가 들어 있으므로 그것만 쓰면
+// 배타 옵션 문제가 원천적으로 사라진다. 단가는 **그 행의 발주지시수량 구간**을 적용한다.
+// 커버리지도 좋아진다 — 발주서명칭 매칭 3,063행(63%) → 실제 PT 기준 4,852행.
+function orderRowParts(r){ return [...new Set(String(r&&r['sync_itemdb']||'').match(/PT\d+/g)||[])]; }
+function calcOrderRowStdCost(r){
+  const qty=pa(String(r['발주지시수량']||'')); if(qty<=0) return null;
+  const ids=orderRowParts(r); if(!ids.length) return null;
+  const idx=getPartsPTIndex();
+  let unit=0,priced=0,missing=0; const detail=[];
+  ids.forEach(id=>{
+    const pr=idx[id];
+    if(!pr){ missing++; return; }
+    const t=partTierCost(pr,qty);
+    if(!t){ missing++; return; }   // 추상적산출물 등 단가 없는 Phantom 파츠는 0원 기여
+    unit+=t.value; priced++;
+    detail.push({pt:id,unit:t.value,tier:t.tier,name:String(pr['파츠명 (Long ver)']||'').replace(/^PT\d+-/,'')});
+  });
+  return priced?{qty,unitCost:unit,cost:unit*qty,priced,missing,detail}:null;
+}
+// PNA 프로젝트(별건 task 묶음) 단위 표준원가 — 그 프로젝트의 모든 발주행을 위 규칙으로 합산
+function calcProjectStdCost(pna,opt){
+  const o=opt||{};
+  const rows=[...(D.order||[]),...(D.orderPrevYear||[])].filter(r=>{
+    if(o.includeStock!==true&&isStock(r)) return false;
+    if(o.includeRework!==true&&String(r['task_id']||'').includes('재제작')) return false;
+    return projectPnaOf(r)===pna;
+  });
+  if(!rows.length) return null;
+  let cost=0,acq=0,sup=0,priced=0,missing=0; const lines=[];
+  rows.forEach(r=>{
+    acq+=pa(r['취득원가']); sup+=pa(r['공급가액']);
+    const c=calcOrderRowStdCost(r);
+    if(!c){ missing++; return; }
+    cost+=c.cost; priced++;
+    lines.push({out:(r['산출물']||'').trim(),sup:(r['수주처']||'').trim(),...c});
+  });
+  return {pna,rows:rows.length,priced,missing,stdCost:cost,acqCost:acq,supplyAmt:sup,lines};
+}
+function projectPnaOf(r){ const m=String(r&&(r['project']||r['task_id'])||'').match(/PNA\d+/); return m?m[0]:''; }
+// 기존 호출부(DB원가비교) 호환 — 산출물명+수량으로 부르던 자리를 발주행 기준으로 대체
+function computeGoodsDbCostForOrder(goodsName,qty,row) {
+  if(row){ const c=calcOrderRowStdCost(row); if(c) return {unitCost:c.unitCost,dbCost:c.cost,partsTotal:c.priced+c.missing,missing:c.missing}; }
   const orderIdx=getOrderNamePartsIndex();
   const goodsIdx=getGoodsPartsIndex();
   const parts=orderIdx[goodsName]||goodsIdx[goodsName];
   if(!parts||!parts.length) return null;
-  let unitSum=0,missing=0;
-  parts.forEach(p=>{
-    const r=partTierCost(p,qty);
-    if(!r){ missing++; return; }
-    unitSum+=r.value;
-  });
-  return {unitCost:unitSum,dbCost:unitSum*qty,partsTotal:parts.length,missing};
+  // 폴백 경로(발주행을 못 받은 호출): 옵션이 여러 개면 전부 더하지 않고 **중앙값**을 쓴다 —
+  // 어느 옵션인지 알 수 없을 때 전부 합산은 확실히 틀리지만 대표값은 근사치로 쓸 수 있다.
+  const vals=parts.map(p=>{const t=partTierCost(p,qty);return t?t.value:null;}).filter(v=>v!=null);
+  if(!vals.length) return null;
+  vals.sort((a,b)=>a-b);
+  const unitSum=vals.length>1?vals[Math.floor(vals.length/2)]:vals[0];
+  return {unitCost:unitSum,dbCost:unitSum*qty,partsTotal:parts.length,missing:parts.length-vals.length,approx:vals.length>1};
 }
 function computeDbCostTop20(allMo) {
   if(!D.order) return [];
@@ -5341,7 +5386,8 @@ function computeDbCostTop20(allMo) {
     if(!byProd[prod]) byProd[prod]={amt:0,qty:0,freq:0,sup:r['수주처']||'',dbCost:0,dbRowsMatched:0,dbRowsTotal:0,partsMissing:0};
     const g=byProd[prod];
     g.amt+=pa(r['공급가액']); g.qty+=qty; g.freq++; g.dbRowsTotal++;
-    const dc=D.parts?computeGoodsDbCostForOrder(prod,qty):null;
+    // v23.23: 발주행 자체를 넘겨 그 행에 실제 투입된 PT 기준으로 계산(카탈로그 전량 합산 폐지)
+    const dc=D.parts?computeGoodsDbCostForOrder(prod,qty,r):null;
     if(dc){ g.dbCost+=dc.dbCost; g.dbRowsMatched++; g.partsMissing+=dc.missing; }
   });
   return Object.entries(byProd).sort((a,b)=>b[1].amt-a[1].amt).slice(0,20);
