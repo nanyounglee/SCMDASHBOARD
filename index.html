@@ -2436,8 +2436,20 @@ function printMethod(r){
 // 자기 자신 토큰(옵션 없음)과 다른 파츠(단품박스·OPP·슬리브 등)는 접두 일치로 걸러낸다.
 // 구성옵션을 먼저 보고, 거기서 아무것도 못 찾을 때만 산출물_옵션으로 내려간다(전자가 더 정확).
 // 한 행에서 옵션이 2종 이상 나오면 어느 쪽인지 단정할 수 없어 '' 반환(전체 6,499행 중 26행).
+// v23.25(사용자 확인 2026-08-12): 인쇄 산출물명에서 실제 제품명을 꺼낸다.
+// 산출물이 `실크(바이브 캠핑쿨러)`·`UV(슈가케인 펜)`처럼 «인쇄방식(제품명)» 형태인 행이 많은데,
+// 제품명 자리를 산출물 이름 그대로 쓰면 파츠 카탈로그의 굿즈와 매칭되지 않아 옵션이 전부
+// «(옵션 미상)»으로 빠졌다(미매칭 행의 57%, 1,510건). 괄호 안을 제품명으로 삼아 해소한다.
+// `밸류메모큐브(ver2)`처럼 앞이 인쇄어가 아니면 건드리지 않는다.
+const PRINT_WRAP_WORDS=PRINT_WORDS.concat(['레이저','불박','공박','색박','박','인쇄','도금','에폭시']);
+function unwrapPrintName(name){
+  const s=String(name||'').trim();
+  const m=s.match(/^([^(]+)\((.+)\)$/); if(!m) return s;
+  const head=m[1].replace(/\s+/g,'');
+  return PRINT_WRAP_WORDS.some(w=>head===w||head.startsWith(w))?m[2].trim():s;
+}
 function itemOption(r){
-  const core=coreProdName(prodKey(r)); if(!core) return '';
+  const core=coreProdName(unwrapPrintName(prodKey(r))); if(!core) return '';
   const found=new Set();
   for(const col of ['구성옵션(인쇄제외)','산출물_옵션']){
     for(const tok of String(r[col]||'').split(',').map(s=>s.replace(/\s+/g,'')).filter(Boolean)){
@@ -2768,7 +2780,7 @@ function bufferIssueProductKey(r,productSet){
 //   예) '밸류메모큐브(ver2)(비점착.M), 밸류메모큐브(ver2), 밸류메모큐브(ver2)' → '비점착.M'
 // itemOption()과 같은 접두 일치 규칙을 쓰되 대상 컬럼만 다르다.
 function issueItemOption(r,prod){
-  const core=coreProdName(prod); if(!core) return '';
+  const core=coreProdName(unwrapPrintName(prod)); if(!core) return '';
   const found=new Set();
   for(const tok of String(r['item (통합) (from order)']||'').split(',').map(s=>s.replace(/\s+/g,'')).filter(Boolean)){
     if(tok===core||!tok.startsWith(core)) continue;
@@ -2784,7 +2796,7 @@ function optionSkuMetrics(prod){
   if(!D.dashboard_sku_snapshot) return null;
   const p=getLatestAggPeriod('weekly'); if(!p) return null;
   const rows=getAggSkuRows('weekly',p.period_key);
-  const core=coreProdName(prod); if(!core) return null;
+  const core=coreProdName(unwrapPrintName(prod)); if(!core) return null;
   const out={};
   rows.forEach(r=>{
     const nm=String(r.parts_name||'').replace(/\s+/g,'').replace(/^PT\d+-/,'');
@@ -2801,10 +2813,50 @@ function optionSkuMetrics(prod){
 // 발주 이력만 보면 그 기간에 발주가 없던 옵션은 아예 안 보이는데, 통합/단종 검토에서는
 // "발주가 없다"는 사실 자체가 판단 재료라 카탈로그 기준으로 옵션 전체를 보여준다.
 // Phantom Parts(추상적산출물·조립산출물)와 Package Parts(단품박스·OPP)는 옵션이 아니라 제외.
+// v23.26(사용자 설명 2026-08-12): 옵션은 **축(부위)별로 하나씩 골라 결합**되는 구조다.
+//   페이퍼링 캘린더 = 삼각대(블랙/그레이/컬러) × 커버(2종) × 내지(3종) → 각 축에서 1개씩 결합
+//   레더스킨다이어리 = 대표 축(블랙/그레이) + 내지 축 + 커버 축
+//   캐리미 와인잔   = 컵부분 + 받침대 + 케이스가 결합돼 «1개입» 한 제품
+// 파츠명은 `제품명_부위_값` 규칙이라, 제품명을 떼고 남은 첫 세그먼트가 부위(축)다.
+// 첫 세그먼트가 그 제품 안에서 여러 파츠에 걸쳐 나오면 축, 홀로 끝나면 «대표 축»의 선택지로 본다
+// (레더스킨다이어리_블랙·_그레이는 부위명 없이 값만 붙은 대표 파츠).
+function splitPartOption(bare,core){
+  let rest=bare.startsWith(core)?bare.slice(core.length):bare;
+  rest=rest.replace(/^[_\s.\-]+/,'');
+  if(/^\(.*\)$/.test(rest)) rest=rest.slice(1,-1);      // 캐리미와인잔(컵부분) 형태
+  const seg=rest.split('_').filter(Boolean);
+  if(!seg.length) return {axis:'',value:''};
+  if(seg.length===1) return {axis:'',value:seg[0]};      // 대표 축
+  return {axis:seg[0].replace(/\(.*?\)/g,''),value:seg.slice(1).join('_')};
+}
+// 굿즈의 옵션 축 구성 — 축별 선택지와 단가, 그리고 축마다 하나씩 고른 «결합 단가» 범위
+function goodsOptionAxes(prod,qty){
+  const cat=goodsOptionCatalog(prod); if(!cat) return null;
+  const core=coreProdName(unwrapPrintName(prod));
+  const items=cat.product.filter(it=>!it.grad);          // 졸업 파츠 제외
+  if(!items.length) return null;
+  const groups={};
+  items.forEach(it=>{
+    const {axis,value}=splitPartOption(coreProdName(it.full.replace(/^PT\d+-/,'')),core);
+    const key=axis||'(대표)';
+    (groups[key]=groups[key]||[]).push({...it,value:value||it.label});
+  });
+  // 선택지가 1개뿐인 축은 «필수 구성»(고를 게 없음), 2개 이상이면 진짜 옵션 축
+  const axes=Object.entries(groups).map(([k,list])=>{
+    const priced=list.filter(x=>x.tiers.some(v=>v>0));
+    const pick=x=>{ const i=PARTS_QTY_TIERS.findIndex(t=>parseInt(t)>=(qty||300)); const j=i<0?x.tiers.length-1:i; return x.tiers[j]||x.tiers.find(v=>v>0)||0; };
+    const vals=priced.map(pick).filter(v=>v>0);
+    return {axis:k,choices:list,priced:priced.length,min:vals.length?Math.min(...vals):0,max:vals.length?Math.max(...vals):0,isOption:list.length>1};
+  }).sort((a,b)=>b.choices.length-a.choices.length);
+  const optAxes=axes.filter(a=>a.isOption);
+  const comboMin=axes.reduce((s,a)=>s+a.min,0), comboMax=axes.reduce((s,a)=>s+a.max,0);
+  const combos=axes.reduce((n,a)=>n*Math.max(1,a.priced||a.choices.length),1);
+  return {axes,optAxes,comboMin,comboMax,combos,isCombined:axes.length>1};
+}
 const PARTS_QTY_TIERS=['100개','300개','500개','1000개','3000개'];
 function goodsOptionCatalog(prod){
   if(!D.parts) return null;
-  const core=coreProdName(prod); if(!core) return null;
+  const core=coreProdName(unwrapPrintName(prod)); if(!core) return null;
   const K='파츠명 (Long ver)';
   const out={product:[],printing:[]};
   (D.parts||[]).forEach(r=>{
@@ -3121,6 +3173,21 @@ function openProductOrderDetail(prod){
         +`<td class="num"${drop?' style="color:var(--green);font-weight:600"':''}>${drop?faFull(drop)+` (${dropPct.toFixed(0)}%)`:'—'}</td></tr>`;
     }).join('')}
     </tbody></table>`;
+  // v23.26: 옵션 축(부위)별 구성 — 각 축에서 하나씩 골라 결합되는 제품 구조를 그대로 보여준다
+  const ax=goodsOptionAxes(prod,Math.max(1,Math.round(taskCnt>0?qty/taskCnt:300)));
+  const axisHtml=(ax&&ax.axes.length)?`<div class="card" style="margin:12px 0;padding:12px 16px">
+    <div style="font-size:12px;font-weight:700;margin-bottom:6px">${ax.isCombined?'옵션 축 · 결합 구성':'옵션 구성'} <span style="font-weight:400;font-size:10px;color:var(--text3)">— ${ax.isCombined?`부위별로 하나씩 골라 결합됩니다 · 조합 <b>${ax.combos.toLocaleString()}가지</b>`:'선택지 하나를 고르는 단일 축'}</span></div>
+    <table class="tbl"><thead><tr><th>축(부위)</th><th class="num">선택지</th><th class="num">단가 범위</th><th>선택지 목록</th></tr></thead><tbody>
+    ${ax.axes.map(a=>`<tr><td style="font-size:11px;white-space:nowrap"><b>${esc(a.axis||'대표')}</b>${a.isOption?'':' <span class="tag" style="background:var(--surface2);color:var(--text3);font-size:9px">필수</span>'}</td>`
+      +`<td class="num">${a.choices.length}종</td>`
+      +`<td class="num">${a.max?(a.min===a.max?faFull(a.min):faFull(a.min)+'~'+faFull(a.max)):'—'}</td>`
+      +`<td style="font-size:11px;color:var(--text2)">${a.choices.slice(0,6).map(c=>esc(crop(String(c.value),22))).join(' · ')}${a.choices.length>6?` <span style="color:var(--text3)">외 ${a.choices.length-6}종</span>`:''}</td></tr>`).join('')}
+    </tbody></table>
+    <div style="font-size:12px;margin-top:8px;padding:8px 10px;background:var(--surface2);border-radius:6px">
+      <b>결합 단가</b> ${ax.comboMin===ax.comboMax?faFull(ax.comboMin):`${faFull(ax.comboMin)} ~ ${faFull(ax.comboMax)}`}
+      <span style="font-size:10px;color:var(--text3)">— 축마다 가장 싼 선택지끼리 / 가장 비싼 선택지끼리 결합했을 때 (300개 구간 기준)</span></div>
+    <div style="font-size:10px;color:var(--text3);margin-top:6px">축은 파츠명의 <code>제품명_부위_값</code> 규칙에서 부위를 뽑아 묶었습니다 — 부위 없이 값만 붙은 파츠(레더스킨다이어리_블랙 등)는 <b>대표</b> 축으로 모읍니다. 졸업 파츠는 제외했습니다.</div>
+  </div>`:'';
   const catalogHtml=(cat&&(cat.product.length>1||cat.printing.length>1))?`<div class="card" style="margin:12px 0;padding:12px 16px">
     <div style="font-size:12px;font-weight:700;margin-bottom:2px">옵션 구성 · 수량별 표준원가 <span style="font-weight:400;font-size:10px;color:var(--text3)">— parts.csv 파츠 카탈로그 기준(발주 이력과 무관하게 열려 있는 옵션 전부)</span></div>
     ${tierTable(cat.product,`제품 옵션 (Product Parts ${cat.product.length}종)`,'— 사이즈·점착 여부 등 제품 자체가 갈리는 옵션')}
@@ -3201,13 +3268,16 @@ function openProductOrderDetail(prod){
     </tbody></table>`:'<div style="font-size:11px;color:var(--text3)">매칭된 이슈 없음</div>'}`;
   body.innerHTML=`<div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:4px">${chips}</div>
     <div style="font-size:10px;color:var(--text3);margin:4px 0 8px">※ 위 수치는 <b>당해+전년 전체 발주 이력</b> 기준(재고생산 제외) — 발주 현황 상단 표는 현재 선택된 기간(${SEL_MONTH||'—'}) 기준이라 서로 범위가 달라 숫자가 다를 수 있습니다.</div>
-    ${variantHtml}${catalogHtml}${bufHtml}${patternHtml}${ordHtml}${issHtml}`;
+    ${variantHtml}${axisHtml}${catalogHtml}${bufHtml}${patternHtml}${ordHtml}${issHtml}`;
 }
 // ===== v23.22: 굿즈 단위 상세 모달 (사용자 요청 2026-08-12) =====
 // 발주 현황 표를 굿즈코드로 묶은 뒤, 그 안에서 옵션별 발주 비중(도넛)·재고회전율·수량별 단가를
 // 한 화면에서 본다. 산출물 단위 모달(openProductOrderDetail)과 달리 여기서는 한 굿즈에 딸린
 // 완제품·제품파츠·인쇄·부자재를 역할별로 갈라 보여준다(원천 DB의 parts→item→phantom→goods 계층).
 let GLOBAL_NONPROD_PARTS=null, GLOBAL_NONPROD_SRC=null;
+// v23.27: 굿즈 상세 모달 «당해만 보기» — 전년 아카이브는 옵션 필드가 없어 비중 판단을 흐린다
+let GOODS_MODAL_CURYEAR=false, GOODS_MODAL_GC='';
+function setGoodsModalCurYear(v){ GOODS_MODAL_CURYEAR=!!v; if(GOODS_MODAL_GC) openGoodsDetail(GOODS_MODAL_GC); }
 const GOODS_DONUT_COLORS=['#1d4ed8','#059669','#d97706','#7c3aed','#dc2626','#0891b2','#65a30d','#be185d','#0f766e','#94a3b8'];
 let SKU_BY_PARTNAME=null, SKU_BY_PARTNAME_SRC=null;
 function getSkuByPartName(){
@@ -3225,15 +3295,24 @@ function getSkuByPartName(){
   return out;
 }
 function openGoodsDetail(gc){
+  GOODS_MODAL_GC=gc;
   const ov=document.getElementById('modal-overlay');
   document.getElementById('modal-tabs-el').innerHTML='';
   const gname=goodsNameOf(gc)||gc;
   document.getElementById('modal-title').textContent='굿즈 상세 — '+gname;
   const body=document.getElementById('modal-body');
   ov.classList.add('open');
-  const all=[...(D.order||[]),...(D.orderPrevYear||[])].filter(r=>!isStock(r)&&goodsCode(r)===gc);
+  // v23.27(사용자 요청 2026-08-12): 전년(2025) 아카이브에는 `구성옵션(인쇄제외)`·`산출물_옵션`
+  // 컬럼이 아예 없어(도입 전) 옵션을 뽑을 방법이 원천적으로 없다 — 밸류 메모큐브 기준 완제품
+  // 41건 중 20건이 전부 이 경우고, 당해분만 보면 판별률이 100%다. 그런데 «(옵션 미상)»으로
+  // 뭉뚱그리면 데이터 품질 문제처럼 보여 오해를 부르므로 ① 라벨을 분리하고 ② 당해만 보는
+  // 토글을 둔다(옵션 비중 판단이 목적이면 전년을 빼야 바로 읽힌다).
+  const prevSet=new Set((D.orderPrevYear||[]).filter(r=>!isStock(r)&&goodsCode(r)===gc));
+  const curOnly=!!GOODS_MODAL_CURYEAR;
+  const all=[...(D.order||[]),...(curOnly?[]:(D.orderPrevYear||[]))].filter(r=>!isStock(r)&&goodsCode(r)===gc);
   if(!all.length){ body.innerHTML='<div class="empty">해당 굿즈의 발주 이력이 없습니다.</div>'; return; }
   const isRework=r=>String(r['task_id']||'').includes('재제작');
+  const ARCHIVE_LABEL='2025 아카이브(옵션 필드 없음)';
   const byRole={assembled:[],product:[],printing:[],package:[],etc:[]};
   all.forEach(r=>byRole[orderRole(r)].push(r));
   const hasAsm=byRole.assembled.length>0;
@@ -3250,7 +3329,7 @@ function openGoodsDetail(gc){
   const PSETS=(function(){
     const prod=new Set(), nonProd=new Set();
     if(!D.parts) return {prod,nonProd};
-    const gname=coreProdName(goodsNameOf(gc)||''), K='파츠명 (Long ver)';
+    const gname=coreProdName(unwrapPrintName(goodsNameOf(gc)||'')), K='파츠명 (Long ver)';
     D.parts.forEach(r=>{
       const ty=String(r['파츠 유형']||'');
       const links=String(r['굿즈 연결 현황 (from item)']||'').split(',').map(x=>coreProdName(x)).filter(Boolean);
@@ -3291,7 +3370,8 @@ function openGoodsDetail(gc){
   const gOf=k=>(G[k]||(G[k]={qty:0,cnt:0,cust:0,rework:0,iss:0,issQ:0,raw:''}));
   unitRows.forEach(r=>{
     const raw=optRaw(r);
-    const key=raw?(labelMap[raw]||raw):'(옵션 미상)';
+    // 전년 아카이브 행은 «필드가 없어서» 못 뽑은 것 — 당해분의 진짜 미상과 섞지 않는다
+    const key=raw?(labelMap[raw]||raw):(prevSet.has(r)?ARCHIVE_LABEL:'(옵션 미상)');
     const g=gOf(key); g.raw=raw;
     if(isRework(r)){ g.rework++; return; }
     const oq=pa(String(r['발주지시수량']||''));
@@ -3328,7 +3408,13 @@ function openGoodsDetail(gc){
   ].filter(Boolean).join(' ');
   // ---- 옵션별 표 + 도넛 ----
   const optHtml=ent.length?`<div class="card" style="margin:12px 0;padding:12px 16px">
-    <div style="font-size:12px;font-weight:700;margin-bottom:8px">옵션별 발주 비중 <span style="font-weight:400;font-size:10px;color:var(--text3)">— 당해+전년 전체 이력 · ${hasAsm?'완제품(추상적산출물) 발주 기준':'완제품 발주가 없어 전체 발주 기준'}</span></div>
+    <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:8px">
+      <div style="font-size:12px;font-weight:700">옵션별 발주 비중 <span style="font-weight:400;font-size:10px;color:var(--text3)">— ${curOnly?'<b>당해만</b>':'당해+전년 전체 이력'} · ${hasAsm?'완제품(추상적산출물) 발주 기준':'완제품 발주가 없어 전체 발주 기준'}</span></div>
+      <span style="margin-left:auto;display:flex;gap:4px">
+        <span class="m-chip${curOnly?'':' active'}" onclick="setGoodsModalCurYear(false)" title="2025 아카이브 포함 — 다만 전년은 옵션 필드가 없어 판별이 불가합니다">당해+전년</span>
+        <span class="m-chip${curOnly?' active':''}" onclick="setGoodsModalCurYear(true)" title="옵션 필드가 있는 당해 발주만 — 옵션 비중이 바로 읽힙니다">당해만</span>
+      </span>
+    </div>
     <div style="display:flex;gap:16px;flex-wrap:wrap;align-items:center">
       <div style="width:200px;height:200px;flex:0 0 auto"><canvas id="ch-goods-opt"></canvas></div>
       <div style="flex:1 1 320px;min-width:300px;overflow-x:auto">
@@ -3337,7 +3423,7 @@ function openGoodsDetail(gc){
         const s=g.raw?skuIdx[g.raw]:null;
         const pct=totQty>0?(g.qty/totQty*100):0;
         const tw=s?(s.tytd>=1.5?'var(--green)':(s.tytd<0.8?'var(--red)':undefined)):undefined;
-        return `<tr><td style="font-size:11px"><span style="display:inline-block;width:8px;height:8px;border-radius:2px;background:${GOODS_DONUT_COLORS[i%GOODS_DONUT_COLORS.length]};margin-right:6px"></span>${esc(k)}${s&&s.status&&s.status!=='판매가능'?` <span class="tag" style="background:var(--red-light);color:var(--red)">${esc(s.status)}</span>`:''}</td>`
+        return `<tr><td style="font-size:11px"><span style="display:inline-block;width:8px;height:8px;border-radius:2px;background:${k===ARCHIVE_LABEL?'#9aa4ae':GOODS_DONUT_COLORS[i%GOODS_DONUT_COLORS.length]};margin-right:6px"></span>${esc(k)}${s&&s.status&&s.status!=='판매가능'?` <span class="tag" style="background:var(--red-light);color:var(--red)">${esc(s.status)}</span>`:''}</td>`
           +`<td class="num">${g.qty.toLocaleString()}</td><td class="num">${pct.toFixed(1)}%</td><td class="num">${g.cnt}</td>`
           +`<td class="num"${g.rework?' style="color:var(--red);font-weight:600"':''}>${g.rework?g.rework+'건':'—'}</td>`
           +`<td class="num"${g.iss?' style="color:var(--red);font-weight:600"':''}>${g.iss?g.iss+'건'+(g.issQ?`(${g.issQ})`:''):'—'}</td>`
@@ -3346,7 +3432,27 @@ function openGoodsDetail(gc){
       }).join('')}
       </tbody></table></div>
     </div>
-    <div style="font-size:10px;color:var(--text3);margin-top:6px">옵션은 <b>구성옵션(인쇄제외)</b> 원문에서 그룹 공통 접두를 떼어 표기합니다${anySku?' · 재고·판매·회전율·단가는 최신 주간 SKU 스냅샷(옵션 원문 = 파츠명으로 매칭)':' · 이 굿즈는 재고 SKU 스냅샷에 없어 재고·회전율을 산출할 수 없습니다(재고생산 이력 없음)'}. 옵션 표기가 없는 행은 <b>(옵션 미상)</b>으로 모이며, 2025 아카이브는 옵션 필드 자체가 없어 전부 여기 들어갑니다.</div>
+    <div style="font-size:10px;color:var(--text3);margin-top:6px">옵션은 <b>구성옵션(인쇄제외)</b> 원문에서 그룹 공통 접두를 떼어 표기합니다${anySku?' · 재고·판매·회전율·단가는 최신 주간 SKU 스냅샷(옵션 원문 = 파츠명으로 매칭)':' · 이 굿즈는 재고 SKU 스냅샷에 없어 재고·회전율을 산출할 수 없습니다(재고생산 이력 없음)'}. 옵션 표기가 없는 당해 행은 <b>(옵션 미상)</b>으로 모입니다. <b>2025 아카이브</b>는 구성옵션(인쇄제외)·산출물_옵션 컬럼이 도입 전이라 아예 없어 옵션을 뽑을 방법이 없으므로 별도 회색 항목으로 분리했습니다 — 옵션 비중만 보려면 위 <b>당해만</b>을 누르세요.</div>
+  </div>`:'';
+  // ---- v23.27: 연도별 월간 발주 추이 ----
+  // 2025 아카이브는 옵션을 못 뽑지만 «언제 얼마나 나갔는지»는 온전하다 — 옵션 비중에서 빠지는
+  // 대신 연도 비교 추이로 살려 쓴다(사용자 요청). 완제품 기준, 재제작 제외.
+  const trend={};
+  [...(D.order||[]),...(D.orderPrevYear||[])].forEach(r=>{
+    if(isStock(r)||goodsCode(r)!==gc||isRework(r)) return;
+    if(hasAsm&&orderRole(r)!=='assembled') return;
+    const d=parseAnyDate(r['과업지시일자']); if(!d) return;
+    const y=d.getFullYear(), m=d.getMonth();
+    (trend[y]=trend[y]||Array(12).fill(0))[m]+=pa(String(r['발주지시수량']||''));
+  });
+  const trendYears=Object.keys(trend).sort();
+  const trendHtml=trendYears.length?`<div class="card" style="margin:12px 0;padding:12px 16px">
+    <div style="font-size:12px;font-weight:700;margin-bottom:6px">연도별 월간 발주 추이 <span style="font-weight:400;font-size:10px;color:var(--text3)">— ${hasAsm?'완제품 발주수량':'전체 발주수량'} 기준(재제작 제외) · 옵션 구분 없이 총량</span></div>
+    <div style="height:200px"><canvas id="ch-goods-trend"></canvas></div>
+    <table class="tbl" style="margin-top:8px"><thead><tr><th>연도</th>${Array.from({length:12},(_,i)=>`<th class="num" style="font-size:10px">${i+1}월</th>`).join('')}<th class="num">합계</th></tr></thead><tbody>
+    ${trendYears.map(y=>`<tr><td style="font-size:11px;font-weight:600">${esc(y)}</td>${trend[y].map(v=>`<td class="num">${v?v.toLocaleString():'—'}</td>`).join('')}<td class="num" style="font-weight:700">${trend[y].reduce((a,b)=>a+b,0).toLocaleString()}</td></tr>`).join('')}
+    </tbody></table>
+    <div style="font-size:10px;color:var(--text3);margin-top:6px">2025 아카이브는 옵션 필드가 없어 옵션별 비중에는 들어가지 못하지만, 발주 시점과 수량은 온전하므로 여기서 연도 비교로 활용합니다.</div>
   </div>`:'';
   // ---- 역할별 구성 (parts→item→phantom→goods 계층 노출) ----
   const roleCard=(key)=>{
@@ -3372,7 +3478,7 @@ function openGoodsDetail(gc){
     }).join('')}</tbody></table>`:'<div style="font-size:11px;color:var(--text3)">매칭된 이슈 없음</div>'}`;
   body.innerHTML=`<div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:4px">${chips}</div>
     <div style="font-size:10px;color:var(--text3);margin:4px 0 8px">※ 당해+전년 전체 발주 이력 기준(재고생산 제외) — 발주 현황 표는 선택 기간(${SEL_MONTH||'—'}) 기준이라 숫자가 다를 수 있습니다.</div>
-    ${optHtml}${structHtml}${issHtml}`;
+    ${optHtml}${trendHtml}${structHtml}${issHtml}`;
   // ---- 도넛 렌더 ----
   if(ent.length&&typeof Chart!=='undefined'){
     const cv=document.getElementById('ch-goods-opt');
@@ -3381,9 +3487,25 @@ function openGoodsDetail(gc){
       CHARTS['ch-goods-opt']=new Chart(cv.getContext('2d'),{
         type:'doughnut',
         data:{labels:ent.map(([k])=>k.length>14?k.slice(0,14)+'…':k),
-          datasets:[{data:ent.map(([,g])=>g.qty),backgroundColor:ent.map((_,i)=>GOODS_DONUT_COLORS[i%GOODS_DONUT_COLORS.length]),borderWidth:2,borderColor:'#fff',hoverOffset:4}]},
+          datasets:[{data:ent.map(([,g])=>g.qty),backgroundColor:ent.map(([k],i)=>k===ARCHIVE_LABEL?'#9aa4ae':GOODS_DONUT_COLORS[i%GOODS_DONUT_COLORS.length]),borderWidth:2,borderColor:'#fff',hoverOffset:4}]},
         options:{responsive:true,maintainAspectRatio:false,cutout:'58%',plugins:{legend:{display:false},
           tooltip:{callbacks:{label:c=>`${c.label}: ${Number(c.raw).toLocaleString()}개 (${totQty>0?(c.raw/totQty*100).toFixed(1):0}%)`}}}}
+      });
+    }
+  }
+  if(trendYears.length&&typeof Chart!=='undefined'){
+    const tv=document.getElementById('ch-goods-trend');
+    if(tv){
+      if(CHARTS['ch-goods-trend']){ try{ CHARTS['ch-goods-trend'].destroy(); }catch(e){} }
+      const pal=['#94a3b8','#1d4ed8','#059669','#d97706'];
+      CHARTS['ch-goods-trend']=new Chart(tv.getContext('2d'),{
+        type:'line',
+        data:{labels:Array.from({length:12},(_,i)=>(i+1)+'월'),
+          datasets:trendYears.map((y,i)=>({label:y+'년',data:trend[y],borderColor:pal[i%pal.length],backgroundColor:pal[i%pal.length],borderWidth:2,tension:.3,pointRadius:2,fill:false}))},
+        options:{responsive:true,maintainAspectRatio:false,
+          plugins:{legend:{position:'bottom',labels:{font:{size:10},boxWidth:10}},
+            tooltip:{callbacks:{label:c=>c.dataset.label+': '+Number(c.raw).toLocaleString()+'개'}}},
+          scales:{y:{ticks:{font:{size:10}}}}}
       });
     }
   }
