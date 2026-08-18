@@ -1,6 +1,41 @@
 {
   "entries": [
     {
+      "id": "sup_added|GUANGZHOU KINGSONS BAGS TECHNOLOGY CO., LTD|2026_08",
+      "type": "sup_added",
+      "name": "GUANGZHOU KINGSONS BAGS TECHNOLOGY CO., LTD",
+      "date": "2026-08-18",
+      "detail": ""
+    },
+    {
+      "id": "part_new|PT5643|2026_W34",
+      "type": "part_new",
+      "name": "PT5643-펠트스트링파우치_추상적산출물",
+      "date": "2026-08-18",
+      "detail": ""
+    },
+    {
+      "id": "part_new|PT5644|2026_W34",
+      "type": "part_new",
+      "name": "PT5644-360노트북스탠드_추상적산출물",
+      "date": "2026-08-18",
+      "detail": ""
+    },
+    {
+      "id": "part_new|PT5645|2026_W34",
+      "type": "part_new",
+      "name": "PT5645-조립산출물_360노트북스탠드",
+      "date": "2026-08-18",
+      "detail": ""
+    },
+    {
+      "id": "part_new|PT5646|2026_W34",
+      "type": "part_new",
+      "name": "PT5646-외주생산총공정산출물_360노트북스탠드",
+      "date": "2026-08-18",
+      "detail": ""
+    },
+    {
       "id": "part_new|PT5601|2026_W33",
       "type": "part_new",
       "name": "PT5601-레이저각인_(주)퓨전에프앤씨",
@@ -582,34 +617,6 @@
       "detail": "평균 15.6% 상승 · (주)승화파트너스"
     },
     {
-      "id": "part_price|PT1674|2026_W33",
-      "type": "part_price",
-      "name": "OPP_000-3",
-      "date": "2026-08-10",
-      "detail": "평균 1608.7% 상승 · 비닐24"
-    },
-    {
-      "id": "part_price|PT1401|2026_W33",
-      "type": "part_price",
-      "name": "에디트캘린더_커버_화이트+옵셋풀컬러",
-      "date": "2026-08-10",
-      "detail": "평균 133.4% 상승 · (주)청산인쇄"
-    },
-    {
-      "id": "part_price|PT1402|2026_W33",
-      "type": "part_price",
-      "name": "에디트캘린더_내지(기본달력)_화이트",
-      "date": "2026-08-10",
-      "detail": "평균 48.9% 상승 · (주)청산인쇄"
-    },
-    {
-      "id": "part_price|PT1403|2026_W33",
-      "type": "part_price",
-      "name": "에디트캘린더_내지(커스텀인쇄)_화이트+옵셋풀컬러",
-      "date": "2026-08-10",
-      "detail": "평균 1.7% 상승 · (주)청산인쇄"
-    },
-    {
       "id": "part_price|PT4716|2026_W33",
       "type": "part_price",
       "name": "밸류메모큐브(ver2)(점착.S)",
@@ -664,6 +671,34 @@
       "name": "밸류메모큐브(ver2)(비점착.M.낱장인쇄)_화이트+블랙인쇄",
       "date": "2026-08-10",
       "detail": "평균 6.3% 인하 · 주식회사 에이엠씨"
+    },
+    {
+      "id": "part_price|PT1674|2026_W33",
+      "type": "part_price",
+      "name": "OPP_000-3",
+      "date": "2026-08-10",
+      "detail": "평균 1608.7% 상승 · 비닐24"
+    },
+    {
+      "id": "part_price|PT1401|2026_W33",
+      "type": "part_price",
+      "name": "에디트캘린더_커버_화이트+옵셋풀컬러",
+      "date": "2026-08-10",
+      "detail": "평균 133.4% 상승 · (주)청산인쇄"
+    },
+    {
+      "id": "part_price|PT1402|2026_W33",
+      "type": "part_price",
+      "name": "에디트캘린더_내지(기본달력)_화이트",
+      "date": "2026-08-10",
+      "detail": "평균 48.9% 상승 · (주)청산인쇄"
+    },
+    {
+      "id": "part_price|PT1403|2026_W33",
+      "type": "part_price",
+      "name": "에디트캘린더_내지(커스텀인쇄)_화이트+옵셋풀컬러",
+      "date": "2026-08-10",
+      "detail": "평균 1.7% 상승 · (주)청산인쇄"
     },
     {
       "id": "part_price|PT4751|2026_W32",
@@ -932,6 +967,13 @@
       "detail": ""
     },
     {
+      "id": "part_price|PT2228|2026_W31",
+      "type": "part_price",
+      "name": "브랜디드노트북백_블랙",
+      "date": "2026-07-30",
+      "detail": "평균 23.9% 인하 · (주)에스씨인터내셔널"
+    },
+    {
       "id": "part_price|PT5541|2026_W31",
       "type": "part_price",
       "name": "색박(음각)_베러댄텀블러_유엘상사",
@@ -944,13 +986,6 @@
       "name": "공박(음각)_베러댄텀블러_유엘상사",
       "date": "2026-07-30",
       "detail": "평균 56250.0% 상승 · 유엘상사"
-    },
-    {
-      "id": "part_price|PT2228|2026_W31",
-      "type": "part_price",
-      "name": "브랜디드노트북백_블랙",
-      "date": "2026-07-30",
-      "detail": "평균 23.9% 인하 · (주)에스씨인터내셔널"
     },
     {
       "id": "part_new|PT5582|2026_W31",
@@ -3186,5 +3221,5 @@
       "detail": ""
     }
   ],
-  "updatedAt": "2026-08-13T04:48:38.365Z"
+  "updatedAt": "2026-08-18T07:54:35.811Z"
 }
