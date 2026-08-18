@@ -4381,6 +4381,45 @@ function backfillProductChangeLog(){
   });
   return entries;
 }
+// v23.31: parts.csv에서 «협력사·굿즈»를 읽어내는 공용 헬퍼 (신규 협력사·신규 제품 감지용).
+// 제작협력사 필드는 복수 협력사가 한 칸에 «"A", "B"» 형태로 들어오는 경우가 있어(수입 벤더 다수)
+// 큰따옴표 경계로만 쪼갠다 — «Co., Ltd.»처럼 상호 안에 쉼표가 있는 이름을 잘라먹지 않기 위함.
+function splitVendorField(v){
+  const raw=String(v||'').trim(); if(!raw) return [];
+  return (/",\s*"/.test(raw)?raw.split(/",\s*"/):[raw]).map(x=>x.replace(/^"|"$/g,'').trim()).filter(Boolean);
+}
+function partsVendorSet(rows){
+  const set=new Set(); (rows||[]).forEach(r=>splitVendorField(r['제작협력사']).forEach(n=>set.add(n))); return set;
+}
+// 재고생산(STCK)은 실제 출시 제품이 아닌 의사(疑似) 굿즈코드 — 신규 제품 판정에서 제외
+const PSEUDO_GOODS_CODES=new Set(['STCK']);
+// 굿즈코드↔굿즈명은 같은 item 링크의 lookup이라 원칙적으로 순서가 같지만, 졸업 굿즈가 코드 쪽에만
+// 실리는 행이 있어 개수가 어긋난다 — 어긋난 행까지 쓰면 졸업 굿즈 130여 건이 «신규»로 오탐된다
+// (2026-08-18 실측). 개수가 일치하는 행에서만 짝지어 신뢰한다.
+function partsGoodsNameMap(rows){
+  const m={};
+  (rows||[]).forEach(r=>{
+    const codes=String(r['굿즈코드 연결 현황 (from item)']||'').split(',').map(x=>x.trim()).filter(Boolean);
+    const names=String(r['굿즈 연결 현황 (from item)']||'').split(',').map(x=>x.trim()).filter(Boolean);
+    if(codes.length!==names.length) return;
+    codes.forEach((c,i)=>{ if(names[i]&&!PSEUDO_GOODS_CODES.has(c)) m[c]=names[i]; });
+  });
+  return m;
+}
+// 굿즈코드 → 출시일. «출시일 (from 1. goods)» lookup은 값이 빈 굿즈가 통째로 빠져 코드와 개수가
+// 어긋나므로, 재고생산을 뺀 뒤 굿즈가 정확히 하나 남는 행에서만 읽는다(2026-08-18 검증: 4,682행
+// 중 충돌 1건). goods_master.csv보다 최신이다 — BMLT 출시일이 마스터 07-10 → 파츠 07-21로 정정된 예.
+function partsGoodsLaunchMap(rows){
+  const m={};
+  (rows||[]).forEach(r=>{
+    const codes=String(r['굿즈코드 연결 현황 (from item)']||'').split(',').map(x=>x.trim()).filter(Boolean);
+    const dates=String(r['출시일 (from 1. goods)']||'').split(',').map(x=>x.trim()).filter(Boolean);
+    const keep=codes.filter(c=>!PSEUDO_GOODS_CODES.has(c));
+    if(keep.length!==1||dates.length!==1) return;
+    m[keep[0]]=dates[0];
+  });
+  return m;
+}
 // 협력사 신규/거래종료 — 정확한 상태변경일 필드가 원본에 없어, 자동 커밋이 남기는
 // sup.csv 스냅샷을 체인으로 이어 비교한다.
 //
@@ -4400,9 +4439,21 @@ function backfillProductChangeLog(){
 // 윤지수·강예은·남인호 등 구매/물류 쪽) 협력사도 함께 들어있다. 첫 갱신에서 잡힌 신규 12곳이
 // 전부 그런 곳이었다 — 이 공지는 외주생산파트 담당 협력사만 다루므로 발주담당자로 거른다.
 const SCM_ORDER_MANAGERS=['육승미','김민지','이난영','김민정','김하은','김영준'];
+// v23.31(사용자 제보 2026-08-18): 발주담당자만으로 거르면 «실제로 외주생산이 쓰는 협력사»를 놓친다.
+// 2026-08-01 갱신에서 새로 들어온 12곳이 전부 타 파트 담당으로 적혀 있어 통째로 걸러졌는데, 그중
+// 비닐24는 parts.csv의 제작협력사로 등록돼 8/10 «단가 변동» 공지까지 났다 — 같은 협력사가 단가
+// 공지에는 나오는데 신규 협력사 공지에는 없는 모순. parts.csv 제작협력사 명단도 통과 조건에 넣는다.
+let PARTS_VENDOR_MEMO=null, PARTS_VENDOR_MEMO_SRC=null;
+function partsVendorNames(){
+  if(PARTS_VENDOR_MEMO&&PARTS_VENDOR_MEMO_SRC===D.parts) return PARTS_VENDOR_MEMO;
+  PARTS_VENDOR_MEMO_SRC=D.parts; PARTS_VENDOR_MEMO=partsVendorSet(D.parts);
+  return PARTS_VENDOR_MEMO;
+}
 const isScmManagedVendor=r=>{
   const m=String((r&&r['발주담당자'])||'').trim();
-  return m?SCM_ORDER_MANAGERS.some(n=>m.includes(n)):false; // 복수 담당자 표기 대비 부분일치
+  if(m&&SCM_ORDER_MANAGERS.some(n=>m.includes(n))) return true; // 복수 담당자 표기 대비 부분일치
+  const n=String((r&&r['협력사 이름'])||'').trim();
+  return n?partsVendorNames().has(n):false;
 };
 const supMonthLabel=d=>d.getFullYear()+'_'+String(d.getMonth()+1).padStart(2,'0');
 function supStatusMap(rows){
@@ -4507,6 +4558,28 @@ async function detectPartsChanges(){
           detail:'평균 '+Math.abs(avgPct).toFixed(1)+'% '+(avgPct>=0?'상승':'인하')+(sup?' · '+sup:'')});
       }
     });
+    // v23.31: 신규 파츠에서 파생되는 «신규 협력사»·«신규 제품» — 사용자 요청 2026-08-18.
+    // 협력사 마스터(sup.csv)는 월 1회, 굿즈 마스터(goods_master.csv)는 수동 업로드(2026-08 기준 최종
+    // 2026-07-15)라 파츠보다 갱신이 늦다. 그래서 «파츠는 신규로 떴는데 협력사·출시는 조용한» 구멍이
+    // 생겼다 — parts.csv를 2차 소스로 삼아 같은 창에 함께 공지한다.
+    const prevVendors=partsVendorSet(prev.rows), curVendors=partsVendorSet(cur.rows);
+    curVendors.forEach(n=>{
+      if(prevVendors.has(n)) return;
+      entries.push({id:'sup_added|'+n+'|'+idLabel,type:'sup_added',name:n,date:dateKey,
+        detail:['파츠 제작협력사 최초 등록',detail].filter(Boolean).join(' · ')});
+    });
+    // goods_master가 출시일을 이미 아는 굿즈는 backfillProductChangeLog가 처리하므로 중복 통지하지 않는다
+    const gmLaunched=new Set((D.goods_master||[]).filter(r=>(r['출시일']||'').trim()).map(r=>(r['Goods Code']||'').trim()).filter(Boolean));
+    const prevGoodsName=partsGoodsNameMap(prev.rows), curGoodsName=partsGoodsNameMap(cur.rows);
+    const curLaunch=partsGoodsLaunchMap(cur.rows);
+    Object.keys(curGoodsName).forEach(code=>{
+      if(prevGoodsName[code]||gmLaunched.has(code)) return;
+      const launch=curLaunch[code];
+      // 날짜는 «파츠가 등록된 시점»(스냅샷 기준일) — 출시일은 아직 미정이거나 미래일 수 있어(예: PENN
+      // 2026-08-21) 그대로 쓰면 이번 달 공지 창(1일~오늘)을 벗어난다. 실제 출시일은 비고로 병기한다.
+      entries.push({id:'product_new|'+code+'|'+idLabel,type:'product_new',name:curGoodsName[code]+' ('+code+')',date:dateKey,
+        detail:[launch?'출시일 '+launch:'출시일 미정','파츠 등록',detail].filter(Boolean).join(' · ')});
+    });
     // v22.14: 파츠 데이터 소스가 통째로 바뀌면(스키마/집계 방식 교체로 행수 급감 등) 거의 모든 굿즈가
     // "연결 해제"된 것처럼 오탐되므로(2026-07-22 parts.csv 마이그레이션 중 227건 오탐 확인), 이전 대비
     // 현재 행수가 50% 미만으로 급감한 비교 구간은 굿즈 연결 해제 감지를 건너뜀
@@ -4563,7 +4636,7 @@ function persistChangeLog(newOnes){
     .catch(e=>console.error('change_log commit failed',e));
 }
 function toggleNoticeHistory(){ NOTICE_HISTORY_OPEN=!NOTICE_HISTORY_OPEN; renderMonthlyNotice(); }
-function noticeTypeLabel(t){ return {product_graduated:'🎓 졸업',product_launched:'🚀 출시',sup_added:'🆕 신규협력사',sup_terminated:'🔚 거래종료협력사',part_new:'🧩 신규 파츠',part_grad:'⚙️ 파츠 졸업',goods_unlinked:'🎓 제품 졸업(파츠연결해제)',part_price:'💲 단가 변동'}[t]||t; }
+function noticeTypeLabel(t){ return {product_graduated:'🎓 졸업',product_launched:'🚀 출시',product_new:'🆕 신규 제품(파츠 등록)',sup_added:'🆕 신규협력사',sup_terminated:'🔚 거래종료협력사',part_new:'🧩 신규 파츠',part_grad:'⚙️ 파츠 졸업',goods_unlinked:'🎓 제품 졸업(파츠연결해제)',part_price:'💲 단가 변동'}[t]||t; }
 function renderChangeHistoryToggle(allEntries){
   const sorted=allEntries.slice().sort((a,b)=>a.date<b.date?1:a.date>b.date?-1:0);
   return `<div style="grid-column:1/-1;margin-top:4px">
@@ -4599,6 +4672,9 @@ function renderMonthlyNotice() {
 
   const gradRows=byType('product_graduated').filter(e=>!MANUAL_GRAD_EXCLUDE.some(code=>String(e.name).includes(`(${code})`))), launchRows=byType('product_launched');
   const addedRows=byType('sup_added'), removedRows=byType('sup_terminated');
+  // v23.31: parts.csv 파생 신규 제품 — 출시 박스에 합류(비고에 '파츠 등록'이 붙어 원천이 구분된다)
+  const productNewRows=byType('product_new');
+  const launchAllRows=launchRows.concat(productNewRows);
   // v21.15: 파츠 스냅샷 감지분 — 제품 졸업(파츠 연결 해제)은 졸업 박스에 합류(goods_master 감지분과
   // 이름 중복 시 제외), 파츠 신규/졸업은 별도 박스
   // v22.2 감사 수정: greedy `\(.*\)$`는 제품명 자체에 괄호가 있으면("텀블러 (대) (MK01)" 등)
@@ -4656,7 +4732,7 @@ function renderMonthlyNotice() {
   if(arrow) arrow.textContent=NOTICE_COLLAPSED?'▸':'▾';
   const summary=document.getElementById('notice-inline-summary');
   if(summary) summary.textContent=NOTICE_COLLAPSED
-    ? `— 🎓 ${(D.goods_master||D.parts)?gradAllRows.length:'—'} · 🚀 ${D.goods_master?launchRows.length:'—'} · 🚫 ${D.stockout_list?stockRows.length+manualStock.length:'—'} · 🆕 ${D.sup?addedRows.length:'—'} · 🔚 ${D.sup?removedRows.length:'—'} · 🧩 ${D.parts?partNewRows.length:'—'} · ⚙️ ${D.parts?partGradRows.length:'—'} · 💲 ${(D.price_chg||D.parts)?priceItems.length:'—'}`
+    ? `— 🎓 ${(D.goods_master||D.parts)?gradAllRows.length:'—'} · 🚀 ${(D.goods_master||D.parts)?launchAllRows.length:'—'} · 🚫 ${D.stockout_list?stockRows.length+manualStock.length:'—'} · 🆕 ${(D.sup||D.parts)?addedRows.length:'—'} · 🔚 ${D.sup?removedRows.length:'—'} · 🧩 ${D.parts?partNewRows.length:'—'} · ⚙️ ${D.parts?partGradRows.length:'—'} · 💲 ${(D.price_chg||D.parts)?priceItems.length:'—'}`
     : '';
   const foot=document.getElementById('notice-footnote');
   if(foot) foot.style.display=NOTICE_COLLAPSED?'none':'';
@@ -4665,11 +4741,17 @@ function renderMonthlyNotice() {
 
   // v23.11: goods_master 졸업일 + parts diff의 "파츠 연결 해제" 두 경로라, parts만 있어도 표시한다
   const gradHtml = (D.goods_master||D.parts) ? noticeBox('🎓 졸업 제품',gradAllRows.length,gradAllRows.map(fmtEntry)) : noticeEmptyBox('졸업 제품','goods_master.csv 업로드 필요');
-  const launchHtml = D.goods_master ? noticeBox('🚀 출시 제품',launchRows.length,launchRows.map(fmtEntry)) : noticeEmptyBox('출시 제품','goods_master.csv 업로드 필요');
+  // v23.31: goods_master 출시일 + parts.csv 파생 신규 제품 두 경로 — parts만 있어도 표시한다
+  const launchHtml = (D.goods_master||D.parts)
+    ? noticeBox('🚀 출시 제품',launchAllRows.length,launchAllRows.map(fmtEntry))
+    : noticeEmptyBox('출시 제품','goods_master.csv 업로드 필요');
   const stockHtml = D.stockout_list
     ? noticeBox('🚫 품절 제품',stockRows.length+manualStock.length,stockRows.map(r=>esc(stripPT(r['파츠명']||''))).concat(manualStock.map(m=>esc(stripPT(m.parts)))))
     : noticeEmptyBox('품절 제품','stockout_list.csv 업로드 필요');
-  const addedHtml = D.sup ? noticeBox('🆕 신규 협력사',addedRows.length,addedRows.map(fmtEntry)) : noticeEmptyBox('신규 협력사','sup.csv 업로드 필요');
+  // v23.31: sup.csv 월간 스냅샷 diff + parts.csv 제작협력사 최초 등장 두 경로 — parts만 있어도 표시한다
+  const addedHtml = (D.sup||D.parts)
+    ? noticeBox('🆕 신규 협력사',addedRows.length,addedRows.map(fmtEntry))
+    : noticeEmptyBox('신규 협력사','sup.csv 업로드 필요');
   const removedHtml = D.sup ? noticeBox('🔚 거래종료 협력사',removedRows.length,removedRows.map(fmtEntry)) : noticeEmptyBox('거래종료 협력사','sup.csv 업로드 필요');
 
   const partNewHtml = D.parts ? noticeBox('🧩 신규 파츠',partNewRows.length,partNewRows.map(fmtEntry)) : noticeEmptyBox('신규 파츠','parts.csv 업로드 필요');
@@ -6656,7 +6738,7 @@ function genChangeReport() {
     ``,
     `생성: ${fmtISODate(today)} · 원천: data/change_log.json(주간 스냅샷 diff 자동 감지) · 스냅샷 원본: 리포지토리 CSV_BANK/ · 누적 이력 ${CHANGE_LOG.length}건 중 최근 30일 ${recent.length}건`,
     ``,
-    section('제품 변경 (졸업·출시·파츠연결해제)',['product_graduated','product_launched','goods_unlinked'],'외주생산 육승미'),
+    section('제품 변경 (졸업·출시·신규등록·파츠연결해제)',['product_graduated','product_launched','product_new','goods_unlinked'],'외주생산 육승미'),
     section('협력사 변경 (신규·거래종료)',['sup_added','sup_terminated'],'외주생산 육승미'),
     section('파츠 변경 (신규·졸업)',['part_new','part_grad'],'외주생산 육승미'),
     `## 단가 변동 — ${priceRows.length}건 (상승 ${up.length} · 인하 ${down.length}) · 담당: 외주생산 육승미\n\n${priceRows.length?priceRows.map(line).join('\n'):'- 변경 없음'}\n`,
