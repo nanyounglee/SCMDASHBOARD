@@ -1,4 +1,16 @@
 ﻿에어테이블 DB 업데이트,슬랙 URL,대상 굿즈명,대상 파츠명 (Shift+Space),No.,구글 DB 업데이트 완료 버튼 (슬랙용) ,변동사항 적용 시점,Confirmation,업무요청 유형,관련 굿즈 리스트 (슬랙용),아이템,에어테이블 DB 입력완료 (슬랙용),슬랙 Ts,Name (from 신청자),관련 아이템 리스트,판매가 업데이트 완료 버튼 (슬랙용),관계자 태그,요청일자,Name (from 에어테이블 DB 입력자),변동원인,관련 굿즈 리스트,협력사,slack id tag (from 신청자),Last Modified (에어테이블 DB),변동사항 (Shift+Space로 전체 내용을 확인하세요),신청자,협력사 이름,프린팅 파츠 Rollup,구글 DB 업데이트 보류 버튼 (슬랙용),에어테이블 DB 입력자,에어테이블 DB 입력_특이사항,구글 DB 업데이트 현황,Last Modified (구글DB),구글DB 바로가기,판매가 업데이트 현황,Last Modified (견적서)
+에어테이블 DB 업데이트 완료,https://sincerelygroup.slack.com/archives/CKH9TB0HX/p1787112466226449,HighLight 슬라이드 지퍼백,"- PT4806-하이라이트슬라이드지퍼백(S)
+- PT4807-하이라이트슬라이드지퍼백(M)
+- PT4808-하이라이트슬라이드지퍼백(L)
+- PT4810-실크_착한포장",458,https://app.miniextensions.com/form/FZYJ1iMzlELxh3tDklPB/recYJdgjhO5YeDsXN?prefill_%EA%B5%AC%EA%B8%80%20DB%20%EC%97%85%EB%8D%B0%EC%9D%B4%ED%8A%B8%20%ED%98%84%ED%99%A9=%EA%B5%AC%EA%B8%80%20DB%20%EC%97%85%EB%8D%B0%EC%9D%B4%ED%8A%B8%20%EC%99%84%EB%A3%8C,2026.8.19,checked,특정 품목 단가 변동사항,,"HLSZ_PT4806-하이라이트슬라이드지퍼백(S)[착한포장], HLSZ_PT4807-하이라이트슬라이드지퍼백(M)[착한포장], HLSZ_PT4808-하이라이트슬라이드지퍼백(L)[착한포장], HLSZ_PT4810-실크_착한포장[슬라이드지퍼백]",https://web.miniextensions.com/Rb3qHYSZVDo6pwVifGJc/recYJdgjhO5YeDsXN,1787112466.226449,육승미,"HLSZ_PT4806-하이라이트슬라이드지퍼백(S)[착한포장]
+HLSZ_PT4807-하이라이트슬라이드지퍼백(M)[착한포장]
+HLSZ_PT4808-하이라이트슬라이드지퍼백(L)[착한포장]
+HLSZ_PT4810-실크_착한포장[슬라이드지퍼백]",https://app.miniextensions.com/form/i4tFO83LH0iqxLbIQLBL/recYJdgjhO5YeDsXN?prefill_%ED%8C%90%EB%A7%A4%EA%B0%80%20%EC%97%85%EB%8D%B0%EC%9D%B4%ED%8A%B8%20%ED%98%84%ED%99%A9=%ED%8C%90%EB%A7%A4%EA%B0%80%20%EC%97%85%EB%8D%B0%EC%9D%B4%ED%8A%B8%20%EC%99%84%EB%A3%8C,<!subteam^S01AV8VE1AQ>,2026.8.19 1:07오후,육승미,원단비 인상,HighLight 슬라이드 지퍼백,,<@U094VP02G6L>,2026.8.19 1:11오후,"전체 사이즈/수량구간 평균 48원(+12%) 인상되었습니다. 
+
+자세한 사항 내용은 아래 시트 참고 부탁드립니다! 
+
+https://docs.google.com/spreadsheets/d/17pfJF81tatBL0lT1d8fgfTSiIte98684RMH1BCgGiys/edit?gid=276270144#gid=276270144
+",육승미,,,https://app.miniextensions.com/form/FZYJ1iMzlELxh3tDklPB/recYJdgjhO5YeDsXN?prefill_%EA%B5%AC%EA%B8%80%20DB%20%EC%97%85%EB%8D%B0%EC%9D%B4%ED%8A%B8%20%ED%98%84%ED%99%A9=%EA%B5%AC%EA%B8%80%20DB%20%EC%97%85%EB%8D%B0%EC%9D%B4%ED%8A%B8%20%EB%B3%B4%EB%A5%98,육승미,인쇄단가는 (인쇄+제품단가)-제품단가의 기준 최댓값으로 입력했습니다. (L사이즈 기준),,,,,
 에어테이블 DB 업데이트 완료,https://sincerelygroup.slack.com/archives/CKH9TB0HX/p1786501472432579,헬로 카드형 USB,"- PT4494-헬로카드형USB(4GB)_화이트
 - PT4535-헬로카드형USB(8GB)_화이트
 - PT4536-헬로카드형USB(16GB)_화이트
