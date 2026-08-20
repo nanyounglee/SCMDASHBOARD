@@ -28,6 +28,9 @@
 //        "view":"task-SCMKPI_Raw" 또는 viw…, "file":"order.csv"},
 //       ...
 //     ]
+//     선택 옵션: "fields"(배열 — 이 필드만 받아옴, 컬럼 많은 뷰에서 CSV 비대화 방지),
+//                "rename"({원천필드:CSV컬럼} — 원천 필드명이 대시보드가 읽는 이름과 다를 때),
+//                "keyField"(수동 컬럼 이월 시 행 매칭 키, 기본값은 첫 컬럼)
 //     base/table/view 를 정확히 모르면 scripts/list_airtable_schema.mjs
 //     (.github/workflows/airtable-discover.yml)로 먼저 조회한다.
 //     이 변수가 없거나 빈 배열이면 스크립트는 아무 것도 하지 않고 종료한다
@@ -73,12 +76,15 @@ function lastCommitDate(relPath) {
 }
 
 // ---- Airtable 전체 레코드 페치 (100건 페이지네이션) ----
-async function fetchView(base, table, view) {
+// fields: 뷰에 컬럼이 아무리 많아도 지정한 필드만 받아온다(굿즈마스터는 34컬럼 중 5개만 필요).
+// 미지정이면 종전대로 뷰의 전체 필드를 받는다.
+async function fetchView(base, table, view, fields) {
   const records = [];
   let offset = null;
   do {
     const u = new URL(`https://api.airtable.com/v0/${base}/${encodeURIComponent(table)}`);
     u.searchParams.set('view', view);
+    (fields || []).forEach(f => u.searchParams.append('fields[]', f));
     u.searchParams.set('cellFormat', 'string');
     u.searchParams.set('timeZone', 'Asia/Seoul');
     u.searchParams.set('userLocale', 'ko');
@@ -182,7 +188,18 @@ async function runSource(src) {
     return false;
   }
   console.log(`[${key}] base="${base}" table="${table}" view="${view}" → CSV/${file}`);
-  const records = await fetchView(base, table, view);
+  const records = await fetchView(base, table, view, src.fields);
+  // rename: Airtable 필드명 → CSV 컬럼명 매핑. 원천 필드명이 대시보드가 읽는 이름과 다를 때 쓴다
+  // (굿즈마스터: '굿즈 Status_1.goods' → '굿즈 Status'). 이 변환이 없으면 원천 이름 그대로 새 컬럼이
+  // 뒤에 붙고, 대시보드가 읽는 컬럼은 "API가 안 주는 컬럼"으로 분류돼 수동 컬럼 보존 로직이
+  // 옛 값을 계속 이월한다 — 상태가 영영 갱신되지 않는 조용한 오류가 된다(2026-08-18 확인).
+  if (src.rename) {
+    const pairs = Object.entries(src.rename);
+    records.forEach(rec => pairs.forEach(([from, to]) => {
+      if (from in rec.fields) { rec.fields[to] = rec.fields[from]; delete rec.fields[from]; }
+    }));
+    console.log(`  필드명 변환 ${pairs.length}건: ${pairs.map(([a, b]) => a + ' → ' + b).join(', ')}`);
+  }
   console.log(`  ${records.length}건 수신`);
   if (!records.length) {
     console.warn(`  레코드 0건 — 파일을 건드리지 않고 건너뜁니다(기존 CSV 유지).`);
