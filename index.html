@@ -707,6 +707,8 @@ a{color:var(--blue);text-decoration:none}
     <!-- ISSUE -->
     <div id="sec-issue" style="display:none">
       <!-- v19: 이슈 분석 모듈 — 추이 그래프 + 전체 TASK 대비 이슈율 + 2025/2026 동기 비교 -->
+      <!-- v23.33: 특정 협력사 제외 시뮬레이션 (사용자 요청) -->
+      <div id="iss-excl-bar" style="margin-bottom:10px"></div>
       <div class="kpi-row-3" id="iss-kpi-row" style="margin-bottom:12px"></div>
       <div class="chart-grid" style="margin-bottom:16px">
         <div class="card">
@@ -743,7 +745,7 @@ a{color:var(--blue);text-decoration:none}
         <div class="tbl-wrap"><table class="tbl"><thead><tr><th class="rank">#</th><th>제품</th><th>협력사</th><th class="num" id="th-re-prev">전년</th><th class="num" id="th-re-cur">당해</th><th class="num">합계</th><th>유형</th><th>최근 발생</th></tr></thead><tbody id="tb-iss-re"></tbody></table></div>
       </div>
       <div id="tab-iss-px" class="tab-panel card" style="display:none">
-        <div style="font-size:11px;color:var(--text3);margin-bottom:8px">이슈율 = 이슈건수 ÷ 발주건수 × 100 · 행 클릭 시 이슈 상세(유형·내용·대응) 펼쳐보기 · 제품 매칭 = 이슈_RAW "item (통합) (from order)" 기준 · 협력사 귀속 = project_name↔project 코드 매칭(추정)</div>
+        <div style="font-size:11px;color:var(--text3);margin-bottom:8px">이슈율 = 이슈건수 ÷ 발주건수 × 100 · 행 클릭 시 이슈 상세(유형·내용·대응) 펼쳐보기 · 제품 매칭 = 이슈_RAW "item (통합) (from order)" 기준 · <b>협력사 귀속 = 이슈_RAW "(파트너)발주협력사명 텍스트" 직접 기재값</b>(382건 중 381건 채워짐, v23.33) — 원천에서 15자로 잘려 오는 이름은 수주처 명단과 접두 일치로 복원, 값이 없으면 종전 movement_id·project 코드 추정으로 폴백</div>
         <div class="tbl-wrap"><table class="tbl"><thead><tr><th class="rank">#</th><th>제품</th><th>협력사</th><th class="num">발주건수</th><th class="num">이슈건수</th><th class="num">이슈율</th></tr></thead><tbody id="tb-iss-px"></tbody></table></div>
       </div>
       <div id="tab-iss-all" class="tab-panel active card">
@@ -3628,9 +3630,18 @@ function renderIssueAnalytics(){
   const orderMonths=[...new Set(D.order.map(r=>pOrderMonth(r['과업지시일자'])).filter(Boolean))];
   const curY=Math.max(...orderMonths.map(m=>+m.split('.')[0]));
   const prevY=curY-1;
+  // v23.33: 제외 협력사 반영 — 이슈(분자)와 발주 TASK(분모) 양쪽에서 뺀다.
+  // 연도 판별(orderMonths)은 제외와 무관하게 원본 기준을 유지한다.
+  const _projMap=getProjKeySupplierMap(), _mvMap=getMovementSupplierMap();
+  const issVendorOf=r=>issueSupplierOf(r,_projMap,_mvMap);
+  const _ex=ISS_EXCL.size?ISS_EXCL:null;
+  const keepIss=r=>!_ex||!_ex.has(issVendorOf(r));
+  const keepOrd=r=>!_ex||!_ex.has((r['수주처']||'').trim());
+  const ISS=D.issue.filter(keepIss), ORD=D.order.filter(keepOrd);
+  const ISS_PY=(D.issuePrevYear||[]).filter(keepIss), ORD_PY=(D.orderPrevYear||[]).filter(keepOrd);
   const Z=()=>Array(13).fill(0);
   const issCur={q:Z(),n:Z(),o:Z(),all:Z()}, taskCur=Z(), issPrev=Z(), taskPrev=Z();
-  D.issue.forEach(r=>{
+  ISS.forEach(r=>{
     const d=issueMonthNum(r); if(!d||d.y!==curY) return;
     issCur.all[d.m]++;
     const c=r['이슈카테고리']||'';
@@ -3641,12 +3652,12 @@ function renderIssueAnalytics(){
   // v23.17: 미입하는 판정일(입하예정일+1) 기준으로 버킷하고 분모도 "그 달 입하예정 건수"(dueCur)로 분리.
   //   taskCur(과업지시월 기준)는 이슈율 차트 분모로 계속 쓰이므로 건드리지 않는다.
   const noaCur=Z(), noaPrev=Z(), dueCur=Z(), duePrev=Z();
-  D.order.forEach(r=>{
+  ORD.forEach(r=>{
     const mo=pOrderMonth(r['과업지시일자']); if(mo&&+mo.split('.')[0]===curY) taskCur[+mo.split('.')[1]]++;
     const dm=noReceiptMonth(r); if(dm&&+dm.split('.')[0]===curY) { dueCur[+dm.split('.')[1]]++; if(hasNoReceipt(r)) noaCur[+dm.split('.')[1]]++; }
   });
-  (D.issuePrevYear||[]).forEach(r=>{ const d=issueMonthNum(r); if(d&&d.y===prevY) issPrev[d.m]++; });
-  (D.orderPrevYear||[]).forEach(r=>{
+  ISS_PY.forEach(r=>{ const d=issueMonthNum(r); if(d&&d.y===prevY) issPrev[d.m]++; });
+  ORD_PY.forEach(r=>{
     const mo=pOrderMonth(r['과업지시일자']); if(mo&&+mo.split('.')[0]===prevY) taskPrev[+mo.split('.')[1]]++;
     const dm=noReceiptMonth(r); if(dm&&+dm.split('.')[0]===prevY) { duePrev[+dm.split('.')[1]]++; if(hasNoReceipt(r)) noaPrev[+dm.split('.')[1]]++; }
   });
@@ -3654,14 +3665,18 @@ function renderIssueAnalytics(){
   const rateCur=rate(issCur.all,taskCur), ratePrev=rate(issPrev,taskPrev);
   // ---- KPI 스트립: 선택 기간 이슈 · TASK · 이슈율 (+ 전년 동기 비교) ----
   const q=getSearchQuery();
-  const fi=D.issue.filter(r=>issueInPeriod(r)&&(!q||matchesSearch(r,q)));
-  const ft=D.order.filter(r=>inSelDateRange(r['과업지시일자'])&&(!q||matchesSearch(r,q)));
+  const fi=ISS.filter(r=>issueInPeriod(r)&&(!q||matchesSearch(r,q)));
+  const ft=ORD.filter(r=>inSelDateRange(r['과업지시일자'])&&(!q||matchesSearch(r,q)));
   const curRate=ft.length?(fi.length/ft.length*100):null;
+  // 제외 전 원본 이슈율 — 칩 바에서 «5.54% → 4.84%»로 비교해 보여준다
+  const fiAll=D.issue.filter(r=>issueInPeriod(r)&&(!q||matchesSearch(r,q)));
+  const ftAll=D.order.filter(r=>inSelDateRange(r['과업지시일자'])&&(!q||matchesSearch(r,q)));
+  const baseRate=ftAll.length?(fiAll.length/ftAll.length*100):null;
   let pyRate=null;
   const yoyRange=getYoyDateRange();
   if(yoyRange&&D.issuePrevYear&&D.orderPrevYear){
-    const pyIss=D.issuePrevYear.filter(r=>inDateRange(issueDateStr(r),yoyRange)).length;
-    const pyTask=D.orderPrevYear.filter(r=>inDateRange(r['과업지시일자'],yoyRange)).length;
+    const pyIss=ISS_PY.filter(r=>inDateRange(issueDateStr(r),yoyRange)).length;
+    const pyTask=ORD_PY.filter(r=>inDateRange(r['과업지시일자'],yoyRange)).length;
     pyRate=pyTask?(pyIss/pyTask*100):null;
   }
   const diffBadge=(cur,py)=>{
@@ -3669,6 +3684,32 @@ function renderIssueAnalytics(){
     const d=cur-py; const c=d>0?'var(--red)':d<0?'var(--green)':'var(--text3)';
     return ` <span style="color:${c};font-weight:600;font-size:11px">${d>=0?'+':''}${d.toFixed(1)}%p YoY</span>`;
   };
+  // ---- v23.33: 협력사 제외 칩 바 ----
+  // 칩 목록은 «선택 기간에 이슈가 있는 협력사»를 이슈 많은 순으로 상위 8곳 + 이미 제외한 곳.
+  // 각 칩에 (이슈건수/발주건수 → 이슈율)을 적어 어디를 빼면 효과가 큰지 바로 보이게 한다.
+  const exclBar=document.getElementById('iss-excl-bar');
+  if(exclBar){
+    const issByV={}, ordByV={};
+    fiAll.forEach(r=>{ const v=issVendorOf(r); if(v) issByV[v]=(issByV[v]||0)+1; });
+    ftAll.forEach(r=>{ const v=(r['수주처']||'').trim(); if(v) ordByV[v]=(ordByV[v]||0)+1; });
+    const top=Object.entries(issByV).sort((a,b)=>b[1]-a[1]).slice(0,8).map(e=>e[0]);
+    ISS_EXCL.forEach(v=>{ if(!top.includes(v)) top.push(v); });
+    const chip=v=>{
+      const on=ISS_EXCL.has(v), oc=ordByV[v]||0, ic=issByV[v]||0;
+      const rt=oc?(ic/oc*100).toFixed(1)+'%':'—';
+      return `<span class="m-chip${on?' active':''}" style="${on?'text-decoration:line-through;opacity:.75;':''}" title="${esc(v)} — 이슈 ${ic}건 / 발주 ${oc}건${oc?' · 이슈율 '+rt:''}${on?' (제외 중)':''}" onclick="toggleIssExcl('${esc(v).replace(/'/g,"\'")}')">${esc(crop(v,16))} <span style="color:var(--text3)">${ic}건·${rt}</span></span>`;
+    };
+    const delta=(baseRate!==null&&curRate!==null)?(curRate-baseRate):null;
+    const summary=ISS_EXCL.size
+      ? `<div style="margin-top:6px;font-size:12px;color:var(--text2)"><b>${ISS_EXCL.size}곳 제외</b> — 이슈율 <span style="color:var(--text3)">${baseRate===null?'—':baseRate.toFixed(2)+'%'}</span> → <b style="color:var(--blue)">${curRate===null?'—':curRate.toFixed(2)+'%'}</b>${delta===null?'':` <span style="color:${delta<0?'var(--green)':'var(--red)'};font-weight:600">(${delta>=0?'+':''}${delta.toFixed(2)}%p)</span>`} · 이슈 ${fiAll.length}→${fi.length}건 / 발주 TASK ${ftAll.length.toLocaleString()}→${ft.length.toLocaleString()}건</div>`
+      : '';
+    exclBar.innerHTML=`<div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap">
+      <span style="font-size:11.5px;color:var(--text3);font-weight:600">협력사 제외</span>
+      ${top.map(chip).join('')}
+      ${ISS_EXCL.size?`<span class="m-chip" onclick="clearIssExcl()" style="color:var(--blue)">↺ 모두 포함</span>`:''}
+      <span style="font-size:10px;color:var(--text3)">※ 칩 클릭 = 그 협력사를 이슈·발주 양쪽에서 빼고 재계산 (아래 KPI·추이 차트 3종에만 적용, 목록 탭은 그대로)</span>
+    </div>${summary}`;
+  }
   const kpiRow=document.getElementById('iss-kpi-row');
   if(kpiRow) kpiRow.innerHTML=`
     <div class="kpi-card c-red"><div class="kpi-label">기간 이슈 건수</div><div class="kpi-val">${fi.length}</div><div class="kpi-sub">${selPeriodLabel()||'전체'}${q?' (검색 필터)':''}</div></div>
@@ -5839,7 +5880,37 @@ function getMovementSupplierMap() {
   return MV_SUP_MAP;
 }
 // 이슈 행 1건의 귀속 협력사 — movement 정확 조인 우선, 없으면 접두어 추정 폴백 (prevProjMap 선택 전달)
+// v23.33(사용자 요청 2026-08-18): 이슈의 협력사 귀속을 «직접 기재 필드» 우선으로 바꾼다.
+// 종전은 movement_id → project_name 접두로 «추정»했는데, 한 프로젝트에 여러 협력사가 붙으면
+// projMap이 그 프로젝트의 첫 협력사를 돌려줘 엉뚱한 곳에 붙었다 — 2026 실측 358건 중
+// 190건(53%)이 실제 기재값과 불일치했다. 이슈_RAW의 '(파트너)발주협력사명 텍스트'는
+// 382건 중 381건(99.7%)이 채워져 있어 이 필드가 사실상 정답이다.
+//
+// 단, 이 필드는 원천에서 15자로 잘려 온다(예: '주식회사 기억니은 (구. 화',
+// '"Shanghai Anshe'). 그래서 수주처 명단과 «접두 일치»로 원래 이름을 복원한다 —
+// 후보가 정확히 하나일 때만 복원하고(실측 14종 중 12종 복원·모호 0종), 아니면 원문을 그대로 둔다.
+let VENDOR_ALIAS=null, VENDOR_ALIAS_SRC=null;
+function resolveVendorAlias(name){
+  const n=String(name||'').trim(); if(!n) return '';
+  if(VENDOR_ALIAS_SRC!==D.order||!VENDOR_ALIAS){
+    VENDOR_ALIAS={set:new Set(),list:[],cache:{}};
+    (D.order||[]).forEach(r=>{ const v=(r['수주처']||'').trim(); if(v) VENDOR_ALIAS.set.add(v); });
+    VENDOR_ALIAS.list=[...VENDOR_ALIAS.set];
+    VENDOR_ALIAS_SRC=D.order;
+  }
+  const M=VENDOR_ALIAS;
+  if(Object.prototype.hasOwnProperty.call(M.cache,n)) return M.cache[n];
+  let out=n;
+  if(!M.set.has(n)){
+    const cand=M.list.filter(v=>v.startsWith(n));
+    if(cand.length===1) out=cand[0];
+  }
+  M.cache[n]=out; return out;
+}
+function issueVendorText(r){ return resolveVendorAlias(r&&r['(파트너)발주협력사명 텍스트']); }
 function issueSupplierOf(r, projMap, mvMap, prevProjMap) {
+  const direct=issueVendorText(r);
+  if(direct) return direct;
   const mv=(r['movement_id']||'').trim();
   if(mv&&mvMap[mv]) return mvMap[mv];
   const key=(r['project_name']||'').split('-')[0];
@@ -8566,6 +8637,22 @@ function renderRecurringIssues() {
     }
     return html;
   }).join('');
+}
+// v23.33: «특정 협력사를 뺐다면 이슈율이 얼마인가» 시뮬레이션 (사용자 요청 2026-08-18).
+// 이슈 건수는 물론 분모(발주 TASK)에서도 그 협력사를 빼야 "없었다면"이 성립한다.
+// 적용 범위는 이슈 분석 블록(KPI 3종 + 추이 차트 3종)이며, 아래 목록 탭은 건드리지 않는다.
+let ISS_EXCL=new Set();
+try{ ISS_EXCL=new Set(JSON.parse(localStorage.getItem('iss_excl_v1')||'[]')); }catch(e){}
+function toggleIssExcl(name){
+  const n=String(name||''); if(!n) return;
+  if(ISS_EXCL.has(n)) ISS_EXCL.delete(n); else ISS_EXCL.add(n);
+  try{ localStorage.setItem('iss_excl_v1',JSON.stringify([...ISS_EXCL])); }catch(e){}
+  renderIssueAnalytics();
+}
+function clearIssExcl(){
+  ISS_EXCL=new Set();
+  try{ localStorage.setItem('iss_excl_v1','[]'); }catch(e){}
+  renderIssueAnalytics();
 }
 // v12: 제품×협력사 이슈율 매트릭스
 let ISSPX_EXPANDED=new Set();
