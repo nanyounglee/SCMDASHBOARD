@@ -1,6 +1,90 @@
 {
   "entries": [
     {
+      "id": "product_launched|LTSV|2026-09-04",
+      "type": "product_launched",
+      "name": "베이직 노트북 슬리브 (LTSV)",
+      "date": "2026-09-04",
+      "detail": ""
+    },
+    {
+      "id": "product_launched|PENN|2026-08-21",
+      "type": "product_launched",
+      "name": "소프트그립블랙펜 (PENN)",
+      "date": "2026-08-21",
+      "detail": ""
+    },
+    {
+      "id": "sup_added|강한포장|2026_08",
+      "type": "sup_added",
+      "name": "강한포장",
+      "date": "2026-08-20",
+      "detail": ""
+    },
+    {
+      "id": "sup_added|네추럴 폼|2026_08",
+      "type": "sup_added",
+      "name": "네추럴 폼",
+      "date": "2026-08-20",
+      "detail": ""
+    },
+    {
+      "id": "sup_added|비닐24|2026_08",
+      "type": "sup_added",
+      "name": "비닐24",
+      "date": "2026-08-20",
+      "detail": ""
+    },
+    {
+      "id": "sup_added|상인몰|2026_08",
+      "type": "sup_added",
+      "name": "상인몰",
+      "date": "2026-08-20",
+      "detail": ""
+    },
+    {
+      "id": "sup_added|이고다포장|2026_08",
+      "type": "sup_added",
+      "name": "이고다포장",
+      "date": "2026-08-20",
+      "detail": ""
+    },
+    {
+      "id": "sup_added|임가공 소모품 구매처|2026_08",
+      "type": "sup_added",
+      "name": "임가공 소모품 구매처",
+      "date": "2026-08-20",
+      "detail": ""
+    },
+    {
+      "id": "sup_added|제이디패키지|2026_08",
+      "type": "sup_added",
+      "name": "제이디패키지",
+      "date": "2026-08-20",
+      "detail": ""
+    },
+    {
+      "id": "sup_added|피치플랜|2026_08",
+      "type": "sup_added",
+      "name": "피치플랜",
+      "date": "2026-08-20",
+      "detail": ""
+    },
+    {
+      "id": "sup_added|혜림봉투|2026_08",
+      "type": "sup_added",
+      "name": "혜림봉투",
+      "date": "2026-08-20",
+      "detail": ""
+    },
+    {
+      "id": "product_launched|CALD|2026-08-19",
+      "type": "product_launched",
+      "name": "페어링 캘린더 (CALD)",
+      "date": "2026-08-19",
+      "detail": ""
+    },
+    {
       "id": "sup_added|GUANGZHOU KINGSONS BAGS TECHNOLOGY CO., LTD|2026_08",
       "type": "sup_added",
       "name": "GUANGZHOU KINGSONS BAGS TECHNOLOGY CO., LTD",
@@ -701,6 +785,34 @@
       "detail": "평균 1.7% 상승 · (주)청산인쇄"
     },
     {
+      "id": "sup_added|주식회사 비브릭스 코퍼레이션|2026_W33",
+      "type": "sup_added",
+      "name": "주식회사 비브릭스 코퍼레이션",
+      "date": "2026-08-10",
+      "detail": "파츠 제작협력사 최초 등록 · 2026_W33 스냅샷 비교"
+    },
+    {
+      "id": "product_new|FFTT|2026_W33",
+      "type": "product_new",
+      "name": "스탠바이 360 허브스탠드 (FFTT)",
+      "date": "2026-08-10",
+      "detail": "출시일 미정 · 파츠 등록 · 2026_W33 스냅샷 비교"
+    },
+    {
+      "id": "product_new|BOOK|2026_W33",
+      "type": "product_new",
+      "name": "컴패니언 노트 (BOOK)",
+      "date": "2026-08-10",
+      "detail": "출시일 미정 · 파츠 등록 · 2026_W33 스냅샷 비교"
+    },
+    {
+      "id": "product_new|SCRD|2026_W33",
+      "type": "product_new",
+      "name": "애니웨어 센티드 카드 (SCRD)",
+      "date": "2026-08-10",
+      "detail": "출시일 미정 · 파츠 등록 · 2026_W33 스냅샷 비교"
+    },
+    {
       "id": "part_price|PT4751|2026_W32",
       "type": "part_price",
       "name": "하이라이트슬라이드지퍼백(M)",
@@ -1063,6 +1175,13 @@
       "name": "PT5586-노트북슬리브_추상적산출물",
       "date": "2026-07-27",
       "detail": "개미기획"
+    },
+    {
+      "id": "sup_added|Dongguan Songming Electronic Technology Co., Ltd|2026_W31",
+      "type": "sup_added",
+      "name": "Dongguan Songming Electronic Technology Co., Ltd",
+      "date": "2026-07-27",
+      "detail": "파츠 제작협력사 최초 등록 · 2026_W31 스냅샷 비교"
     },
     {
       "id": "part_price|PT1330|2026_W30",
@@ -3144,6 +3263,13 @@
       "detail": "26.3Q 평균 17.2% 인하 · 주식회사 에코에이스"
     },
     {
+      "id": "product_launched|BMLT|2026-07-21",
+      "type": "product_launched",
+      "name": "그로우 북라이트 (BMLT)",
+      "date": "2026-07-21",
+      "detail": ""
+    },
+    {
       "id": "product_launched|TVLB|2026-07-20",
       "type": "product_launched",
       "name": "워크데이 런치백 (TVLB)",
@@ -3221,5 +3347,5 @@
       "detail": ""
     }
   ],
-  "updatedAt": "2026-08-18T07:54:35.811Z"
+  "updatedAt": "2026-08-20T01:04:25.426Z"
 }
