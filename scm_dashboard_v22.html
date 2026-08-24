@@ -9938,7 +9938,8 @@ function shBuildPeriods_(unit,today){
     else if(unit==='month'){ naturalEnd=new Date(cursor.getFullYear(),cursor.getMonth()+1,0); id=cursor.getFullYear()+'-'+('0'+(cursor.getMonth()+1)).slice(-2); }
     else { var q=Math.floor(cursor.getMonth()/3); naturalEnd=new Date(cursor.getFullYear(),q*3+3,0); id=cursor.getFullYear()+'-Q'+(q+1); }
     var periodEnd = naturalEnd>today?today:naturalEnd;
-    periods.push({id:id,s:shFmtDateKey_(cursor),e:shFmtDateKey_(periodEnd)});
+    var inProgress = shFmtDateKey_(naturalEnd) >= shFmtDateKey_(today);
+    periods.push({id:id,s:shFmtDateKey_(cursor),e:shFmtDateKey_(periodEnd),inProgress:inProgress});
     cursor=shDaysAdd_(periodEnd,1);
   }
   return periods;
@@ -10060,8 +10061,8 @@ function renderStockoutDetailFull_(){
     const L = PS[G]; I = Math.max(0, Math.min(I, L.length - 1));
     const p = L[I], S = snap(p.e), P = I > 0 ? snap(L[I-1].e) : null;
     $('#sh-seg').querySelectorAll('span').forEach(e => e.classList.toggle('active', e.dataset.g === G));
-    $('#sh-psel').innerHTML = L.map(pp => `<option value="${pp.id}"${pp.id===p.id?' selected':''}>${pp.id}</option>`).join('');
-    $('#sh-prng').textContent = `${p.s} ~ ${p.e}`;
+    $('#sh-psel').innerHTML = L.map(pp => `<option value="${pp.id}"${pp.id===p.id?' selected':''}>${pp.id}${pp.inProgress?' (진행중)':''}</option>`).join('');
+    $('#sh-prng').textContent = `${p.s} ~ ${p.inProgress?'진행중':p.e}`;
     $('#sh-prev').disabled = I === 0; $('#sh-next').disabled = I === L.length - 1;
 
     $('#sh-totline').innerHTML = `<span class="sh-tot">전체 품절 ${S.so.length}건</span>
