@@ -534,7 +534,7 @@ a{color:var(--blue);text-decoration:none}
           <div><div class="card-title"><span id="notice-collapse-arrow">▸</span> 📢 월간 공지사항 <span id="notice-inline-summary" style="font-weight:400;font-size:12px;color:var(--text2)"></span></div><div class="card-sub" id="notice-month-label"></div></div>
         </div>
         <div id="notice-body" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:8px"></div>
-        <div id="notice-footnote" style="font-size:10px;color:var(--text3);margin-top:8px">※ 8개 박스 모두 <b>실제 변경일 기준 이번 달(1일~오늘)</b> 변경분만 노출합니다(v23.10 — 상단 기간 선택과 무관, 품절 포함 전체 동일 기준) — 졸업/출시는 굿즈마스터(goods_master.csv) 출시일·졸업일, 협력사는 매주 자동 갱신되는 sup.csv 스냅샷(CSV_BANK) 비교로 감지. 졸업 제품은 굿즈마스터 졸업일 + 파츠 연결 해제(parts.csv 스냅샷) 두 경로, 단가 변동은 공식 가격요청(price_chg.csv) + 파츠 표준원가 실측 변동 두 경로를 합쳐 보여줍니다(v23.11 — "· 파츠 실측" 꼬리표로 구분). 감지된 변경은 data/change_log.json에 누적 기록되며 "전체 변경 이력 보기"에서 지난 달 이전 것도 확인 가능 · "(수동입력)" 표시는 자동 집계로 잡히지 않아 담당자가 직접 등록한 건(등록된 달에만 노출)</div>
+        <div id="notice-footnote" style="font-size:10px;color:var(--text3);margin-top:8px">※ 8개 박스는 <b>실제 변경일 기준 이번 달(1일~오늘)</b> 변경분만 노출합니다(v23.10 — 상단 기간 선택과 무관, 품절 포함 전체 동일 기준) — 졸업/출시는 굿즈마스터(goods_master.csv) 출시일·졸업일, 협력사는 매주 자동 갱신되는 sup.csv 스냅샷(CSV_BANK) 비교로 감지. 졸업 제품은 굿즈마스터 졸업일 + 파츠 연결 해제(parts.csv 스냅샷) 두 경로, 단가 변동은 공식 가격요청(price_chg.csv) + 파츠 표준원가 실측 변동 두 경로를 합쳐 보여줍니다(v23.11 — "· 파츠 실측" 꼬리표로 구분). 감지된 변경은 data/change_log.json에 누적 기록되며 "전체 변경 이력 보기"에서 지난 달 이전 것도 확인 가능 · "(수동입력)" 표시는 자동 집계로 잡히지 않아 담당자가 직접 등록한 건(등록된 달에만 노출) · <b>📦 품절중인 굿즈</b>는 위 8개와 달리 이번 달 제한 없이 stockout_list.csv 굿즈품절여부 기준 <b>현재 품절 중인 굿즈 전체</b>를 상시 표시합니다(v23.34)</div>
       </div>
       <div class="kpi-row kpi-row-6">
         <div class="kpi-card c-blue" onclick="openModal('orderTask')">
@@ -4775,13 +4775,20 @@ function renderMonthlyNotice() {
     // 수동 등록분은 그 달에만 노출 — 7월분을 8월 공지로 둔갑시키지 않기 위해 월 키를 그대로 비교
     manualStock=(MANUAL_STOCKOUT_MONTH===curMonthKey)?MANUAL_STOCKOUT.filter(m=>!already.has(m.parts)):[];
   }
+  // 4) 품절중인 굿즈 — stockout_list.csv 굿즈품절여부(현재 상태 스냅샷, 이번 달 제한 없음).
+  // v23.34(사용자 요청 2026-08-24): 위 "품절 제품" 박스는 이번 달에 "새로 변경된" 파츠만 보여줘서
+  // 이미 품절 중인 굿즈가 메인 공지에서 누락됐다 — 현재 품절 중인 굿즈 전체를 별도로 상시 노출한다.
+  const goodsSoNames = D.stockout_list
+    ? [...new Set(D.stockout_list.filter(r=>(r['굿즈품절여부']||'').toLowerCase()==='checked')
+        .map(r=>(r['적용 굿즈명']||'').trim()).filter(Boolean))].sort((a,b)=>a.localeCompare(b,'ko'))
+    : [];
 
   // 접기 상태 반영 — 접힘: 제목 옆 건수 요약 한 줄만, 펼침: 기존 박스 그리드
   const arrow=document.getElementById('notice-collapse-arrow');
   if(arrow) arrow.textContent=NOTICE_COLLAPSED?'▸':'▾';
   const summary=document.getElementById('notice-inline-summary');
   if(summary) summary.textContent=NOTICE_COLLAPSED
-    ? `— 🎓 ${(D.goods_master||D.parts)?gradAllRows.length:'—'} · 🚀 ${(D.goods_master||D.parts)?launchAllRows.length:'—'} · 🚫 ${D.stockout_list?stockRows.length+manualStock.length:'—'} · 🆕 ${(D.sup||D.parts)?addedRows.length:'—'} · 🔚 ${D.sup?removedRows.length:'—'} · 🧩 ${D.parts?partNewRows.length:'—'} · ⚙️ ${D.parts?partGradRows.length:'—'} · 💲 ${(D.price_chg||D.parts)?priceItems.length:'—'}`
+    ? `— 🎓 ${(D.goods_master||D.parts)?gradAllRows.length:'—'} · 🚀 ${(D.goods_master||D.parts)?launchAllRows.length:'—'} · 🚫 ${D.stockout_list?stockRows.length+manualStock.length:'—'} · 📦 ${D.stockout_list?goodsSoNames.length:'—'} · 🆕 ${(D.sup||D.parts)?addedRows.length:'—'} · 🔚 ${D.sup?removedRows.length:'—'} · 🧩 ${D.parts?partNewRows.length:'—'} · ⚙️ ${D.parts?partGradRows.length:'—'} · 💲 ${(D.price_chg||D.parts)?priceItems.length:'—'}`
     : '';
   const foot=document.getElementById('notice-footnote');
   if(foot) foot.style.display=NOTICE_COLLAPSED?'none':'';
@@ -4797,6 +4804,9 @@ function renderMonthlyNotice() {
   const stockHtml = D.stockout_list
     ? noticeBox('🚫 품절 제품',stockRows.length+manualStock.length,stockRows.map(r=>esc(stripPT(r['파츠명']||''))).concat(manualStock.map(m=>esc(stripPT(m.parts)))))
     : noticeEmptyBox('품절 제품','stockout_list.csv 업로드 필요');
+  const goodsStockHtml = D.stockout_list
+    ? noticeBox('📦 품절중인 굿즈',goodsSoNames.length,goodsSoNames.map(esc))
+    : noticeEmptyBox('품절중인 굿즈','stockout_list.csv 업로드 필요');
   // v23.31: sup.csv 월간 스냅샷 diff + parts.csv 제작협력사 최초 등장 두 경로 — parts만 있어도 표시한다
   const addedHtml = (D.sup||D.parts)
     ? noticeBox('🆕 신규 협력사',addedRows.length,addedRows.map(fmtEntry))
@@ -4809,7 +4819,7 @@ function renderMonthlyNotice() {
     ? noticeBox('💲 단가 변동',priceItems.length,priceItems)
     : noticeEmptyBox('단가 변동','price_chg.csv 업로드 필요');
 
-  wrap.innerHTML=gradHtml+launchHtml+stockHtml+addedHtml+removedHtml+partNewHtml+partGradHtml+partPriceHtml+renderChangeHistoryToggle(allEntries);
+  wrap.innerHTML=gradHtml+launchHtml+stockHtml+goodsStockHtml+addedHtml+removedHtml+partNewHtml+partGradHtml+partPriceHtml+renderChangeHistoryToggle(allEntries);
 }
 // 수동 등록 예외 — 자동 집계(스냅샷 diff/변경일)로 잡히지 않는 건을 담당자가 직접 기입
 const MANUAL_VENDOR_TERM_MONTH='2026.6'; // 6월 = 26.2Q 마지막 달 기준으로 종료 처리
