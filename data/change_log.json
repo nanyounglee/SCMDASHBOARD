@@ -1,6 +1,20 @@
 {
   "entries": [
     {
+      "id": "product_launched|MNTP|2026-09-22",
+      "type": "product_launched",
+      "name": "포켓크루 메모세트 (MNTP)",
+      "date": "2026-09-22",
+      "detail": ""
+    },
+    {
+      "id": "product_launched|BKFP|2026-09-10",
+      "type": "product_launched",
+      "name": "굿포인트 북마크 (BKFP)",
+      "date": "2026-09-10",
+      "detail": ""
+    },
+    {
       "id": "product_launched|LTSV|2026-09-04",
       "type": "product_launched",
       "name": "베이직 노트북 슬리브 (LTSV)",
@@ -12,6 +26,335 @@
       "type": "product_launched",
       "name": "스탠바이 360 허브스탠드 (FFTT)",
       "date": "2026-08-27",
+      "detail": ""
+    },
+    {
+      "id": "part_new|PT5733|2026_W35",
+      "type": "part_new",
+      "name": "PT5733-샘플(실크1도)_개미기획",
+      "date": "2026-08-27",
+      "detail": "개미기획"
+    },
+    {
+      "id": "part_price|PT5615|2026_W35",
+      "type": "part_price",
+      "name": "공박(양각)_100x100_서울디지털인쇄협동조합",
+      "date": "2026-08-27",
+      "detail": "평균 15.3% 인하 · 서울디지털인쇄협동조합"
+    },
+    {
+      "id": "part_price|PT5616|2026_W35",
+      "type": "part_price",
+      "name": "공박(양각)_150x200_서울디지털인쇄협동조합",
+      "date": "2026-08-27",
+      "detail": "평균 17.8% 인하 · 서울디지털인쇄협동조합"
+    },
+    {
+      "id": "part_new|PT5745|2026_W35",
+      "type": "part_new",
+      "name": "PT5745-색박(음각)_100x200_서울디지털인쇄협동조합",
+      "date": "2026-08-27",
+      "detail": "서울디지털인쇄협동조합"
+    },
+    {
+      "id": "part_new|PT5746|2026_W35",
+      "type": "part_new",
+      "name": "PT5746-공박(양각)_100x200_서울디지털인쇄협동조합",
+      "date": "2026-08-27",
+      "detail": "서울디지털인쇄협동조합"
+    },
+    {
+      "id": "part_new|PT5754|2026_W35",
+      "type": "part_new",
+      "name": "PT5754-승화전사_주식회사세라노",
+      "date": "2026-08-27",
+      "detail": "주식회사 세라노"
+    },
+    {
+      "id": "part_price|PT3336|2026_W35",
+      "type": "part_price",
+      "name": "OPP(2인용)",
+      "date": "2026-08-27",
+      "detail": "평균 1250.0% 상승 · (주)아이아트텍스"
+    },
+    {
+      "id": "part_price|PT1073|2026_W35",
+      "type": "part_price",
+      "name": "펠트스트링파우치(커스텀인쇄)_그레이_300-1",
+      "date": "2026-08-27",
+      "detail": "평균 32.2% 상승 · (주)영일패키지"
+    },
+    {
+      "id": "part_price|PT5597|2026_W35",
+      "type": "part_price",
+      "name": "웰컴페이퍼(커스텀인쇄)(XL)_반투명+블랙인쇄",
+      "date": "2026-08-27",
+      "detail": "평균 9.7% 상승 · 서울디지털인쇄협동조합"
+    },
+    {
+      "id": "part_price|PT5598|2026_W35",
+      "type": "part_price",
+      "name": "사각스티커(커스텀인쇄)(XL)_화이트+디지털풀컬러",
+      "date": "2026-08-27",
+      "detail": "평균 63.2% 상승 · 서울디지털인쇄협동조합"
+    },
+    {
+      "id": "part_new|PT5741|2026_W35",
+      "type": "part_new",
+      "name": "PT5741-배경지(커스텀인쇄)_화이트+디지털풀컬러",
+      "date": "2026-08-27",
+      "detail": "서울디지털인쇄협동조합"
+    },
+    {
+      "id": "part_new|PT5742|2026_W35",
+      "type": "part_new",
+      "name": "PT5742-스탠다드코어카드(커스텀인쇄)_화이트+디지털풀컬러",
+      "date": "2026-08-27",
+      "detail": "서울디지털인쇄협동조합"
+    },
+    {
+      "id": "part_new|PT5743|2026_W35",
+      "type": "part_new",
+      "name": "PT5743-스티커코어카드(커스텀인쇄)_화이트+디지털풀컬러",
+      "date": "2026-08-27",
+      "detail": "서울디지털인쇄협동조합"
+    },
+    {
+      "id": "part_new|PT5744|2026_W35",
+      "type": "part_new",
+      "name": "PT5744-스크래치코어카드(커스텀인쇄)_화이트+디지털풀컬러",
+      "date": "2026-08-27",
+      "detail": "서울디지털인쇄협동조합"
+    },
+    {
+      "id": "part_new|PT5757|2026_W35",
+      "type": "part_new",
+      "name": "PT5757-사각스티커(커스텀인쇄)_화이트+디지털풀컬러",
+      "date": "2026-08-27",
+      "detail": "서울디지털인쇄협동조합"
+    },
+    {
+      "id": "part_new|PT5727|2026_W35",
+      "type": "part_new",
+      "name": "PT5727-OPP(기성)(에그용)",
+      "date": "2026-08-27",
+      "detail": "이지굿스"
+    },
+    {
+      "id": "part_price|PT5596|2026_W35",
+      "type": "part_price",
+      "name": "골지G형박스(XL)_그레이",
+      "date": "2026-08-27",
+      "detail": "평균 16.2% 상승 · 주식회사 모아패키지"
+    },
+    {
+      "id": "part_new|PT5755|2026_W35",
+      "type": "part_new",
+      "name": "PT5755-헤링본끈(화이트)",
+      "date": "2026-08-27",
+      "detail": "주식회사 세라노"
+    },
+    {
+      "id": "part_new|PT5756|2026_W35",
+      "type": "part_new",
+      "name": "PT5756-헤링본끈(블랙)",
+      "date": "2026-08-27",
+      "detail": "주식회사 세라노"
+    },
+    {
+      "id": "part_price|PT0580|2026_W35",
+      "type": "part_price",
+      "name": "슬라이드지퍼백(커스텀인쇄)(Medium)_반투명_100-3",
+      "date": "2026-08-27",
+      "detail": "평균 38.2% 인하 · 착한포장"
+    },
+    {
+      "id": "part_new|PT5738|2026_W35",
+      "type": "part_new",
+      "name": "PT5738-OPP",
+      "date": "2026-08-27",
+      "detail": "혜림봉투"
+    },
+    {
+      "id": "part_new|PT5758|2026_W35",
+      "type": "part_new",
+      "name": "PT5758-OPP",
+      "date": "2026-08-27",
+      "detail": "혜림봉투"
+    },
+    {
+      "id": "part_new|PT5759|2026_W35",
+      "type": "part_new",
+      "name": "PT5759-OPP",
+      "date": "2026-08-27",
+      "detail": "혜림봉투"
+    },
+    {
+      "id": "part_new|PT5760|2026_W35",
+      "type": "part_new",
+      "name": "PT5760-OPP",
+      "date": "2026-08-27",
+      "detail": "혜림봉투"
+    },
+    {
+      "id": "part_new|PT5729|2026_W35",
+      "type": "part_new",
+      "name": "PT5729-어텐션스포츠보틀_바디",
+      "date": "2026-08-27",
+      "detail": "\"Shanghai Ansheng insulation Technology Co.,Ltd\""
+    },
+    {
+      "id": "part_new|PT5750|2026_W35",
+      "type": "part_new",
+      "name": "PT5750-어텐션스포츠보틀_뚜껑세트(뚜껑 + 사용설명서)",
+      "date": "2026-08-27",
+      "detail": "\"Shanghai Ansheng insulation Technology Co.,Ltd\""
+    },
+    {
+      "id": "part_new|PT5739|2026_W35",
+      "type": "part_new",
+      "name": "PT5739-스탠다드북마크_화이트+디지털풀컬러",
+      "date": "2026-08-27",
+      "detail": "서울디지털인쇄협동조합"
+    },
+    {
+      "id": "part_new|PT5740|2026_W35",
+      "type": "part_new",
+      "name": "PT5740-자유형북마크_화이트+디지털풀컬러",
+      "date": "2026-08-27",
+      "detail": "서울디지털인쇄협동조합"
+    },
+    {
+      "id": "part_new|PT5751|2026_W35",
+      "type": "part_new",
+      "name": "PT5751-비비드스트링파우치(S)",
+      "date": "2026-08-27",
+      "detail": "주식회사 세라노"
+    },
+    {
+      "id": "part_new|PT5752|2026_W35",
+      "type": "part_new",
+      "name": "PT5752-비비드스트링파우치(M)",
+      "date": "2026-08-27",
+      "detail": "주식회사 세라노"
+    },
+    {
+      "id": "part_new|PT5753|2026_W35",
+      "type": "part_new",
+      "name": "PT5753-비비드스트링파우치(L)",
+      "date": "2026-08-27",
+      "detail": "주식회사 세라노"
+    },
+    {
+      "id": "part_new|PT5761|2026_W35",
+      "type": "part_new",
+      "name": "PT5761-샘플(본제작과동일옵션)",
+      "date": "2026-08-27",
+      "detail": "주식회사 세라노"
+    },
+    {
+      "id": "part_new|PT5728|2026_W35",
+      "type": "part_new",
+      "name": "PT5728-어텐션스포츠보틀_추상적산출물",
+      "date": "2026-08-27",
+      "detail": ""
+    },
+    {
+      "id": "part_new|PT5730|2026_W35",
+      "type": "part_new",
+      "name": "PT5730-외주생산총공정산출물_무드등충전시계",
+      "date": "2026-08-27",
+      "detail": ""
+    },
+    {
+      "id": "part_new|PT5731|2026_W35",
+      "type": "part_new",
+      "name": "PT5731-무드등충전시계_추상적산출물",
+      "date": "2026-08-27",
+      "detail": ""
+    },
+    {
+      "id": "part_new|PT5732|2026_W35",
+      "type": "part_new",
+      "name": "PT5732-조립산출물_무드등충전시계",
+      "date": "2026-08-27",
+      "detail": ""
+    },
+    {
+      "id": "part_new|PT5735|2026_W35",
+      "type": "part_new",
+      "name": "PT5735-조립산출물_맥세이프블루투스스피커",
+      "date": "2026-08-27",
+      "detail": ""
+    },
+    {
+      "id": "part_new|PT5736|2026_W35",
+      "type": "part_new",
+      "name": "PT5736-에폭시스티커_디지털풀컬러_추상적산출물",
+      "date": "2026-08-27",
+      "detail": ""
+    },
+    {
+      "id": "part_new|PT5737|2026_W35",
+      "type": "part_new",
+      "name": "PT5737-조립산출물_캐리어저울",
+      "date": "2026-08-27",
+      "detail": ""
+    },
+    {
+      "id": "part_new|PT5747|2026_W35",
+      "type": "part_new",
+      "name": "PT5747-포켓크루메모세트본품_그레이_추상적산출물",
+      "date": "2026-08-27",
+      "detail": ""
+    },
+    {
+      "id": "part_new|PT5748|2026_W35",
+      "type": "part_new",
+      "name": "PT5748-포켓크루메모세트본품_블랙_추상적산출물",
+      "date": "2026-08-27",
+      "detail": ""
+    },
+    {
+      "id": "part_new|PT5749|2026_W35",
+      "type": "part_new",
+      "name": "PT5749-조립산출물_포켓크루메모세트",
+      "date": "2026-08-27",
+      "detail": ""
+    },
+    {
+      "id": "part_new|PT5734|2026_W35",
+      "type": "part_new",
+      "name": "PT5734-포켓크루메모커버_추상적산출물",
+      "date": "2026-08-27",
+      "detail": "개미기획"
+    },
+    {
+      "id": "part_new|PT5762|2026_W35",
+      "type": "part_new",
+      "name": "PT5762-비비드스트링파우치_추상적산출물",
+      "date": "2026-08-27",
+      "detail": "서울디지털인쇄협동조합"
+    },
+    {
+      "id": "part_new|PT5763|2026_W35",
+      "type": "part_new",
+      "name": "PT5763-비비드스트링파우치_추상적산출물",
+      "date": "2026-08-27",
+      "detail": "주식회사 세라노"
+    },
+    {
+      "id": "product_new|FJRG|2026_W35",
+      "type": "product_new",
+      "name": "비비드스트링파우치 (FJRG)",
+      "date": "2026-08-27",
+      "detail": "출시일 미정 · 파츠 등록"
+    },
+    {
+      "id": "product_launched|BOOK|2026-08-25",
+      "type": "product_launched",
+      "name": "컴패니언 노트 (BOOK)",
+      "date": "2026-08-25",
       "detail": ""
     },
     {
@@ -1758,13 +2101,6 @@
       "detail": ""
     },
     {
-      "id": "part_price|PT2228|2026_W31",
-      "type": "part_price",
-      "name": "브랜디드노트북백_블랙",
-      "date": "2026-07-30",
-      "detail": "평균 23.9% 인하 · (주)에스씨인터내셔널"
-    },
-    {
       "id": "part_price|PT5541|2026_W31",
       "type": "part_price",
       "name": "색박(음각)_베러댄텀블러_유엘상사",
@@ -1779,11 +2115,11 @@
       "detail": "평균 56250.0% 상승 · 유엘상사"
     },
     {
-      "id": "sup_added|Dongguan Songming Electronic Technology Co., Ltd|2026_W31",
-      "type": "sup_added",
-      "name": "Dongguan Songming Electronic Technology Co., Ltd",
-      "date": "2026-07-27",
-      "detail": "파츠 제작협력사 최초 등록 · 2026_W31 스냅샷 비교"
+      "id": "part_price|PT2228|2026_W31",
+      "type": "part_price",
+      "name": "브랜디드노트북백_블랙",
+      "date": "2026-07-30",
+      "detail": "평균 23.9% 인하 · (주)에스씨인터내셔널"
     },
     {
       "id": "part_new|PT5582|2026_W31",
@@ -1861,6 +2197,13 @@
       "name": "PT5586-노트북슬리브_추상적산출물",
       "date": "2026-07-27",
       "detail": "개미기획"
+    },
+    {
+      "id": "sup_added|Dongguan Songming Electronic Technology Co., Ltd|2026_W31",
+      "type": "sup_added",
+      "name": "Dongguan Songming Electronic Technology Co., Ltd",
+      "date": "2026-07-27",
+      "detail": "파츠 제작협력사 최초 등록 · 2026_W31 스냅샷 비교"
     },
     {
       "id": "part_price|PT1330|2026_W30",
@@ -4026,5 +4369,5 @@
       "detail": ""
     }
   ],
-  "updatedAt": "2026-08-21T03:08:22.113Z"
+  "updatedAt": "2026-08-27T05:19:26.980Z"
 }
