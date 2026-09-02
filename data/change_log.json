@@ -8,6 +8,13 @@
       "detail": ""
     },
     {
+      "id": "product_launched|FJRG|2026-09-18",
+      "type": "product_launched",
+      "name": "비비드스트링파우치 (FJRG)",
+      "date": "2026-09-18",
+      "detail": ""
+    },
+    {
       "id": "product_launched|BKFP|2026-09-10",
       "type": "product_launched",
       "name": "굿포인트 북마크 (BKFP)",
@@ -20,6 +27,244 @@
       "name": "베이직 노트북 슬리브 (LTSV)",
       "date": "2026-09-04",
       "detail": ""
+    },
+    {
+      "id": "sup_added|(주) 퓨전에프앤씨|2026_09",
+      "type": "sup_added",
+      "name": "(주) 퓨전에프앤씨",
+      "date": "2026-09-02",
+      "detail": ""
+    },
+    {
+      "id": "part_new|PT5777|2026_W36",
+      "type": "part_new",
+      "name": "PT5777-샘플(실크)_마이패스포트(MaiPassport)",
+      "date": "2026-09-02",
+      "detail": "마이 패스포트(Mai Passport)"
+    },
+    {
+      "id": "part_new|PT5778|2026_W36",
+      "type": "part_new",
+      "name": "PT5778-실크_마이패스포트(MaiPassport)",
+      "date": "2026-09-02",
+      "detail": "마이 패스포트(Mai Passport)"
+    },
+    {
+      "id": "part_price|PT5332|2026_W36",
+      "type": "part_price",
+      "name": "덮개박스(전용)(14인치)_블랙",
+      "date": "2026-09-02",
+      "detail": "평균 74.9% 상승 · \"GUANGZHOU KINGSONS BAGS TECHNOLOGY CO., LTD\""
+    },
+    {
+      "id": "part_new|PT5779|2026_W36",
+      "type": "part_new",
+      "name": "PT5779-사각스티커(커스텀인쇄)_화이트+디지털풀컬러",
+      "date": "2026-09-02",
+      "detail": "서울디지털인쇄협동조합"
+    },
+    {
+      "id": "part_new|PT5782|2026_W36",
+      "type": "part_new",
+      "name": "PT5782-OPP",
+      "date": "2026-09-02",
+      "detail": "착한포장"
+    },
+    {
+      "id": "part_new|PT5785|2026_W36",
+      "type": "part_new",
+      "name": "PT5785-투명손잡이지퍼백",
+      "date": "2026-09-02",
+      "detail": "착한포장"
+    },
+    {
+      "id": "part_price|PT0895|2026_W36",
+      "type": "part_price",
+      "name": "유광원형스티커_투명_000-1",
+      "date": "2026-09-02",
+      "detail": "평균 52.0% 상승 · 프린트오션"
+    },
+    {
+      "id": "part_price|PT3292|2026_W36",
+      "type": "part_price",
+      "name": "OPP",
+      "date": "2026-09-02",
+      "detail": "평균 1346.2% 상승 · 혜림봉투"
+    },
+    {
+      "id": "part_new|PT5784|2026_W36",
+      "type": "part_new",
+      "name": "PT5784-몰스킨다이어리(2027_데일리/하드/L)_블랙",
+      "date": "2026-09-02",
+      "detail": "(주) 모나미"
+    },
+    {
+      "id": "part_new|PT5786|2026_W36",
+      "type": "part_new",
+      "name": "PT5786-몰스킨다이어리(2027_데일리/하드/L)_사파이어블루",
+      "date": "2026-09-02",
+      "detail": "(주) 모나미"
+    },
+    {
+      "id": "part_new|PT5787|2026_W36",
+      "type": "part_new",
+      "name": "PT5787-몰스킨다이어리(2027_데일리/하드/L)_스칼렛레드",
+      "date": "2026-09-02",
+      "detail": "(주) 모나미"
+    },
+    {
+      "id": "part_new|PT5788|2026_W36",
+      "type": "part_new",
+      "name": "PT5788-몰스킨다이어리(2027_데일리/하드/L)_머틀그린",
+      "date": "2026-09-02",
+      "detail": "(주) 모나미"
+    },
+    {
+      "id": "part_new|PT5789|2026_W36",
+      "type": "part_new",
+      "name": "PT5789-몰스킨다이어리(2027_위클리/하드/L)_블랙",
+      "date": "2026-09-02",
+      "detail": "(주) 모나미"
+    },
+    {
+      "id": "part_new|PT5790|2026_W36",
+      "type": "part_new",
+      "name": "PT5790-몰스킨다이어리(2027_위클리/하드/L)_사파이어블루",
+      "date": "2026-09-02",
+      "detail": "(주) 모나미"
+    },
+    {
+      "id": "part_new|PT5791|2026_W36",
+      "type": "part_new",
+      "name": "PT5791-몰스킨다이어리(2027_위클리/하드/L)_스칼렛레드",
+      "date": "2026-09-02",
+      "detail": "(주) 모나미"
+    },
+    {
+      "id": "part_new|PT5792|2026_W36",
+      "type": "part_new",
+      "name": "PT5792-몰스킨다이어리(2027_위클리/하드/L)_머틀그린",
+      "date": "2026-09-02",
+      "detail": "(주) 모나미"
+    },
+    {
+      "id": "part_grad|PT2250|2026_W36",
+      "type": "part_grad",
+      "name": "PT2250-아트워크레더다이어리_내지(만년)",
+      "date": "2026-09-02",
+      "detail": "(주)청산인쇄"
+    },
+    {
+      "id": "part_grad|PT5311|2026_W36",
+      "type": "part_grad",
+      "name": "PT5311-올데이텀블러(GS)_화이트",
+      "date": "2026-09-02",
+      "detail": "\"Shanghai Ansheng insulation Technology Co.,Ltd\""
+    },
+    {
+      "id": "part_grad|PT3854|2026_W36",
+      "type": "part_grad",
+      "name": "PT3854-미스트워터보틀_반투명화이트",
+      "date": "2026-09-02",
+      "detail": "강천FNT"
+    },
+    {
+      "id": "part_new|PT5773|2026_W36",
+      "type": "part_new",
+      "name": "PT5773-에브리웨어북커버백_블랙",
+      "date": "2026-09-02",
+      "detail": "마이 패스포트(Mai Passport)"
+    },
+    {
+      "id": "part_new|PT5774|2026_W36",
+      "type": "part_new",
+      "name": "PT5774-에브리웨어북커버백_네이비",
+      "date": "2026-09-02",
+      "detail": "마이 패스포트(Mai Passport)"
+    },
+    {
+      "id": "part_new|PT5775|2026_W36",
+      "type": "part_new",
+      "name": "PT5775-에브리웨어북커버백_베이지",
+      "date": "2026-09-02",
+      "detail": "마이 패스포트(Mai Passport)"
+    },
+    {
+      "id": "part_new|PT5776|2026_W36",
+      "type": "part_new",
+      "name": "PT5776-에브리웨어북커버백_그레이",
+      "date": "2026-09-02",
+      "detail": "마이 패스포트(Mai Passport)"
+    },
+    {
+      "id": "part_grad|PT2248|2026_W36",
+      "type": "part_grad",
+      "name": "PT2248-아트워크레더다이어리_커버_화이트",
+      "date": "2026-09-02",
+      "detail": "엔엠텍코리아주식회사"
+    },
+    {
+      "id": "part_grad|PT0878|2026_W36",
+      "type": "part_grad",
+      "name": "PT0878-매트블랙텀블러_블랙",
+      "date": "2026-09-02",
+      "detail": "주식회사 꾸띠잔홀딩스"
+    },
+    {
+      "id": "part_grad|PT2078|2026_W36",
+      "type": "part_grad",
+      "name": "PT2078-클리어리유저블컵_리드(스트로우리드)_화이트",
+      "date": "2026-09-02",
+      "detail": "주식회사 아조아(AJOAH)"
+    },
+    {
+      "id": "part_grad|PT2080|2026_W36",
+      "type": "part_grad",
+      "name": "PT2080-트라이탄빨대_투명",
+      "date": "2026-09-02",
+      "detail": "주식회사 아조아(AJOAH)"
+    },
+    {
+      "id": "part_new|PT5781|2026_W36",
+      "type": "part_new",
+      "name": "PT5781-조립산출물_굿포인트북마크",
+      "date": "2026-09-02",
+      "detail": ""
+    },
+    {
+      "id": "part_new|PT5783|2026_W36",
+      "type": "part_new",
+      "name": "PT5783-조립산출물_브랜드애그",
+      "date": "2026-09-02",
+      "detail": ""
+    },
+    {
+      "id": "part_new|PT5772|2026_W36",
+      "type": "part_new",
+      "name": "PT5772-에브리웨어북커버백_추상적산출물",
+      "date": "2026-09-02",
+      "detail": "마이 패스포트(Mai Passport)"
+    },
+    {
+      "id": "product_new|BCBD|2026_W36",
+      "type": "product_new",
+      "name": "에브리웨어 북커버백 (BCBD)",
+      "date": "2026-09-02",
+      "detail": "출시일 미정 · 파츠 등록"
+    },
+    {
+      "id": "product_new|BRDE|2026_W36",
+      "type": "product_new",
+      "name": "브랜드에그 (BRDE)",
+      "date": "2026-09-02",
+      "detail": "출시일 미정 · 파츠 등록"
+    },
+    {
+      "id": "goods_unlinked|몰스킨 2026 다이어리|2026_W36",
+      "type": "goods_unlinked",
+      "name": "몰스킨 2026 다이어리",
+      "date": "2026-09-02",
+      "detail": "파츠 연결 해제"
     },
     {
       "id": "product_launched|CLMC|2026-09-01",
@@ -1261,6 +1506,13 @@
       "detail": "평균 57.0% 상승 · 서울디지털인쇄협동조합"
     },
     {
+      "id": "goods_unlinked|소프트그립블랙펜|2026_W34",
+      "type": "goods_unlinked",
+      "name": "소프트그립블랙펜",
+      "date": "2026-08-17",
+      "detail": "파츠 연결 해제 · 2026_W34 스냅샷 비교"
+    },
+    {
       "id": "part_new|PT5601|2026_W33",
       "type": "part_new",
       "name": "PT5601-레이저각인_(주)퓨전에프앤씨",
@@ -1926,6 +2178,20 @@
       "detail": "출시일 미정 · 파츠 등록 · 2026_W33 스냅샷 비교"
     },
     {
+      "id": "part_price|PT5573|2026_W33",
+      "type": "part_price",
+      "name": "사각스티커(커스텀인쇄)_화이트+디지털풀컬러",
+      "date": "2026-08-10",
+      "detail": "평균 87.3% 상승 · 서울디지털인쇄협동조합"
+    },
+    {
+      "id": "part_price|PT5574|2026_W33",
+      "type": "part_price",
+      "name": "사각스티커(커스텀인쇄)_화이트+디지털풀컬러",
+      "date": "2026-08-10",
+      "detail": "평균 57.0% 상승 · 서울디지털인쇄협동조합"
+    },
+    {
       "id": "part_price|PT1674|2026_W33",
       "type": "part_price",
       "name": "OPP_000-3",
@@ -1954,20 +2220,6 @@
       "detail": "평균 1.7% 상승 · (주)청산인쇄"
     },
     {
-      "id": "part_price|PT5573|2026_W33",
-      "type": "part_price",
-      "name": "사각스티커(커스텀인쇄)_화이트+디지털풀컬러",
-      "date": "2026-08-10",
-      "detail": "평균 87.3% 상승 · 서울디지털인쇄협동조합"
-    },
-    {
-      "id": "part_price|PT5574|2026_W33",
-      "type": "part_price",
-      "name": "사각스티커(커스텀인쇄)_화이트+디지털풀컬러",
-      "date": "2026-08-10",
-      "detail": "평균 57.0% 상승 · 서울디지털인쇄협동조합"
-    },
-    {
       "id": "part_price|PT4751|2026_W32",
       "type": "part_price",
       "name": "하이라이트슬라이드지퍼백(M)",
@@ -1987,6 +2239,13 @@
       "name": "나염_가슴_톰스코리아주식회사",
       "date": "2026-08-03",
       "detail": "평균 20.8% 상승 · 톰스코리아 주식회사"
+    },
+    {
+      "id": "goods_unlinked|레터링 유리머그|2026_W32",
+      "type": "goods_unlinked",
+      "name": "레터링 유리머그",
+      "date": "2026-08-03",
+      "detail": "파츠 연결 해제 · 2026_W32 스냅샷 비교"
     },
     {
       "id": "product_launched|BTST|2026-07-30",
@@ -4509,5 +4768,5 @@
       "detail": ""
     }
   ],
-  "updatedAt": "2026-08-31T07:00:25.007Z"
+  "updatedAt": "2026-09-02T07:16:24.173Z"
 }
