@@ -1,12 +1,28 @@
 ﻿에어테이블 DB 업데이트,슬랙 URL,대상 굿즈명,대상 파츠명 (Shift+Space),No.,구글 DB 업데이트 완료 버튼 (슬랙용) ,변동사항 적용 시점,Confirmation,업무요청 유형,관련 굿즈 리스트 (슬랙용),아이템,에어테이블 DB 입력완료 (슬랙용),슬랙 Ts,Name (from 신청자),관련 아이템 리스트,판매가 업데이트 완료 버튼 (슬랙용),관계자 태그,요청일자,Name (from 에어테이블 DB 입력자),변동원인,관련 굿즈 리스트,협력사,slack id tag (from 신청자),Last Modified (에어테이블 DB),변동사항 (Shift+Space로 전체 내용을 확인하세요),신청자,협력사 이름,프린팅 파츠 Rollup,구글 DB 업데이트 보류 버튼 (슬랙용),에어테이블 DB 입력자,에어테이블 DB 입력_특이사항,구글 DB 업데이트 현황,Last Modified (구글DB),구글DB 바로가기,판매가 업데이트 현황,Last Modified (견적서)
-,https://sincerelygroup.slack.com/archives/CKH9TB0HX/p1788402229477739,트래블 2in1 목베개,"- PT3306-트래블2in1목베개
+,https://sincerelygroup.slack.com/archives/CKH9TB0HX/p1788418273091839,몰스킨 데일리 노트,"- PT4975-몰스킨노트(룰드/하드/L)_블랙
+- PT4976-몰스킨노트(룰드/하드/L)_사파이어블루
+- PT4977-몰스킨노트(룰드/하드/L)_스칼렛레드
+- PT4978-몰스킨노트(룰드/하드/L)_머틀그린
+- PT4979-몰스킨노트(플레인/하드/L)_블랙
+- PT4980-몰스킨노트(플레인/하드/L)_사파이어블루
+- PT4981-몰스킨노트(플레인/하드/L)_스칼렛레드
+- PT4982-몰스킨노트(플레인/하드/L)_머틀그린",462,https://app.miniextensions.com/form/FZYJ1iMzlELxh3tDklPB/recOHEtBipr3ZvuDC?prefill_%EA%B5%AC%EA%B8%80%20DB%20%EC%97%85%EB%8D%B0%EC%9D%B4%ED%8A%B8%20%ED%98%84%ED%99%A9=%EA%B5%AC%EA%B8%80%20DB%20%EC%97%85%EB%8D%B0%EC%9D%B4%ED%8A%B8%20%EC%99%84%EB%A3%8C,2026.9.1,checked,특정 품목 단가 변동사항,,"MOLN_PT4975-몰스킨노트(룰드/하드/L)_블랙, MOLN_PT4976-몰스킨노트(룰드/하드/L)_사파이어블루, MOLN_PT4977-몰스킨노트(룰드/하드/L)_스칼렛레드, MOLN_PT4978-몰스킨노트(룰드/하드/L)_머틀그린, MOLN_PT4979-몰스킨노트(플레인/하드/L)_블랙, MOLN_PT4980-몰스킨노트(플레인/하드/L)_사파이어블루, MOLN_PT4981-몰스킨노트(플레인/하드/L)_스칼렛레드, MOLN_PT4982-몰스킨노트(플레인/하드/L)_머틀그린",https://web.miniextensions.com/Rb3qHYSZVDo6pwVifGJc/recOHEtBipr3ZvuDC,1788418273.091839,김민정,"MOLN_PT4975-몰스킨노트(룰드/하드/L)_블랙
+MOLN_PT4976-몰스킨노트(룰드/하드/L)_사파이어블루
+MOLN_PT4977-몰스킨노트(룰드/하드/L)_스칼렛레드
+MOLN_PT4978-몰스킨노트(룰드/하드/L)_머틀그린
+MOLN_PT4979-몰스킨노트(플레인/하드/L)_블랙
+MOLN_PT4980-몰스킨노트(플레인/하드/L)_사파이어블루
+MOLN_PT4981-몰스킨노트(플레인/하드/L)_스칼렛레드
+MOLN_PT4982-몰스킨노트(플레인/하드/L)_머틀그린",https://app.miniextensions.com/form/i4tFO83LH0iqxLbIQLBL/recOHEtBipr3ZvuDC?prefill_%ED%8C%90%EB%A7%A4%EA%B0%80%20%EC%97%85%EB%8D%B0%EC%9D%B4%ED%8A%B8%20%ED%98%84%ED%99%A9=%ED%8C%90%EB%A7%A4%EA%B0%80%20%EC%97%85%EB%8D%B0%EC%9D%B4%ED%8A%B8%20%EC%99%84%EB%A3%8C,<!subteam^S01AV8VE1AQ>,2026.9.3 3:50오후,,단가 인상,몰스킨 데일리 노트,,<@U03DLCFQJQ5>,,"24000원으로 공급가 인상되었습니다.
+",김민정,,,https://app.miniextensions.com/form/FZYJ1iMzlELxh3tDklPB/recOHEtBipr3ZvuDC?prefill_%EA%B5%AC%EA%B8%80%20DB%20%EC%97%85%EB%8D%B0%EC%9D%B4%ED%8A%B8%20%ED%98%84%ED%99%A9=%EA%B5%AC%EA%B8%80%20DB%20%EC%97%85%EB%8D%B0%EC%9D%B4%ED%8A%B8%20%EB%B3%B4%EB%A5%98,,,,,,,
+에어테이블 DB 업데이트 완료,https://sincerelygroup.slack.com/archives/CKH9TB0HX/p1788402229477739,트래블 2in1 목베개,"- PT3306-트래블2in1목베개
 - PT3454-샘플(승화전사)_(주)승화파트너스",461,https://app.miniextensions.com/form/FZYJ1iMzlELxh3tDklPB/rec5TClMrD9huH84I?prefill_%EA%B5%AC%EA%B8%80%20DB%20%EC%97%85%EB%8D%B0%EC%9D%B4%ED%8A%B8%20%ED%98%84%ED%99%A9=%EA%B5%AC%EA%B8%80%20DB%20%EC%97%85%EB%8D%B0%EC%9D%B4%ED%8A%B8%20%EC%99%84%EB%A3%8C,2026.9.3,checked,특정 품목 단가 변동사항,,"NKPL_PT3306-트래블2in1목베개, NKPL_PT3454-샘플(승화전사)_(주)승화파트너스",https://web.miniextensions.com/Rb3qHYSZVDo6pwVifGJc/rec5TClMrD9huH84I,1788402229.477739,김민지,"NKPL_PT3306-트래블2in1목베개
-NKPL_PT3454-샘플(승화전사)_(주)승화파트너스",https://app.miniextensions.com/form/i4tFO83LH0iqxLbIQLBL/rec5TClMrD9huH84I?prefill_%ED%8C%90%EB%A7%A4%EA%B0%80%20%EC%97%85%EB%8D%B0%EC%9D%B4%ED%8A%B8%20%ED%98%84%ED%99%A9=%ED%8C%90%EB%A7%A4%EA%B0%80%20%EC%97%85%EB%8D%B0%EC%9D%B4%ED%8A%B8%20%EC%99%84%EB%A3%8C,<!subteam^S01AV8VE1AQ>,2026.9.3 11:23오전,,목베게 협력사 변경으로 인해 단가 및 MOQ 변경 되었습니다. ,트래블 2in1 목베개,,<@U01PU03BJ6P>,,"- 협력사 : 승화파트너스 -> 세라노
+NKPL_PT3454-샘플(승화전사)_(주)승화파트너스",https://app.miniextensions.com/form/i4tFO83LH0iqxLbIQLBL/rec5TClMrD9huH84I?prefill_%ED%8C%90%EB%A7%A4%EA%B0%80%20%EC%97%85%EB%8D%B0%EC%9D%B4%ED%8A%B8%20%ED%98%84%ED%99%A9=%ED%8C%90%EB%A7%A4%EA%B0%80%20%EC%97%85%EB%8D%B0%EC%9D%B4%ED%8A%B8%20%EC%99%84%EB%A3%8C,<!subteam^S01AV8VE1AQ>,2026.9.3 11:23오전,김민지,목베게 협력사 변경으로 인해 단가 및 MOQ 변경 되었습니다. ,트래블 2in1 목베개,,<@U01PU03BJ6P>,2026.9.3 2:46오후,"- 협력사 : 승화파트너스 -> 세라노
 
 - MOQ : 100개 -> 50개
 
 - 300개 기준 단가 : 12,500원 → 11,800원 (-5.6%)
-",김민지,,,https://app.miniextensions.com/form/FZYJ1iMzlELxh3tDklPB/rec5TClMrD9huH84I?prefill_%EA%B5%AC%EA%B8%80%20DB%20%EC%97%85%EB%8D%B0%EC%9D%B4%ED%8A%B8%20%ED%98%84%ED%99%A9=%EA%B5%AC%EA%B8%80%20DB%20%EC%97%85%EB%8D%B0%EC%9D%B4%ED%8A%B8%20%EB%B3%B4%EB%A5%98,,,,,,,
+",김민지,,,https://app.miniextensions.com/form/FZYJ1iMzlELxh3tDklPB/rec5TClMrD9huH84I?prefill_%EA%B5%AC%EA%B8%80%20DB%20%EC%97%85%EB%8D%B0%EC%9D%B4%ED%8A%B8%20%ED%98%84%ED%99%A9=%EA%B5%AC%EA%B8%80%20DB%20%EC%97%85%EB%8D%B0%EC%9D%B4%ED%8A%B8%20%EB%B3%B4%EB%A5%98,김민지,,,,,,
 에어테이블 DB 업데이트 완료,https://sincerelygroup.slack.com/archives/CKH9TB0HX/p1788228834659879,밸류 메모큐브,"- PT4716-밸류메모큐브(ver2)(점착.S)
 - PT4717-밸류메모큐브(ver2)(점착.M)
 - PT4718-밸류메모큐브(ver2)(비점착.S)
