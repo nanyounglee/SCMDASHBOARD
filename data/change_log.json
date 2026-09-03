@@ -29,6 +29,97 @@
       "detail": ""
     },
     {
+      "id": "part_price|PT5585|2026_W36",
+      "type": "part_price",
+      "name": "샘플(실크1도)_개미기획",
+      "date": "2026-09-03",
+      "detail": "평균 6.1% 인하 · 개미기획"
+    },
+    {
+      "id": "part_price|PT5587|2026_W36",
+      "type": "part_price",
+      "name": "공박(음각)_전면_유엘상사",
+      "date": "2026-09-03",
+      "detail": "평균 75000.0% 상승 · 유엘상사"
+    },
+    {
+      "id": "part_price|PT3454|2026_W36",
+      "type": "part_price",
+      "name": "샘플(승화전사)_(주)승화파트너스",
+      "date": "2026-09-03",
+      "detail": "평균 12.7% 인하 · 주식회사 세라노"
+    },
+    {
+      "id": "part_price|PT5584|2026_W36",
+      "type": "part_price",
+      "name": "웰컴페이퍼(커스텀인쇄)_반투명+블랙인쇄",
+      "date": "2026-09-03",
+      "detail": "평균 12.8% 상승 · 서울디지털인쇄협동조합"
+    },
+    {
+      "id": "part_grad|PT4696|2026_W36",
+      "type": "part_grad",
+      "name": "PT4696-킵세이프마그넷배터리2.0",
+      "date": "2026-09-03",
+      "detail": "(주)쉔코리아"
+    },
+    {
+      "id": "part_new|PT5796|2026_W36",
+      "type": "part_new",
+      "name": "PT5796-올데이텀블러_뚜껑",
+      "date": "2026-09-03",
+      "detail": "\"Shanghai Ansheng insulation Technology Co.,Ltd\""
+    },
+    {
+      "id": "part_price|PT3306|2026_W36",
+      "type": "part_price",
+      "name": "트래블2in1목베개",
+      "date": "2026-09-03",
+      "detail": "평균 11.4% 인하 · 주식회사 세라노"
+    },
+    {
+      "id": "part_new|PT5793|2026_W36",
+      "type": "part_new",
+      "name": "PT5793-조립산출물_비비드스트링파우치",
+      "date": "2026-09-03",
+      "detail": ""
+    },
+    {
+      "id": "part_new|PT5794|2026_W36",
+      "type": "part_new",
+      "name": "PT5794-조랍산출물_펠트스트링파우치",
+      "date": "2026-09-03",
+      "detail": ""
+    },
+    {
+      "id": "part_new|PT5797|2026_W36",
+      "type": "part_new",
+      "name": "PT5797-올데이텀블러_추상적산출물",
+      "date": "2026-09-03",
+      "detail": ""
+    },
+    {
+      "id": "part_new|PT5795|2026_W36",
+      "type": "part_new",
+      "name": "PT5795-굿포인트북마크_추상적산출물",
+      "date": "2026-09-03",
+      "detail": "서울디지털인쇄협동조합"
+    },
+    {
+      "id": "product_new|FTST|2026_W36",
+      "type": "product_new",
+      "name": "펠트 스트링 파우치 (FTST)",
+      "date": "2026-09-03",
+      "detail": "출시일 미정 · 파츠 등록"
+    },
+    {
+      "id": "goods_unlinked|비비드스트링파우치|2026_W36",
+      "type": "goods_unlinked",
+      "name": "비비드스트링파우치",
+      "date": "2026-09-03",
+      "detail": "파츠 연결 해제"
+    },
+    {
       "id": "sup_added|(주) 퓨전에프앤씨|2026_09",
       "type": "sup_added",
       "name": "(주) 퓨전에프앤씨",
@@ -372,13 +463,6 @@
       "detail": "파츠 제작협력사 최초 등록"
     },
     {
-      "id": "product_launched|FFTT|2026-08-27",
-      "type": "product_launched",
-      "name": "스탠바이 360 허브스탠드 (FFTT)",
-      "date": "2026-08-27",
-      "detail": ""
-    },
-    {
       "id": "part_new|PT5733|2026_W35",
       "type": "part_new",
       "name": "PT5733-샘플(실크1도)_개미기획",
@@ -699,6 +783,13 @@
       "name": "비비드스트링파우치 (FJRG)",
       "date": "2026-08-27",
       "detail": "출시일 미정 · 파츠 등록"
+    },
+    {
+      "id": "product_launched|FFTT|2026-08-27",
+      "type": "product_launched",
+      "name": "스탠바이 360 허브스탠드 (FFTT)",
+      "date": "2026-08-27",
+      "detail": ""
     },
     {
       "id": "product_launched|BOOK|2026-08-25",
@@ -2500,13 +2591,6 @@
       "detail": ""
     },
     {
-      "id": "part_price|PT2228|2026_W31",
-      "type": "part_price",
-      "name": "브랜디드노트북백_블랙",
-      "date": "2026-07-30",
-      "detail": "평균 23.9% 인하 · (주)에스씨인터내셔널"
-    },
-    {
       "id": "part_price|PT5541|2026_W31",
       "type": "part_price",
       "name": "색박(음각)_베러댄텀블러_유엘상사",
@@ -2521,11 +2605,11 @@
       "detail": "평균 56250.0% 상승 · 유엘상사"
     },
     {
-      "id": "sup_added|Dongguan Songming Electronic Technology Co., Ltd|2026_W31",
-      "type": "sup_added",
-      "name": "Dongguan Songming Electronic Technology Co., Ltd",
-      "date": "2026-07-27",
-      "detail": "파츠 제작협력사 최초 등록 · 2026_W31 스냅샷 비교"
+      "id": "part_price|PT2228|2026_W31",
+      "type": "part_price",
+      "name": "브랜디드노트북백_블랙",
+      "date": "2026-07-30",
+      "detail": "평균 23.9% 인하 · (주)에스씨인터내셔널"
     },
     {
       "id": "part_new|PT5582|2026_W31",
@@ -2603,6 +2687,13 @@
       "name": "PT5586-노트북슬리브_추상적산출물",
       "date": "2026-07-27",
       "detail": "개미기획"
+    },
+    {
+      "id": "sup_added|Dongguan Songming Electronic Technology Co., Ltd|2026_W31",
+      "type": "sup_added",
+      "name": "Dongguan Songming Electronic Technology Co., Ltd",
+      "date": "2026-07-27",
+      "detail": "파츠 제작협력사 최초 등록 · 2026_W31 스냅샷 비교"
     },
     {
       "id": "part_price|PT1330|2026_W30",
@@ -4768,5 +4859,5 @@
       "detail": ""
     }
   ],
-  "updatedAt": "2026-09-02T07:16:24.173Z"
+  "updatedAt": "2026-09-03T04:58:34.094Z"
 }
