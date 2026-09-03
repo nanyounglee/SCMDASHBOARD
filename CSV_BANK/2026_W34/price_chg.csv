@@ -1,4 +1,14 @@
 ﻿에어테이블 DB 업데이트,슬랙 URL,대상 굿즈명,대상 파츠명 (Shift+Space),No.,구글 DB 업데이트 완료 버튼 (슬랙용) ,변동사항 적용 시점,Confirmation,업무요청 유형,관련 굿즈 리스트 (슬랙용),아이템,에어테이블 DB 입력완료 (슬랙용),슬랙 Ts,Name (from 신청자),관련 아이템 리스트,판매가 업데이트 완료 버튼 (슬랙용),관계자 태그,요청일자,Name (from 에어테이블 DB 입력자),변동원인,관련 굿즈 리스트,협력사,slack id tag (from 신청자),Last Modified (에어테이블 DB),변동사항 (Shift+Space로 전체 내용을 확인하세요),신청자,협력사 이름,프린팅 파츠 Rollup,구글 DB 업데이트 보류 버튼 (슬랙용),에어테이블 DB 입력자,에어테이블 DB 입력_특이사항,구글 DB 업데이트 현황,Last Modified (구글DB),구글DB 바로가기,판매가 업데이트 현황,Last Modified (견적서)
+,https://sincerelygroup.slack.com/archives/CKH9TB0HX/p1787208809836399,프라임 폴더블 멀티충전기,- PT4093-프라임폴더블멀티충전기_다크그레이,459,https://app.miniextensions.com/form/FZYJ1iMzlELxh3tDklPB/recVk2yfU2Z3HzmQu?prefill_%EA%B5%AC%EA%B8%80%20DB%20%EC%97%85%EB%8D%B0%EC%9D%B4%ED%8A%B8%20%ED%98%84%ED%99%A9=%EA%B5%AC%EA%B8%80%20DB%20%EC%97%85%EB%8D%B0%EC%9D%B4%ED%8A%B8%20%EC%99%84%EB%A3%8C,2026.8.20,checked,특정 품목 단가 변동사항,"*관련 굿즈 (동일 파츠 사용)* : 프라임 폴더블 멀티충전기, 재고생산",PRMF_PT4093-프라임폴더블멀티충전기_다크그레이,https://web.miniextensions.com/Rb3qHYSZVDo6pwVifGJc/recVk2yfU2Z3HzmQu,1787208809.836399,김민지,PRMF_PT4093-프라임폴더블멀티충전기_다크그레이,https://app.miniextensions.com/form/i4tFO83LH0iqxLbIQLBL/recVk2yfU2Z3HzmQu?prefill_%ED%8C%90%EB%A7%A4%EA%B0%80%20%EC%97%85%EB%8D%B0%EC%9D%B4%ED%8A%B8%20%ED%98%84%ED%99%A9=%ED%8C%90%EB%A7%A4%EA%B0%80%20%EC%97%85%EB%8D%B0%EC%9D%B4%ED%8A%B8%20%EC%99%84%EB%A3%8C,<!subteam^S01AV8VE1AQ>,2026.8.20 3:52오후,,알루미늄값 폭등하여 일부 수량 구간단가가 변경되었습니다.,"프라임 폴더블 멀티충전기, 재고생산",,<@U01PU03BJ6P>,,"프라임 폴더블충전기 단가 변경
+
+- 300~500개 : 가장많이 구매하는 구간은 단가 동결
+
+- 1,000개 : 35,000원 → 37,000원 (+5.7%)
+
+- 3,000개 이상 : 34,000원 → 35,000원 (+2.9%)
+
+\*\*300~500개 구간은 기존 단가를 유지하며, 1,000개 이상 구간부터 단가가 인상되었습니다.
+",김민지,,,https://app.miniextensions.com/form/FZYJ1iMzlELxh3tDklPB/recVk2yfU2Z3HzmQu?prefill_%EA%B5%AC%EA%B8%80%20DB%20%EC%97%85%EB%8D%B0%EC%9D%B4%ED%8A%B8%20%ED%98%84%ED%99%A9=%EA%B5%AC%EA%B8%80%20DB%20%EC%97%85%EB%8D%B0%EC%9D%B4%ED%8A%B8%20%EB%B3%B4%EB%A5%98,,,,,,,
 에어테이블 DB 업데이트 완료,https://sincerelygroup.slack.com/archives/CKH9TB0HX/p1787112466226449,HighLight 슬라이드 지퍼백,"- PT4806-하이라이트슬라이드지퍼백(S)
 - PT4807-하이라이트슬라이드지퍼백(M)
 - PT4808-하이라이트슬라이드지퍼백(L)
