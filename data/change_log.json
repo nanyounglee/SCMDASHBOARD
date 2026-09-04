@@ -29,6 +29,20 @@
       "detail": ""
     },
     {
+      "id": "part_price|PT4163|2026_W36",
+      "type": "part_price",
+      "name": "레이저각인_본품2곳_주식회사알리오코리아",
+      "date": "2026-09-04",
+      "detail": "평균 172.7% 상승 · 타우하이텍"
+    },
+    {
+      "id": "part_price|PT4980|2026_W36",
+      "type": "part_price",
+      "name": "몰스킨노트(플레인/하드/L)_사파이어블루",
+      "date": "2026-09-04",
+      "detail": "평균 4.8% 상승 · (주) 모나미"
+    },
+    {
       "id": "part_price|PT5585|2026_W36",
       "type": "part_price",
       "name": "샘플(실크1도)_개미기획",
@@ -463,6 +477,13 @@
       "detail": "파츠 제작협력사 최초 등록"
     },
     {
+      "id": "product_launched|FFTT|2026-08-27",
+      "type": "product_launched",
+      "name": "스탠바이 360 허브스탠드 (FFTT)",
+      "date": "2026-08-27",
+      "detail": ""
+    },
+    {
       "id": "part_new|PT5733|2026_W35",
       "type": "part_new",
       "name": "PT5733-샘플(실크1도)_개미기획",
@@ -783,13 +804,6 @@
       "name": "비비드스트링파우치 (FJRG)",
       "date": "2026-08-27",
       "detail": "출시일 미정 · 파츠 등록"
-    },
-    {
-      "id": "product_launched|FFTT|2026-08-27",
-      "type": "product_launched",
-      "name": "스탠바이 360 허브스탠드 (FFTT)",
-      "date": "2026-08-27",
-      "detail": ""
     },
     {
       "id": "product_launched|BOOK|2026-08-25",
@@ -2591,6 +2605,13 @@
       "detail": ""
     },
     {
+      "id": "part_price|PT2228|2026_W31",
+      "type": "part_price",
+      "name": "브랜디드노트북백_블랙",
+      "date": "2026-07-30",
+      "detail": "평균 23.9% 인하 · (주)에스씨인터내셔널"
+    },
+    {
       "id": "part_price|PT5541|2026_W31",
       "type": "part_price",
       "name": "색박(음각)_베러댄텀블러_유엘상사",
@@ -2605,11 +2626,11 @@
       "detail": "평균 56250.0% 상승 · 유엘상사"
     },
     {
-      "id": "part_price|PT2228|2026_W31",
-      "type": "part_price",
-      "name": "브랜디드노트북백_블랙",
-      "date": "2026-07-30",
-      "detail": "평균 23.9% 인하 · (주)에스씨인터내셔널"
+      "id": "sup_added|Dongguan Songming Electronic Technology Co., Ltd|2026_W31",
+      "type": "sup_added",
+      "name": "Dongguan Songming Electronic Technology Co., Ltd",
+      "date": "2026-07-27",
+      "detail": "파츠 제작협력사 최초 등록 · 2026_W31 스냅샷 비교"
     },
     {
       "id": "part_new|PT5582|2026_W31",
@@ -2687,13 +2708,6 @@
       "name": "PT5586-노트북슬리브_추상적산출물",
       "date": "2026-07-27",
       "detail": "개미기획"
-    },
-    {
-      "id": "sup_added|Dongguan Songming Electronic Technology Co., Ltd|2026_W31",
-      "type": "sup_added",
-      "name": "Dongguan Songming Electronic Technology Co., Ltd",
-      "date": "2026-07-27",
-      "detail": "파츠 제작협력사 최초 등록 · 2026_W31 스냅샷 비교"
     },
     {
       "id": "part_price|PT1330|2026_W30",
@@ -4859,5 +4873,5 @@
       "detail": ""
     }
   ],
-  "updatedAt": "2026-09-03T04:58:34.094Z"
+  "updatedAt": "2026-09-04T01:54:15.217Z"
 }
