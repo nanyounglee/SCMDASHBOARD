@@ -8731,7 +8731,7 @@ function nav(el,id) {
     sales:'<b>확인 가능 지표:</b> 월매출 · 평균마진율 · 총주문수량 | <b>차트:</b> 월별매출추이(바) · 제품별매출비중(도넛) | <b>테이블:</b> 제품명 · 주문수량 · 판매단가 · 소계 · 원가율(공정DB 기반) · 추정마진율 | <b>CSV:</b> 판매주문 | <b>임베딩:</b> cost_db.json',
     'product-trend':'<b>확인 가능 지표:</b> 제품별 월간 발주수량 추이 Top10 멀티라인차트(발주지시수량 기준·재고생산 제외) | <b>검색:</b> 제품명/협력사/굿즈코드 + <b>Goods Category</b>(예: Drinkware 입력 시 보틀·컵·텀블러 등 카테고리 전체 제품 표시, 띄어쓰기 무관) | <b>테이블:</b> 제품명 · 누적발주수량 · 월평균 · 연간 전체 월별 수치(1월부터) | <b>CSV:</b> 발주_RAW + 임베딩(cost_db·parts_master 카테고리)',
     supplier:'<b>매입 현황</b> (v22.4: 협력사 목록은 공급망 포트폴리오 첫 화면으로 이동) | 협력사별 매입금액 Top10 · 제조유형 분포 · 업태별/인쇄유형별 매입금액 · 협력사별 매입상세 Top20(비중 프로그레스바) · 기간 단위 월/분기/기간지정 | <b>CSV:</b> 공급망_RAW + 발주_RAW',
-    kpi:'<b>확인 가능 지표:</b> 납기준수율 · 리드타임 · 품질이슈율 · 검수합격률 · 긴급발주비율 · 재제작률 · 공급망A등급비율 · 가용협력사비율 · 재고회전율 · 품절률 | <b>구조:</b> 5개 영역(납기/품질/비용/공급망/재고) 12개 지표 · 목표 대비 달성률 게이지 · 월별 추이 · 전월 대비 | <b>CSV:</b> 발주_RAW + 이슈_RAW + 공급망_RAW + 고객인지이슈_RAW + S&OP 재고주간 + 품절리스트',
+    kpi:'<b>확인 가능 지표:</b> 납기준수율 · 리드타임 · 품질이슈율 · 검수합격률 · 긴급발주비율 · 재제작률 · 공급망A등급비율 · 가용협력사비율 · 재고회전율(3M/연환산) · 품절률 · 장기미회전 재고비율 · 품절 해소 소요일 | <b>구조:</b> 5개 영역(납기/품질/비용/공급망/재고) 16개 지표 · 목표 대비 달성률 게이지 · 월별 추이 · 전월 대비 | <b>CSV:</b> 발주_RAW + 이슈_RAW + 공급망_RAW + 고객인지이슈_RAW + S&OP 재고주간 + 품절리스트',
     portfolio:'<b>첫 화면(v22.4):</b> 협력사 목록(등록/활성/턴키/단순구매 KPI · 업태·제조·인쇄유형·담당발주자·결제조건·거래개월수 · 협력사명 검색/클릭 시 매입추이 · 변경 검토 진행 현황↗) | <b>확인 가능 지표:</b> QCD×관계 4분면 Tier(Tier1·Core/Tier2·Performer/Tier3·Developing/Tier4·General) · 등급별(A/B/C/D) 협력사수·비중 | <b>차트:</b> QCD×관계 산점도 · 등급분포 도넛 | <b>테이블:</b> 협력사별 5축 점수·QCD·관계·등급·Tier·담당자 · 이달 발주실적 필터 · 변경검토리스트(C등급) | <b>CSV:</b> 분기별평가 + 발주_RAW + 공급망_RAW',
     'supplier-product':'<b>테이블 2종:</b> ① 굿즈코드 × 굿즈 카테고리유형(공정DB cat 기준 그룹 · 발주건수/수량/매입금액) ② 협력사 × 인쇄 유형(공급망_RAW 인쇄 필드 기준 그룹 · 협력사 클릭 시 상세 모달) | <b>CSV:</b> 발주_RAW + 공급망_RAW',
     qms:'<b>확인 가능 지표:</b> 총 품질이슈 · COPQ총액 · QI(초기품질)/QC(양산통제)/QA(고객보증) 분과별 건수 | <b>차트:</b> 이슈유형 파레토(바) · QI/QC/QA 비중(도넛) · 월별COPQ추이(바+라인) | <b>CSV:</b> QMS 품질데이터 또는 이슈_RAW',
@@ -12001,12 +12001,18 @@ const KPI_DEFS = [
    desc:'평가 협력사 중 A등급 비율 (2Q까지 기준 · 1Q/2Q 상이 시 점수 평균)', formula:'A등급 / 전체 평가대상 × 100'},
   {id:'supply_active', area:'공급망', name:'가용협력사 비율', unit:'%', target:70, higher:true,
    desc:'등록 협력사 중 실제 거래(TASK≥1) 비율', formula:'거래중 협력사 / 전체 등록 × 100'},
-  {id:'inv_turnover', area:'재고', name:'재고회전율', unit:'회', target:6, higher:true,
-   desc:'연간 판매금액 대비 평균 재고금액', formula:'연매출 / 평균재고금액'},
-  {id:'inv_stockout', area:'재고', name:'비의도적 품절률', unit:'%', target:3, higher:false,
-   desc:'전체 SKU 대비 비의도적 품절 비율', formula:'비의도적품절 / 전체SKU × 100'},
+  {id:'inv_turnover', area:'재고', name:'재고회전율(3M)', unit:'회', target:1, higher:true,
+   desc:'최근 3개월 판매금액 / 평균 재고금액 — TFT 지표정의서의 "3개월 회전율 1.0" 기준', formula:'sales_3m / 평균재고금액 (turnover_3m)'},
+  {id:'inv_turnover_yr', area:'재고', name:'재고회전율(연환산)', unit:'회', target:6, higher:true,
+   desc:'연초누적 회전율을 경과일수로 연환산 — 연간 목표(6회)는 이 축에서만 비교', formula:'turnover_ytd × 365 / 연초경과일수'},
+  {id:'inv_stockout', area:'재고', name:'비의도적 품절률(SKU)', unit:'%', target:2.5, higher:false,
+   desc:'관리대상 파츠(SKU) 대비 비의도적 품절 비율 — 굿즈 기준 3% 목표와 별개 축', formula:'stockout_count / managed_count × 100'},
   {id:'inv_band', area:'재고', name:'밴드 유지율', unit:'%', target:80, higher:true,
    desc:'재고가 적정 밴드 내에 있는 주차 비율', formula:'밴드내 주차 / 전체 주차 × 100'},
+  {id:'inv_stagnant', area:'재고', name:'장기미회전 재고 비율', unit:'%', target:15, higher:false,
+   desc:'관리대상 Product Parts 재고금액 중 체화 비중 — 졸업 검토 탭과 동일 판정(3M 회전율 0.1 미만 · 출시 3개월+)', formula:'장기미회전 재고금액 / 관리대상 재고금액 × 100'},
+  {id:'inv_stockout_days', area:'재고', name:'품절 해소 소요일', unit:'일', target:30, higher:false,
+   desc:'최근 12개월에 해소된 일시품절 건의 소요일 중앙값 — 의도적 품절 제외', formula:'median(end time − 변경일) · 일시품절 한정'},
 ];
 
 function computeKPIs() {
@@ -12144,11 +12150,45 @@ function computeKPIs() {
     const latestAgg = getLatestAggPeriod('weekly');
     if (latestAgg) {
       r.inv_turnover = toNum(latestAgg.turnover_3m);
+      // v23.38: 연간 목표(6회)는 3M 회전율(실측 0.45~1.07)과 축이 달라 정의상 영구 미달이었다.
+      //   3M은 목표 1.0으로 두고, 연간은 turnover_ytd를 경과일수로 연환산해 별도 지표로 비교한다.
+      const ytdRaw = latestAgg.turnover_ytd, baseD = parseKPIDate(latestAgg.base_date);
+      if (ytdRaw !== undefined && String(ytdRaw).trim() !== '' && baseD) {
+        const elapsed = (baseD - new Date(baseD.getFullYear(), 0, 1)) / 86400000 + 1;
+        if (elapsed > 0) r.inv_turnover_yr = toNum(ytdRaw) * 365 / elapsed;
+      }
       r.inv_stockout = toNum(latestAgg.stockout_rate) * 100;
       r.inv_band = String(latestAgg.band_status||'').includes('정상') ? 100 : 0;
+      // v23.38: 체화 판정은 졸업 검토 탭이 쓰는 psrStagnantList_를 그대로 재사용한다(정의 이중화 방지).
+      //   분모를 period_summary.inv_amount(전체 재고 7.11억)로 잡으면 분자(관리대상 Product Parts 한정)와
+      //   축이 어긋나므로, 분모도 같은 모집단(5.78억)에서 다시 합산한다.
+      const unit = latestAgg.period_unit || 'weekly';
+      const baseRows = getAggSkuRows(unit, latestAgg.period_key).filter(x => isAggManaged(x) && isAggProduct(x));
+      const baseAmt = baseRows.reduce((s, x) => s + toNum(x.inv_amount), 0);
+      if (baseAmt > 0) {
+        const stagAmt = psrStagnantList_(unit, latestAgg.period_key, latestAgg.base_date)
+          .reduce((s, x) => s + x.inventoryAmountValue, 0);
+        r.inv_stagnant = stagAmt / baseAmt * 100;
+      }
     }
   }
   if (r.inv_band === undefined) r.inv_band = null;
+
+  // --- 품절 해소 소요일 (v23.38) ---
+  // 평균은 최대 586일짜리 장기 건에 끌려가므로 중앙값을 쓴다. 'end time'이 빈 행은 아직 해소되지
+  // 않은 건이라 제외한다(인터페이스용 컬럼은 미해소 건도 채워져 있어 소요일이 부풀려진다).
+  if (D.sales_status_history) {
+    const cut = new Date(); cut.setMonth(cut.getMonth() - 12);
+    const days = [];
+    D.sales_status_history.forEach(row => {
+      if (!String(row['판매상태']||'').includes('일시품절')) return;
+      const from = parseKPIDate(String(row['변경일']||'').split(' ')[0]);
+      const to = parseKPIDate(String(row['end time']||'').split(' ')[0]);
+      if (!from || !to || to <= from || to < cut) return;
+      days.push((to - from) / 86400000);
+    });
+    if (days.length) { days.sort((a, b) => a - b); r.inv_stockout_days = days[Math.floor(days.length / 2)]; }
+  }
 
   return { current: r, monthly };
 }
@@ -12267,7 +12307,7 @@ function renderKPITracker() {
           <div style="display:flex;align-items:center;gap:6px;font-size:11px">
             <span style="color:var(--text2);min-width:90px">${d.name}</span>
             <span style="color:var(--text3)">${d.higher?'≥':'≤'}</span>
-            <input type="number" value="${d.target}" step="1" style="width:50px;padding:3px 6px;border:1px solid var(--border2);border-radius:4px;font-size:11px;text-align:center" onchange="saveKPITarget('${d.id}',+this.value)">
+            <input type="number" value="${d.target}" step="any" style="width:50px;padding:3px 6px;border:1px solid var(--border2);border-radius:4px;font-size:11px;text-align:center" onchange="saveKPITarget('${d.id}',+this.value)">
             <span style="color:var(--text3)">${d.unit}</span>
           </div>
         `).join('')}
