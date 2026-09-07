@@ -73,8 +73,8 @@ function toCsv(headers, records) {
   return '﻿' + lines.join('\r\n') + '\r\n';
 }
 
-// ---- 기존 최신 파일에서 헤더 재사용 (대시보드 컬럼 호환 유지) ----
-function latestExistingHeaders(prefix) {
+// ---- 같은 prefix의 가장 최근 주차 파일 찾기 (헤더 재사용 · 건수 비교가 함께 쓴다) ----
+function latestExistingFile(prefix) {
   // v22.2 감사 수정: CSV_BANK에는 주차 폴더 외에 파일(sup_YYYY_MM.csv 등)도 놓일 수 있어
   // 디렉토리만 골라야 함 — 파일을 readdirSync 하면 ENOTDIR로 워크플로 전체가 죽음
   const bankDirs = fs.existsSync('CSV_BANK')
@@ -90,6 +90,26 @@ function latestExistingHeaders(prefix) {
       if (m) { const y = +m[1], w = +m[2]; if (!best || y > best.y || (y === best.y && w > best.w)) best = { y, w, file: path.join(dir, f) }; }
     }
   }
+  return best;
+}
+
+// ---- CSV 레코드 수(헤더 제외) — 인용부호 안 개행은 레코드 구분으로 세지 않는다 ----
+function countCsvRecords(file) {
+  const t = fs.readFileSync(file, 'utf8').replace(/^﻿/, '');
+  let n = 0, inQ = false;
+  for (let i = 0; i < t.length; i++) {
+    const c = t[i];
+    if (inQ) { if (c === '"') { if (t[i + 1] === '"') i++; else inQ = false; } }
+    else if (c === '"') inQ = true;
+    else if (c === '\n') n++;
+  }
+  if (t.length && !/[\r\n]$/.test(t)) n++; // 마지막 줄에 개행이 없는 파일
+  return Math.max(0, n - 1);                 // 헤더 제외
+}
+
+// ---- 기존 최신 파일에서 헤더 재사용 (대시보드 컬럼 호환 유지) ----
+function latestExistingHeaders(prefix) {
+  const best = latestExistingFile(prefix);
   if (!best) return null;
   const first = fs.readFileSync(best.file, 'utf8').replace(/^﻿/, '').split(/\r?\n/)[0];
   // 헤더 행 파싱(인용 지원)
@@ -126,6 +146,22 @@ async function runJob(prefix, table, view) {
   console.log(`  ${records.length}건 수신`);
   if (!records.length) { console.warn(`  레코드 0건 — 파일을 만들지 않고 건너뜁니다(기존 파일 유지).`); return false; }
   const apiFields = [...new Set(records.flatMap(r => Object.keys(r.fields)))];
+  // 2026-W32~W36: 매출결산 뷰가 신규 레코드를 반환하지 않아 5주 연속 정확히 1,517건이
+  // 커밋됐는데, 0건일 때만 경고하는 구조라 워크플로는 내내 초록이었다(8·9월 매출 9.75억
+  // 누락). 직전 주차와 건수가 '똑같으면' 경고한다 — 살아 있는 뷰가 같은 수에 두 주 연속
+  // 착지하는 일은 드물다(진행현황 실측 W29~W36: 116·135·196·266·241·295·290·226).
+  const prevFile = latestExistingFile(prefix);
+  if (prevFile) {
+    const prevCount = countCsvRecords(prevFile.file);
+    if (prevCount > 0 && prevCount === records.length) {
+      console.log(`::warning::[${prefix}] 레코드 수가 직전 주차와 동일합니다 — ${prevFile.file} ${prevCount}건 → 이번 ${records.length}건. `
+        + `Airtable 뷰가 신규 레코드를 반환하지 않는지 확인하세요(뷰 필터에 박힌 날짜 등). `
+        + `2026-W32~W36에 매출결산 뷰가 1,517건으로 5주간 동결된 전례가 있습니다.`);
+    } else {
+      console.log(`  건수 비교: ${prevFile.file} ${prevCount}건 → 이번 ${records.length}건`);
+    }
+  }
+
   let headers = latestExistingHeaders(prefix);
   if (!headers) { // 첫 실행 폴백: 레코드 등장 순 필드
     headers = apiFields;
