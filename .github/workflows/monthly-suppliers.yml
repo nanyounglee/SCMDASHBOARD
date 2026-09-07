@@ -54,6 +54,14 @@ jobs:
           else
             MM=$(TZ=Asia/Seoul date +%Y-%m)
             git commit -m "chore: 협력사 마스터 월간 자동 커밋 ($MM)"
-            git pull --rebase origin main
-            git push origin main
+            # refresh-all은 워크플로 4개를 동시에 띄워 push가 경합한다 — 거절되면 재시도
+            # (2026-W37 회의자료 JSON이 이 경합으로 유실됨)
+            pushed=
+            for i in 1 2 3; do
+              git pull --rebase origin main
+              if git push origin main; then pushed=1; break; fi
+              echo "동시 push 충돌 — ${i}/3 재시도"
+              sleep $(( RANDOM % 10 + 5 ))
+            done
+            [ -n "$pushed" ] || { echo "3회 재시도 후에도 push 실패"; exit 1; }
           fi
