@@ -1,6 +1,13 @@
 {
   "entries": [
     {
+      "id": "product_launched|BCBD|2026-09-30",
+      "type": "product_launched",
+      "name": "에브리웨어 북커버백 (BCBD)",
+      "date": "2026-09-30",
+      "detail": ""
+    },
+    {
       "id": "product_launched|MNTP|2026-09-22",
       "type": "product_launched",
       "name": "포켓크루 메모세트 (MNTP)",
@@ -20,6 +27,13 @@
       "name": "굿포인트 북마크 (BKFP)",
       "date": "2026-09-10",
       "detail": ""
+    },
+    {
+      "id": "goods_unlinked|에어더스터차량용청소기|2026_W37",
+      "type": "goods_unlinked",
+      "name": "에어더스터차량용청소기",
+      "date": "2026-09-07",
+      "detail": "파츠 연결 해제"
     },
     {
       "id": "product_launched|LTSV|2026-09-04",
@@ -2297,6 +2311,13 @@
       "detail": "평균 57.0% 상승 · 서울디지털인쇄협동조합"
     },
     {
+      "id": "part_price|PT1093|2026_W33",
+      "type": "part_price",
+      "name": "유광덮개파우치_투명_000-3",
+      "date": "2026-08-10",
+      "detail": "평균 94.9% 상승 · 착한포장"
+    },
+    {
       "id": "part_price|PT1674|2026_W33",
       "type": "part_price",
       "name": "OPP_000-3",
@@ -2323,13 +2344,6 @@
       "name": "에디트캘린더_내지(커스텀인쇄)_화이트+옵셋풀컬러",
       "date": "2026-08-10",
       "detail": "평균 1.7% 상승 · (주)청산인쇄"
-    },
-    {
-      "id": "part_price|PT1093|2026_W33",
-      "type": "part_price",
-      "name": "유광덮개파우치_투명_000-3",
-      "date": "2026-08-10",
-      "detail": "평균 94.9% 상승 · 착한포장"
     },
     {
       "id": "part_price|PT4751|2026_W32",
@@ -4880,5 +4894,5 @@
       "detail": ""
     }
   ],
-  "updatedAt": "2026-09-07T02:12:28.716Z"
+  "updatedAt": "2026-09-07T03:15:38.112Z"
 }
