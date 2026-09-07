@@ -65,6 +65,13 @@ assert(/value="\$\{d\.target\}" step="any"/.test(html), '목표값 입력 step�
 // ④-2 도움말의 지표 수는 KPI_DEFS와 맞아야 한다 (12로 하드코딩된 채 13개였던 이력이 있다)
 assert(html.includes(`${KPI_DEFS.length}개 지표`), `도움말 지표 수가 KPI_DEFS(${KPI_DEFS.length})와 불일치`);
 
+// ④-3 미구현 지표 안내는 실제 지표와 겹치면 안 된다 — 구현되면 KPI_PENDING에서 지워야 한다
+const KPI_PENDING = vm.runInContext('KPI_PENDING', ctx);
+const live = new Set(KPI_DEFS.map(d => d.name));
+const dup = KPI_PENDING.filter(p => live.has(p.name));
+assert.strictEqual(dup.length, 0, `구현됐는데 미구현 목록에 남은 지표: ${dup.map(p => p.name).join(', ')}`);
+KPI_PENDING.forEach(p => assert(p.name && p.need && p.have && p.from, `KPI_PENDING 항목 누락: ${p.name}`));
+
 // ⑤ 장기미회전 재고 비율 — 분자/분모가 같은 모집단(관리대상 Product Parts)이어야 한다.
 //    period_summary.inv_amount(전체 재고)를 분모로 쓰면 비율이 구조적으로 낮게 나온다.
 const psrStagnantList_ = vm.runInContext('psrStagnantList_', ctx);

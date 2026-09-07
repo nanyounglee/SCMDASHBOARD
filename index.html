@@ -12015,6 +12015,24 @@ const KPI_DEFS = [
    desc:'최근 12개월에 해소된 일시품절 건의 소요일 중앙값 — 의도적 품절 제외', formula:'median(end time − 변경일) · 일시품절 한정'},
 ];
 
+// v23.38: 직무상 필요한데 지금 데이터로는 산출이 안 되는 지표 3종. "왜 없는지"가 화면에
+//   안 남으면 매번 다시 조사하게 되므로, 무엇을 확보하면 켜지는지까지 같이 적어 둔다.
+//   구현되어 KPI_DEFS로 올라가면 여기서 지워야 한다(테스트가 중복을 잡는다).
+const KPI_PENDING = [
+  {name:'폐기율', area:'재고',
+   need:'폐기 실적 테이블 — 폐기일자 · 파츠번호 · 폐기수량 · 적용단가 · 폐기금액 · 폐기사유 · 승인자',
+   have:'발주 원본의 <code>폐기증빙필요여부</code> 265건(3.8%)이 트리거로만 존재 — 수량·금액 실적이 남지 않는다. 연간 캘린더의 <code>r-scrap</code>(2Q 재고자산 폐기)도 일정일 뿐 실적이 아니다.',
+   from:'구매조달팀 (폐기 집행 주체 — 입력 주체·시점 합의 필요)'},
+  {name:'예측정확도 (WMAPE)', area:'재고',
+   need:'예측치 주차 스냅샷 — <code>dashboard_sku_forecast.csv</code>(parts_no · period_key · forecast_qty · method)',
+   have:'예측을 박제해 두지 않으면 정확도 측정 자체가 불가능하다. 선행으로 품절 검열 보정이 필요한데, <code>dashboard_sku_monthly.품절주수</code>가 이미 있어 <code>가용주수 = 4.33 − 품절주수</code>로 보정할 수 있다(품절 발생 364 SKU·월 중 판매 0이 255건 — 보정 없이 학습하면 "품절 = 수요 0"을 배운다).',
+   from:'자체 산출 (예측 도입과 동시에 — 나중에 붙이면 되돌릴 근거가 사라진다)'},
+  {name:'재고 Aging 버킷', area:'재고',
+   need:'2026-01-01 기초재고 레이어 <b>1회분</b> — 그 이후는 파생된다',
+   have:'입고 이벤트는 이미 있다 — 발주 원본의 <code>실제입하일</code> 93.6% · <code>입고수량</code> 93.0% · <code>산출물_파츠코드</code> 88.4%. 소진은 <code>dashboard_sku_monthly</code> 월 판매량으로 FIFO 차감한다. 다만 <b>아카이브(2024·2025)에는 입고수량·파츠코드 컬럼이 아예 없어</b> 2026년 이전 입고를 재구성할 수 없다(<code>parts_master.재고포함시점</code>도 "26년기초" 같은 텍스트라 날짜로 못 쓴다).',
+   from:'자체 산출 + 기초 스냅샷 1회 (기초 레이어는 소진되며 자연 해소 — 남아 있는 기초분 자체가 체화 신호)'},
+];
+
 function computeKPIs() {
   const r = {};
   const monthly = {};
@@ -12312,6 +12330,24 @@ function renderKPITracker() {
           </div>
         `).join('')}
       </div>
+    </div>
+
+    <div class="card" style="padding:20px;margin-top:16px">
+      <div class="card-header" style="margin-bottom:4px">
+        <div class="card-title">🚧 미구현 지표 — 무엇을 확보하면 켜지는가</div>
+        <div style="font-size:11px;color:var(--text3)">직무상 필요하지만 현재 원천으로는 산출 불가 (${KPI_PENDING.length}종)</div>
+      </div>
+      <div style="font-size:11px;color:var(--text3);margin-bottom:12px">아래 3종은 계산 로직이 아니라 <b>원천 데이터</b>가 없어서 빠져 있습니다. 필요한 것을 확보하면 곧바로 위 지표 목록으로 올라갑니다.</div>
+      <div class="tbl-wrap"><table class="tbl" style="margin:0">
+        <thead><tr><th style="width:15%">지표</th><th style="width:27%">확보해야 하는 원천</th><th style="width:40%">지금 상태</th><th style="width:18%">확보처</th></tr></thead>
+        <tbody>${KPI_PENDING.map(p => `
+          <tr>
+            <td style="font-weight:600">${p.name}<div style="font-size:10px;color:var(--text3);font-weight:400;margin-top:2px">${p.area}</div></td>
+            <td style="font-size:11px">${p.need}</td>
+            <td style="font-size:11px;color:var(--text2)">${p.have}</td>
+            <td style="font-size:11px;color:var(--text2)">${p.from}</td>
+          </tr>`).join('')}</tbody>
+      </table></div>
     </div>
   `;
 
