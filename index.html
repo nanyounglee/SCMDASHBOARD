@@ -87,6 +87,21 @@ a{color:var(--blue);text-decoration:none}
 .m-chip:hover{border-color:var(--blue);color:var(--blue)}
 .m-chip.active{background:var(--blue);color:#fff;border-color:var(--blue)}
 .m-chip.m-chip-disabled{background:#475569;color:#94a3b8;border-color:#475569;cursor:not-allowed;pointer-events:none}
+/* 견적 계산기 — 드롭다운·체크박스 대신 누르는 버튼(사용자 요청 2026-09-08) */
+.qc-chips{display:inline-flex;flex-wrap:wrap;gap:5px}
+.qc-chip{font-size:12px;padding:6px 13px;border-radius:var(--r-sm);border:1px solid var(--border2);background:var(--surface);color:var(--text2);cursor:pointer;transition:all .12s;font-weight:500;line-height:1.3}
+.qc-chip:hover{border-color:var(--blue);color:var(--blue)}
+.qc-chip.on{background:var(--blue);color:#fff;border-color:var(--blue);font-weight:600}
+.qc-row{display:flex;align-items:flex-start;gap:10px;margin-bottom:9px}
+.qc-row>.qc-lbl{width:78px;font-size:11px;color:var(--text2);flex-shrink:0;padding-top:7px}
+.qc-step{font-size:11px;font-weight:700;color:var(--text3);letter-spacing:.03em;margin:14px 0 7px;padding-top:10px;border-top:1px dashed var(--border)}
+.qc-step:first-of-type{border-top:none;padding-top:0;margin-top:0}
+.qc-num{width:74px;padding:6px 8px;border:1px solid var(--border2);border-radius:var(--r-sm);font-size:12px}
+.qc-sel{padding:6px 8px;border:1px solid var(--border2);border-radius:var(--r-sm);font-size:12px;max-width:190px}
+.qc-price{position:sticky;top:0;z-index:5;background:linear-gradient(135deg,#1d4ed8,#1e3a8a);color:#fff;border-radius:var(--r-md,8px);padding:16px 20px;display:flex;gap:26px;align-items:center;flex-wrap:wrap;margin-bottom:14px}
+.qc-price .big{font-size:30px;font-weight:800;line-height:1.1}
+.qc-price .lbl{font-size:11px;opacity:.8;margin-bottom:2px}
+.qc-price .sub{font-size:16px;font-weight:700;line-height:1.1}
 /* v15: 기간 단위 선택기 */
 .unit-tabs{display:flex;border:1px solid var(--border2);border-radius:var(--r-sm);overflow:hidden}
 .unit-tab{font-size:12px;padding:6px 13px;cursor:pointer;color:var(--text2);background:var(--surface);font-weight:600;border-right:1px solid var(--border2)}
@@ -13125,51 +13140,101 @@ function renderQuoteCalc(){
   const el=document.getElementById('sec-quote'); if(!el||el.dataset.built) { qcToggleSections(); return; }
   el.dataset.built='1';
   const paperOpts=Object.keys(QC_PAPER_PRICES);
-  const inputRow=(lbl,html)=>`<div style="display:flex;align-items:center;gap:8px;margin-bottom:8px"><div style="width:92px;font-size:11px;color:var(--text2);flex-shrink:0">${lbl}</div>${html}</div>`;
-  const num=(id,ph,w)=>`<input type="number" id="${id}" placeholder="${ph}" style="width:${w||80}px;padding:5px 8px;border:1px solid var(--border2);border-radius:var(--r-sm);font-size:12px">`;
-  const sel=(id,opts,selv)=>`<select id="${id}" style="padding:5px 8px;border:1px solid var(--border2);border-radius:var(--r-sm);font-size:12px">${qcOptHtml(opts,selv)}</select>`;
-  const ck=(id,lbl)=>`<label style="display:flex;align-items:center;gap:4px;font-size:12px;cursor:pointer"><input type="checkbox" id="${id}">${lbl}</label>`;
+  const inputRow=(lbl,html)=>`<div class="qc-row"><div class="qc-lbl">${lbl}</div><div style="flex:1">${html}</div></div>`;
+  const num=(id,ph,w)=>`<input type="number" id="${id}" placeholder="${ph}" class="qc-num"${w?` style="width:${w}px"`:''}>`;
+  const sel=(id,opts,selv)=>`<select id="${id}" class="qc-sel">${qcOptHtml(opts,selv)}</select>`;
+  // v23.41(사용자 요청 2026-09-08): 드롭다운·체크박스가 작아 쓰기 어렵다 → 누르는 버튼으로 바꾼다.
+  // 네이티브 <select>/<input type=checkbox>는 숨겨서 그대로 두고 버튼이 그 값을 대신 바꾼다 —
+  // qcState()·qcLoadHist()·qcToggleSections()가 종전대로 동작해 계산 로직은 한 줄도 안 건드린다.
+  const chips=(id,opts,selv,labels)=>`<span class="qc-chips" data-for="${id}">`
+    +opts.map(o=>`<button type="button" class="qc-chip${o===selv?' on':''}" data-v="${esc(o)}">${esc((labels||{})[o]||o)}</button>`).join('')
+    +`</span><select id="${id}" style="display:none">${qcOptHtml(opts,selv)}</select>`;
+  const tgl=(id,lbl)=>`<span class="qc-chips" data-toggle="${id}"><button type="button" class="qc-chip">${esc(lbl)}</button></span>`
+    +`<input type="checkbox" id="${id}" style="display:none">`;
+  const qtyPreset=[500,1000,2000,3000,5000,10000];
   el.innerHTML=`
-  <div class="grid-2" style="grid-template-columns:420px 1fr;align-items:start">
+  <div class="grid-2" style="grid-template-columns:460px 1fr;align-items:start">
     <div class="card">
-      <div class="card-header"><div class="card-title">📦 견적 조건 입력</div></div>
-      ${inputRow('견적서 이름','<input type="text" id="qc-name" placeholder="예) 차병원 타투스티커 패키지" style="width:260px;padding:5px 8px;border:1px solid var(--border2);border-radius:var(--r-sm);font-size:12px">')}
-      ${inputRow('박스 형태',sel('qc-type',QC_FORM_TYPES,'단박스'))}
-      ${inputRow('내경 (mm)',num('qc-w','가로',70)+' × '+num('qc-d','세로',70)+' × '+num('qc-h','높이',70))}
-      ${inputRow('제작수량',num('qc-qty','EA',90)+' '+num('qc-ganjuk','판걸이(1)',80))}
-      ${inputRow('원단1 (메인)',sel('qc-pt1',paperOpts,'sc350g')+' '+sel('qc-ps1',QC_SIZE_COLS,'국전'))}
-      <div id="qc-paper2-row">${inputRow('원단2 (서브)',sel('qc-pt2',paperOpts,'sc300g')+' '+sel('qc-ps2',QC_SIZE_COLS,'국전'))}</div>
-      ${inputRow('인쇄',ck('qc-print','인쇄')+' '+sel('qc-colors',['1','2','4'],'4')+'<span style="font-size:11px;color:var(--text3)">도</span>')}
-      ${inputRow('코팅',ck('qc-coat','코팅')+' '+sel('qc-coattype',['단면','양면'],'단면'))}
-      ${inputRow('후가공','<div style="display:flex;gap:12px;flex-wrap:wrap">'+ck('qc-tomson','톰슨')+'<span id="qc-adh-wrap">'+ck('qc-adh','접착(단박스)')+'</span></div>')}
-      ${inputRow('특수공정','<div style="display:flex;gap:12px;flex-wrap:wrap">'+ck('qc-epoxy','에폭시')+ck('qc-foil','금은박')+ck('qc-emboss','형압')+'</div>')}
-      <div id="qc-corr-block" style="border-top:1px dashed var(--border);padding-top:8px;margin-top:8px">
-        ${inputRow('골판지 합지',sel('qc-corrtype',['해당없음','2합','3합'],'해당없음')+' '+sel('qc-corrmat',Object.keys(QC_CORR_PRICES),'SK B'))}
+      <div class="card-header"><div class="card-title">📦 견적 조건</div><span style="font-size:10px;color:var(--text3)">누르면 바로 계산됩니다</span></div>
+      <div class="qc-step">① 기본</div>
+      ${inputRow('견적서 이름','<input type="text" id="qc-name" placeholder="예) 차병원 타투스티커 패키지" style="width:100%;max-width:290px;padding:6px 8px;border:1px solid var(--border2);border-radius:var(--r-sm);font-size:12px">')}
+      ${inputRow('박스 형태',chips('qc-type',QC_FORM_TYPES,'단박스',{'테일러드 스트랩 박스 커스텀':'테일러드 스트랩','open페이퍼박스/motion박스':'open페이퍼·motion','SolidG형 커스텀':'SolidG형'}))}
+      ${inputRow('내경 (mm)',num('qc-w','가로',72)+' × '+num('qc-d','세로',72)+' × '+num('qc-h','높이',72))}
+      ${inputRow('제작수량','<span class="qc-chips" data-num="qc-qty">'+qtyPreset.map(v=>`<button type="button" class="qc-chip" data-v="${v}">${v.toLocaleString()}</button>`).join('')+'</span>'
+        +'<div style="margin-top:6px">'+num('qc-qty','직접입력 EA',96)+' <span style="font-size:11px;color:var(--text3)">EA · 판걸이</span> '+num('qc-ganjuk','1',56)+'</div>')}
+      <div class="qc-step">② 원단</div>
+      ${inputRow('원단1',sel('qc-pt1',paperOpts,'sc350g')+' '+sel('qc-ps1',QC_SIZE_COLS,'국전'))}
+      <div id="qc-paper2-row">${inputRow('원단2',sel('qc-pt2',paperOpts,'sc300g')+' '+sel('qc-ps2',QC_SIZE_COLS,'국전'))}</div>
+      <div class="qc-step">③ 인쇄 · 후가공</div>
+      ${inputRow('인쇄',tgl('qc-print','인쇄')+' '+chips('qc-colors',['1','2','4'],'4',{'1':'1도','2':'2도','4':'4도'}))}
+      ${inputRow('코팅',tgl('qc-coat','코팅')+' '+chips('qc-coattype',['단면','양면'],'단면'))}
+      ${inputRow('후가공',tgl('qc-tomson','톰슨')+' <span id="qc-adh-wrap">'+tgl('qc-adh','접착')+'</span>')}
+      ${inputRow('특수공정',tgl('qc-epoxy','에폭시')+' '+tgl('qc-foil','금은박')+' '+tgl('qc-emboss','형압'))}
+      <div id="qc-corr-block">
+        <div class="qc-step">④ 골판지 합지</div>
+        ${inputRow('합지',chips('qc-corrtype',['해당없음','2합','3합'],'해당없음')+' '+sel('qc-corrmat',Object.keys(QC_CORR_PRICES),'SK B'))}
         <div id="qc-back-block">
-          ${inputRow('배면 인쇄지',ck('qc-backon','적용')+' '+sel('qc-backpt',paperOpts,'sc240g')+' '+sel('qc-backps',QC_SIZE_COLS,'국전'))}
-          ${inputRow('배면 옵션',ck('qc-backprint','인쇄')+' '+sel('qc-backcolors',['1','2','4'],'1')+'<span style="font-size:11px;color:var(--text3)">도</span> '+ck('qc-backcoat','코팅'))}
+          ${inputRow('배면 인쇄지',tgl('qc-backon','적용')+'<div style="margin-top:6px">'+sel('qc-backpt',paperOpts,'sc240g')+' '+sel('qc-backps',QC_SIZE_COLS,'국전')+'</div>')}
+          ${inputRow('배면 옵션',tgl('qc-backprint','인쇄')+' '+chips('qc-backcolors',['1','2','4'],'1',{'1':'1도','2':'2도','4':'4도'})+' '+tgl('qc-backcoat','코팅'))}
         </div>
       </div>
-      <div style="border-top:1px dashed var(--border);padding-top:8px;margin-top:8px">
-      ${['수작업','포장','배송비','기타'].map((l,i)=>inputRow(l,ck('qc-ex-on'+i,'적용')+' '+num('qc-ex-q'+i,'수량',70)+' × '+num('qc-ex-p'+i,'단가',80))).join('')}
-      </div>
-      ${inputRow('마진율 (%)',num('qc-margin','20',70)+'<span style="font-size:10px;color:var(--text3)">최소 마진 20만원 자동 보장</span>')}
-      <div style="display:flex;gap:8px;margin-top:12px">
-        <button class="topbar-btn primary" style="flex:1;justify-content:center" onclick="qcRun()">견적 산출</button>
-        <button class="topbar-btn" onclick="qcSave()" id="qc-save-btn" disabled>이력 저장</button>
+      <div class="qc-step">⑤ 추가비용 · 마진</div>
+      ${['수작업','포장','배송비','기타'].map((l,i)=>inputRow(l,tgl('qc-ex-on'+i,'적용')+' '+num('qc-ex-q'+i,'수량',66)+' × '+num('qc-ex-p'+i,'단가',76))).join('')}
+      ${inputRow('마진율',chips('qc-marginp',['10','15','20','25','30','40'],'30',{'10':'10%','15':'15%','20':'20%','25':'25%','30':'30%','40':'40%'})
+        +'<div style="margin-top:6px">'+num('qc-margin','직접입력',76)+' <span style="font-size:10px;color:var(--text3)">% · 최소 마진 20만원 자동 보장</span></div>')}
+      <div style="display:flex;gap:8px;margin-top:14px">
+        <button class="topbar-btn" style="flex:1;justify-content:center" onclick="qcReset()">조건 초기화</button>
+        <button class="topbar-btn primary" style="flex:1;justify-content:center" onclick="qcSave()" id="qc-save-btn" disabled>이력 저장</button>
       </div>
     </div>
     <div>
-      <div class="card" id="qc-result"><div class="empty" style="padding:40px;text-align:center;color:var(--text3)">조건을 입력하고 [견적 산출]을 눌러주세요.<br><span style="font-size:10px">지류 단가표: 외주버전 v1.2.2 기준 (27지종 × 15규격)</span></div></div>
+      <div class="card" id="qc-result"><div class="empty" style="padding:40px;text-align:center;color:var(--text3)">내경과 제작수량을 입력하면 금액이 바로 나옵니다.<br><span style="font-size:10px">지류 단가표: 외주버전 v1.2.2 기준 (27지종 × 15규격)</span></div></div>
       <div class="card" style="margin-top:14px">
         <div class="card-header"><div class="card-title">🗂 견적 이력</div><button class="topbar-btn" onclick="qcExportCSV()">CSV 내보내기</button></div>
         <div id="qc-history"></div>
       </div>
     </div>
   </div>`;
-  document.getElementById('qc-type').addEventListener('change',qcToggleSections);
-  qcToggleSections(); qcRenderHistory();
+  // 버튼 클릭 → 숨긴 네이티브 요소의 값을 바꾸고 change를 쏜다(아래 라이브 재계산이 받는다)
+  el.addEventListener('click',e=>{
+    const b=e.target.closest('.qc-chip'); if(!b) return;
+    const g=b.parentElement;
+    if(g.dataset.for){                       // 단일 선택 (select 대체)
+      const s=document.getElementById(g.dataset.for); if(!s) return;
+      s.value=b.dataset.v;
+    } else if(g.dataset.toggle){             // 켜기/끄기 (checkbox 대체)
+      const c=document.getElementById(g.dataset.toggle); if(!c) return;
+      c.checked=!c.checked;
+    } else if(g.dataset.num){                // 수량 프리셋 (number 대체)
+      const n=document.getElementById(g.dataset.num); if(!n) return;
+      n.value=b.dataset.v;
+    } else return;
+    qcSyncChips();
+    // change를 실제로 쏴야 아래 라이브 재계산과 마진 프리셋 연결이 함께 걸린다
+    // (프로그램으로 .value를 넣는 것만으로는 이벤트가 발생하지 않는다)
+    document.getElementById(g.dataset.for||g.dataset.toggle||g.dataset.num)
+      .dispatchEvent(new Event('change',{bubbles:true}));
+  });
+  // 마진율 프리셋은 실제 입력칸(qc-margin)에 옮겨 담는다 — 계산은 종전대로 qc-margin만 읽는다
+  document.getElementById('qc-marginp').addEventListener('change',function(){ document.getElementById('qc-margin').value=this.value; });
+  el.addEventListener('input',qcLive);
+  el.addEventListener('change',qcLive);
+  document.getElementById('qc-margin').value='30';
+  document.getElementById('qc-print').checked=true;  // 패키지 견적은 인쇄가 기본(수식 엑셀 기본값과 일치)
+  qcToggleSections(); qcSyncChips(); qcRenderHistory();
 }
+// 숨긴 네이티브 요소가 진짜 값 — 버튼의 on 표시를 거기에 맞춘다(이력 불러오기 후에도 필요)
+function qcSyncChips(){
+  document.querySelectorAll('#sec-quote .qc-chips').forEach(g=>{
+    const src=document.getElementById(g.dataset.for||g.dataset.toggle||g.dataset.num||'');
+    if(!src) return;
+    if(g.dataset.toggle) g.querySelector('.qc-chip').classList.toggle('on',!!src.checked);
+    else g.querySelectorAll('.qc-chip').forEach(b=>b.classList.toggle('on',b.dataset.v===String(src.value)));
+  });
+}
+// 사용자 요청 2026-09-08: [견적 산출] 버튼을 없애고 조건이 바뀔 때마다 바로 금액이 나오게 한다
+function qcLive(){ qcToggleSections(); qcRun(); }
+function qcReset(){ const el=document.getElementById('sec-quote'); if(!el) return; delete el.dataset.built; renderQuoteCalc(); qcRun(); }
 function qcToggleSections(){
   const t=document.getElementById('qc-type')?.value; if(!t) return;
   const two=(t==='테일러드 스트랩 박스 커스텀'||t==='open페이퍼박스/motion박스');
@@ -13181,7 +13246,7 @@ let QC_LAST=null;
 function qcRun(){
   const inp=qcState(); const r=qcCalc(inp);
   const el=document.getElementById('qc-result');
-  if(r.error){ el.innerHTML=`<div class="empty" style="padding:30px;text-align:center;color:var(--red)">⚠ ${esc(r.error)}</div>`; QC_LAST=null; document.getElementById('qc-save-btn').disabled=true; return; }
+  if(r.error){ el.innerHTML=`<div class="empty" style="padding:30px;text-align:center;color:var(--text3)">${esc(r.error)}</div>`; QC_LAST=null; document.getElementById('qc-save-btn').disabled=true; return; }
   QC_LAST={inp,r,ts:new Date().toISOString()};
   document.getElementById('qc-save-btn').disabled=false;
   const partHtml=r.paperResults.map(p=>`
@@ -13195,8 +13260,17 @@ function qcRun(){
       </tbody></table>
     </div>`).join('');
   const extraHtml=r.추가비용행.length?`<table class="tbl"><tbody>${r.추가비용행.map(e=>`<tr><td style="width:130px">${esc(e.label)}</td><td style="font-size:10px;color:var(--text3)">${e.qty.toLocaleString()} × ${e.price.toLocaleString()}원</td><td class="num" style="width:110px">${e.total.toLocaleString()}원</td></tr>`).join('')}</tbody></table>`:'';
-  el.innerHTML=`
-    <div class="card-header"><div class="card-title">💰 견적 결과</div><span style="font-size:10px;color:var(--text3)">여분 ${r.lossSheets}장 (${r.lossLabel}) 포함</span></div>
+  // 사용자 요청 2026-09-08: «얼마인지»가 스크롤 없이 맨 위에 바로 보이게 한다
+  const priceBar=`<div class="qc-price">
+    <div><div class="lbl">개당 소비자가</div><div class="big">${Math.round(r.consumer).toLocaleString()}<span style="font-size:15px;font-weight:600">원</span></div></div>
+    <div><div class="lbl">총 판매금액</div><div class="sub">${Math.round(r.totalPrice).toLocaleString()}원</div></div>
+    <div><div class="lbl">개당 원가</div><div class="sub">${Math.round(r.perUnit).toLocaleString()}원</div></div>
+    <div><div class="lbl">총원가</div><div class="sub">${Math.round(r.totalCost).toLocaleString()}원</div></div>
+    <div><div class="lbl">실 마진율</div><div class="sub">${r.realMarginPct.toFixed(1)}%</div></div>
+    ${r.tooLarge?'<div style="background:rgba(255,255,255,.18);padding:6px 10px;border-radius:6px;font-size:11px;font-weight:600">⚠ 전개 사이즈가 표준지를 넘습니다 (특수발주)</div>':''}
+  </div>`;
+  el.innerHTML=`${priceBar}
+    <div class="card-header"><div class="card-title">💰 산출 내역</div><span style="font-size:10px;color:var(--text3)">여분 ${r.lossSheets}장 (${r.lossLabel}) 포함</span></div>
     ${partHtml}${extraHtml}
     <div class="kpi-row-4" style="margin-top:10px">
       <div class="kpi-card c-blue"><div class="kpi-label">총원가 (관리비 포함)</div><div class="kpi-val" style="font-size:17px">${Math.round(r.totalCost).toLocaleString()}원</div><div class="kpi-sub">제조 ${Math.round(r.제조원가).toLocaleString()} + 관리 ${r.관리비.toLocaleString()}${r.추가비용합계?` + 추가 ${r.추가비용합계.toLocaleString()}`:''}</div></div>
@@ -13209,8 +13283,11 @@ function qcHistList(){ try{ return JSON.parse(localStorage.getItem(QC_HISTORY_KE
 function qcSave(){
   if(!QC_LAST) return;
   const h=qcHistList(); const i=QC_LAST.inp, r=QC_LAST.r;
-  h.unshift({ts:QC_LAST.ts,name:i.name||'',type:i.type,spec:`${i.width}×${i.depth}×${i.height}`,qty:i.qty,paper:`${i.paperType1}/${i.paperSize1}`,
-    totalCost:Math.round(r.totalCost),totalPrice:Math.round(r.totalPrice),perUnit:Math.round(r.perUnit),consumer:Math.round(r.consumer),marginPct:r.marginPct,inp:i});
+  // 이름은 저장 시점의 입력칸에서 읽는다 — QC_LAST는 마지막 «계산» 시점 값이라
+  // 계산 뒤에 이름만 고쳐 저장하면 옛 이름이 남는다
+  const nm=(document.getElementById('qc-name')?.value||i.name||'').trim();
+  h.unshift({ts:QC_LAST.ts,name:nm,type:i.type,spec:`${i.width}×${i.depth}×${i.height}`,qty:i.qty,paper:`${i.paperType1}/${i.paperSize1}`,
+    totalCost:Math.round(r.totalCost),totalPrice:Math.round(r.totalPrice),perUnit:Math.round(r.perUnit),consumer:Math.round(r.consumer),marginPct:r.marginPct,inp:{...i,name:nm}});
   localStorage.setItem(QC_HISTORY_KEY,JSON.stringify(h.slice(0,200)));
   qcRenderHistory();
 }
@@ -13234,6 +13311,7 @@ function qcLoadHist(idx){
   g('qc-backprint').checked=!!i.backPrint; g('qc-backcolors').value=i.backPrintColors||'1'; g('qc-backcoat').checked=!!i.backCoating;
   (i.extras||[]).forEach((e,x)=>{ g('qc-ex-on'+x).checked=!!e.on; g('qc-ex-q'+x).value=e.qty||''; g('qc-ex-p'+x).value=e.price||''; });
   g('qc-margin').value=i.margin||0;
+  qcSyncChips();  // 이력을 불러오면 숨긴 값만 바뀌므로 버튼 표시를 다시 맞춘다
   qcRun();
 }
 function qcDelHist(idx){ const h=qcHistList(); h.splice(idx,1); localStorage.setItem(QC_HISTORY_KEY,JSON.stringify(h)); qcRenderHistory(); }
