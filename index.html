@@ -1144,14 +1144,20 @@ function orderHistYears(){ return [...new Set(archiveOrderRows().map(r=>String(r
 function histRangeLabel(){ const ys=orderHistYears(); return ys.length?ys[0]+'~'+new Date().getFullYear()+'년 전체 이력':'당해+전년 전체 이력'; }
 // v23.37: 모달 상단에 연도별 발주 이력을 쪼개 보여준다 — 아카이브 연도가 붙으면서 합계만 커지면
 // 어느 해가 얼마인지 모른 채 "숫자가 갑자기 늘었다"로 읽힌다. 단일 연도면 표가 무의미해 생략.
-function yearBreakdownHtml(rows,issueRows,title){
+// v23.42: qtyRows를 주면 «발주수량·TASK»만 그 행들로 센다 — 굿즈 모달처럼 한 주문이 여러
+// 파츠 행으로 쪼개진 경우 수량은 고객 주문 단위(orderUnitRows)로 세야 2배가 안 된다.
+// 공급가액은 부자재까지 실제로 나간 돈이므로 항상 전체 행에서 더한다.
+function yearBreakdownHtml(rows,issueRows,title,qtyRows){
   const by={}, bucket=y=>by[y]=by[y]||{task:0,qty:0,amt:0,rework:0,iss:0};
-  (rows||[]).forEach(r=>{
-    const y=String(r['과업지시일자']||'').slice(0,4); if(!/^\d{4}$/.test(y)) return;
+  const yOf=r=>{const y=String(r['과업지시일자']||'').slice(0,4);return /^\d{4}$/.test(y)?y:null;};
+  const isRw=r=>String(r['task_id']||'').includes('재제작');
+  (qtyRows||rows||[]).forEach(r=>{
+    const y=yOf(r); if(!y) return;
     const v=bucket(y);
-    if(String(r['task_id']||'').includes('재제작')){ v.rework++; return; }
-    v.task++; v.qty+=pa(String(r['발주지시수량']||'')); v.amt+=pa(r['공급가액']);
+    if(isRw(r)){ v.rework++; return; }
+    v.task++; v.qty+=pa(String(r['발주지시수량']||''));
   });
+  (rows||[]).forEach(r=>{ const y=yOf(r); if(!y||isRw(r)) return; bucket(y).amt+=pa(r['공급가액']); });
   (issueRows||[]).forEach(r=>{ const d=parseAnyDate(getIssueDateStr(r)); if(!d) return; const y=String(d.getFullYear()); if(by[y]) by[y].iss++; });
   const ys=Object.keys(by).sort();
   if(ys.length<2) return '';
@@ -1521,6 +1527,33 @@ function orderRole(r){
   return 'etc';
 }
 const ORDER_ROLE_LABEL={assembled:'완제품(조립산출)',product:'제품 파츠',printing:'인쇄',package:'부자재',etc:'기타'};
+// ===== v23.42: 고객 주문(프로젝트) 단위 수량 (사용자 제보 2026-09-08) =====
+// 굿즈 수량을 «행 단위 합»으로 내면 한 고객 주문이 2배로 잡힌다 — 리멤버 타투스티커(TTSK)
+// 26.8월 100개 주문이 본품 100 + 배경지 110 = 210, 26.9월 1,200개 주문이 1,200 + 1,250 =
+// 2,450으로 나왔다. 완제품(Phantom) 행만 골라 쓰던 기존 방어(hasAsm)는 ① 완제품 행이 아예
+// 없는 굿즈(타투스티커·칫솔살균기 등 525 task)와 ② 완제품 행이 2개 이상인 세트(단우산
+// 우산+펠트봉투, 골프공+싸바리박스)를 둘 다 놓쳤다.
+// 그래서 «고객이 주문한 프로젝트» 단위로 접는다 — task_id에서 파츠 접미(_A1·_B1·_C1…)를 떼면
+// 그 값이 곧 «프로젝트 × 굿즈 1건»이고(실측 3,893단위, 재제작은 task_id에 '재제작'이 들어가
+// 자연히 다른 단위로 갈린다), 그 안에서는 최상위 역할(완제품>제품파츠>나머지)의 최대 1건만
+// 대표로 쓴다. 합산하지 않는 것이 핵심 — 실측 3,752단위 중 대표수량이 고객주문수량에 못 미치는
+// 건은 14건(0.4%)뿐이고 전부 원본 수량이 0이거나 일부를 재고로 충당한 건이다.
+// 회귀 테스트: node test_order_unit.mjs
+function orderUnitKey(r){
+  const t=String(r['task_id']||'').trim();
+  return t?t.replace(/_[A-Za-z]+\d*$/,''):'#'+(r['project_code']||'')+'/'+(r['산출물']||'');
+}
+function orderUnitRows(rows){
+  const g={};
+  (rows||[]).forEach(r=>{ const k=orderUnitKey(r); (g[k]=g[k]||[]).push(r); });
+  const maxQ=a=>a.reduce((x,y)=>pa(String(y['발주지시수량']||''))>pa(String(x['발주지시수량']||''))?y:x);
+  return Object.values(g).map(a=>{
+    const asm=a.filter(r=>orderRole(r)==='assembled'), prod=a.filter(r=>orderRole(r)==='product');
+    const rep=maxQ(asm.length?asm:(prod.length?prod:a));
+    // 완제품 행의 수량이 0으로 비어 있는 원본이 있어(아쿠아 스노클링 마스크 등) 그때만 전체에서 재선정
+    return pa(String(rep['발주지시수량']||''))>0?rep:maxQ(a);
+  });
+}
 // 굿즈명은 기존 goodsNameOf(code)를 쓴다 — goods_master의 Goods Code→Goods Name, 없으면 산출물 최빈값 폴백.
 // 그룹 안에서 옵션 라벨 뽑기 — 구성옵션 문자열들의 공통 접두를 떼어 구별되는 부분만 남긴다.
 // 산출물명과 옵션 접두가 어긋나는 굿즈(SPCP: 산출물 'UV(스펙트럼 컬러펜)' vs 옵션
@@ -3422,8 +3455,9 @@ function openGoodsDetail(gc){
   const byRole={assembled:[],product:[],printing:[],package:[],etc:[]};
   all.forEach(r=>byRole[orderRole(r)].push(r));
   const hasAsm=byRole.assembled.length>0;
-  // 대표 수량 기준 행 — 완제품 발주가 있으면 그것만, 없으면(부자재만 발주된 굿즈) 전체
-  const unitRows=hasAsm?byRole.assembled:all;
+  // v23.42: 대표 수량 기준 행 — «고객이 주문한 프로젝트» 1건당 1행(orderUnitRows). 종전에는
+  // 완제품 행 전체(없으면 전체 행)를 그대로 합산해 한 주문의 본품+부자재가 이중으로 잡혔다.
+  const unitRows=orderUnitRows(all);
   // ---- 옵션 분해 ----
   // 구성옵션/산출물_옵션은 "그 발주에 들어간 구성요소 목록"이지 단일 옵션이 아니다
   //   예) 데스크테리어: '데스크테리어 매트, 스탠다드단품박스(그레이.11호)' — 뒤는 부자재
@@ -3505,8 +3539,8 @@ function openGoodsDetail(gc){
   const reworkN=all.filter(isRework).length;
   const chip=(l,v,c)=>`<span style="background:var(--surface2);padding:4px 10px;border-radius:20px;font-size:12px">${l} <b${c?` style="color:${c}"`:''}>${v}</b></span>`;
   const chips=[
-    chip('완제품 발주',ent.reduce((s,[,g])=>s+g.cnt,0)+'건'),
-    chip(hasAsm?'발주수량(완제품)':'발주수량(전체)',totQty.toLocaleString()+'개'),
+    chip('고객 주문',ent.reduce((s,[,g])=>s+g.cnt,0)+'건'),
+    chip('발주수량(주문 단위)',totQty.toLocaleString()+'개'),
     chip('공급가액(부자재 포함)',faFull(totAmt)),
     chip('산출물',prodSet.size+'종'),
     chip('이슈',issues.length+'건',issues.length?'var(--red)':undefined),
@@ -3515,7 +3549,7 @@ function openGoodsDetail(gc){
   // ---- 옵션별 표 + 도넛 ----
   const optHtml=ent.length?`<div class="card" style="margin:12px 0;padding:12px 16px">
     <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:8px">
-      <div style="font-size:12px;font-weight:700">옵션별 발주 비중 <span style="font-weight:400;font-size:10px;color:var(--text3)">— ${curOnly?'<b>당해만</b>':histRangeLabel()} · ${hasAsm?'완제품(추상적산출물) 발주 기준':'완제품 발주가 없어 전체 발주 기준'}</span></div>
+      <div style="font-size:12px;font-weight:700">옵션별 발주 비중 <span style="font-weight:400;font-size:10px;color:var(--text3)">— ${curOnly?'<b>당해만</b>':histRangeLabel()} · <b>고객 주문(프로젝트×굿즈) 1건당 대표 1행</b> 기준(${hasAsm?'완제품':'제품 파츠'} 우선)</span></div>
       <span style="margin-left:auto;display:flex;gap:4px">
         <span class="m-chip${curOnly?'':' active'}" onclick="setGoodsModalCurYear(false)" title="아카이브 연도(${orderHistYears().join('·')||'전년'}) 포함 — 다만 아카이브에는 옵션 필드가 없어 판별이 불가합니다">전체 이력</span>
         <span class="m-chip${curOnly?' active':''}" onclick="setGoodsModalCurYear(true)" title="옵션 필드가 있는 당해 발주만 — 옵션 비중이 바로 읽힙니다">당해만</span>
@@ -3543,17 +3577,17 @@ function openGoodsDetail(gc){
   // ---- v23.27: 연도별 월간 발주 추이 ----
   // 2025 아카이브는 옵션을 못 뽑지만 «언제 얼마나 나갔는지»는 온전하다 — 옵션 비중에서 빠지는
   // 대신 연도 비교 추이로 살려 쓴다(사용자 요청). 완제품 기준, 재제작 제외.
+  // v23.42: 고객 주문 단위로 접은 뒤 월 버킷에 담는다 — 종전에는 완제품 행이 없는 굿즈에서
+  // 본품+부자재가 그대로 더해져 26.8월 100개 주문이 210, 26.9월 1,200개 주문이 2,450이 됐다.
   const trend={};
-  allOrderRows().forEach(r=>{
-    if(isStock(r)||goodsCode(r)!==gc||isRework(r)) return;
-    if(hasAsm&&orderRole(r)!=='assembled') return;
+  orderUnitRows(allOrderRows().filter(r=>!isStock(r)&&goodsCode(r)===gc&&!isRework(r))).forEach(r=>{
     const d=parseAnyDate(r['과업지시일자']); if(!d) return;
     const y=d.getFullYear(), m=d.getMonth();
     (trend[y]=trend[y]||Array(12).fill(0))[m]+=pa(String(r['발주지시수량']||''));
   });
   const trendYears=Object.keys(trend).sort();
   const trendHtml=trendYears.length?`<div class="card" style="margin:12px 0;padding:12px 16px">
-    <div style="font-size:12px;font-weight:700;margin-bottom:6px">연도별 월간 발주 추이 <span style="font-weight:400;font-size:10px;color:var(--text3)">— ${hasAsm?'완제품 발주수량':'전체 발주수량'} 기준(재제작 제외) · 옵션 구분 없이 총량</span></div>
+    <div style="font-size:12px;font-weight:700;margin-bottom:6px">연도별 월간 발주 추이 <span style="font-weight:400;font-size:10px;color:var(--text3)">— <b>고객 주문 단위</b> 발주수량 기준(재제작 제외) · 한 주문의 본품·부자재·인쇄 행은 대표 1건만 계산</span></div>
     <div style="height:200px"><canvas id="ch-goods-trend"></canvas></div>
     <table class="tbl" style="margin-top:8px"><thead><tr><th>연도</th>${Array.from({length:12},(_,i)=>`<th class="num" style="font-size:10px">${i+1}월</th>`).join('')}<th class="num">합계</th></tr></thead><tbody>
     ${trendYears.map(y=>`<tr><td style="font-size:11px;font-weight:600">${esc(y)}</td>${trend[y].map(v=>`<td class="num">${v?v.toLocaleString():'—'}</td>`).join('')}<td class="num" style="font-weight:700">${trend[y].reduce((a,b)=>a+b,0).toLocaleString()}</td></tr>`).join('')}
@@ -3572,7 +3606,7 @@ function openGoodsDetail(gc){
   const structHtml=`<div class="card" style="margin:12px 0;padding:12px 16px">
     <div style="font-size:12px;font-weight:700;margin-bottom:6px">굿즈 구성 <span style="font-weight:400;font-size:10px;color:var(--text3)">— 파츠유형별 산출물 (product+print → 추상적산출물 → +package → goods)</span></div>
     <table class="tbl"><tbody>${['assembled','product','printing','package','etc'].map(roleCard).join('')}</tbody></table>
-    <div style="font-size:10px;color:var(--text3);margin-top:6px">위 <b>발주수량</b> 대표값은 ${hasAsm?'<b>완제품(조립산출)</b> 행만 합산합니다 — 부자재·인쇄를 더하면 "제품 몇 개"가 아니게 되고, 한 세트에 Product 파츠가 2종인 상품(골프공+볼마커)은 이중계산됩니다.':'이 굿즈는 완제품 발주 행이 없어 <b>전체 행</b>을 합산했습니다.'} 공급가액은 부자재를 포함한 총액입니다.</div>
+    <div style="font-size:10px;color:var(--text3);margin-top:6px">위 <b>발주수량</b> 대표값은 <b>고객이 주문한 프로젝트 1건당 대표 1행</b>(완제품 &gt; 제품 파츠 &gt; 나머지 순, 그중 최대 수량)만 세어 합산합니다 — 같은 주문의 부자재·인쇄까지 더하면 "제품 몇 개"가 아니게 되고, 한 세트에 Product 파츠가 2종인 상품(골프공+볼마커)은 이중계산됩니다. 공급가액은 부자재를 포함한 총액입니다.</div>
   </div>`;
   // ---- 이슈 이력 ----
   const issHtml=`<div style="font-size:12px;font-weight:700;margin:14px 0 6px">이슈 이력 <span style="font-weight:400;font-size:10px;color:var(--text3)">(${histRangeLabel()} · 이 굿즈의 산출물 ${prodSet.size}종 기준)</span></div>
@@ -3584,7 +3618,7 @@ function openGoodsDetail(gc){
     }).join('')}</tbody></table>`:'<div style="font-size:11px;color:var(--text3)">매칭된 이슈 없음</div>'}`;
   body.innerHTML=`<div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:4px">${chips}</div>
     <div style="font-size:10px;color:var(--text3);margin:4px 0 8px">※ ${curOnly?'<b>당해만</b>':histRangeLabel()} 기준(재고생산 제외) — 발주 현황 표는 선택 기간(${SEL_MONTH||'—'}) 기준이라 숫자가 다를 수 있습니다.</div>
-    ${yearBreakdownHtml(all,issues,'연도별 발주 이력 — '+gname)}${optHtml}${trendHtml}${structHtml}${issHtml}`;
+    ${yearBreakdownHtml(all,issues,'연도별 발주 이력 — '+gname,orderUnitRows(all))}${optHtml}${trendHtml}${structHtml}${issHtml}`;
   // ---- 도넛 렌더 ----
   if(ent.length&&typeof Chart!=='undefined'){
     const cv=document.getElementById('ch-goods-opt');
@@ -8738,7 +8772,7 @@ function nav(el,id) {
     subcontract:'<b>확인 가능 지표:</b> 총 위험건수 · 최대지연일 · 위험협력사수 | <b>자동산출:</b> 발주_RAW 입하경과일(입하확정일/예정일 기준) + 공급망_RAW 하도급대상여부=대상 + 미입하 + 90일초과 | <b>필터:</b> 전체/90일+/120일+/180일+ | <b>CSV:</b> 발주_RAW + 공급망_RAW (별도 CSV 불필요)',
     stock:'<b>확인 가능 지표:</b> 전체 품절수 · 비의도적 품절(납기지연/공급부족) · 의도적 품절(졸업/시즌/효율화) · 굿즈품절 | <b>필터:</b> 판매상태별(일시품절/품절예정/의도적 품절) | <b>테이블:</b> 파츠명/굿즈 · 판매상태 · 재고소유 · 품절성격/사유 · 변경일 · 경과일 · 굿즈품절여부 | <b>CSV:</b> 품절리스트',
     ai:'<b>사용법:</b> 제품명 입력 → 제품 정의서 링크 + 리드타임/제작기간·단가 문의 기존 답변(최신 3건, 답변 없으면 과거 슬랙 문의 텍스트로 폴백) — Check_standard_Answer(응답 완료) + Check_standard_Question(질문1~3·답변1~3 원본) 두 소스를 함께 검색해 커버리지 확대 | 협력사명 입력 → 발주현황/매입금액/3개월추이/품질이슈 분석 | 긴급 → 긴급발주 목록 | 미입하/task → 미입하현황 | 전월/매입 → 전월대비 비교 | 담당자명 → 개인 실적 | <b>CSV:</b> 제품문의답변이력(check_answer) + 제품문의원본(check_question) + 발주_RAW + 이슈_RAW + 공급망_RAW',
-    quote:'<b>기능:</b> 패키지(박스) 자동 견적 산출 — 마닐라박스/C형/W형/슬리브형 | <b>로직:</b> 전개사이즈 → 지류단가(27지종×15규격, 0원 규격 자동상향) → 여분·연수 → 원단/인쇄/코팅/톰슨/접착/특수공정/골판지 → 관리비(10%·최소15만) → 마진(최소20만) | <b>이력:</b> localStorage 저장 · CSV 내보내기 | <b>기준:</b> 외주버전 v1.2.2 단가표',
+    quote:'<b>기능:</b> 패키지(박스) 자동 견적 산출 — 단박스/테일러드 스트랩 박스 커스텀/SolidG형 커스텀/open페이퍼박스·motion박스 | <b>로직:</b> 전개사이즈 → 지류단가(27지종×15규격, 0원 규격 자동상향) → 여분·연수 → 원단/인쇄/코팅/톰슨/접착/특수공정/골판지 → 관리비(10%·최소15만) → 마진(최소20만) | <b>이력:</b> localStorage 저장 · CSV 내보내기 | <b>기준:</b> 외주버전 v1.2.2 단가표',
     report:'<b>기능:</b> 팀 주간 회의록/보고서 바로가기(SCM-Archive) · 외주생산파트 주간 리포트·회의록 프롬프트 생성 · 구매전략파트 주간 재고 리포트 .md 생성(재고수준·재고구조·품절·장기미회전·이슈 자동 요약, 주차 선택 가능) · <b>변경 이력 리포트 .md 생성</b>(파츠 신규/졸업·단가 변동·협력사·제품 변경 — 주간 리포트/회의 원천 데이터) · <b>변경 스냅샷 아카이브(CSV_BANK) 바로가기</b>',
     calendar:'<b>구성:</b> 주간 정기회의 안내 · <b>월간 달력</b>(v23.9 — 날짜 칸에 반복업무 9종·정기회의·특이사항을 막대로 표시, ‹ › 로 월 이동, 날짜 클릭 시 그 날 일정) · 월 타일 12개(클릭 시 해당월 달력으로 이동) · <b>공급망 특이사항</b>(협력사 휴가·발주 마감 등 수시 이슈 — 시작·종료일 지정 시 달력에 표시, 직접 추가/삭제·브라우저에 저장) | <b>출처:</b> 구매조달팀 연간주요이벤트 마스터(§2 업무 마스터 기준)',
   };
@@ -12899,8 +12933,13 @@ const QC_SIZE_ORDER=["8절","4절","소국2절","국2절","하드롱4절","3절"
 const QC_PAPER_STD=[{name:"4절",w:525,h:374,big:false},{name:"국2절",w:616,h:449,big:false},{name:"하드롱4절",w:580,h:425,big:false},{name:"3절",w:768,h:363,big:false},{name:"하드롱3절",w:869,h:380,big:false},{name:"2절",w:768,h:525,big:false},{name:"소국전",w:860,h:605,big:true},{name:"하드롱2절",w:869,h:577,big:true},{name:"국전",w:919,h:616,big:true},{name:"전지",w:1020,h:720,big:true}].sort((a,b)=>a.w*a.h-b.w*b.h);
 const QC_BIG_SIZES=QC_PAPER_STD.filter(s=>s.big).map(s=>s.name);
 const QC_CARTON_SMALL=["4절","국2절","하드롱4절","3절","하드롱3절","2절","장2절","8절","소국2절","하드롱장2절"];
-const QC_FORM_TYPES=["마닐라박스","C형","W형","슬리브형"];
-const QC_CORR_APPLY=["마닐라박스","C형","W형"];
+const QC_FORM_TYPES=["단박스","테일러드 스트랩 박스 커스텀","SolidG형 커스텀","open페이퍼박스/motion박스"];
+// 2026-09-08 명칭 변경(사용자 요청): 마닐라박스→단박스, C형→테일러드 스트랩 박스 커스텀,
+// W형→SolidG형 커스텀, 슬리브형→open페이퍼박스/motion박스.
+// 전개사이즈·골판지 적용 규칙은 그대로고 이름만 바뀌었다 — 저장된 이력 복원용 별칭.
+const QC_TYPE_ALIAS={"마닐라박스":"단박스","C형":"테일러드 스트랩 박스 커스텀","W형":"SolidG형 커스텀",
+  "슬리브형":"open페이퍼박스/motion박스"};
+const QC_CORR_APPLY=["단박스","테일러드 스트랩 박스 커스텀","SolidG형 커스텀"];
 
 // 지류 단가 조회 (0이면 규격 자동 상향)
 function qcPaperPrice(type,size){
@@ -12942,10 +12981,10 @@ function qcLamUnit(corrType,size){ const small=QC_CARTON_SMALL.includes(size); i
 function qcParts(type,w,d,h){
   if(!w||!d||!h) return [];
   switch(type){
-    case "마닐라박스": return [{label:"메인",w:(w+d)*2+50,h:d*2+h+70}];
-    case "C형": return [{label:"상박스",w:w+h*4+72,h:d+h*4+72},{label:"하박스",w:w+h*4+70,h:d+h*4+70}];
-    case "W형": return [{label:"메인",w:w+h*4+60,h:d*2+h*3+60}];
-    case "슬리브형": return [{label:"슬리브",w:w+30,h:(d+h)*2+50},{label:"인박스",w:w+h*4+70,h:d+h*4+70}];
+    case "단박스": return [{label:"메인",w:(w+d)*2+50,h:d*2+h+70}];
+    case "테일러드 스트랩 박스 커스텀": return [{label:"상박스",w:w+h*4+72,h:d+h*4+72},{label:"하박스",w:w+h*4+70,h:d+h*4+70}];
+    case "SolidG형 커스텀": return [{label:"메인",w:w+h*4+60,h:d*2+h*3+60}];
+    case "open페이퍼박스/motion박스": return [{label:"슬리브",w:w+30,h:(d+h)*2+50},{label:"인박스",w:w+h*4+70,h:d+h*4+70}];
     default: return [];
   }
 }
@@ -12996,7 +13035,7 @@ function qcCalc(inp){
       const u=qcTomsonUnit(size);
       rows.push({label:'톰슨',group:'후가공',detail:u+'원/통 × '+tong.toLocaleString()+'통 (최소 5만)',total:Math.max(50000,u*tong)});
     }
-    if(inp.adhesive&&inp.type==='마닐라박스'&&idx===0){
+    if(inp.adhesive&&inp.type==='단박스'&&idx===0){
       const u=qcAdhUnit(tong);
       rows.push({label:'접착',group:'후가공',detail:u+'원/통 × '+tong.toLocaleString()+'통 (최소 6만)',total:Math.max(60000,u*tong)});
     }
@@ -13094,14 +13133,14 @@ function renderQuoteCalc(){
   <div class="grid-2" style="grid-template-columns:420px 1fr;align-items:start">
     <div class="card">
       <div class="card-header"><div class="card-title">📦 견적 조건 입력</div></div>
-      ${inputRow('박스 형태',sel('qc-type',QC_FORM_TYPES,'마닐라박스'))}
+      ${inputRow('박스 형태',sel('qc-type',QC_FORM_TYPES,'단박스'))}
       ${inputRow('내경 (mm)',num('qc-w','가로',70)+' × '+num('qc-d','세로',70)+' × '+num('qc-h','높이',70))}
       ${inputRow('제작수량',num('qc-qty','EA',90)+' '+num('qc-ganjuk','판걸이(1)',80))}
       ${inputRow('원단1 (메인)',sel('qc-pt1',paperOpts,'sc350g')+' '+sel('qc-ps1',QC_SIZE_COLS,'국전'))}
       <div id="qc-paper2-row">${inputRow('원단2 (서브)',sel('qc-pt2',paperOpts,'sc300g')+' '+sel('qc-ps2',QC_SIZE_COLS,'국전'))}</div>
       ${inputRow('인쇄',ck('qc-print','인쇄')+' '+sel('qc-colors',['1','2','4'],'4')+'<span style="font-size:11px;color:var(--text3)">도</span>')}
       ${inputRow('코팅',ck('qc-coat','코팅')+' '+sel('qc-coattype',['단면','양면'],'단면'))}
-      ${inputRow('후가공','<div style="display:flex;gap:12px;flex-wrap:wrap">'+ck('qc-tomson','톰슨')+'<span id="qc-adh-wrap">'+ck('qc-adh','접착(마닐라)')+'</span></div>')}
+      ${inputRow('후가공','<div style="display:flex;gap:12px;flex-wrap:wrap">'+ck('qc-tomson','톰슨')+'<span id="qc-adh-wrap">'+ck('qc-adh','접착(단박스)')+'</span></div>')}
       ${inputRow('특수공정','<div style="display:flex;gap:12px;flex-wrap:wrap">'+ck('qc-epoxy','에폭시')+ck('qc-foil','금은박')+ck('qc-emboss','형압')+'</div>')}
       <div id="qc-corr-block" style="border-top:1px dashed var(--border);padding-top:8px;margin-top:8px">
         ${inputRow('골판지 합지',sel('qc-corrtype',['해당없음','2합','3합'],'해당없음')+' '+sel('qc-corrmat',Object.keys(QC_CORR_PRICES),'SK B'))}
@@ -13132,10 +13171,10 @@ function renderQuoteCalc(){
 }
 function qcToggleSections(){
   const t=document.getElementById('qc-type')?.value; if(!t) return;
-  const two=(t==='C형'||t==='슬리브형');
+  const two=(t==='테일러드 스트랩 박스 커스텀'||t==='open페이퍼박스/motion박스');
   const p2=document.getElementById('qc-paper2-row'); if(p2) p2.style.display=two?'':'none';
   const corr=document.getElementById('qc-corr-block'); if(corr) corr.style.display=QC_CORR_APPLY.includes(t)?'':'none';
-  const adh=document.getElementById('qc-adh-wrap'); if(adh) adh.style.display=t==='마닐라박스'?'':'none';
+  const adh=document.getElementById('qc-adh-wrap'); if(adh) adh.style.display=t==='단박스'?'':'none';
 }
 let QC_LAST=null;
 function qcRun(){
@@ -13177,7 +13216,9 @@ function qcSave(){
 function qcLoadHist(idx){
   const h=qcHistList()[idx]; if(!h||!h.inp) return;
   const i=h.inp, g=id=>document.getElementById(id);
-  g('qc-type').value=i.type; qcToggleSections();
+  // 박스 형태 명칭 변경(2026-09-08) 전에 저장된 이력도 그대로 불러오게 옛 값을 새 값으로 넘긴다 —
+  // select에 없는 값을 넣으면 아무 말 없이 기본값(단박스)으로 바뀌어 다른 견적이 복원된다.
+  g('qc-type').value=QC_TYPE_ALIAS[i.type]||i.type; qcToggleSections();
   g('qc-w').value=i.width; g('qc-d').value=i.depth; g('qc-h').value=i.height;
   g('qc-qty').value=i.qty; g('qc-ganjuk').value=i.ganjuk;
   g('qc-pt1').value=i.paperType1; g('qc-ps1').value=i.paperSize1;
