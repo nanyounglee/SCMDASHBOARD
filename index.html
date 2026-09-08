@@ -13110,7 +13110,7 @@ function qcState(){
   const g=id=>document.getElementById(id);
   const chk=id=>!!g(id)?.checked, val=id=>g(id)?.value;
   const extras=['수작업','포장','배송비','기타'].map((label,i)=>({label,on:chk('qc-ex-on'+i),qty:val('qc-ex-q'+i),price:val('qc-ex-p'+i)}));
-  return {type:val('qc-type'),width:+val('qc-w'),depth:+val('qc-d'),height:+val('qc-h'),
+  return {name:(val('qc-name')||'').trim(),type:val('qc-type'),width:+val('qc-w'),depth:+val('qc-d'),height:+val('qc-h'),
     qty:+val('qc-qty'),ganjuk:+val('qc-ganjuk')||1,
     paperType1:val('qc-pt1'),paperSize1:val('qc-ps1'),paperType2:val('qc-pt2'),paperSize2:val('qc-ps2'),
     print:chk('qc-print'),printColors:+val('qc-colors'),coating:chk('qc-coat'),coatingType:val('qc-coattype'),
@@ -13133,6 +13133,7 @@ function renderQuoteCalc(){
   <div class="grid-2" style="grid-template-columns:420px 1fr;align-items:start">
     <div class="card">
       <div class="card-header"><div class="card-title">📦 견적 조건 입력</div></div>
+      ${inputRow('견적서 이름','<input type="text" id="qc-name" placeholder="예) 차병원 타투스티커 패키지" style="width:260px;padding:5px 8px;border:1px solid var(--border2);border-radius:var(--r-sm);font-size:12px">')}
       ${inputRow('박스 형태',sel('qc-type',QC_FORM_TYPES,'단박스'))}
       ${inputRow('내경 (mm)',num('qc-w','가로',70)+' × '+num('qc-d','세로',70)+' × '+num('qc-h','높이',70))}
       ${inputRow('제작수량',num('qc-qty','EA',90)+' '+num('qc-ganjuk','판걸이(1)',80))}
@@ -13208,7 +13209,7 @@ function qcHistList(){ try{ return JSON.parse(localStorage.getItem(QC_HISTORY_KE
 function qcSave(){
   if(!QC_LAST) return;
   const h=qcHistList(); const i=QC_LAST.inp, r=QC_LAST.r;
-  h.unshift({ts:QC_LAST.ts,type:i.type,spec:`${i.width}×${i.depth}×${i.height}`,qty:i.qty,paper:`${i.paperType1}/${i.paperSize1}`,
+  h.unshift({ts:QC_LAST.ts,name:i.name||'',type:i.type,spec:`${i.width}×${i.depth}×${i.height}`,qty:i.qty,paper:`${i.paperType1}/${i.paperSize1}`,
     totalCost:Math.round(r.totalCost),totalPrice:Math.round(r.totalPrice),perUnit:Math.round(r.perUnit),consumer:Math.round(r.consumer),marginPct:r.marginPct,inp:i});
   localStorage.setItem(QC_HISTORY_KEY,JSON.stringify(h.slice(0,200)));
   qcRenderHistory();
@@ -13218,6 +13219,7 @@ function qcLoadHist(idx){
   const i=h.inp, g=id=>document.getElementById(id);
   // 박스 형태 명칭 변경(2026-09-08) 전에 저장된 이력도 그대로 불러오게 옛 값을 새 값으로 넘긴다 —
   // select에 없는 값을 넣으면 아무 말 없이 기본값(단박스)으로 바뀌어 다른 견적이 복원된다.
+  g('qc-name').value=i.name||h.name||'';
   g('qc-type').value=QC_TYPE_ALIAS[i.type]||i.type; qcToggleSections();
   g('qc-w').value=i.width; g('qc-d').value=i.depth; g('qc-h').value=i.height;
   g('qc-qty').value=i.qty; g('qc-ganjuk').value=i.ganjuk;
@@ -13239,15 +13241,17 @@ function qcRenderHistory(){
   const el=document.getElementById('qc-history'); if(!el) return;
   const h=qcHistList();
   if(!h.length){ el.innerHTML='<div style="padding:16px;font-size:11px;color:var(--text3);text-align:center">저장된 견적이 없습니다.</div>'; return; }
-  el.innerHTML=`<div class="tbl-wrap"><table class="tbl"><thead><tr><th>일시</th><th>형태</th><th>규격</th><th class="num">수량</th><th class="num">총원가</th><th class="num">판매금액</th><th class="num">개당가</th><th></th></tr></thead><tbody>
-  ${h.map((r,i)=>`<tr><td style="font-size:10px">${r.ts.slice(0,16).replace('T',' ')}</td><td>${esc(r.type)}</td><td>${esc(r.spec)}</td><td class="num">${(+r.qty).toLocaleString()}</td><td class="num">${r.totalCost.toLocaleString()}</td><td class="num">${r.totalPrice.toLocaleString()}</td><td class="num">${r.consumer.toLocaleString()}</td>
+  el.innerHTML=`<div class="tbl-wrap"><table class="tbl"><thead><tr><th>견적서 이름</th><th>일시</th><th>형태</th><th>규격</th><th class="num">수량</th><th class="num">총원가</th><th class="num">판매금액</th><th class="num">개당가</th><th></th></tr></thead><tbody>
+  ${h.map((r,i)=>`<tr><td style="font-size:11px;font-weight:600">${r.name?esc(r.name):'<span style="font-weight:400;color:var(--text3)">(이름 없음)</span>'}</td><td style="font-size:10px">${r.ts.slice(0,16).replace('T',' ')}</td><td>${esc(r.type)}</td><td>${esc(r.spec)}</td><td class="num">${(+r.qty).toLocaleString()}</td><td class="num">${r.totalCost.toLocaleString()}</td><td class="num">${r.totalPrice.toLocaleString()}</td><td class="num">${r.consumer.toLocaleString()}</td>
   <td style="white-space:nowrap"><span style="cursor:pointer;color:var(--blue);font-size:10px" onclick="qcLoadHist(${i})">불러오기</span> <span style="cursor:pointer;color:var(--red);font-size:10px" onclick="qcDelHist(${i})">삭제</span></td></tr>`).join('')}
   </tbody></table></div>`;
 }
 function qcExportCSV(){
   const h=qcHistList(); if(!h.length){ alert('저장된 견적이 없습니다.'); return; }
-  const head=['일시','형태','규격(mm)','수량','원단','마진율(%)','총원가','총판매금액','개당원가','개당소비자가'];
-  const lines=[head.join(',')].concat(h.map(r=>[r.ts,r.type,r.spec,r.qty,r.paper,r.marginPct,r.totalCost,r.totalPrice,r.perUnit,r.consumer].join(',')));
+  const head=['견적서 이름','일시','형태','규격(mm)','수량','원단','마진율(%)','총원가','총판매금액','개당원가','개당소비자가'];
+  // 견적서 이름에 콤마·따옴표가 들어가면 컬럼이 밀리므로 CSV 인용 처리한다(다른 칸은 숫자·고정값)
+  const q=s=>`"${String(s??'').replace(/"/g,'""')}"`;
+  const lines=[head.join(',')].concat(h.map(r=>[q(r.name||''),r.ts,r.type,r.spec,r.qty,r.paper,r.marginPct,r.totalCost,r.totalPrice,r.perUnit,r.consumer].join(',')));
   const blob=new Blob(['﻿'+lines.join('\n')],{type:'text/csv;charset=utf-8'});
   const a=document.createElement('a'); a.href=URL.createObjectURL(blob); a.download='견적이력_'+new Date().toISOString().slice(0,10)+'.csv'; a.click(); URL.revokeObjectURL(a.href);
 }
