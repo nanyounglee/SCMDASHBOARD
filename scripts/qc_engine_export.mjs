@@ -29,7 +29,20 @@ const FNS = ['qcPaperPrice', 'qcFindPaper', 'qcLoss', 'qcYeon', 'qcPrintUnit', '
   'qcAdhUnit', 'qcSpecUnit', 'qcCorrLoss', 'qcLamUnit', 'qcParts', 'qcRecommendStd', 'qcCalc'];
 
 const src = [...CONSTS.map(grabConst), ...FNS.map(grabFn)].join('\n');
-export const {qcCalc} = new Function(`${src}; return {qcCalc};`)();
+// 계산기 27지종에 없는 지류를 사용자 지정 배수로 파생시켜 단가표에 얹는다(scripts/derived_papers.json).
+// 원본 지종 단가가 바뀌면 파생 단가도 따라간다 — 별도 숫자를 박아두지 않는다.
+const DERIVED = JSON.parse(fs.readFileSync(path.join(ROOT, 'scripts', 'derived_papers.json'), 'utf8'));
+const inject = `
+const __d = ${JSON.stringify(DERIVED)};
+Object.keys(__d).forEach(name => {
+  const v = __d[name];
+  if (name[0] === '_' || !Array.isArray(v)) return;
+  if (!QC_PAPER_PRICES[v[0]]) throw new Error('파생 지류의 원본 지종이 없다: ' + v[0]);
+  QC_PAPER_PRICES[name] = QC_PAPER_PRICES[v[0]].map(x => x * v[1]);
+});
+`;
+export const {qcCalc, PAPERS} = new Function(
+  `${src}\n${inject}\nreturn {qcCalc, PAPERS: QC_PAPER_PRICES};`)();
 
 if (process.argv[1] && process.argv[1].endsWith('qc_engine_export.mjs')) {
   // stdin으로 시나리오 배열(JSON)을 받아 계산 결과를 stdout(JSON)으로 돌려준다

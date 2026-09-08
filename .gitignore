@@ -11,3 +11,6 @@ docs/패키지_견적계산기_cells.json
 
 # Office 임시 잠금 파일 (문서를 열어둔 채 배포하면 git add -A에 딸려 들어간다)
 ~$*
+
+# 제품별 표준원가가 들어 있는 파생 데이터 — 공개 저장소에 올리면 원가가 그대로 노출된다
+scripts/quote_products.json

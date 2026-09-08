@@ -64,13 +64,13 @@ def to_sheet(s):
     ex = s.get("extras") or []
     ex = {e["label"]: e for e in ex if e.get("on")}
     return {
-        "견적서 이름": "검증", "박스 형태": s["type"],
+        "박스 형태": s["type"],
         "내경 가로 W (mm)": s["width"], "내경 세로 D (mm)": s["depth"], "내경 높이 H (mm)": s["height"],
         "제작수량 (EA)": s["qty"], "판걸이": s.get("ganjuk", 1),
         "원단1 지종": s.get("paperType1", "sc350g"), "원단1 규격": s.get("paperSize1", "국전"),
         "원단2 지종": s.get("paperType2") or s.get("paperType1", "sc350g"),
         "원단2 규격": s.get("paperSize2") or s.get("paperSize1", "국전"),
-        "인쇄": Y(s.get("print")), "인쇄 도수": s.get("printColors", 0) or 0,
+        "인쇄 도수": (s.get("printColors", 0) or 0) if s.get("print") else 0,
         "코팅": Y(s.get("coating")), "코팅 면": s.get("coatingType") or "단면",
         "톰슨": Y(s.get("tomson")), "접착": Y(s.get("adhesive")),
         "에폭시": Y(s.get("epoxy")), "금은박": Y(s.get("foil")), "형압": Y(s.get("emboss")),
