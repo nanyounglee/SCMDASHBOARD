@@ -1,4 +1,14 @@
 ﻿에어테이블 DB 업데이트,슬랙 URL,대상 굿즈명,대상 파츠명 (Shift+Space),No.,구글 DB 업데이트 완료 버튼 (슬랙용) ,변동사항 적용 시점,Confirmation,업무요청 유형,관련 굿즈 리스트 (슬랙용),아이템,에어테이블 DB 입력완료 (슬랙용),슬랙 Ts,Name (from 신청자),관련 아이템 리스트,판매가 업데이트 완료 버튼 (슬랙용),관계자 태그,요청일자,Name (from 에어테이블 DB 입력자),변동원인,관련 굿즈 리스트,협력사,slack id tag (from 신청자),Last Modified (에어테이블 DB),변동사항 (Shift+Space로 전체 내용을 확인하세요),신청자,협력사 이름,프린팅 파츠 Rollup,구글 DB 업데이트 보류 버튼 (슬랙용),에어테이블 DB 입력자,에어테이블 DB 입력_특이사항,구글 DB 업데이트 현황,Last Modified (구글DB),구글DB 바로가기,판매가 업데이트 현황,Last Modified (견적서)
+에어테이블 DB 업데이트 완료,https://sincerelygroup.slack.com/archives/CKH9TB0HX/p1788923435181229,,,463,https://app.miniextensions.com/form/FZYJ1iMzlELxh3tDklPB/recxl9fkq6K2IeexJ?prefill_%EA%B5%AC%EA%B8%80%20DB%20%EC%97%85%EB%8D%B0%EC%9D%B4%ED%8A%B8%20%ED%98%84%ED%99%A9=%EA%B5%AC%EA%B8%80%20DB%20%EC%97%85%EB%8D%B0%EC%9D%B4%ED%8A%B8%20%EC%99%84%EB%A3%8C,2026.9.9,checked,기타,,,https://web.miniextensions.com/Rb3qHYSZVDo6pwVifGJc/recxl9fkq6K2IeexJ,1788923435.181229,김민지,,https://app.miniextensions.com/form/i4tFO83LH0iqxLbIQLBL/recxl9fkq6K2IeexJ?prefill_%ED%8C%90%EB%A7%A4%EA%B0%80%20%EC%97%85%EB%8D%B0%EC%9D%B4%ED%8A%B8%20%ED%98%84%ED%99%A9=%ED%8C%90%EB%A7%A4%EA%B0%80%20%EC%97%85%EB%8D%B0%EC%9D%B4%ED%8A%B8%20%EC%99%84%EB%A3%8C,<!subteam^S01AV8VE1AQ>,2026.9.9 12:09오후,김민지,중국에서 베스트원으로 입고 될때 텀블러와 단품박스가 결합된 채로 입고 되어 분리하여 보관이 필요하여 분리 임가공비용이 추가 됨,,,<@U01PU03BJ6P>,2026.9.9 2:31오후,"PT5319-베러댄텀블러본품\_아이보리 
+
+PT5320-베러댄텀블러본품\_블랙 
+
+PT5323-픽미핸들텀블러본품\_아이보리 
+
+PT5324-픽미핸들텀블러본품\_블랙 
+
+4가지 모두 본품단가에 400원씩 추가되었습니다.
+",김민지,,,https://app.miniextensions.com/form/FZYJ1iMzlELxh3tDklPB/recxl9fkq6K2IeexJ?prefill_%EA%B5%AC%EA%B8%80%20DB%20%EC%97%85%EB%8D%B0%EC%9D%B4%ED%8A%B8%20%ED%98%84%ED%99%A9=%EA%B5%AC%EA%B8%80%20DB%20%EC%97%85%EB%8D%B0%EC%9D%B4%ED%8A%B8%20%EB%B3%B4%EB%A5%98,김민지,,,,,,
 ,https://sincerelygroup.slack.com/archives/CKH9TB0HX/p1788418273091839,몰스킨 데일리 노트,"- PT4975-몰스킨노트(룰드/하드/L)_블랙
 - PT4976-몰스킨노트(룰드/하드/L)_사파이어블루
 - PT4977-몰스킨노트(룰드/하드/L)_스칼렛레드
