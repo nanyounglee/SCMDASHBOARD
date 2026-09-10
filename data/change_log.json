@@ -29,6 +29,111 @@
       "detail": ""
     },
     {
+      "id": "part_price|PT5339|2026_W37",
+      "type": "part_price",
+      "name": "PVC투명파우치(전용)",
+      "date": "2026-09-10",
+      "detail": "평균 53.8% 상승 · Hangzhou Prostar Enterprises Ltd"
+    },
+    {
+      "id": "part_price|PT5151|2026_W37",
+      "type": "part_price",
+      "name": "배경지(커스텀인쇄)(휴대폰스트랩블리스터전용)",
+      "date": "2026-09-10",
+      "detail": "평균 28.4% 상승 · 서울디지털인쇄협동조합"
+    },
+    {
+      "id": "part_price|PT5152|2026_W37",
+      "type": "part_price",
+      "name": "배경지(커스텀인쇄)(휴대폰스트랩실버팩전용)",
+      "date": "2026-09-10",
+      "detail": "평균 49.1% 상승 · 서울디지털인쇄협동조합"
+    },
+    {
+      "id": "part_price|PT5663|2026_W37",
+      "type": "part_price",
+      "name": "골지단품박스(스탠다드)_화이트",
+      "date": "2026-09-10",
+      "detail": "평균 26.7% 상승 · 주식회사 모아패키지"
+    },
+    {
+      "id": "part_price|PT5319|2026_W37",
+      "type": "part_price",
+      "name": "베러댄텀블러본품_아이보리",
+      "date": "2026-09-10",
+      "detail": "평균 5.5% 상승 · \"Shanghai Ansheng insulation Technology Co.,Ltd\""
+    },
+    {
+      "id": "part_price|PT5320|2026_W37",
+      "type": "part_price",
+      "name": "베러댄텀블러본품_블랙",
+      "date": "2026-09-10",
+      "detail": "평균 5.5% 상승 · \"Shanghai Ansheng insulation Technology Co.,Ltd\""
+    },
+    {
+      "id": "part_price|PT5323|2026_W37",
+      "type": "part_price",
+      "name": "픽미핸들텀블러본품_아이보리",
+      "date": "2026-09-10",
+      "detail": "평균 5.2% 상승 · \"Shanghai Ansheng insulation Technology Co.,Ltd\""
+    },
+    {
+      "id": "part_new|PT5799|2026_W37",
+      "type": "part_new",
+      "name": "PT5799-스탠다드북마크_화이트+디지털풀컬러_2개입",
+      "date": "2026-09-10",
+      "detail": "서울디지털인쇄협동조합"
+    },
+    {
+      "id": "part_new|PT5800|2026_W37",
+      "type": "part_new",
+      "name": "PT5800-자유형북마크_화이트+디지털풀컬러_2개입",
+      "date": "2026-09-10",
+      "detail": "서울디지털인쇄협동조합"
+    },
+    {
+      "id": "part_grad|PT0733|2026_W37",
+      "type": "part_grad",
+      "name": "PT0733-노트북스탠드패드_패드_다크그레이",
+      "date": "2026-09-10",
+      "detail": "아이티에스글로벌(ITSGlobal)"
+    },
+    {
+      "id": "part_new|PT5802|2026_W37",
+      "type": "part_new",
+      "name": "PT5802-투페이스쿠션담요",
+      "date": "2026-09-10",
+      "detail": "주식회사 세라노"
+    },
+    {
+      "id": "part_new|PT5803|2026_W37",
+      "type": "part_new",
+      "name": "PT5803-샘플(본제작과동일옵션)",
+      "date": "2026-09-10",
+      "detail": "주식회사 세라노"
+    },
+    {
+      "id": "part_new|PT5801|2026_W37",
+      "type": "part_new",
+      "name": "PT5801-조립산출물_에브리웨어북커버백",
+      "date": "2026-09-10",
+      "detail": ""
+    },
+    {
+      "id": "part_new|PT5804|2026_W37",
+      "type": "part_new",
+      "name": "PT5804-조립산출물_올라운더차량용청소기",
+      "date": "2026-09-10",
+      "detail": ""
+    },
+    {
+      "id": "product_new|DYCH|2026_W37",
+      "type": "product_new",
+      "name": "투페이스 쿠션담요 (DYCH)",
+      "date": "2026-09-10",
+      "detail": "출시일 미정 · 파츠 등록"
+    },
+    {
       "id": "goods_unlinked|에어더스터차량용청소기|2026_W37",
       "type": "goods_unlinked",
       "name": "에어더스터차량용청소기",
@@ -491,13 +596,6 @@
       "detail": "파츠 제작협력사 최초 등록"
     },
     {
-      "id": "product_launched|FFTT|2026-08-27",
-      "type": "product_launched",
-      "name": "스탠바이 360 허브스탠드 (FFTT)",
-      "date": "2026-08-27",
-      "detail": ""
-    },
-    {
       "id": "part_new|PT5733|2026_W35",
       "type": "part_new",
       "name": "PT5733-샘플(실크1도)_개미기획",
@@ -818,6 +916,13 @@
       "name": "비비드스트링파우치 (FJRG)",
       "date": "2026-08-27",
       "detail": "출시일 미정 · 파츠 등록"
+    },
+    {
+      "id": "product_launched|FFTT|2026-08-27",
+      "type": "product_launched",
+      "name": "스탠바이 360 허브스탠드 (FFTT)",
+      "date": "2026-08-27",
+      "detail": ""
     },
     {
       "id": "product_launched|BOOK|2026-08-25",
@@ -2626,13 +2731,6 @@
       "detail": ""
     },
     {
-      "id": "part_price|PT2228|2026_W31",
-      "type": "part_price",
-      "name": "브랜디드노트북백_블랙",
-      "date": "2026-07-30",
-      "detail": "평균 23.9% 인하 · (주)에스씨인터내셔널"
-    },
-    {
       "id": "part_price|PT5541|2026_W31",
       "type": "part_price",
       "name": "색박(음각)_베러댄텀블러_유엘상사",
@@ -2647,11 +2745,11 @@
       "detail": "평균 56250.0% 상승 · 유엘상사"
     },
     {
-      "id": "sup_added|Dongguan Songming Electronic Technology Co., Ltd|2026_W31",
-      "type": "sup_added",
-      "name": "Dongguan Songming Electronic Technology Co., Ltd",
-      "date": "2026-07-27",
-      "detail": "파츠 제작협력사 최초 등록 · 2026_W31 스냅샷 비교"
+      "id": "part_price|PT2228|2026_W31",
+      "type": "part_price",
+      "name": "브랜디드노트북백_블랙",
+      "date": "2026-07-30",
+      "detail": "평균 23.9% 인하 · (주)에스씨인터내셔널"
     },
     {
       "id": "part_new|PT5582|2026_W31",
@@ -2729,6 +2827,13 @@
       "name": "PT5586-노트북슬리브_추상적산출물",
       "date": "2026-07-27",
       "detail": "개미기획"
+    },
+    {
+      "id": "sup_added|Dongguan Songming Electronic Technology Co., Ltd|2026_W31",
+      "type": "sup_added",
+      "name": "Dongguan Songming Electronic Technology Co., Ltd",
+      "date": "2026-07-27",
+      "detail": "파츠 제작협력사 최초 등록 · 2026_W31 스냅샷 비교"
     },
     {
       "id": "part_price|PT1330|2026_W30",
@@ -4894,5 +4999,5 @@
       "detail": ""
     }
   ],
-  "updatedAt": "2026-09-07T03:15:38.112Z"
+  "updatedAt": "2026-09-10T05:42:37.403Z"
 }
