@@ -2531,7 +2531,7 @@ function updateKPIs() {
     const revRatio=periodRevenue>0?(totProj/periodRevenue*100):null;
     const revRatioColor=revRatio===null?'var(--text3)':revRatio>70?'var(--red)':revRatio>50?'var(--amber)':'var(--green)';
     setValue('k-revenue',fa(periodRevenue));
-    document.getElementById('k-revenue-sub').innerHTML=`${useRevOv?'실측(CX 매출결산 · VAT 제외)':'근사(R) 판매가)'} · 매입 비중 <b style="color:${revRatioColor}">${revRatio!==null?revRatio.toFixed(1)+'%':'—'}</b>${q?' <span style="color:var(--text3)">(필터)</span>':''}${useRevOv&&revCutoffLabel(SEL_MONTH)?`<br><span style="font-size:10px;color:var(--text3)">${SEL_MONTH}분 마감 — <b>${revCutoffLabel(SEL_MONTH)}</b>까지 최종 출고된 건 기준(달력월 아님 · 연간분석 표와 동일)</span>`:''}`;
+    document.getElementById('k-revenue-sub').innerHTML=`${useRevOv?'실측(CX 매출결산 · VAT 제외)':'근사(R) 판매가)'} · 매입 비중 <b style="color:${revRatioColor}">${revRatio!==null?revRatio.toFixed(1)+'%':'—'}</b>${q?' <span style="color:var(--text3)">(필터)</span>':''}${useRevOv&&revCutoffLabel(SEL_MONTH)?`<br><span style="font-size:10px;color:var(--text3)">${SEL_MONTH}분 마감 — <b>${revCutoffLabel(SEL_MONTH)}</b>까지 최종 출고된 건 기준(출고리스트 마감 · 연간분석 표와 동일)</span>`:''}`;
   }
   if (D.issue) {
     let fi=D.issue.filter(r=>inSelDateRange(issueDateStr(r)));
@@ -11287,11 +11287,14 @@ const REV_VAT_DIV=1.1; // 총 매출액(VAT 포함) → 공급가액
 // ※ 5·6·7월은 1~4월 고정 상태에서 전수 탐색한 최적값이다. 6월분을 07-07로 하루 당기면
 //   6월 +1.6%→-4.5% · 7월 -1.7%→+5.8%로 둘 다 나빠진다(07-08에 6월 몫이 몰려 있음).
 //
-// ※ 달력월(월말) 기준으로 바꾸지 말 것 — 1~7월 누계가 +9.9%로 벌어지고 월별로 ±38%까지 튄다.
+// ※ 1~7월분을 달력월(월말) 기준으로 바꾸지 말 것 — 1~7월 누계가 +9.9%로 벌어지고 월별로 ±38%까지 튄다.
 //   예: 6/24~6/30 출고분은 표에서 6월이 아니라 7월분 리스트에 들어가 있다.
-// ※ 배열에 없는 달은 달력월로 폴백하되 마지막 확정월 이전으로는 귀속시키지 않는다.
-//   새 달이 확정되면 날짜를 추가한다(마감일이 매달 달라 고정 규칙이 없다).
+// v1.0(사용자 확정 2026-09-14): **8월분부터는 출고리스트를 그 달 말일에 마감한다.**
+//   8월분 = 7월분 마감(08-04) 다음날 ~ 08-31, 9월분 = 09-01 ~ 09-30 … 날짜를 더 추가하지 않는다.
+//   revMonthOfShipDate의 달력월 폴백이 곧 월 말일 마감이라 집계는 그대로고, 마감일 표기만 REV_MONTHEND_FROM으로 켠다.
+//   마지막 명시 마감일 이후 출고분은 이미 마감된 달로 되돌리지 않는다(아래 폴백 가드).
 const REV_CUTOFF={2026:['2026-02-23','2026-03-17','2026-04-22','2026-05-21','2026-06-17','2026-07-08','2026-08-04']};
+const REV_MONTHEND_FROM=202608;   // 이 달분(YYYYMM)부터 월 말일 마감
 // 최종 출고일 → 매출 귀속월('YYYY.M')
 function revMonthOfShipDate(s){
   const d=parseAnyDate(s); if(!d) return null;
@@ -11306,10 +11309,13 @@ function revMonthOfShipDate(s){
   }
   return y+'.'+(d.getMonth()+1);
 }
-// 그 달분의 마감 출고일(화면 표기용) — 확정 전이면 null
+// 그 달분의 마감 출고일(화면 표기용 'YYYY-MM-DD') — 7월분까지는 REV_CUTOFF, 8월분부터는 월 말일, 규칙 이전 연도는 null
 function revCutoffLabel(mk){
-  const p=String(mk||'').split('.'); const cuts=REV_CUTOFF[+p[0]];
-  return (cuts&&cuts[+p[1]-1])||null;
+  const p=String(mk||'').split('.'), y=+p[0], m=+p[1];
+  const cuts=REV_CUTOFF[y]; if(cuts&&cuts[m-1]) return cuts[m-1];
+  if(!(m>=1&&m<=12&&y*100+m>=REV_MONTHEND_FROM)) return null;
+  // 로컬 날짜로 조립한다 — toISOString()은 KST에서 하루 전 날짜가 된다
+  return y+'-'+String(m).padStart(2,'0')+'-'+String(new Date(y,m,0).getDate()).padStart(2,'0');
 }
 function getProjRevMap() {
   if (PROJ_REV_SRC!==D.proj_rev) {
@@ -13049,11 +13055,10 @@ function computeFromRaw(orderData, issueData, supData, quarterEval) {
 // 지류 단가표 — 외주버전 2026-09-11판 기준(40지종 × 15규격). 컬럼 순서는 QC_SIZE_COLS와 같다.
 // v1.0 갱신: 13지종 추가(용지없음·RIV450g·뉴에코블랙400g·E보드3종·문보드450g·모조쇼핑백지140g·PET5종)
 //   + 모조쇼핑백지160g 단가 +3.3% 개정.
-// ※ 뉴에코블랙400g만 원본 표를 따르지 않는다. 원본은 13,500원/장인데 이는 350g(1,125원)의 정확히
-//   12배라 자릿수 오타로 보이고, 사용자가 2026-09-08에 정한 파생 규칙(350g × 1.2 = 1,350원)과도
-//   10배 어긋난다. 엑셀 견적서 생성기는 scripts/derived_papers.json으로 1,350원을 쓰고 있어서
-//   원본값을 그대로 넣으면 «같은 조건인데 대시보드와 엑셀이 10배 다른 견적»이 나간다.
-//   → 낮은 쪽(파생 규칙 1,350원)으로 통일했다. 외주사 확인 후 13,500이 맞으면 이 줄만 되돌리면 된다.
+// ※ 뉴에코블랙400g만 원본 표를 따르지 않는다 — 1,350원/장(사용자 확정 2026-09-14).
+//   외주 원본은 13,500원/장인데 350g(1,125원)의 정확히 12배인 자릿수 오타다. 2026-09-08 파생 규칙
+//   (350g × 1.2)과 같은 값이다. 외주 단가표를 새로 받아 옮길 때 13,500으로 되돌아가지 않게 주의
+//   (test_quote_v10.mjs가 막는다).
 // ※ PET 5종은 규격표가 아니라 치수×두께 기반으로 계산한다(QC_PET_* 참조) — 전 규격 0으로 둔다.
 const QC_PAPER_PRICES={
 "용지없음": [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],
@@ -13161,7 +13166,7 @@ function qcAdhUnit(t){ if(t<=2000)return 50; if(t<=5000)return 40; if(t<10000)re
 function qcSpecUnit(s){ if(s==="전지")return 120; if(["소국전","하드롱2절","국전"].includes(s))return 100; return 80; }
 // 골판지 여분
 function qcCorrLoss(q){ if(q<3000)return 100; if(q<5000)return 200; if(q<10000)return 300; return 500; }
-// UV 인쇄(외주 2026-09-11판 신설) — 별색은 1도를 2도로 환산한다(원본 표 그대로).
+// UV 인쇄(외주 2026-09-11판 신설) — 별색은 1도를 2도로 환산한다(원본 표 그대로 · 의도한 값으로 사용자 확인 2026-09-14).
 const QC_UV_DEGREE={'4도':4,'4도+별색1도':6,'4도+별색2도':8};
 const QC_UV_BASE=200000, QC_UV_PER=40;   // 최소 20만원 · 도당 40원/통
 // 합지 단가/통
@@ -13684,9 +13689,9 @@ function renderRevenueModal(){
     </div>
     <div style="font-size:11px;color:var(--text3);margin-bottom:14px">
       · <b>매출 현황</b>은 업로드 실측치(proj_rev 프로젝트 총매출액)이고, <b>목표·수주액·전년·매출액(표)</b>은 구매조달팀 연간분석 표(01-A/01-B) 수치입니다. <b>v23.14(2026-08-04)에서 두 값의 기준을 맞췄습니다</b> — ① 금액을 <b>VAT 별도 공급가액</b>으로 통일(proj_rev '총 매출액'은 VAT 포함이라 ÷1.1) ② 귀속월을 달력 월이 아니라 <b>출고리스트 마감 컷오프</b>(아래 '마감 출고일' 행)로 변경 ③ 2025년 매출로 이미 마감된 건(2025년 12월 수주·2026년 1월 출고)은 제외. 그 결과 1~7월 누계 오차가 <b>+0.67%</b>, 월별 오차가 <b>±3.2% 이내</b>로 좁혀졌습니다(이전 +10.7% · 월별 ±38%).
-      · <b>마감 출고일</b>은 달력 월말이 아닙니다 — 출고리스트가 그 달 출고분을 <b>다음 달 중순~하순까지 받아서 마감</b>하기 때문에 컷오프가 다음 달로 넘어갑니다(예: 1월분은 2/23 출고분까지). 이 기준으로 1~7월 <b>전 구간 오차 ±3.2% 이내 · 누계 +0.67%</b>입니다. 정확히 0.0%는 날짜 단위로 불가능합니다 — 하루치 출고 중앙값이 3,455만원이라 경계를 한 칸 옮길 때마다 월 금액이 3~5%씩 점프하며, 전 구간 최적화해도 월별 최악의 하한은 2.17%입니다.
+      · <b>1~7월분 마감 출고일</b>은 달력 월말이 아닙니다 — 출고리스트가 그 달 출고분을 <b>다음 달 중순~하순까지 받아서 마감</b>했기 때문에 컷오프가 다음 달로 넘어갑니다(예: 1월분은 2/23 출고분까지). <b>8월분부터는 그 달 말일에 마감</b>합니다(2026-09-14 확정 — 8월분은 7월분 마감 다음날인 8/5부터 8/31까지). 이 기준으로 1~7월 <b>전 구간 오차 ±3.2% 이내 · 누계 +0.67%</b>입니다. 정확히 0.0%는 날짜 단위로 불가능합니다 — 하루치 출고 중앙값이 3,455만원이라 경계를 한 칸 옮길 때마다 월 금액이 3~5%씩 점프하며, 전 구간 최적화해도 월별 최악의 하한은 2.17%입니다.
       · <b>2025년 매출로 마감된 건은 제외</b>합니다 — 2025년 12월 수주·2026년 1월 출고 프로젝트 112건(5.47억)은 이미 2025년 매출로 잡혀 있어 2026에 다시 세면 이중계상이 됩니다. 2026 발주 RAW에 해당 프로젝트가 없다는 점이 그대로 판별자가 됩니다.
-      · 매달 마감일이 달라 고정 규칙이 없으므로, 새 달이 확정되면 <code>REV_CUTOFF</code>에 날짜를 추가해야 합니다. 아직 추가되지 않은 달은 <b>달력 월</b>로 집계되어 표와 어긋납니다.
+      · 1~7월분만 매달 다른 마감일(<code>REV_CUTOFF</code>)을 쓰고, <b>8월분부터는 월 말일 고정</b>이라 날짜를 따로 추가하지 않습니다(<code>REV_MONTHEND_FROM</code>).
       · <b>매입 지표가 두 종류인 이유 — 목적이 다릅니다.</b><br>
       &nbsp;&nbsp;① <b>매입 / 매출 비중 (재고제외·재고포함)</b> = <b>세금계산서작성월</b> 기준. <b>한 달에 얼마씩 지출하고 있는지</b>를 보는 지표입니다. 재고제외는 프로젝트 매출에 대응하는 매입만, 재고포함은 재고생산분까지 더한 총 매입이라 항상 재고제외보다 큽니다.<br>
       &nbsp;&nbsp;② <b>원가율 (프로젝트 귀속)</b> = 각 발주 프로젝트의 매입원가를 <b>그 프로젝트의 매출이 찍힌 달</b>에 얹은 것. <b>매출 대비 원가가 몇 %인지 검토</b>하는 지표입니다. 예컨대 매입 마감은 3월에 됐어도 그 프로젝트 매출이 4월에 찍히면 <b>그 매입금은 4월 원가</b>로 봅니다 — 그래야 같은 프로젝트의 매출과 원가가 같은 달에서 대조됩니다.<br>
@@ -13744,7 +13749,7 @@ function ratioRow(label,num,den,idxs,colFn){
 function planRow(label,arr,idxs){
   return `<tr><td style="white-space:nowrap">${esc(label)}</td>${arr.map((v,i)=>`<td class="num" style="white-space:nowrap${idxs.includes(i)?';background:var(--blue-light)':''}">${v>0?fa(v):'-'}</td>`).join('')}<td class="num" style="white-space:nowrap"><b>${fa(arr.reduce((a,b)=>a+b,0))}</b></td></tr>`;
 }
-// v23.14: 그 달분이 "며칠자 출고까지" 반영된 것인지 표기 — 미확정 월은 달력월 집계임을 명시
+// v23.14: 그 달분이 "며칠자 출고까지" 반영된 것인지 표기 — v1.0: 8월분부터는 월 말일(~MM-DD), 마감 규칙 이전 연도만 «달력월»
 function cutoffRow(year,idxs){
   const cells=Array.from({length:12},(_,i)=>{
     const c=revCutoffLabel(year+'.'+(i+1));

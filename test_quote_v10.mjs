@@ -43,6 +43,8 @@ for (const k of ['용지없음', 'RIV450g', '뉴에코블랙400g', 'E보드270g 
   'E보드350g G04', '문보드450g', '모조쇼핑백지140g', 'PET 0.2t', 'PET 0.4t'])
   assert(QC_PAPER_PRICES[k], `신규 지종 누락: ${k}`);
 assert.strictEqual(QC_PAPER_PRICES['모조쇼핑백지160g'][0], 230.14, '모조쇼핑백지160g 전지 단가 미개정');
+// 사용자 확정(2026-09-14): 외주 원본의 13,500원은 자릿수 오타 — 단가표를 다시 옮길 때 되돌아가지 않게 막는다
+assert.strictEqual(QC_PAPER_PRICES['뉴에코블랙400g'][0], 1350, '뉴에코블랙400g은 1,350원/장이어야 함(외주 원본 13,500은 오타)');
 
 // v1.0 이전 이력의 소문자 키가 새 키로 되돌아와야 한다 (조용한 지종 바꿔치기 방지)
 assert.strictEqual(qcPaperKey('riv350g'), 'RIV350g');
