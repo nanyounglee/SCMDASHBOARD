@@ -107,15 +107,34 @@
 1. `CSV/_manifest.json`을 fetch — 있으면 key→파일명 매핑을 덮어씀 (HTML 수정 없이 파일명 변경 가능)
 2. 없으면 기본 고정 파일명 사용:
 
-| Key | 고정 파일명 | 원본 (한글) | 갱신 주기 | 담당 |
-|---|---|---|---|---|
-| `order` | `CSV/order.csv` | SCM_발주_RAW(2026).csv | 주 1회 | 외주생산 |
-| `issue` | `CSV/issue.csv` | SCM_이슈_RAW(2026).csv | 주 1회 | 외주생산 |
-| `sup` | `CSV/sup.csv` | SCM_공급망_RAW(2026).csv | 주 1회 | 외주생산 |
-| `ci` | `CSV/ci.csv` | SCM_고객인지이슈_RAW(2026).csv | 주 1회 | 외주생산 |
-| `stockout_list` | `CSV/stockout_list.csv` | 품절리스트_*.csv | 필요시 | 공통 |
-| `inv_weekly` | `CSV/inv_weekly.csv` | S&OP 대시보드_inventory_weekly.csv | 필요시 | 구매전략 |
-| `sales_monthly` | `CSV/sales_monthly.csv` | S&OP 대시보드_sales_monthly.csv | 필요시 | 구매전략 |
+**자동 로드 대상 20종** (`AUTO_CSV_DEFAULT`, index.html §AUTO-LOAD RAW · 2026-09-10 실측)
+
+| Key | 고정 파일명 | 담당 | 이 소스가 만드는 지표 |
+|---|---|---|---|
+| `order` | `CSV/order.csv` (77MB) | 외주생산 | **사실상 전 화면**(참조 168곳). 발주 TASK수·매입금액·미입하·긴급발주·리드타임·하도급 위험·실패비용·예방비용·제품별 발주추이·협력사 스코어. `D.task`는 이것의 별칭(§1083) |
+| `issue` | `CSV/issue.csv` | 외주생산 | 이슈 건수·이슈율(품질/수량/운영), 제품×협력사 이슈율 매트릭스, 검수 유출 판정, 재발 이슈 |
+| `sup` | `CSV/sup.csv` | 외주생산 | 협력사 마스터 — 제조유형/업태/인쇄별 매입비중, 거래중 여부, 하도급 대상여부, 포트폴리오 Tier |
+| `ci` | `CSV/ci.csv` | 외주생산 | 고객인지이슈 건수·연도추이·작성자별, 검수 유출률, 실패비용(수기분 조인) |
+| `parts` | `CSV/parts.csv` (19MB) | 외주생산 | 수량구간별 표준원가 10구간 → 발주상세 "DB원가비교" 탭(§4-10), 파츠 신규/졸업/단가변경 감지 |
+| `goods_master` | `CSV/goods_master.csv` | 외주생산 | 굿즈 출시·졸업 → 월간 공지사항(`backfillProductChangeLog`) |
+| `quarter_eval` | `CSV/quarter_eval.csv` | 외주생산 | 분기 공급망관리등급 → 포트폴리오 4분면(`getEvaluatedPortfolioVendors`) |
+| `proj_rev` | `CSV/proj_rev.csv` (19MB) | 외주생산 | 프로젝트 실청구 총매출액 → 매출·마진(§4-x `getProjRevMap`). R) 판매가 근사를 대체 |
+| `price_chg` | `CSV/price_chg.csv` | 외주생산 | 단가 변경 → 월간 공지사항 💲 박스, 주간 리포트 |
+| `check_answer` | `CSV/check_answer.csv` (3MB) | 외주생산 | AI 어시스턴트 제품문의 답변 검색(`matchProductQuery`) |
+| `check_question` | `CSV/check_question.csv` (2.6MB) | 외주생산 | 위와 동일 — 질문1~3 원본 폴백(`flattenCheckQuestion`) |
+| `dashboard_period_summary` | `CSV/dashboard_period_summary.csv` | 구매전략 | 기간단위 재고 KPI(재고금액·회전율 1m/3m/ytd·품절률) — `getAggPeriodRows()` |
+| `dashboard_group_summary` | `CSV/dashboard_group_summary.csv` | 구매전략 | 카테고리/생산구분/소싱구분 도넛 3종 — `getAggGroupRows()` |
+| `dashboard_sku_snapshot` | `CSV/dashboard_sku_snapshot.csv` (3.6MB) | 구매전략 | SKU 재고 상세·재고자산 모달·졸업검토 — `getAggSkuRows()` |
+| `dashboard_sku_detail` | `CSV/dashboard_sku_detail.csv` | 구매전략 | SKU 상세 모달 행 — `getSkuDetailMap_()` |
+| `dashboard_sku_monthly` | `CSV/dashboard_sku_monthly.csv` | 구매전략 | SKU 월별 판매량·품절일수 — `getSkuMonthlyMap()` / `getSkuSalesQty()` |
+| `sales_status_history` | `CSV/sales_status_history.csv` | 구매전략 | 품절 이력 전체(판매상태 변경 체인) |
+| `stockout_list` | `CSV/stockout_list.csv` | 공통 | 품절 집계(§4-7). `D.stock` 별칭 |
+| `raw_purchase` | `CSV/raw_발주.csv` | 구매전략 | 미입고 발주 잔량(입고예정) 요약 — `getPendingIncomingOrdersSummary()`, `psrPendingOrderMap_()` |
+| `parts_master` | `CSV/parts_master.csv` | 구매전략 | 파츠→수주처·굿즈카테고리·굿즈연결 조회 — `getPartsMasterMapCsv()` |
+
+> **`CSV/_manifest.json`은 현재 12개 key만 명시**한다. 나머지 8종(parts·goods_master·quarter_eval·proj_rev·price_chg·check_answer·check_question·sales_status_history)은 `AUTO_CSV_DEFAULT` 기본값으로 로드되므로, manifest로 파일명을 바꾸려면 그 key를 manifest에 추가해야 한다.
+
+> ~~`inv_weekly` / `sales_monthly`~~ — **폐지**(2026-09-10 확인). 사전집계 3종(period/group/sku)이 자리를 대신했고 `D.inv_weekly`·`D.sales_monthly` 코드 참조는 0회다. 파일도 `CSV/`에 없다.
 
 - 자동 로드 성공 시 업로드 슬롯에 **"N행 (자동)"** 표시
 - 수동 업로드는 여전히 가능하며 자동 로드분을 덮어씀 (보정용)
@@ -208,6 +227,17 @@
 
 > `parts` CSV는 발주 상세 분석의 "DB원가비교" 탭(§4-9) 전용 소스다. 없어도 다른 화면은 정상 동작하며, 이 탭만 데이터 없음으로 표시된다.
 
+### 3-1-2. 외주생산파트 추가 소스 (v21~v23 신설 · 위 4종 외)
+
+| Key / 파일 | 출처 | 핵심 컬럼 | 쓰이는 곳 |
+|---|---|---|---|
+| `goods_master` / `goods_master.csv` | Airtable Sincerely DB → 1. goods 뷰 | `Goods Name`, `Goods Code`, `출시일`, `졸업일`, 굿즈 Status(원천 «굿즈 Status_1.goods») | 월간 공지사항 🎓 졸업 / 🚀 출시 박스. **주의: Airtable export는 졸업 제품이 필터링돼 오는 경우가 있어 반영 전 확인 필요** |
+| `quarter_eval` / `quarter_eval.csv` | GSheets 공급망 KPI → 공급망_분기별평가(2026) | `협력사`, `NQ_공급망관리등급`, `NQ_TASK 점수` | 공급망 포트폴리오. `D.order`+`D.issue`가 있으면 `computeFromRaw()`가 우선, 없으면 `parseQuarterEval()` 폴백 |
+| `proj_rev` / `proj_rev.csv` | Airtable sherpa → project-CX_매출결산 | `프로젝트명 (Short ver.)`, `총 매출액`, `출고 날짜(월)` | 원가분석 매출 실측(§v21.13). 총매출액을 출고월에 귀속, 복수 출고월은 균등분할 |
+| `price_chg` / `price_chg.csv` | 주간 파츠 단가 diff 산출물 | 파츠·구간·변경 전후 단가 | 월간 공지사항 💲, 주간 외주생산 리포트(`genWeeklyOutsource`) |
+| `check_answer` / `check_answer.csv` | Airtable Check_standard → Check_standard_Answer 뷰 | `제품명 (from Product List)`, `질문 - 문의유형`, `질문 내용`, `답변`, `Goods_ID` | AI 어시스턴트 제품문의 — 리드타임/제작기간·단가 답변 검색(최신 3건) |
+| `check_question` / `check_question.csv` | Airtable Check_standard → Check_standard_Question 뷰 | `제품명 (from Product List)`, `질문 1~3`, `질문 1~3- 문의유형`, `답변 1~3 text` | 위의 폴백 — 답변 레코드가 없을 때 과거 문의 원문으로 응답 |
+
 ### 3-2. 구매전략파트 CSV
 
 **[v10 신규] 사전집계 3종 — 재고운영/품절/졸업검토의 기본 소스**
@@ -222,32 +252,71 @@ GSheets S&OP Apps Script가 `inventory_weekly`/`sales_monthly` 원본을 기간(
 
 **3종 모두 있어야 Agg 경로 활성화** — `hasAggInventoryData()`가 세 CSV를 모두 확인. 하나라도 없으면 아래 레거시 경로로 폴백.
 
-| Key | 파일명 | 출처 | 필수 컬럼 |
+**[2026-09] Agg 3종을 보조하는 자동 로드 3종**
+
+| Key | 파일명 | 출처 | 필수 컬럼 | 쓰이는 곳 |
+|---|---|---|---|---|
+| `dashboard_sku_detail` | dashboard_sku_detail.csv | GSheets S&OP → dashboard_sku_detail | parts_no + SKU 상세 필드 | `getSkuDetailMap_()` → 재고 SKU 상세 모달 행 |
+| `dashboard_sku_monthly` | dashboard_sku_monthly.csv | GSheets S&OP → dashboard_sku_monthly | parts_no, `년월`, 판매량, 품절일수 | `getSkuMonthlyMap()` → `getSkuSalesQty()` 월판매량·품절일수 |
+| `raw_purchase` | raw_발주.csv | GSheets 구매 대시보드 → 발주 RAW | 파츠번호, 발주수량, 입고수량 | `getPendingIncomingOrdersSummary()`·`psrPendingOrderMap_()` 미입고 발주 잔량. order.csv와 **그레인이 다르다**(태스크 vs 파츠라인) — 병합 금지 |
+| `parts_master` | parts_master.csv | GSheets 파츠 마스터 | 파츠번호, 수주처, 굿즈카테고리, 굿즈연결 | `getPartsMasterMapCsv()`. `data/parts_master.json`(임베딩)과 별개 소스 |
+| `sales_status_history` | sales_status_history.csv | GSheets S&OP → sales_status_history | 파츠명, 판매상태, 변경일(인터페이스용), end time | 품절 이력 전체(판매상태 변경 체인) |
+
+**수동 업로드 전용** (자동 로드 없음 — `CSV/`에 파일이 없으며 업로드해야 해당 화면이 채워진다)
+
+| Key | 출처 | 필수 컬럼 | 쓰이는 곳 |
 |---|---|---|---|
-| `inv_weekly` | inv_weekly.csv | GSheets S&OP → inventory_weekly | 파츠번호, 기준일, 재고수량, 재고금액, 단가, 판매상태, 굿즈카테고리 (※ `관리대상여부` 없으면 폴백: 전 행 관리대상 간주). Agg 3종 부재 시 레거시 프론트 계산의 원본 |
-| `sales_monthly` | sales_monthly.csv | GSheets S&OP → sales_monthly | 파츠번호, 기준월, 판매량 |
-| `purchase_review` | (수동 업로드) | GSheets S&OP → purchase_review | REVIEW_ID, 파츠번호, 결정상태, 파츠명, 매입계획수량, 매입확정수량 |
-| `season_plan` | (수동 업로드) | GSheets S&OP → 시즌매입_파츠연결 | 굿즈명, 옵션, 계획구분, 표준원가, 매입희망수량 |
+| `purchase_review` | GSheets S&OP → purchase_review | REVIEW_ID, 파츠번호, 결정상태, 파츠명, 매입계획수량, 매입확정수량 | `renderPurchaseReview()` + 재고 아코디언 결정 로그(`buildInvAccordion`) |
+| `season_plan` | GSheets S&OP → 시즌매입_파츠연결 | 굿즈명, 옵션, 계획구분, 표준원가, 매입희망수량 | `renderSeasonPlan()` |
 
 > `purchase_review`·`season_plan`은 1차 통합 범위에서 제외([[purchase_dashboard_migration_strategy.md]] 참고) — 화면·업로드 슬롯은 남아있으나 운영 원본은 GSheets이며 저장 기능은 없음.
 
 ### 3-3. 공통/선택 CSV
 
-| Key | 파일명 | 출처 | 필수 컬럼 |
-|---|---|---|---|
-| `stockout_list` | stockout_list.csv | Airtable → sales_status_history | 파츠명, 판매상태, 품절 성격, 변경일(인터페이스용), 재고소유구분, 굿즈품절여부 |
-| `sales` | (수동 업로드) | GSheets SUPER BASE | 제품명, 주문수량, 판매단가, 소계, 연월 |
-| `qms_raw` | (수동 업로드) | Airtable → 품질이슈 뷰 | 발생일, 이슈유형, 파츠번호 |
-| `cost_reduction` | (수동 업로드) | Airtable → Movement 데이터 | project, 출고자재, 수량, 실제단가 |
+| Key | 파일명 | 출처 | 필수 컬럼 | 쓰이는 곳 |
+|---|---|---|---|---|
+| `stockout_list` | stockout_list.csv (자동) | Airtable → sales_status_history | 파츠명, 판매상태, 품절 성격, 변경일(인터페이스용), 재고소유구분, 굿즈품절여부 | 품절 집계(§4-7). `D.stock` 별칭 |
+| `sales` | (수동 업로드) | GSheets SUPER BASE | 제품명, 주문수량, 판매단가, 소계, 연월 | 원가분석 3번째 탭 매출(`updateSalesSection`·`buildSalesMonthChips`) |
+| `qms_raw` | (수동 업로드) | Airtable → 품질이슈 뷰 | 발생일, 이슈유형, 파츠번호 | `renderQMS()` — 없으면 `D.issue`로 폴백 |
+| `cost_reduction` | (수동 업로드) | Airtable → Movement 재고투입 | project, 출고자재, 수량, 실제단가 | `renderCostProjectDetail()` 재고투입 원가 |
+
+> **수동 슬롯 5종(sales·purchase_review·season_plan·qms_raw·cost_reduction)은 계속 유지**한다(사용자 확정 2026-07-21). 자동 로드 대상이 아니므로 미업로드 상태에서는 해당 화면이 "CSV를 업로드해주세요"로 표시되는 것이 정상이다.
+
+### 3-3-1. 주차 파일 (`CSV/` 직하 · 매주 새 파일 커밋)
+
+| 파일 | 쓰이는 곳 |
+|---|---|
+| `progress_YYYY_WNN.csv` (예: `progress_2026_W37.csv`) | 발주 진행현황 탭(`renderProgressSection`). `fetchWeeklyFile()`이 최신 주차를 찾아 로드하고 전주 파일과 자동 비교. 비고는 `data/progress_notes.json`으로 커밋 |
+| `meeting_agenda.json` | 외주생산파트 회의록 템플릿(`genMeetingTemplate`, §4-33b) |
+| ~~`project_YYYY_WNN.csv`~~ | **미사용 — 정리 대상.** `proj_rev.csv`와 md5가 완전히 같은 19.7MB 중복이며 index.html에 로드 코드가 없다(2026-09-10 실측). 주간 워크플로의 PROJECT_TABLE/VIEW 단계를 빼면 매주 19MB 죽은 커밋이 사라진다 |
+
+### 3-3-2. 스냅샷·아카이브 (`CSV_BANK/`)
+
+| 경로 | 쓰이는 곳 |
+|---|---|
+| `archive/{연도}/order_{연도}.csv`, `issue_{연도}.csv` | **YoY 정확 일자 비교 + 연도별 추이의 유일 원본.** `loadPriorYearArchive()`가 작년부터 파일이 없는 해까지 거슬러 로드 → `D.orderPrevYear`(전년) / `D.orderHist`(전 연도 누적). 현재 2024·2025 보유 |
+| `{연도}_W{주차}/parts.csv` | 파츠 신규·졸업·단가변경 감지(`detectPartsChanges`) — 주차 스냅샷 체인 비교 |
+| `sup_YYYY_MM.csv` | 협력사 신규·종료 감지(`detectSupplierChanges`) — v23.12부터 주차→월간 스냅샷 기준 |
+| `{연도}_W{주차}/` 전체 | 주간 리포트 파일 폴백(`fetchWeeklyFile`) — `CSV/`에 해당 주차 파일이 없을 때 |
+
+> `CSV_BANK.zip`(153MB)은 로컬 백업본으로 git 미추적이다.
 
 ### 3-4. 영구 임베딩 JSON (`data/` 폴더 · 업로드 불필요)
 
-| 파일 | 크기 | 내용 | 갱신 |
+| 파일 | 크기 | 내용 · 쓰이는 곳 | 갱신 |
 |---|---|---|---|
-| `data/parts_master.json` | 834KB | 파츠 마스터 2,749개 (코드/파츠명/카테고리/협력사/수량별 원가/MOQ/리드타임 등 18필드) | "파츠 마스터 갱신" 버튼 |
-| `data/data_2025.json` | 45KB | 2025년 월별 사전집계 (YoY 폴백 — v21부터 원본은 `CSV_BANK/archive/{연도}/`에서 로드, 이 파일은 원본 미로드 시에만 사용) | 연 1회 재생성 |
-| `data/data_hist.json` | 58KB | 2022.6~2023.12 월별 매입 집계 (purchase/purCnt/bySup) — 이 두 해는 행 단위 export가 없어 지출결의 CSV 집계가 **유일한 소스**다(폴백이 아님). 매입 추이선·협력사 상세 이력 구간과 YoY 근사에 사용 | `scripts/build_history.mjs` (원본 재수급 시에만) |
-| `data/cost_db.json` | 1.3MB | 공정DB 1,623개 + 단가DB 3,549개 (수량별 표준단가 10구간) | 공정/단가 변경 시 |
+| `data/cost_db.json` | 1.7MB | 공정DB 1,623개 + 단가DB 3,549개(수량별 표준단가 10구간) → 원가 산출(§4-4) | 공정/단가 변경 시 |
+| `data/parts_master.json` | 1.4MB | 파츠 마스터 2,749개(18필드) → `PARTS_MASTER`/`PARTS_MAP` 코드→카테고리 조회. localStorage 캐시 | "파츠 마스터 갱신" 버튼 |
+| `data/parts_price_history.json` | 296KB | 단가 시점 이력(파츠별 `[{from, tiers[10]}]` 에폭) → `histTiersAt()`·`priceTierChange()`(§4-31c), 날짜 지정 표준단가 | `scripts/update_price_history.mjs` (주간 워크플로) |
+| `data/parts_bom_multiplier.json` | 633B | 파츠번호별 BOM 배수 → 여분 추천 오표시 보정(`BOM_MULT`) | 수동 등록 |
+| `data/data_hist.json` | 59KB | 2022.6~2023.12 월별 매입 집계(purchase/purCnt/bySup) — 이 두 해는 행 단위 export가 없어 지출결의 집계가 **유일한 소스**다(폴백 아님). 매입 추이선·협력사 상세 이력 구간 | `scripts/build_history.mjs` (원본 재수급 시에만) |
+| `data/data_2025.json` | 59KB | 2025년 월별 사전집계(YoY 폴백) — v21부터 원본은 `CSV_BANK/archive/2025/`가 항상 우선이라 **사실상 미사용** | 연 1회 재생성 |
+| `data/change_log.json` | 163KB | 주간 스냅샷 diff 누적 이력 → 월간 공지사항·`genChangeReport()`(§4-24, §4-26) | 주간 자동 감지 + GitHub 커밋 |
+| `data/ci_overrides.json` | 2KB | 고객인지이슈 대응내용·추가 실패비용 **수기 입력분**(`idx_issue` 조인, §4-18). 실패비용 카드 = 발주 RAW 재제작 취득원가(자동) + 이 값 | 화면에서 입력 → GitHub 커밋 |
+| `data/progress_notes.json` | 733B | 발주 진행현황 비고 (§4-17) | 화면에서 입력 → GitHub 커밋 |
+| `data/cal_notes.json` | 697B | 캘린더 메모 | 화면에서 입력 → GitHub 커밋 |
+
+> **파츠 마스터 3중복 주의**: `CSV/parts.csv`(Airtable 코스트베이스, 표준원가) / `CSV/parts_master.csv`(GSheets, 수주처·카테고리) / `data/parts_master.json`(임베딩, PARTS_MAP). 셋 다 현역이며 목적이 다르다 — 통합은 커버리지 대조 후에만.
 
 ---
 
@@ -1154,6 +1223,8 @@ const FILE_SIGNATURES = {
 ### 버전 이력
 | 버전 | 커밋 | 내용 |
 |---|---|---|
+| **v1.0 · 2026-09-14** | (배포 커밋) | **정식 배포 — 표기 v0.9 → v1.0**(`<title>`·`.sb-logo-sub`, 2027년까지 이 체제). ① **견적 계산기 외주 2026-09-11판**: `QC_PAPER_PRICES` 27 → 40지종(원본 키 대소문자 준수 · 구 이력의 소문자 키는 `qcPaperKey()`가 복원), PET 동적단가(`QC_PET_THICKNESS`·`QC_PET_KG`, `qcFindPaper(type,size,pw,ph)` — PET는 `size:'-'`, 연수 판정은 추천 표준지로), UV(`QC_UV_DEGREE`·`QC_UV_BASE`·`QC_UV_PER`, part0 1회), 관리비 최소 12만, 최소마진 수량 구간제(`qcCalc` 반환에 `minMargin`). 뉴에코블랙400g은 원본 13,500 대신 파생규칙 1,350 채택(엑셀과 10배 괴리 방지, 외주사 확인 대기). 외주판 쇼핑백 분기는 미정의 변수 참조로 원본에서도 죽은 코드라 미이식. ② **엑셀 견적서**: `scripts/gen_quote_constants.mjs` 신설 — `quote_constants.json`을 index.html 엔진에서 생성(수작업 스냅샷 폐지). `qc_engine_export.mjs`: `grabConst` 멀티라인 리터럴 대응, 신규 상수 추출, 파생 지류가 정식 지종을 덮으면 throw. `build_quote_xlsx.py`: 최소마진 3구간 상수 + `적용 최소마진` 수식. ③ `CSV/proj_rev.csv`를 2026-09-14 사용자 제공 export로 교체(1,885건 · 11컬럼 — `getProjRevMap`·`getRevenueByPNA`가 읽는 4컬럼 전부 포함. W37 자동 수집본 1,876건·390컬럼·23.7MB의 상위집합 → 0.4MB). 메인 «매출 현황» KPI는 `projSeen`(2026 발주 RAW 비재고 프로젝트) 필터를 거치므로 결산 행이 늘어도 `order.csv`에 없는 프로젝트는 집계되지 않는다. 교체 전후 실측(order.csv W37): 9월 965,373,309 → 965,425,809원, 7·8·10월 불변. ④ `renderYearlyYoY`: `YOY_MIN_YEAR=2024`로 2022~2023 행 제외(2024 YoY는 자동 «—»). ⑤ 상단 📥 자료실 `openDownloadCenter()`: 문서 4종 + 참조 데이터 전량. 데이터 목록은 스크립트 첫머리의 `fetch` 래퍼가 기록한 `DC_LOADED`(성공한 동일 출처 GET 중 `CSV/`·`CSV_BANK/`·`data/` — 폴백 경로·이력 아카이브·월별/주간 스냅샷까지 런타임 실측, 손으로 관리하는 목록 없음)를 서버 파일 직링크(`<a download>`, 메모리 재적재 없음)로 내려주고, `UD[k]!=='자동로드'`인 수동 업로드분만 `D[k]`를 `dcCsvText`로 직렬화(셀 내 줄바꿈 보존). 업로드로 대체된 배포 파일은 출처 칸에 표시(`window._autoCsvMap`으로 파일→key 역매핑). 테스트: `test_quote_v10.mjs` 신설. |
+| **문서 · 2026-09-10** | (문서 전용) | **§3 입력 데이터 전면 재작성 — 로우데이터 전수 실측 반영.** ① 3-0 자동 로드 표를 7행 → **20종 전량**으로 교체하고 각 소스가 만드는 지표를 명기. 폐지된 `inv_weekly`/`sales_monthly`(코드 참조 0회)를 취소선 처리. `_manifest.json`이 12 key만 명시해 나머지 8종은 `AUTO_CSV_DEFAULT` 기본값으로 로드된다는 점 경고 추가. ② §3-1-2 신설 — 문서에 없던 goods_master·quarter_eval·proj_rev·price_chg·check_answer/question 6종. ③ §3-2 재구성 — sku_detail/monthly·raw_발주·parts_master·sales_status_history를 자동 로드로 승격(2026-07 감사 시점의 '미사용' 판정은 무효), purchase_review·season_plan은 수동 전용으로 분리. ④ §3-3-1 주차 파일 / §3-3-2 CSV_BANK 신설 — archive가 YoY의 유일 원본임을 명시. **`project_YYYY_WNN.csv`는 `proj_rev.csv`와 md5 동일한 19.7MB 중복이며 로드 코드가 없음을 실측 확인**(주간 죽은 커밋). ⑤ §3-4 data/ JSON을 4개 → 10개 전량으로 확장(parts_price_history·bom_multiplier·change_log·ci_overrides·progress_notes·cal_notes 추가) + 파츠 마스터 3중복 경고. 대시보드 코드 변경 없음. |
 | v4.0 | `bef8f6b` | 통합 대시보드 최초 배포 (22페이지, 17 CSV) |
 | v4.0.1 | `d23b146` | CSV 17→12 통합, 파츠마스터/2025/공정DB 영구 임베딩 |
 | v4.0.2 | `405b683` | 실패비용/대응, MoM·YoY, 원가분석 월별/프로젝트 탭 |
@@ -1395,4 +1466,5 @@ SCMDASHBOARD/
 ---
 
 *문서 기준: index.html (scm_dashboard_v21.html) v21 (2026-07-20) · 약 7,153줄 — 연도별 아카이빙 체계(CSV_BANK/archive·yearly-archive.yml·loadPriorYearArchive)·협력사 상세 전년 동기 비교 · v20.x(분기별평가 실데이터·포트폴리오 클릭·이슈탭 수정·미입하율표) · v20(Airtable 목요일 자동 갱신·지금 새로고침·변경 이력 시스템) 기반*  
+*§3 입력 데이터는 2026-09-10 로우데이터 전수 실측 기준으로 갱신됨 (자동 로드 20종 + 수동 5종 + data/ JSON 10종).*  
 *대시보드 변경 시 이 문서도 함께 업데이트 바랍니다. 원본 CSV 헤더 변경 시 §8 버전 규칙에 따라 CHANGELOG에도 기록 바랍니다.*

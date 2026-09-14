@@ -17,19 +17,31 @@ const grabFn = name => {
   }
   throw new Error(`${name}() 본문 파싱 실패`);
 };
+// 단가표처럼 여러 줄에 걸친 리터럴도 통째로 가져온다 — 괄호가 닫힌 뒤 첫 줄바꿈까지가 선언이다
 const grabConst = name => {
-  const m = html.match(new RegExp(`^const ${name}=.*$`, 'm'));
+  const m = html.match(new RegExp(`^const ${name}=`, 'm'));
   if (!m) throw new Error(`index.html에 const ${name}이 없다`);
-  return m[0];
+  let d = 0;
+  for (let j = m.index; j < html.length; j++) {
+    const c = html[j];
+    if (c === '{' || c === '[') d++;
+    else if (c === '}' || c === ']') d--;
+    else if (c === '\n' && d === 0) return html.slice(m.index, j);
+  }
+  throw new Error(`const ${name} 파싱 실패`);
 };
 
+// 선언 순서가 곧 실행 순서다 — QC_PAPER_KEY는 QC_PAPER_PRICES를 읽으므로 뒤에 와야 한다.
+// (QC_UV_PER은 QC_UV_BASE와 한 줄에 선언돼 있어 따로 적지 않는다)
 const CONSTS = ['QC_SIZE_COLS', 'QC_SIZE_ORDER', 'QC_PAPER_STD', 'QC_BIG_SIZES', 'QC_CARTON_SMALL',
-  'QC_FORM_TYPES', 'QC_CORR_APPLY', 'QC_CORR_PRICES', 'QC_PAPER_PRICES'];
+  'QC_FORM_TYPES', 'QC_CORR_APPLY', 'QC_CORR_PRICES', 'QC_PAPER_PRICES',
+  'QC_PET_KG', 'QC_PET_THICKNESS', 'QC_PAPER_KEY', 'qcPaperKey',
+  'QC_UV_DEGREE', 'QC_UV_BASE'];
 const FNS = ['qcPaperPrice', 'qcFindPaper', 'qcLoss', 'qcYeon', 'qcPrintUnit', 'qcTomsonUnit',
   'qcAdhUnit', 'qcSpecUnit', 'qcCorrLoss', 'qcLamUnit', 'qcParts', 'qcRecommendStd', 'qcCalc'];
 
 const src = [...CONSTS.map(grabConst), ...FNS.map(grabFn)].join('\n');
-// 계산기 27지종에 없는 지류를 사용자 지정 배수로 파생시켜 단가표에 얹는다(scripts/derived_papers.json).
+// 계산기 단가표에 없는 지류를 사용자 지정 배수로 파생시켜 얹는다(scripts/derived_papers.json).
 // 원본 지종 단가가 바뀌면 파생 단가도 따라간다 — 별도 숫자를 박아두지 않는다.
 const DERIVED = JSON.parse(fs.readFileSync(path.join(ROOT, 'scripts', 'derived_papers.json'), 'utf8'));
 const inject = `
@@ -38,11 +50,16 @@ Object.keys(__d).forEach(name => {
   const v = __d[name];
   if (name[0] === '_' || !Array.isArray(v)) return;
   if (!QC_PAPER_PRICES[v[0]]) throw new Error('파생 지류의 원본 지종이 없다: ' + v[0]);
+  // 파생이 정품 단가표를 덮어쓰면 대시보드와 엑셀 견적이 조용히 갈라진다 — 중복은 막는다
+  if (QC_PAPER_PRICES[name]) throw new Error('파생 지류가 단가표의 정식 지종과 겹친다: ' + name);
   QC_PAPER_PRICES[name] = QC_PAPER_PRICES[v[0]].map(x => x * v[1]);
 });
 `;
-export const {qcCalc, PAPERS} = new Function(
-  `${src}\n${inject}\nreturn {qcCalc, PAPERS: QC_PAPER_PRICES};`)();
+export const {qcCalc, PAPERS, C, FN} = new Function(
+  `${src}\n${inject}\nreturn {qcCalc, PAPERS: QC_PAPER_PRICES,
+     C: {QC_SIZE_COLS, QC_SIZE_ORDER, QC_PAPER_STD, QC_BIG_SIZES, QC_CARTON_SMALL,
+         QC_FORM_TYPES, QC_CORR_APPLY, QC_CORR_PRICES, QC_PAPER_PRICES},
+     FN: {qcTomsonUnit, qcSpecUnit, qcLamUnit, qcParts}};`)();
 
 if (process.argv[1] && process.argv[1].endsWith('qc_engine_export.mjs')) {
   // stdin으로 시나리오 배열(JSON)을 받아 계산 결과를 stdout(JSON)으로 돌려준다

@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1.0">
-<title>SCM 통합운영 대시보드 v0.9</title>
+<title>SCM 통합운영 대시보드 v1.0</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
 <style>
 :root{
@@ -353,7 +353,7 @@ a{color:var(--blue);text-decoration:none}
     </div>
     <div>
       <div class="sb-logo-text">SCM Dashboard</div>
-      <div class="sb-logo-sub">SCM실 통합운영 v0.9</div>
+      <div class="sb-logo-sub">SCM실 통합운영 v1.0</div>
     </div>
   </div>
   <div class="sb-divider"></div>
@@ -472,6 +472,10 @@ a{color:var(--blue);text-decoration:none}
       <button class="topbar-btn" onclick="exportCurrentTables()" title="현재 화면에 보이는 표를 CSV로 다운로드">
         <svg width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M8 10V2M5 5l3-3 3 3M2 12v2h12v-2"/></svg>
         현재 화면 CSV
+      </button>
+      <button class="topbar-btn" onclick="openDownloadCenter()" title="사용자가이드·로직 문서와 대시보드가 지금 참조 중인 데이터 전체를 내려받습니다">
+        <svg width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M8 2v8M5 7l3 3 3-3M2 12v2h12v-2"/></svg>
+        자료실
       </button>
       <button class="topbar-btn" onclick="startDashboardTour()" title="핵심 화면을 짧게 소개하는 가이드 투어를 다시 봅니다">
         <svg width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="8" cy="8" r="6"/><path d="M6 6a2 2 0 013 1.7c0 1.3-1.5 1.5-1.5 2.8"/><circle cx="8" cy="11.3" r=".4" fill="currentColor" stroke="none"/></svg>
@@ -602,7 +606,7 @@ a{color:var(--blue);text-decoration:none}
       </div>
       <div class="card" style="margin-top:16px">
         <div class="card-header">
-          <div><div class="card-title">연도별 실적 비교 (2022~)</div><div class="card-sub" id="yoy-years-sub">발주 TASK · 매입금액 · 이슈건수 · 이슈율의 연도별 추이와 YoY</div></div>
+          <div><div class="card-title">연도별 실적 비교 (2024~)</div><div class="card-sub" id="yoy-years-sub">발주 TASK · 매입금액 · 이슈건수 · 이슈율의 연도별 추이와 YoY</div></div>
           <div style="display:flex;gap:6px;align-items:center">
             <select id="yoy-years-mode" onchange="renderYearlyYoY()" style="font-size:11px;padding:4px 8px;border:1px solid var(--border2);border-radius:var(--r-sm);color:var(--text2);background:var(--surface)">
               <option value="ytd">동기간 비교(1~N월)</option><option value="full">연간 전체</option>
@@ -1077,6 +1081,29 @@ a{color:var(--blue);text-decoration:none}
 </div>
 
 <script>
+// ===== v1.0: 📥 자료실용 — 페이지가 실제로 받아온 데이터 파일 기록 =====
+// fetch 호출부가 20곳 넘게 흩어져 있고(자동 로드·주간 파일·CSV_BANK 아카이브·월별 협력사·주간 파츠 스냅샷),
+// CSV/ → CSV_BANK/ 폴백 경로도 런타임에 갈린다. 목록을 손으로 두면 새 소스가 생길 때마다 빠지므로
+// 모든 요청이 지나는 fetch에서 «성공한» 동일 출처 GET 중 CSV/·CSV_BANK/·data/ 경로만 기록한다.
+const DC_LOADED=new Map();   // 페이지 기준 상대경로(쿼리 제외) → 처음 받은 시각
+(()=>{
+  const f0=window.fetch&&window.fetch.bind(window); if(!f0) return;
+  window.fetch=function(u,o){
+    return f0(u,o).then(r=>{
+      try{
+        if(r.ok&&String((o&&o.method)||'GET').toUpperCase()==='GET'){
+          const p=new URL(r.url,location.href), base=location.pathname.replace(/[^/]*$/,'');
+          if(p.origin===location.origin&&p.pathname.startsWith(base)){
+            const rel=decodeURIComponent(p.pathname.slice(base.length));
+            if(/^(CSV|CSV_BANK|data)\//.test(rel)&&rel!=='CSV/_manifest.json'&&!DC_LOADED.has(rel)) DC_LOADED.set(rel,Date.now());
+          }
+        }
+      }catch(e){}   // 기록 실패가 데이터 로드를 막으면 안 된다
+      return r;
+    });
+  };
+})();
+
 // ===== DATA =====
 const D = {order:null,issue:null,sup:null,ci:null,stockout_list:null,sales_status_history:null,sales:null,purchase_review:null,season_plan:null,qms_raw:null,cost_reduction:null,quarter_eval:null,dashboard_period_summary:null,dashboard_group_summary:null,dashboard_sku_snapshot:null,dashboard_sku_detail:null,dashboard_sku_monthly:null,raw_purchase:null,parts_master:null,parts:null,proj_rev:null,check_answer:null,check_question:null,price_chg:null};
 // Legacy keys kept as computed views (not uploaded)
@@ -5284,8 +5311,13 @@ function renderYearlyYoY(){
     e.pMon[m]=(e.pMon[m]||0)+v.purchase;
     e.iMon[m]=(e.iMon[m]||0)+v.issues;
   });
-  // 값이 아예 없는 연도(세금계산서월만 스친 유령 연도)는 행으로 만들지 않는다
-  const rows=years.filter(y=>Y[y]&&(Y[y].orders>0||Y[y].purchase>0||Y[y].issues>0));
+  // 값이 아예 없는 연도(세금계산서월만 스친 유령 연도)는 행으로 만들지 않는다.
+  // v1.0(사용자 지시 2026-09-14): 2022~2023은 행 단위 원본이 없어 지출결의 집계(총금액÷1.1)로만
+  // 채워져 있고 발주 TASK·이슈는 «—»다. 기준이 달라 비교값으로 못 쓴다고 판단돼 표에서 뺀다.
+  // 2024 행의 YoY도 비교 대상(2023)이 사라져 자동으로 «—»가 된다 — 의도한 결과다.
+  // ※ 매입 추이·협력사 화면의 2022~2023 집계 구간은 그대로다(거기선 «집계» 배지로 구분된다).
+  const YOY_MIN_YEAR=2024;
+  const rows=years.filter(y=>y>=YOY_MIN_YEAR&&Y[y]&&(Y[y].orders>0||Y[y].purchase>0||Y[y].issues>0));
   const pct=(c,p)=>(p==null||p===0||c==null)?null:((c-p)/p*100);
   const badge=v=>v==null?'<span style="color:var(--text3)">—</span>'
     :`<span style="color:${v>=0?'var(--red)':'var(--green)'};font-weight:600">${v>=0?'+':''}${v.toFixed(1)}%</span>`;
@@ -5361,9 +5393,10 @@ function renderYearlyYoY(){
                 :'연간 전체 비교 — 당해는 진행 중이라 직전 연도보다 작게 나옵니다';
   document.getElementById('yoy-years-note').innerHTML=
     `발주 TASK·이슈는 <b>과업지시일자</b>, 매입금액은 <b>세금계산서작성월</b> 기준 · 매입은 <b>재고생산 포함</b>(상단 매입 KPI·매입 추이와 동일 기준) · 이슈율 = 이슈건수 ÷ 발주 TASK`
-    +` · <b>—</b> 는 그 연도 원본이 없어 산출 불가(2022~2023은 발주 행 단위 export가 없고, 2022는 이슈 export도 없습니다)`
+    +` · <b>2022~2023년은 제외</b>했습니다 — 행 단위 원본(발주·이슈 export)이 없고 매입도 지출결의 집계뿐이라 다른 연도와 같은 기준으로 비교할 수 없습니다(사용자 확인 2026-09-14)`
+    +` · <b>—</b> 는 그 연도 원본이 없어 산출 불가`
     +` · <span class="tag tag-gray" style="font-size:9px">집계</span> 표시 구간은 행 단위가 아닌 사전집계라 다른 연도와 기준이 완전히 같지는 않습니다`
-    +(narrowed?` · <b>YoY 옆 ▵</b>: 두 해가 모두 기록을 가진 달로만 좁혀 비교했습니다(예: 2022년은 6월부터 기록이 시작되므로 2023년과는 6~12월로 비교) — 마우스를 올리면 사용한 구간이 표시됩니다. 합계 칸은 좁히지 않은 전체 값입니다`:'')
+    +(narrowed?` · <b>YoY 옆 ▵</b>: 두 해가 모두 기록을 가진 달로만 좁혀 비교했습니다(예: 진행 중인 당해를 전년 12개월과 비교할 때) — 마우스를 올리면 사용한 구간이 표시됩니다. 합계 칸은 좁히지 않은 전체 값입니다`:'')
     +(basisNote?` · <b>이슈 YoY 일부 —</b>: 2024년까지는 task 단위 export, 2025년부터는 movement 단위라 건수 기준이 달라 그 경계는 비교하지 않습니다`:'')
     +(sparseNote?` · <b><span class="tag tag-q" style="font-size:9px">부분기록</span>·이슈율 뒤 *</b>: 그 해 일부 달에 이슈 기록이 거의 없습니다(2025년은 상반기 26건 / 하반기 669건으로 원본이 결측) — 합계와 이슈율이 실제보다 낮으니, 옆의 YoY(결측 달을 뺀 구간 비교)를 보세요`:'');
 }
@@ -8753,6 +8786,79 @@ function exportCurrentTables(){
   const secId=sec.id.replace(/^sec-/,'');
   dlFile(`export_${secId}_${(SEL_MONTH||'').replace('.','_')}.csv`, out.join('\n'), 'text/csv');
 }
+// ===== v1.0: 📥 자료실 — 문서 + 지금 참조 중인 데이터 전체 (사용자 요청 2026-09-14) =====
+// 문서는 대시보드 체계 문서 4종만 둔다 — 내부 의사결정 문서·견적 엑셀(원가 노출, .gitignore 대상)은 넣지 않는다.
+// PDF 2종은 원본 소스가 없어 2026-07-24(v23.5)에 멈춰 있다 — 최신처럼 보이지 않게 기준일을 붙인다.
+const DC_DOCS=[
+  {file:'docs/SCM_DASHBOARD_사용자가이드_v23.pdf',name:'사용자가이드',fmt:'PDF',asof:'2026-07-24 기준 · 이후 변경 미반영',fresh:false},
+  {file:'docs/SCM_DASHBOARD_로직설명_v23.pdf',name:'로직 설명',fmt:'PDF',asof:'2026-07-24 기준 · 이후 변경 미반영',fresh:false},
+  {file:'docs/SCM_DASHBOARD_ARCHITECTURE.md',name:'로직 아키텍처',fmt:'Markdown',asof:'최신',fresh:true},
+  {file:'docs/CHANGELOG_v23.md',name:'변경 내역',fmt:'Markdown',asof:'최신',fresh:true},
+];
+// «참조 중» = 이 페이지가 실제로 받아온 파일(DC_LOADED — 스크립트 첫머리의 fetch 기록) + 수동 업로드본.
+// 파일은 서버 원본 직링크다 — order.csv(74MB)를 메모리에서 다시 문자열로 만들면 저사양 PC에서 탭이 죽는다.
+function dcDataItems(){
+  const map=window._autoCsvMap||AUTO_CSV_DEFAULT, items=[], keyOfFile={};
+  Object.keys(map).forEach(k=>{ keyOfFile['CSV/'+map[k]]=k; });
+  const up=k=>UD[k]&&UD[k]!=='자동로드'&&Array.isArray(D[k])&&D[k].length>0;
+  [...DC_LOADED.keys()].sort().forEach(rel=>{
+    const k=keyOfFile[rel];
+    items.push({name:rel.replace(/\//g,'_'),   // 같은 이름(parts.csv 등)이 여러 경로에 있어 경로를 파일명에 남긴다
+      rows:k&&!up(k)&&Array.isArray(D[k])?D[k].length:null,
+      src:k&&up(k)?'배포 원본 — 지금은 업로드본으로 대체됨':rel.startsWith('CSV_BANK/')?'보관본 (이력·주간·월별 스냅샷)':'배포 원본',
+      url:rel});
+  });
+  // 수동 업로드는 서버에 없는 데이터다 — 지금 화면이 쓰는 값을 그대로 내보낸다
+  Object.keys(UD).forEach(k=>{ if(up(k)) items.push({name:(map[k]||k+'.csv').replace(/\.csv$/,'')+'_업로드본.csv',
+    rows:D[k].length,src:'수동 업로드 (지금 사용 중)',data:D[k]}); });
+  return items;
+}
+// ponytail: 헤더는 전 행 키의 합집합 — 원본에 같은 이름의 열이 둘이면 parseCSV 단계에서 이미 합쳐져 복원 불가
+function dcCsvText(rows){
+  const set=new Set(); rows.forEach(r=>{ for(const c in r) set.add(c); });
+  const cols=[...set];
+  const q=v=>{ const s=v==null?'':String(v); return /[",\r\n]/.test(s)?'"'+s.replace(/"/g,'""')+'"':s; };  // 셀 안 줄바꿈 보존
+  return [cols.map(q).join(',')].concat(rows.map(r=>cols.map(c=>q(r[c])).join(','))).join('\r\n');
+}
+function dcGet(i){
+  const it=(window._dcItems||[])[i]; if(!it) return;
+  if(it.url){ const a=document.createElement('a'); a.href=encodeURI(it.url); a.download=it.name; document.body.appendChild(a); a.click(); a.remove(); return; }
+  const r=it.data;
+  if(r[0]&&typeof r[0]==='object'&&!Array.isArray(r[0])) dlFile(it.name,dcCsvText(r),'text/csv');
+  else { const a=document.createElement('a'); a.href=URL.createObjectURL(new Blob([JSON.stringify(r)],{type:'application/json'}));   // 행이 객체가 아니면 CSV로 못 펴서 JSON(BOM 없이)
+    a.download=it.name.replace(/\.csv$/,'.json'); a.click(); }
+}
+// 한꺼번에 여러 개를 쏘면 브라우저가 뒤쪽 다운로드를 조용히 버린다 — 간격을 두고 하나씩
+function dcGetAll(btn){
+  const n=(window._dcItems||[]).length; let i=0;
+  btn.disabled=true;
+  const step=()=>{
+    if(i>=n){ btn.textContent='✅ '+n+'개 완료'; btn.disabled=false; return; }
+    btn.textContent='받는 중 '+(i+1)+' / '+n; dcGet(i++); setTimeout(step,450);
+  };
+  step();
+}
+function openDownloadCenter(){
+  const items=window._dcItems=dcDataItems();
+  document.getElementById('modal-title').textContent='📥 자료실 — 문서 · 참조 데이터';
+  document.getElementById('modal-tabs-el').innerHTML='';
+  document.getElementById('modal-body').innerHTML=`
+    <div style="font-weight:600;margin-bottom:6px">📘 문서</div>
+    <table class="tbl"><thead><tr><th>문서</th><th>형식</th><th>기준</th><th></th></tr></thead><tbody>
+    ${DC_DOCS.map(d=>`<tr><td>${esc(d.name)}</td><td>${d.fmt}</td><td style="font-size:11px;color:${d.fresh?'var(--green)':'var(--red)'}">${esc(d.asof)}</td>
+      <td><a class="topbar-btn" href="${encodeURI(d.file)}" download>받기</a></td></tr>`).join('')}
+    </tbody></table>
+    <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;margin:18px 0 6px">
+      <div style="font-weight:600">🗂 지금 참조 중인 데이터 <span style="font-weight:400;font-size:11px;color:var(--text3)">${items.length}개</span></div>
+      <button class="topbar-btn primary" onclick="dcGetAll(this)">전체 받기</button>
+    </div>
+    <div style="font-size:11px;color:var(--text3);margin-bottom:6px">이 페이지가 지금까지 받아온 파일 기준입니다(배포 원본·보관본은 서버 파일 그대로, 수동 업로드분은 지금 화면이 쓰는 값을 CSV로). «전체 받기»는 파일을 하나씩 받으므로 브라우저가 «여러 파일 다운로드 허용»을 한 번 물을 수 있습니다.</div>
+    <div class="tbl-wrap" style="max-height:340px;overflow-y:auto"><table class="tbl"><thead><tr><th>파일</th><th class="num">행</th><th>출처</th><th></th></tr></thead><tbody>
+    ${items.map((it,i)=>`<tr><td class="mono" style="font-size:11px">${esc(it.name)}</td><td class="num">${it.rows==null?'—':it.rows.toLocaleString()}</td>
+      <td style="font-size:11px">${esc(it.src)}</td><td><button class="topbar-btn" onclick="dcGet(${i})">받기</button></td></tr>`).join('')}
+    </tbody></table></div>`;
+  document.getElementById('modal-overlay').classList.add('open');
+}
 
 // ===== NAV =====
 function nav(el,id) {
@@ -8787,7 +8893,7 @@ function nav(el,id) {
     subcontract:'<b>확인 가능 지표:</b> 총 위험건수 · 최대지연일 · 위험협력사수 | <b>자동산출:</b> 발주_RAW 입하경과일(입하확정일/예정일 기준) + 공급망_RAW 하도급대상여부=대상 + 미입하 + 90일초과 | <b>필터:</b> 전체/90일+/120일+/180일+ | <b>CSV:</b> 발주_RAW + 공급망_RAW (별도 CSV 불필요)',
     stock:'<b>확인 가능 지표:</b> 전체 품절수 · 비의도적 품절(납기지연/공급부족) · 의도적 품절(졸업/시즌/효율화) · 굿즈품절 | <b>필터:</b> 판매상태별(일시품절/품절예정/의도적 품절) | <b>테이블:</b> 파츠명/굿즈 · 판매상태 · 재고소유 · 품절성격/사유 · 변경일 · 경과일 · 굿즈품절여부 | <b>CSV:</b> 품절리스트',
     ai:'<b>사용법:</b> 제품명 입력 → 제품 정의서 링크 + 리드타임/제작기간·단가 문의 기존 답변(최신 3건, 답변 없으면 과거 슬랙 문의 텍스트로 폴백) — Check_standard_Answer(응답 완료) + Check_standard_Question(질문1~3·답변1~3 원본) 두 소스를 함께 검색해 커버리지 확대 | 협력사명 입력 → 발주현황/매입금액/3개월추이/품질이슈 분석 | 긴급 → 긴급발주 목록 | 미입하/task → 미입하현황 | 전월/매입 → 전월대비 비교 | 담당자명 → 개인 실적 | <b>CSV:</b> 제품문의답변이력(check_answer) + 제품문의원본(check_question) + 발주_RAW + 이슈_RAW + 공급망_RAW',
-    quote:'<b>기능:</b> 패키지(박스) 자동 견적 산출 — 단박스/테일러드 스트랩 박스 커스텀/SolidG형 커스텀/open페이퍼박스·motion박스 | <b>로직:</b> 전개사이즈 → 지류단가(27지종×15규격, 0원 규격 자동상향) → 여분·연수 → 원단/인쇄/코팅/톰슨/접착/특수공정/골판지 → 관리비(10%·최소15만) → 마진(최소20만) | <b>이력:</b> localStorage 저장 · CSV 내보내기 | <b>기준:</b> 외주버전 v1.2.2 단가표',
+    quote:'<b>기능:</b> 패키지(박스) 자동 견적 산출 — 단박스/테일러드 스트랩 박스 커스텀/SolidG형 커스텀/open페이퍼박스·motion박스 | <b>로직:</b> 전개사이즈 → 지류단가(40지종×15규격, 0원 규격 자동상향 · PET 5종은 전개면적×두께×4,000원/kg) → 여분·연수 → 원단/인쇄/코팅/톰슨/접착/UV/특수공정/골판지 → 관리비(10%·최소12만) → 마진(최소 500개↑20만·100~499개10만·100개미만5만) | <b>이력:</b> localStorage 저장 · CSV 내보내기 | <b>기준:</b> 외주버전 2026-09-11판 단가표',
     report:'<b>기능:</b> 팀 주간 회의록/보고서 바로가기(SCM-Archive) · 외주생산파트 주간 리포트·회의록 프롬프트 생성 · 구매전략파트 주간 재고 리포트 .md 생성(재고수준·재고구조·품절·장기미회전·이슈 자동 요약, 주차 선택 가능) · <b>변경 이력 리포트 .md 생성</b>(파츠 신규/졸업·단가 변동·협력사·제품 변경 — 주간 리포트/회의 원천 데이터) · <b>변경 스냅샷 아카이브(CSV_BANK) 바로가기</b>',
     calendar:'<b>구성:</b> 주간 정기회의 안내 · <b>월간 달력</b>(v23.9 — 날짜 칸에 반복업무 9종·정기회의·특이사항을 막대로 표시, ‹ › 로 월 이동, 날짜 클릭 시 그 날 일정) · 월 타일 12개(클릭 시 해당월 달력으로 이동) · <b>공급망 특이사항</b>(협력사 휴가·발주 마감 등 수시 이슈 — 시작·종료일 지정 시 달력에 표시, 직접 추가/삭제·브라우저에 저장) | <b>출처:</b> 구매조달팀 연간주요이벤트 마스터(§2 업무 마스터 기준)',
   };
@@ -12940,7 +13046,63 @@ function computeFromRaw(orderData, issueData, supData, quarterEval) {
   return vendors;
 }
 
-const QC_PAPER_PRICES={"sc240g": [246, 123, 123, 82, 61.5, 0, 172.2, 86.1, 0, 0, 307.2, 153.6, 153.6, 102.4, 76.8], "sc260g": [261.74, 130.87, 130.87, 87.25, 65.44, 0, 183.22, 91.61, 0, 0, 328, 164, 164, 109.33, 82], "sc300g": [290.62, 145.31, 145.31, 96.87, 72.66, 0, 203.44, 101.72, 0, 0, 363.2, 181.6, 181.6, 121.07, 90.8], "sc350g": [296.09, 148.04, 148.04, 98.7, 74.02, 0, 236.87, 118.43, 0, 0, 424, 212, 212, 141.33, 106], "sc400g": [379.55, 189.78, 189.78, 126.52, 94.89, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0], "sc450g": [422.45, 211.22, 211.22, 140.82, 105.61, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0], "riv300g": [575.02, 287.51, 287.51, 191.67, 143.76, 73.63, 402.52, 201.26, 0, 0, 720, 360, 360, 240, 180], "riv350g": [673.1, 336.55, 336.55, 224.37, 168.28, 86.64, 471.17, 235.59, 0, 0, 843.2, 421.6, 421.6, 281.07, 210.8], "riv400g": [766.7, 383.35, 383.35, 255.57, 191.68, 98.34, 536.69, 268.35, 0, 0, 960, 480, 480, 320, 240], "ab라이트270g": [440.43, 220.21, 220.21, 146.81, 110.11, 56.8, 307.54, 153.77, 0, 0, 542.95, 271.47, 271.47, 180.98, 135.74], "ab라이트295g": [482.19, 241.09, 241.09, 160.73, 120.55, 62.77, 347.13, 173.57, 0, 0, 612.36, 306.18, 306.18, 204.12, 153.09], "ab라이트325g": [531.55, 265.78, 265.78, 177.18, 132.89, 68.94, 372.09, 186.05, 0, 0, 653.04, 326.52, 326.52, 217.68, 163.26], "뉴에코블랙150g": [477, 238.5, 238.5, 159, 119.25, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0], "뉴에코블랙300g": [972, 486, 486, 324, 243, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0], "뉴에코블랙350g": [1125, 562.5, 562.5, 375, 281.25, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0], "문보드310g": [828, 414, 414, 276, 207, 105.25, 0, 0, 0, 0, 0, 0, 0, 0, 0], "문보드350g": [927, 463.5, 463.5, 309, 231.75, 118.38, 0, 0, 0, 0, 0, 0, 0, 0, 0], "마이캔버스300g": [826.5, 413.25, 413.25, 275.5, 206.63, 105.06, 570, 292, 0, 0, 0, 0, 0, 0, 0], "마이캔버스350g": [964.25, 482.13, 482.13, 321.42, 241.06, 123.03, 665, 342.5, 0, 0, 0, 0, 0, 0, 0], "스노우지180g": [290.09, 145.04, 145.04, 96.7, 72.52, 0, 201.53, 100.76, 185.6, 92.8, 360.39, 180.2, 180.2, 120.13, 90.1], "스노우지200g": [322.33, 161.16, 161.16, 107.44, 80.58, 0, 223.9, 111.95, 206.21, 103.1, 400.44, 200.22, 200.22, 133.48, 100.11], "스노우지250g": [402.89, 201.45, 201.45, 134.3, 100.72, 0, 279.88, 139.94, 257.78, 128.89, 0, 0, 0, 0, 0], "모조쇼핑백지160g": [222.71, 111.36, 111.36, 74.24, 55.68, 0, 154.71, 77.36, 0, 0, 276.53, 138.27, 138.27, 92.18, 69.13], "모조쇼핑백지180g": [388.42, 194.21, 194.21, 129.47, 97.11, 0, 0, 0, 0, 0, 352.25, 176.12, 176.12, 117.42, 88.06], "비스포크140g": [332.88, 166.44, 166.44, 110.96, 83.22, 0, 231.23, 115.62, 0, 0, 418.18, 209.09, 209.09, 139.39, 104.54], "비스포크160g": [380.43, 190.22, 190.22, 126.81, 95.11, 0, 264.27, 132.14, 0, 0, 477.92, 238.96, 238.96, 159.31, 119.48], "비스포크180g": [427.98, 213.99, 213.99, 142.66, 107, 0, 297.31, 148.66, 0, 0, 537.65, 268.82, 268.82, 179.22, 134.41]};
+// 지류 단가표 — 외주버전 2026-09-11판 기준(40지종 × 15규격). 컬럼 순서는 QC_SIZE_COLS와 같다.
+// v1.0 갱신: 13지종 추가(용지없음·RIV450g·뉴에코블랙400g·E보드3종·문보드450g·모조쇼핑백지140g·PET5종)
+//   + 모조쇼핑백지160g 단가 +3.3% 개정.
+// ※ 뉴에코블랙400g만 원본 표를 따르지 않는다. 원본은 13,500원/장인데 이는 350g(1,125원)의 정확히
+//   12배라 자릿수 오타로 보이고, 사용자가 2026-09-08에 정한 파생 규칙(350g × 1.2 = 1,350원)과도
+//   10배 어긋난다. 엑셀 견적서 생성기는 scripts/derived_papers.json으로 1,350원을 쓰고 있어서
+//   원본값을 그대로 넣으면 «같은 조건인데 대시보드와 엑셀이 10배 다른 견적»이 나간다.
+//   → 낮은 쪽(파생 규칙 1,350원)으로 통일했다. 외주사 확인 후 13,500이 맞으면 이 줄만 되돌리면 된다.
+// ※ PET 5종은 규격표가 아니라 치수×두께 기반으로 계산한다(QC_PET_* 참조) — 전 규격 0으로 둔다.
+const QC_PAPER_PRICES={
+"용지없음": [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],
+"sc240g": [246, 123, 123, 82, 61.5, 0, 172.2, 86.1, 0, 0, 307.2, 153.6, 153.6, 102.4, 76.8],
+"sc260g": [261.74, 130.87, 130.87, 87.25, 65.44, 0, 183.22, 91.61, 0, 0, 328, 164, 164, 109.33, 82],
+"sc300g": [290.62, 145.31, 145.31, 96.87, 72.66, 0, 203.44, 101.72, 0, 0, 363.2, 181.6, 181.6, 121.07, 90.8],
+"sc350g": [296.09, 148.04, 148.04, 98.7, 74.02, 0, 236.87, 118.43, 0, 0, 424, 212, 212, 141.33, 106],
+"sc400g": [379.55, 189.78, 189.78, 126.52, 94.89, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+"sc450g": [422.45, 211.22, 211.22, 140.82, 105.61, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+"RIV300g": [575.02, 287.51, 287.51, 191.67, 143.76, 73.63, 402.52, 201.26, 0, 0, 720, 360, 360, 240, 180],
+"RIV350g": [673.1, 336.55, 336.55, 224.37, 168.28, 86.64, 471.17, 235.59, 0, 0, 843.2, 421.6, 421.6, 281.07, 210.8],
+"RIV400g": [766.7, 383.35, 383.35, 255.57, 191.68, 98.34, 536.69, 268.35, 0, 0, 960, 480, 480, 320, 240],
+"RIV450g": [864.77, 432.38, 432.38, 288.26, 216.19, 110.6, 605.34, 302.67, 0, 0, 1083.2, 541.6, 541.6, 361.07, 270.8],
+"AB라이트270g": [440.43, 220.21, 220.21, 146.81, 110.11, 56.8, 307.54, 153.77, 0, 0, 542.95, 271.47, 271.47, 180.98, 135.74],
+"AB라이트295g": [482.19, 241.09, 241.09, 160.73, 120.55, 62.77, 347.13, 173.56, 0, 0, 612.36, 306.18, 306.18, 204.12, 153.09],
+"AB라이트325g": [531.55, 265.78, 265.78, 177.18, 132.89, 68.94, 372.09, 186.05, 0, 0, 653.04, 326.52, 326.52, 217.68, 163.26],
+"뉴에코블랙150g": [477, 238.5, 238.5, 159, 119.25, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+"뉴에코블랙300g": [972, 486, 486, 324, 243, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+"뉴에코블랙350g": [1125, 562.5, 562.5, 375, 281.25, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+"뉴에코블랙400g": [1350, 675, 675, 450, 337.5, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+"E보드270g G03": [1026, 513, 513, 342, 256.5, 130, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+"E보드310g G04": [912, 456, 456, 304, 228, 115.75, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+"E보드350g G04": [1026, 513, 513, 342, 256.5, 130, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+"문보드310g": [828, 414, 414, 276, 207, 105.25, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+"문보드350g": [927, 463.5, 463.5, 309, 231.75, 118.38, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+"문보드450g": [1233, 616.5, 616.5, 411, 308.25, 156.62, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+"마이캔버스300g": [826.5, 413.25, 413.25, 275.5, 206.62, 105.06, 570, 292, 0, 0, 0, 0, 0, 0, 0],
+"마이캔버스350g": [964.25, 482.12, 482.12, 321.42, 241.06, 123.03, 665, 342.5, 0, 0, 0, 0, 0, 0, 0],
+"스노우지180g": [290.09, 145.04, 145.04, 96.7, 72.52, 0, 201.53, 100.76, 185.6, 92.8, 360.39, 180.2, 180.2, 120.13, 90.1],
+"스노우지200g": [322.33, 161.16, 161.16, 107.44, 80.58, 0, 223.9, 111.95, 206.21, 103.1, 400.44, 200.22, 200.22, 133.48, 100.11],
+"스노우지250g": [402.89, 201.45, 201.45, 134.3, 100.72, 0, 279.88, 139.94, 257.78, 128.89, 0, 0, 0, 0, 0],
+"모조쇼핑백지140g": [201.36, 100.68, 100.68, 67.12, 50.34, 0, 139.88, 69.94, 0, 0, 343.08, 171.54, 171.54, 114.36, 85.77],
+"모조쇼핑백지160g": [230.14, 115.07, 115.07, 76.71, 57.53, 0, 159.87, 79.93, 0, 0, 285.75, 142.87, 142.87, 95.25, 71.44],
+"모조쇼핑백지180g": [388.42, 194.21, 194.21, 129.47, 97.11, 0, 0, 0, 0, 0, 352.25, 176.12, 176.12, 117.42, 88.06],
+"비스포크140g": [332.88, 166.44, 166.44, 110.96, 83.22, 0, 231.23, 115.62, 0, 0, 418.18, 209.09, 209.09, 139.39, 104.54],
+"비스포크160g": [380.43, 190.22, 190.22, 126.81, 95.11, 0, 264.27, 132.14, 0, 0, 477.92, 238.96, 238.96, 159.31, 119.48],
+"비스포크180g": [427.98, 213.99, 213.99, 142.66, 107, 0, 297.31, 148.66, 0, 0, 537.65, 268.82, 268.82, 179.22, 134.41],
+"PET 0.2t": [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],
+"PET 0.25t": [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],
+"PET 0.3t": [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],
+"PET 0.35t": [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],
+"PET 0.4t": [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0]};
+// PET는 규격 단가표가 없다 — 전개면적 × 두께 × kg단가로 장당단가를 그때그때 만든다.
+const QC_PET_KG=4000;  // 원/kg
+const QC_PET_THICKNESS={"PET 0.2t":0.2,"PET 0.25t":0.25,"PET 0.3t":0.3,"PET 0.35t":0.35,"PET 0.4t":0.4};
+// v1.0 이전 이력은 지종 키가 소문자였다(riv350g·ab라이트270g). select에 없는 값을 넣으면 조용히
+// 기본값으로 바뀌어 «다른 견적»이 복원되므로, 대소문자만 다른 옛 키를 새 키로 되돌린다.
+const QC_PAPER_KEY={}; Object.keys(QC_PAPER_PRICES).forEach(k=>QC_PAPER_KEY[k.toLowerCase()]=k);
+const qcPaperKey=t=>QC_PAPER_PRICES[t]?t:(QC_PAPER_KEY[String(t||'').toLowerCase()]||t);
 const QC_CORR_PRICES={"SK K": 376, "SK S": 325, "SK B": 354, "WK K": 421, "WK B": 400, "WK S": 372, "식품 B": 395, "식품 K": 416, "KLB CK": 438, "KLB K": 414, "KLB S": 365, "흑12흑12": 1391};
 // ===== 패키지 견적 계산 엔진 (외주버전 v1.2.2 로직 재구현) =====
 const QC_SIZE_COLS=["전지","2절","장2절","3절","4절","8절","국전","국2절","소국전","소국2절","하드롱전지","하드롱2절","하드롱장2절","하드롱3절","하드롱4절"];
@@ -12958,10 +13120,19 @@ const QC_CORR_APPLY=["단박스","테일러드 스트랩 박스 커스텀","Soli
 
 // 지류 단가 조회 (0이면 규격 자동 상향)
 function qcPaperPrice(type,size){
-  const row=QC_PAPER_PRICES[type]; if(!row) return 0;
+  const row=QC_PAPER_PRICES[qcPaperKey(type)]; if(!row) return 0;
   const i=QC_SIZE_COLS.indexOf(size); return i<0?0:(row[i]||0);
 }
-function qcFindPaper(type,size){
+// pw·ph는 PET 전용(전개 치수) — 나머지 지종은 종전대로 규격표만 본다.
+function qcFindPaper(type,size,pw,ph){
+  type=qcPaperKey(type);
+  // PET: 규격 개념이 없어 자동 상향도 없다. 전개면적 × 두께 × kg단가로 장당단가를 만든다.
+  const t=QC_PET_THICKNESS[type];
+  if(t!==undefined){
+    const price=(pw&&ph)?Math.ceil(pw*ph*t*QC_PET_KG/1000000):0;
+    return price>0?{valid:true,isPET:true,size:'-',price,upgraded:false}
+                 :{valid:false,isPET:true,size:'-',price:0,reason:type+' — 전개 치수가 있어야 단가가 나옵니다'};
+  }
   const st=QC_SIZE_ORDER.indexOf(size);
   if(st<0) return {valid:false,size,price:0,reason:'알 수 없는 규격: '+size};
   for(let i=st;i<QC_SIZE_ORDER.length;i++){
@@ -12990,6 +13161,9 @@ function qcAdhUnit(t){ if(t<=2000)return 50; if(t<=5000)return 40; if(t<10000)re
 function qcSpecUnit(s){ if(s==="전지")return 120; if(["소국전","하드롱2절","국전"].includes(s))return 100; return 80; }
 // 골판지 여분
 function qcCorrLoss(q){ if(q<3000)return 100; if(q<5000)return 200; if(q<10000)return 300; return 500; }
+// UV 인쇄(외주 2026-09-11판 신설) — 별색은 1도를 2도로 환산한다(원본 표 그대로).
+const QC_UV_DEGREE={'4도':4,'4도+별색1도':6,'4도+별색2도':8};
+const QC_UV_BASE=200000, QC_UV_PER=40;   // 최소 20만원 · 도당 40원/통
 // 합지 단가/통
 function qcLamUnit(corrType,size){ const small=QC_CARTON_SMALL.includes(size); if(corrType==='2합')return small?80:100; if(corrType==='3합')return small?180:220; return 0; }
 // 전개사이즈
@@ -13028,14 +13202,15 @@ function qcCalc(inp){
   const paperResults=parts.map((part,idx)=>{
     const pType=inp['paperType'+(idx+1)]||inp.paperType1;
     const pSize=inp['paperSize'+(idx+1)]||inp.paperSize1;
-    const found=qcFindPaper(pType,pSize);
+    const found=qcFindPaper(pType,pSize,part.w,part.h);
     const rows=[];
     const std=qcRecommendStd(part.w,part.h);
     if(!std) tooLarge=true;
     if(!found.valid) return {...part,rows,typeName:pType,sizeName:pSize,error:found.reason,std};
     const size=found.size, price=found.price;
-    const yeon=qcYeon(tong,size);
-    rows.push({label:'원단비',group:'원단',detail:price.toFixed(2)+'원/장 × '+realSheets.toLocaleString()+'장'+(found.upgraded?' ('+found.originalSize+'→'+size+' 상향)':''),total:Math.round(realSheets*price)});
+    // PET는 규격이 없어 연수 기준 규격(대판 여부)이 안 잡힌다 — 실제 재단 규격인 추천 표준지로 잡는다.
+    const yeon=qcYeon(tong,found.isPET?(std?std.name:size):size);
+    rows.push({label:'원단비',group:'원단',detail:price.toFixed(2)+'원/장 × '+realSheets.toLocaleString()+'장'+(found.isPET?' ('+pType+' 전개 '+part.w+'×'+part.h+'mm 기준)':found.upgraded?' ('+found.originalSize+'→'+size+' 상향)':''),total:Math.round(realSheets*price)});
     if(inp.print&&+inp.printColors>0){
       const u=qcPrintUnit(yeon), colors=+inp.printColors;
       rows.push({label:'인쇄 작업비',group:'인쇄',detail:u.toLocaleString()+'원/도/연 × '+colors+'도 × '+yeon+'연 (최소 3.6만)',total:Math.max(36000,u*colors*yeon)});
@@ -13054,6 +13229,10 @@ function qcCalc(inp){
       const u=qcAdhUnit(tong);
       rows.push({label:'접착',group:'후가공',detail:u+'원/통 × '+tong.toLocaleString()+'통 (최소 6만)',total:Math.max(60000,u*tong)});
     }
+    if(inp.uvPrint&&idx===0){
+      const deg=QC_UV_DEGREE[inp.uvPrintType]||4;
+      rows.push({label:'UV 인쇄',group:'특수',detail:deg+'도 × '+tong.toLocaleString()+'통 × '+QC_UV_PER+'원 (최소 '+(QC_UV_BASE/10000)+'만원)',total:Math.max(QC_UV_BASE,deg*tong*QC_UV_PER)});
+    }
     if(inp.epoxy&&idx===0){
       rows.push({label:'에폭시 작업비',group:'특수',detail:'max(10만, '+tong.toLocaleString()+'통×100원)',total:Math.max(100000,tong*100)});
       rows.push({label:'에폭시 필름비',group:'특수',detail:'전개면적 기준',total:Math.ceil(part.w*part.h*50/1000)});
@@ -13068,9 +13247,9 @@ function qcCalc(inp){
     });
     // 배면 인쇄지 (골판지 적용형, part0)
     if(idx===0&&QC_CORR_APPLY.includes(inp.type)&&inp.corrType&&inp.corrType!=='해당없음'&&inp.backPaperOn){
-      const bf=qcFindPaper(inp.backPaperType||'sc240g',inp.backPaperSize||size);
+      const bf=qcFindPaper(inp.backPaperType||'sc240g',inp.backPaperSize||size,part.w,part.h);
       if(bf.valid){
-        const by=qcYeon(tong,bf.size);
+        const by=qcYeon(tong,bf.isPET?(std?std.name:size):bf.size);
         rows.push({label:'배면 원단비',group:'배면',detail:bf.price.toFixed(2)+'원/장 × '+realSheets.toLocaleString()+'장',total:Math.round(realSheets*bf.price)});
         if(inp.backPrint&&+inp.backPrintColors>0){
           const bu=qcPrintUnit(by), bc=+inp.backPrintColors;
@@ -13103,18 +13282,21 @@ function qcCalc(inp){
   if(err) return {error:err.error,paperResults};
 
   const mfgCost=paperResults.reduce((s,p)=>s+p.rows.reduce((a,r)=>a+r.total,0),0);   // 제조원가
-  const mgmtFee=Math.max(150000,Math.round(mfgCost*0.1));                             // 관리비
+  // v1.0(외주 2026-09-11판): 관리비 최소 15만 → 12만. 제조원가 120만 미만 견적의 총원가가 내려간다.
+  const mgmtFee=Math.max(120000,Math.round(mfgCost*0.1));                             // 관리비
   const extraRows=(inp.extras||[]).filter(e=>e.on&&+e.qty>0&&+e.price>0).map(e=>({label:e.label,qty:+e.qty,price:+e.price,total:(+e.qty)*(+e.price)}));
   const extraSum=extraRows.reduce((s,e)=>s+e.total,0);
   const totalCost=mfgCost+mgmtFee+extraSum;
   const perUnit=totalCost/qty;
   const marginPct=Math.max(0,Math.min(99,+inp.margin||0));
-  const marginAmt=Math.max(totalCost*marginPct/100,200000);   // 최소 마진 20만
+  // v1.0(외주 2026-09-11판): 최소마진 20만 고정 → 수량 구간제. 소량 샘플 견적의 바닥 금액이 내려간다.
+  const minMargin=qty>=500?200000:qty>=100?100000:50000;
+  const marginAmt=Math.max(totalCost*marginPct/100,minMargin);
   const totalPrice=totalCost+marginAmt;
   const consumer=totalPrice/qty;
   const realMarginPct=totalCost>0?marginAmt/totalPrice*100:0;
 
-  return {paperResults,tong,realSheets,lossSheets:loss.sheets,lossLabel:loss.label,tooLarge,
+  return {paperResults,tong,realSheets,lossSheets:loss.sheets,lossLabel:loss.label,tooLarge,minMargin,
     제조원가:mfgCost,관리비:mgmtFee,추가비용행:extraRows,추가비용합계:extraSum,
     totalCost,perUnit,marginPct,marginAmt,totalPrice,consumer,realMarginPct};
 }
@@ -13130,6 +13312,7 @@ function qcState(){
     paperType1:val('qc-pt1'),paperSize1:val('qc-ps1'),paperType2:val('qc-pt2'),paperSize2:val('qc-ps2'),
     print:chk('qc-print'),printColors:+val('qc-colors'),coating:chk('qc-coat'),coatingType:val('qc-coattype'),
     tomson:chk('qc-tomson'),adhesive:chk('qc-adh'),epoxy:chk('qc-epoxy'),foil:chk('qc-foil'),emboss:chk('qc-emboss'),
+    uvPrint:chk('qc-uv'),uvPrintType:val('qc-uvtype'),
     corrType:val('qc-corrtype'),corrMat:val('qc-corrmat'),
     backPaperOn:chk('qc-backon'),backPaperType:val('qc-backpt'),backPaperSize:val('qc-backps'),
     backPrint:chk('qc-backprint'),backPrintColors:+val('qc-backcolors'),backCoating:chk('qc-backcoat'),
@@ -13170,6 +13353,7 @@ function renderQuoteCalc(){
       ${inputRow('코팅',tgl('qc-coat','코팅')+' '+chips('qc-coattype',['단면','양면'],'단면'))}
       ${inputRow('후가공',tgl('qc-tomson','톰슨')+' <span id="qc-adh-wrap">'+tgl('qc-adh','접착')+'</span>')}
       ${inputRow('특수공정',tgl('qc-epoxy','에폭시')+' '+tgl('qc-foil','금은박')+' '+tgl('qc-emboss','형압'))}
+      ${inputRow('UV 인쇄',tgl('qc-uv','UV')+' '+chips('qc-uvtype',Object.keys(QC_UV_DEGREE),'4도'))}
       <div id="qc-corr-block">
         <div class="qc-step">④ 골판지 합지</div>
         ${inputRow('합지',chips('qc-corrtype',['해당없음','2합','3합'],'해당없음')+' '+sel('qc-corrmat',Object.keys(QC_CORR_PRICES),'SK B'))}
@@ -13181,14 +13365,14 @@ function renderQuoteCalc(){
       <div class="qc-step">⑤ 추가비용 · 마진</div>
       ${['수작업','포장','배송비','기타'].map((l,i)=>inputRow(l,tgl('qc-ex-on'+i,'적용')+' '+num('qc-ex-q'+i,'수량',66)+' × '+num('qc-ex-p'+i,'단가',76))).join('')}
       ${inputRow('마진율',chips('qc-marginp',['10','15','20','25','30','40'],'30',{'10':'10%','15':'15%','20':'20%','25':'25%','30':'30%','40':'40%'})
-        +'<div style="margin-top:6px">'+num('qc-margin','직접입력',76)+' <span style="font-size:10px;color:var(--text3)">% · 최소 마진 20만원 자동 보장</span></div>')}
+        +'<div style="margin-top:6px">'+num('qc-margin','직접입력',76)+' <span style="font-size:10px;color:var(--text3)">% · 최소 마진 자동 보장 (500개↑ 20만 · 100~499개 10만 · 100개 미만 5만)</span></div>')}
       <div style="display:flex;gap:8px;margin-top:14px">
         <button class="topbar-btn" style="flex:1;justify-content:center" onclick="qcReset()">조건 초기화</button>
         <button class="topbar-btn primary" style="flex:1;justify-content:center" onclick="qcSave()" id="qc-save-btn" disabled>이력 저장</button>
       </div>
     </div>
     <div>
-      <div class="card" id="qc-result"><div class="empty" style="padding:40px;text-align:center;color:var(--text3)">내경과 제작수량을 입력하면 금액이 바로 나옵니다.<br><span style="font-size:10px">지류 단가표: 외주버전 v1.2.2 기준 (27지종 × 15규격)</span></div></div>
+      <div class="card" id="qc-result"><div class="empty" style="padding:40px;text-align:center;color:var(--text3)">내경과 제작수량을 입력하면 금액이 바로 나옵니다.<br><span style="font-size:10px">지류 단가표: 외주버전 2026-09-11판 기준 (40지종 × 15규격 · PET 5종은 치수·두께 기반)</span></div></div>
       <div class="card" style="margin-top:14px">
         <div class="card-header"><div class="card-title">🗂 견적 이력</div><button class="topbar-btn" onclick="qcExportCSV()">CSV 내보내기</button></div>
         <div id="qc-history"></div>
@@ -13300,14 +13484,16 @@ function qcLoadHist(idx){
   g('qc-type').value=QC_TYPE_ALIAS[i.type]||i.type; qcToggleSections();
   g('qc-w').value=i.width; g('qc-d').value=i.depth; g('qc-h').value=i.height;
   g('qc-qty').value=i.qty; g('qc-ganjuk').value=i.ganjuk;
-  g('qc-pt1').value=i.paperType1; g('qc-ps1').value=i.paperSize1;
-  if(i.paperType2) g('qc-pt2').value=i.paperType2; if(i.paperSize2) g('qc-ps2').value=i.paperSize2;
+  // 지종 키도 v1.0에서 대소문자가 바뀌었다(riv350g→RIV350g) — 옛 이력이 조용히 딴 지종으로 복원되지 않게 되돌린다
+  g('qc-pt1').value=qcPaperKey(i.paperType1); g('qc-ps1').value=i.paperSize1;
+  if(i.paperType2) g('qc-pt2').value=qcPaperKey(i.paperType2); if(i.paperSize2) g('qc-ps2').value=i.paperSize2;
   g('qc-print').checked=!!i.print; g('qc-colors').value=i.printColors||'4';
   g('qc-coat').checked=!!i.coating; g('qc-coattype').value=i.coatingType||'단면';
   g('qc-tomson').checked=!!i.tomson; g('qc-adh').checked=!!i.adhesive;
   g('qc-epoxy').checked=!!i.epoxy; g('qc-foil').checked=!!i.foil; g('qc-emboss').checked=!!i.emboss;
+  g('qc-uv').checked=!!i.uvPrint; g('qc-uvtype').value=i.uvPrintType||'4도';
   g('qc-corrtype').value=i.corrType||'해당없음'; g('qc-corrmat').value=i.corrMat||'SK B';
-  g('qc-backon').checked=!!i.backPaperOn; g('qc-backpt').value=i.backPaperType||'sc240g'; g('qc-backps').value=i.backPaperSize||'국전';
+  g('qc-backon').checked=!!i.backPaperOn; g('qc-backpt').value=qcPaperKey(i.backPaperType||'sc240g'); g('qc-backps').value=i.backPaperSize||'국전';
   g('qc-backprint').checked=!!i.backPrint; g('qc-backcolors').value=i.backPrintColors||'1'; g('qc-backcoat').checked=!!i.backCoating;
   (i.extras||[]).forEach((e,x)=>{ g('qc-ex-on'+x).checked=!!e.on; g('qc-ex-q'+x).value=e.qty||''; g('qc-ex-p'+x).value=e.price||''; });
   g('qc-margin').value=i.margin||0;
@@ -13970,6 +14156,7 @@ const AUTO_CSV_DEFAULT={
 function autoLoadRaw(){
   fetch(dataUrl('CSV/_manifest.json')).then(r=>r.ok?r.json():null).catch(()=>null).then(man=>{
     const map=Object.assign({},AUTO_CSV_DEFAULT,man||{});
+    window._autoCsvMap=map;  // 📥 자료실이 «지금 참조 중인 파일»을 알려면 key→파일명이 필요하다
     const keys=Object.keys(map); let done=0;
     if(!keys.length) return;
     const bust='?t='+Date.now();
