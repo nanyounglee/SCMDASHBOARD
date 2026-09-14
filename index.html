@@ -722,7 +722,7 @@ a{color:var(--blue);text-decoration:none}
       <div class="card" style="margin-bottom:16px">
         <div class="card-header">
           <div><div class="card-title">발주 진행현황 <span id="prog-week-label" style="font-weight:400;font-size:11px;color:var(--text3)"></span></div>
-          <div class="card-sub">매주 월요일 09:00 에어테이블 진행현황 뷰 CSV 기준 · 전주 파일과 비교해 완료/진행중/신규 자동 분류</div></div>
+          <div class="card-sub">매주 목요일 13:00 에어테이블 진행현황 뷰 CSV 기준 · 전주 파일과 비교해 완료/진행중/신규 자동 분류</div></div>
           <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
             <span id="prog-save-status" style="font-size:10px;color:var(--text3)"></span>
             <button onclick="openGhSettings()" id="gh-settings-btn" style="font-size:11px;padding:5px 12px;border:1px solid var(--border2);border-radius:var(--r-sm);background:var(--surface);cursor:pointer;white-space:nowrap">⚙ GitHub 연동 설정</button>
@@ -8788,10 +8788,10 @@ function exportCurrentTables(){
 }
 // ===== v1.0: 📥 자료실 — 문서 + 지금 참조 중인 데이터 전체 (사용자 요청 2026-09-14) =====
 // 문서는 대시보드 체계 문서 4종만 둔다 — 내부 의사결정 문서·견적 엑셀(원가 노출, .gitignore 대상)은 넣지 않는다.
-// PDF 2종은 원본 소스가 없어 2026-07-24(v23.5)에 멈춰 있다 — 최신처럼 보이지 않게 기준일을 붙인다.
+// PDF 2종은 docs/src의 HTML 원고에서 `node scripts/build_docs_pdf.mjs`로 만든다 — 기능이 바뀌면 원고·기준일을 함께 고친다.
 const DC_DOCS=[
-  {file:'docs/SCM_DASHBOARD_사용자가이드_v23.pdf',name:'사용자가이드',fmt:'PDF',asof:'2026-07-24 기준 · 이후 변경 미반영',fresh:false},
-  {file:'docs/SCM_DASHBOARD_로직설명_v23.pdf',name:'로직 설명',fmt:'PDF',asof:'2026-07-24 기준 · 이후 변경 미반영',fresh:false},
+  {file:'docs/SCM_DASHBOARD_사용자가이드_v1.0.pdf',name:'사용자가이드',fmt:'PDF',asof:'v1.0 · 2026-09-14 기준',fresh:true},
+  {file:'docs/SCM_DASHBOARD_로직설명_v1.0.pdf',name:'로직 설명',fmt:'PDF',asof:'v1.0 · 2026-09-14 기준',fresh:true},
   {file:'docs/SCM_DASHBOARD_ARCHITECTURE.md',name:'로직 아키텍처',fmt:'Markdown',asof:'최신',fresh:true},
   {file:'docs/CHANGELOG_v23.md',name:'변경 내역',fmt:'Markdown',asof:'최신',fresh:true},
 ];
@@ -8880,7 +8880,7 @@ function nav(el,id) {
     eoq:'<b>확인 가능 지표:</b> 발주필요 SKU수 · 긴급발주 대상수 · 평균EOQ · EOQ 산출 제외 SKU수(3개월 판매실적 없음) | <b>테이블:</b> 파츠별 현재고 · 조달유형(국내생산/국내소싱/직소싱/중개소싱, 필터 가능) · 일평균수요(최근 3개월 판매량÷90일) · EOQ(경제적발주량) · ROP(재발주점) · 안전재고 · 리드타임(파츠별 실측 우선) · ROP도달까지 일수 | <b>파라미터:</b> 1회발주비용(기본5만) · 보관비율(20%) · 안전재고 = 목표서비스수준(1~3분기 97%·4분기 95%) × 일별수요표준편차 × √리드타임(Z-score, dashboard_sku_monthly 판매이력 기반) · 이력 부족 SKU만 안전재고일수(7일) 근사 폴백 · 리드타임은 parts_master 파츠별 실측치 우선, 없으면 기본 14일 | <b>CSV:</b> 재고 SKU 스냅샷(dashboard_sku_snapshot) + 파츠별 월별 판매(dashboard_sku_monthly) + 파츠 마스터(parts_master, 리드타임)',
     graduation:'<b>확인 가능 지표:</b> 장기미회전 후보 품목수 · 해당 재고금액 | <b>조건:</b> 3M회전율 < 0.1 + 관리대상 Product Parts + 출시 3개월 이상(출시일 미기재 시 신제품으로 간주해 제외) | <b>테이블:</b> 파츠명 · 카테고리 · 조달유형 · 잔여재고 · 재고금액 · 3M매출 · 회전율 · 권장조치(운영종료/졸업/모니터링) | <b>CSV:</b> 재고 SKU 스냅샷(dashboard_sku_snapshot)',
     order:'<b>확인 가능 지표:</b> 전체 제품 발주량(발주수량·월간발주빈도·연간발주량합, 헤더 클릭 정렬) + MoM(전월대비) + YoY(전년대비) 증감률 · 검색창 연동 · 재고생산(굿즈코드 STCK 포함) 제외 | <b>여분(버퍼) 발주수량 추천:</b> 제품별 이슈 이력(수량부족률·품질불량률·미입하율) 기반 권장 버퍼%·여분수량 · 예방비용 vs 실패비용(재제작) 차액 비교 · 행 클릭 시 버퍼% 시나리오별 비교 | <b>CSV:</b> 발주_RAW + 이슈_RAW',
-    progress:'<b>확인 가능 지표:</b> 담당자별 진행중/신규/완료(전주 대비) TASK 요약 · TASK별 진행률(입하예정일 기준 %) · 지연 표시 | <b>비고:</b> 특이사항·협력사 입하현황 수기 입력 — 저장/수정 시 이력 병기, GitHub 연동(⚙) 시 자동 커밋·배포 | <b>CSV:</b> 매주 월요일 09:00 에어테이블 진행현황 뷰 → CSV/progress_연도_W주차.csv 커밋 (전주 파일과 자동 비교, 지난 파일은 CSV_BANK 아카이브)',
+    progress:'<b>확인 가능 지표:</b> 담당자별 진행중/신규/완료(전주 대비) TASK 요약 · TASK별 진행률(입하예정일 기준 %) · 지연 표시 | <b>비고:</b> 특이사항·협력사 입하현황 수기 입력 — 저장/수정 시 이력 병기, GitHub 연동(⚙) 시 자동 커밋·배포 | <b>CSV:</b> 매주 목요일 13:00 에어테이블 진행현황 뷰 → CSV/progress_연도_W주차.csv 커밋 (전주 파일과 자동 비교, 지난 파일은 CSV_BANK 아카이브)',
     'cost-analysis':'<b>월별 요약:</b> 매출/원가 추이 바차트 · 원가율 추이 라인차트 · 월별 매출/원가/원가율/마진 테이블 | <b>프로젝트별 상세:</b> 프로젝트 선택 → 매출/투입원가/원가율 KPI · TASK별 실제단가 vs 공정DB 표준단가 비교(표준대비%) · Movement 재고투입 · 공정DB 참조 테이블 | <b>CSV:</b> 발주_RAW + (선택)원가/Movement | <b>임베딩:</b> cost_db.json 공정DB',
     issue:'<b>확인 가능 지표:</b> 기간 이슈 건수 · 기간 발주 TASK · <b>이슈율(이슈÷TASK×100, 전년 동기 %p 비교)</b> · <b>미입하율 추이 차트+표</b>(당해 vs 전년 vs 목표선 · 지점 클릭 시 MoM/YoY 상세) · <b>실패비용 현황</b>(재제작 자동집계+수기입력, YoY·월별 추이) | <b>차트:</b> 월별 이슈 추이(품질/수량/운영) · <b>이슈율 2025 vs 2026 동기 비교</b>(2025 원본 RAW 기준) | <b>탭:</b> 전체 · 품질이슈(등급+내용) · 수량이슈(내용+대응) · 운영이슈(내용+개선) · <b>고객인지이슈(검수유출률·연도별/작성자별 차트·대응/실패비용 수기입력)</b> · 제품×협력사 이슈율 · 재발 이슈 | <b>컬럼:</b> 입하일 · 프로젝트 · 제품 · 담당자 · 유형 · 내용 · <b>대응</b>(품질등급의견판단사유_SCM) · <b>실패비용</b>(재제작 취득원가) | <b>CSV:</b> 이슈_RAW + 발주_RAW + 고객인지이슈_RAW + 2025 RAW(비교선)',
     sales:'<b>확인 가능 지표:</b> 월매출 · 평균마진율 · 총주문수량 | <b>차트:</b> 월별매출추이(바) · 제품별매출비중(도넛) | <b>테이블:</b> 제품명 · 주문수량 · 판매단가 · 소계 · 원가율(공정DB 기반) · 추정마진율 | <b>CSV:</b> 판매주문 | <b>임베딩:</b> cost_db.json',

@@ -1,0 +1,340 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<title>SCM 통합운영 대시보드 v1.0 — 데이터 로직 설명서</title>
+<!-- 원고: 이 파일을 고친 뒤 `node scripts/build_docs_pdf.mjs 로직설명` → docs/SCM_DASHBOARD_로직설명_v1.0.pdf -->
+<style>
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{font-family:'Malgun Gothic','Apple SD Gothic Neo','Noto Sans KR',sans-serif;font-size:9.6pt;color:#1a1a1a;line-height:1.6;-webkit-print-color-adjust:exact;print-color-adjust:exact}
+  .cover{border-bottom:2.5px solid #1a1a1a;padding-bottom:9px;margin-bottom:12px}
+  .cover .t1{font-size:21pt;font-weight:800;letter-spacing:-.5px}
+  .cover .t2{font-size:13.5pt;font-weight:700;color:#3a3a3a;margin-top:1px}
+  .cover .meta{font-size:8.8pt;color:#666;margin-top:7px;line-height:1.55}
+  h2{font-size:12.5pt;font-weight:800;margin:16px 0 7px;padding:4px 10px;background:#f1f3f5;border-left:4px solid #1f4e9c;break-after:avoid}
+  h3{font-size:10.2pt;font-weight:700;margin:11px 0 4px;color:#1f2937;break-after:avoid}
+  p{margin:2px 0 6px}
+  table{width:100%;border-collapse:collapse;font-size:8.5pt;margin:4px 0 9px}
+  th{background:#f5f6f8;text-align:left;font-weight:700;padding:4px 6px;border:1px solid #d9dce1}
+  td{padding:4px 6px;border:1px solid #e3e5e8;vertical-align:top}
+  tr{break-inside:avoid}
+  code{font-family:Consolas,'D2Coding',monospace;font-size:8.2pt;background:#f3f4f6;padding:0 3px;border-radius:3px}
+  ul,ol{padding-left:17px;margin:2px 0 7px} li{margin:1.5px 0}
+  .tip{background:#eef4ff;border-left:3px solid #3b6fd8;padding:5px 10px;margin:5px 0 9px;font-size:8.8pt;break-inside:avoid}
+  .warn{background:#fff6e5;border-left:3px solid #d98a00;padding:5px 10px;margin:5px 0 9px;font-size:8.8pt;break-inside:avoid}
+  .box{border:1px solid #cfd8e3;border-radius:6px;padding:7px 11px;margin:6px 0 10px;background:#fafcff;break-inside:avoid}
+  .box b.h{display:block;margin-bottom:3px;color:#1f4e9c}
+  .small{font-size:8.3pt;color:#555}
+  .pb{break-before:page}
+</style>
+</head>
+<body>
+
+<div class="cover">
+  <div class="t1">SCM 통합운영 대시보드 v1.0</div>
+  <div class="t2">데이터 로직 설명서</div>
+  <div class="meta">버전: v1.0 | 기준일: 2026-09-14 | 작성: SCM실 · Claude AI<br>
+  대상: 구매전략파트 · 외주생산파트 팀원 공유, 유지보수, 데이터 매핑 참조<br>
+  이 문서는 <b>현재 구현 로직</b>만 다룹니다. 버전별 변경 이력은 <code>docs/CHANGELOG_v23.md</code>, 파일 구조·배포 절차는 <code>docs/SCM_DASHBOARD_ARCHITECTURE.md</code>를 참고하세요.</div>
+</div>
+
+<div class="box"><b class="h">이번 개정의 주요 변경 (2026-07-24판 → v1.0)</b>
+<ul>
+  <li><b>원가</b>: 실제 투입 파츠 × 발주수량 구간 단가로 교체, 재고생산품은 재고생산 수량 구간(§3-7) · 프로젝트 귀속 원가율과 목표 45%(§3-9)</li>
+  <li><b>매출</b>: VAT 별도 + 출고리스트 마감 컷오프(1~7월분 개별, 8월분부터 월 말일) · 2026 발주 RAW 프로젝트만 집계(§3-8)</li>
+  <li><b>미입하</b>: 신·구 포맷 판정 + 판정일(입하예정일+1일) 기준(§3-2) · <b>이슈 협력사 귀속</b> 직접 기재값 1순위(§3-4)</li>
+  <li><b>발주 현황</b>: 굿즈코드 묶기·굿즈 상세·옵션 판별과 축 결합·고객 주문 단위 수량·빅딜 μ+1.2816σ(§3-16)</li>
+  <li><b>이력</b>: 2022~2025 아카이브 반영, 연도별 실적 비교(2024~)(§2-3, §3-17) · <b>재고 KPI 16지표</b>(§3-14)</li>
+  <li><b>신규 화면·기능</b>: 매출 현황 목표 대비 모달, 연간 이벤트 캘린더, 협력사 제외 이슈율, 자료실, 견적 계산기 외주 2026-09-14판(§3-21)</li>
+  <li><b>주간리포트</b>: 확정 리포트 등록 기반 전주값·미보고 이월·300개 기준 단가 변동(§3-20)</li>
+</ul></div>
+
+<h2>1. 시스템 개요</h2>
+<h3>1-1. 아키텍처</h3>
+<p>단일 HTML 파일(<code>index.html</code>)로 동작하는 정적 대시보드입니다. 서버가 없고 GitHub Pages가 배포 URL과 데이터 파일을 함께 서비스합니다.</p>
+<table>
+<tr><th style="width:21%">항목</th><th>내용</th></tr>
+<tr><td>실행 환경</td><td>브라우저 JS만으로 동작. 접속 시 비밀번호 화면(브라우저에 통과 기록 저장). 로컬 파일(<code>file://</code>)로 열면 자동 로드가 막히므로 배포 URL 또는 로컬 웹서버로 엽니다.</td></tr>
+<tr><td>데이터 입력</td><td>① 자동 로드: <code>CSV/_manifest.json</code> + <code>AUTO_CSV_DEFAULT</code>(20종) ② 주차 파일·아카이브: <code>CSV/</code> 주차 파일, <code>CSV_BANK/</code> 스냅샷·연도 아카이브 ③ 영구 임베딩 JSON(<code>data/</code>) ④ 수동 CSV 업로드(자동 로드분을 덮어씀)</td></tr>
+<tr><td>수집 자동화</td><td>GitHub Actions 5종이 Airtable·Google Sheets 원천을 정해진 시각에 받아 커밋(§2-2). 대시보드의 «🔄 지금 새로고침»은 같은 워크플로를 즉시 실행합니다.</td></tr>
+<tr><td>재고운영 계산</td><td>구글시트가 만든 사전집계 CSV를 표시만 담당(Agg 경로, §2-6)</td></tr>
+<tr><td>원가 계산</td><td>발주행에 실제 투입된 파츠(<code>sync_itemdb</code>) × 발주수량 구간 표준단가(§3-7)</td></tr>
+<tr><td>차트·라이브러리</td><td>Chart.js 4.4.1(CDN). html2pdf.js·driver.js는 첫 사용 시에만 CDN에서 lazy-load</td></tr>
+<tr><td>저장</td><td>localStorage(화면 설정·KPI 목표값·견적 이력·주간리포트 스냅샷 등) + GitHub 커밋(진행현황 비고·고객인지이슈 수기입력·캘린더 특이사항·변경 이력, 병합 저장 §3-23)</td></tr>
+<tr><td>배포</td><td>https://nanyounglee.github.io/SCMDASHBOARD/ — <code>main</code> 브랜치 푸시 후 1~3분</td></tr>
+</table>
+
+<h3>1-2. 화면 구성 (9개 대분류 · 18개 화면 + 외부 링크 2)</h3>
+<table>
+<tr><th style="width:24%">대분류</th><th>화면 (섹션 id)</th></tr>
+<tr><td>대시보드</td><td>종합 현황 (<code>overview</code>)</td></tr>
+<tr><td>구매전략 · S&amp;OP 재고운영</td><td>재고운영 현황 (<code>inventory-ops</code>) · 품절 상세 (<code>stockout-detail</code>) · 졸업 검토 (<code>graduation</code>) · 매입검토(EOQ) (<code>eoq</code>)</td></tr>
+<tr><td>외주생산 · 발주 현황</td><td>발주 현황 (<code>order</code>) · 발주 진행현황 (<code>progress</code>)</td></tr>
+<tr><td>외주생산 · 이슈 현황</td><td>이슈 현황 (<code>issue</code>)</td></tr>
+<tr><td>외주생산 · 공급망 현황</td><td>공급망 포트폴리오 (<code>portfolio</code>, 서브탭: 포트폴리오 · 협력사·매입 현황 · 협력사유형별 제품군 · 담당자별 협력사) · 협력사 변경 검토 ↗(외부)</td></tr>
+<tr><td>구매조달 · 매출 분석</td><td>제품별 판매량 추이 (<code>product-trend</code>) · 원가 분석 (<code>cost-analysis</code>)</td></tr>
+<tr><td>구매조달 · KPI</td><td>KPI 목표·트래킹 (<code>kpi</code>)</td></tr>
+<tr><td>일정관리</td><td>연간 이벤트 캘린더 (<code>calendar</code>)</td></tr>
+<tr><td>운영 서비스</td><td>품질 현황 (<code>qms</code>) · 하도급법 위험 (<code>subcontract</code>) · 견적계산기 (<code>quote</code>) · AI 어시스턴트 (<code>ai</code>) · 리포트 생성 (<code>report</code>) · KPI종합분석-NEST ↗(외부)</td></tr>
+</table>
+<p class="small">매입 검토·시즌재고 계획 섹션은 코드에 남아 있으나 2026-07-27에 사이드바에서 빠졌습니다(EOQ 화면이 «매입검토(EOQ)»로 이름을 이어받음).</p>
+
+<h2>2. 데이터 입력 구조</h2>
+<h3>2-1. 자동 로드 &amp; 고정 파일명</h3>
+<p>페이지 로드 시 <code>autoLoadRaw()</code>가 <code>CSV/_manifest.json</code>(key→파일명, 없으면 <code>AUTO_CSV_DEFAULT</code>)에 따라 <code>CSV/</code>의 파일을 받아 <code>D[key]</code>에 싣습니다. 주간 갱신은 같은 파일명으로 덮어쓰기만 하면 되며 HTML 수정이 필요 없습니다.</p>
+<table>
+<tr><th style="width:27%">Key / 파일</th><th style="width:30%">원천</th><th>갱신</th></tr>
+<tr><td><code>order</code> order.csv · <code>issue</code> issue.csv</td><td>Airtable 발주 RAW · 이슈 RAW</td><td>매주 목 13:00 자동</td></tr>
+<tr><td><code>parts</code> parts.csv · <code>price_chg</code> price_chg.csv</td><td>Airtable 코스트베이스(파츠) · 단가 변경</td><td>매주 목 13:00 자동 (price_chg는 내용이 바뀐 주만 보관)</td></tr>
+<tr><td><code>goods_master</code> goods_master.csv</td><td>Airtable 굿즈 마스터(졸업 포함 뷰)</td><td>매주 목 13:00 자동 (2026-08-18 등록)</td></tr>
+<tr><td><code>proj_rev</code> proj_rev.csv</td><td>Airtable 매출결산(project-CX)</td><td>매주 목 13:00 자동 — 대시보드는 <code>프로젝트명 (Short ver.)</code>·<code>총 매출액</code>·<code>최종 출고일</code>만 사용</td></tr>
+<tr><td><code>sup</code> sup.csv</td><td>Airtable 협력사 마스터</td><td>매월 1일 09:00 자동</td></tr>
+<tr><td><code>dashboard_period_summary</code> · <code>group_summary</code> · <code>sku_snapshot</code> · <code>sku_detail</code> · <code>sku_monthly</code></td><td>Google Sheets S&amp;OP 사전집계</td><td>매주 목 18:00 자동</td></tr>
+<tr><td><code>parts_master</code> · <code>raw_purchase</code>(raw_발주.csv) · <code>sales_status_history</code></td><td>Google Sheets (파츠 마스터 · 미입고 발주 · 판매상태 변경 이력)</td><td>매주 목 18:00 자동</td></tr>
+<tr><td><code>ci</code> ci.csv · <code>stockout_list</code> stockout_list.csv</td><td>Airtable 고객인지이슈 · 품절리스트</td><td>수동 업로드</td></tr>
+<tr><td><code>quarter_eval</code> quarter_eval.csv</td><td>Google Sheets 공급망 분기별평가</td><td>수동 업로드</td></tr>
+<tr><td><code>check_answer</code> · <code>check_question</code></td><td>Airtable 제품 문의 이력(AI 어시스턴트)</td><td>수동 교체</td></tr>
+</table>
+
+<h3>2-2. 수집 자동화 스케줄 (GitHub Actions, KST)</h3>
+<table>
+<tr><th style="width:24%">워크플로</th><th style="width:17%">시각</th><th>내용</th></tr>
+<tr><td><code>weekly-airtable.yml</code></td><td>매주 목 13:00</td><td>발주·이슈·파츠·단가 변경·굿즈 마스터(고정 파일명) + 발주 진행현황·매출결산(주차 파일). 덮어쓰기 전 이전 버전을 <code>CSV_BANK/{연도}_W{주차}/</code>에 보관(주차·소스별 1개). 직전 주차와 레코드 수가 <b>정확히 같으면 동결 경고</b>(원천 뷰 정지 조기 감지). 단가 이력 JSON 갱신 포함</td></tr>
+<tr><td><code>weekly-meeting-agenda.yml</code></td><td>매주 목 16:00</td><td>외주생산파트 회의 안건 → <code>CSV/meeting_agenda.json</code></td></tr>
+<tr><td><code>weekly-google-sheets.yml</code></td><td>매주 목 18:00</td><td>S&amp;OP 사전집계·파츠 마스터·raw_발주·판매상태 이력. 이전 버전은 <code>CSV_BANK/{주차}/google_sheets/</code></td></tr>
+<tr><td><code>monthly-suppliers.yml</code></td><td>매월 1일 09:00</td><td><code>sup.csv</code> 갱신 + 직전본을 <code>CSV_BANK/sup_YYYY_MM.csv</code>로 보관(협력사 신규·종료 감지 체인)</td></tr>
+<tr><td><code>yearly-archive.yml</code></td><td>매년 1월 2일 00:10</td><td>직전 연도 <code>order</code>·<code>issue</code>를 <code>CSV_BANK/archive/{연도}/</code>로 고정 보존</td></tr>
+</table>
+<p class="small">여러 워크플로가 동시에 푸시하다 거절되는 경합을 막기 위해 푸시는 3회 재시도합니다.</p>
+
+<h3>2-3. 주차 파일 · 스냅샷 · 연도 아카이브</h3>
+<table>
+<tr><th style="width:36%">경로</th><th>쓰이는 곳</th></tr>
+<tr><td><code>CSV/progress_YYYY_WNN.csv</code></td><td>발주 진행현황. <code>fetchLatestWeekly()</code>가 이번 주부터 최대 12주 거슬러 최신 파일을 찾고(없으면 <code>CSV_BANK</code> 폴백) 전주 파일과 비교</td></tr>
+<tr><td><code>CSV_BANK/{연도}_W{주차}/parts.csv</code></td><td>파츠 신규·졸업·단가 변경 감지(<code>detectPartsChanges</code>) — 주차 스냅샷 체인 비교</td></tr>
+<tr><td><code>CSV_BANK/{연도}_W{주차}/price_chg.csv</code></td><td>주차별 단가 변경 원문 보관</td></tr>
+<tr><td><code>CSV_BANK/sup_YYYY_MM.csv</code></td><td>협력사 신규·거래종료 감지(<code>detectSupplierChanges</code>) — 월간 스냅샷 체인</td></tr>
+<tr><td><code>CSV_BANK/archive/{연도}/order_{연도}.csv</code>, <code>issue_{연도}.csv</code></td><td>YoY·연도별 추이의 행 단위 원본. <code>loadPriorYearArchive()</code>가 작년부터 파일이 없는 해까지 거슬러 <code>D.orderPrevYear</code>(전년)·<code>D.orderHist</code>(전 연도 누적)에 적재. 현재 발주 2024·2025, 이슈 2025 보유</td></tr>
+<tr><td><code>data/data_hist.json</code></td><td>2022.6~2023.12 월별 매입 집계(지출결의 기준, 총금액÷1.1). 행 단위 원본이 없는 두 해의 유일한 소스 — 매입 추이선·협력사 상세 이력 구간에만 사용</td></tr>
+</table>
+
+<h3>2-4. 영구 임베딩 JSON (<code>data/</code>)</h3>
+<table>
+<tr><th style="width:27%">파일</th><th>내용 · 갱신</th></tr>
+<tr><td><code>cost_db.json</code></td><td>공정DB 1,623개 + 단가DB 3,549개(수량별 표준단가 10구간) — 공정/단가 변경 시 재생성</td></tr>
+<tr><td><code>parts_master.json</code></td><td>파츠 마스터 2,749개(코드→카테고리 조회, <code>PARTS_MAP</code>) — «파츠 마스터 갱신» 버튼</td></tr>
+<tr><td><code>parts_price_history.json</code></td><td>파츠별 구간단가 에폭 이력(주간 워크플로가 직전 스냅샷과 비교해 추가) — 시점 단가·300개 기준 변동(§3-20)</td></tr>
+<tr><td><code>parts_bom_multiplier.json</code></td><td>파츠번호별 BOM 배수(여분 추천 보정, 수기 등록)</td></tr>
+<tr><td><code>data_hist.json</code> · <code>data_2025.json</code></td><td>2022~2023 매입 집계 · 2025 월별 사전집계(아카이브가 우선이라 사실상 미사용)</td></tr>
+<tr><td><code>change_log.json</code></td><td>변경 감지 누적 이력(월간 공지사항·변경 이력 리포트)</td></tr>
+<tr><td><code>ci_overrides.json</code> · <code>progress_notes.json</code> · <code>cal_notes.json</code></td><td>고객인지이슈 수기입력 · 진행현황 비고 · 캘린더 특이사항 — 화면 입력 → GitHub 커밋</td></tr>
+</table>
+
+<h3>2-5. CSV 파서</h3>
+<p><code>parseCSV()</code>는 전체 텍스트를 문자 단위로 스캔하는 상태머신으로, 따옴표 안의 줄바꿈·쉼표·이스케이프 따옴표를 보존합니다. 금액은 <code>pa()</code>(₩·쉼표·공백 제거)로, 고객주문수량처럼 <code>"50, 8"</code> 나열이 있는 필드는 전용 파서로 읽습니다(<code>pa()</code>로 읽으면 508이 됨).</p>
+
+<h3>2-6. 재고운영 Agg 경로</h3>
+<p>사전집계 3종(<code>dashboard_period_summary</code>·<code>group_summary</code>·<code>sku_snapshot</code>)이 모두 있으면 구글시트가 계산한 값을 표시만 합니다. 재고운영 4개 화면은 전역 기간 바를 숨기고 자체 기간 선택기(<code>renderAggPeriodControls</code>)를 씁니다.</p>
+
+<h2>3. 핵심 계산 로직</h2>
+<h3>3-1. 발주 TASK · 월 매입금액</h3>
+<p>발주 TASK는 <code>과업지시일자</code> 월 기준 행 수이며, 프로젝트/재고생산은 <code>isStock()</code>(굿즈코드 STCK 포함)으로 구분합니다. 월 매입금액은 <code>purchaseByMonth(r)</code>가 <code>세금계산서작성월 (from 지출결의)</code>를 기준으로 귀속하고, 여러 달에 걸친 계산서는 분할 금액(없으면 균등 분할)으로 나눕니다. 원본이 월 단위라 매입금액은 항상 월 단위로만 집계됩니다. 매입 추이선은 <b>재고생산 포함</b> 기준이며 2022.6~현재를 그립니다(2022~2023은 <code>data_hist.json</code> 집계 구간).</p>
+
+<h3>3-2. 미입하 판정 — <code>hasNoReceipt()</code> · <code>noReceiptCheckDate()</code></h3>
+<ul>
+<li><b>판정값</b>: <code>미입하 발생이력_movement</code>. Airtable export가 2026-W31부터 <code>"N checked out of M"</code> → 체크된 항목만 나열(<code>''</code>/<code>','</code>/<code>'checked'</code>)로 바뀌어 신·구 포맷을 모두 인식합니다(아카이브·스냅샷은 구 포맷).</li>
+<li><b>판정일</b>: <code>(입하확정일 || 입하예정일) + 1일</code>. 물류가 예정일 다음날 09:00에 미입고를 체크하는 구조라, 과업지시일자로 버킷하면 리드타임만큼 밀려 최근 구간이 항상 0에 수렴합니다.</li>
+<li><b>분모</b>: 미입하율은 «그 구간에 판정된(입하예정) 건수»가 분모입니다. 이슈율·긴급률은 종전대로 과업지시월 모수를 씁니다. 적용: 주간리포트 1-1·1-2·1-3·7-D, 미입하율 추이 차트, KPI 납기준수율, AI 질의.</li>
+</ul>
+
+<h3>3-3. 입하경과일 · 하도급법 위험</h3>
+<p>기준일(입하확정일 우선, 없으면 입하예정일)부터 종료일(실제입하일, 없으면 오늘)까지 일수를 셉니다. 하도급법 위험은 공급망 마스터의 하도급계약 대상여부='대상' + 미입하 + 경과 90일 이상 건을 자동 판별합니다.</p>
+
+<h3>3-4. 이슈 집계 기준일 · 협력사 귀속</h3>
+<ul>
+<li><b>집계 기준일</b>: 품질 이슈는 <code>품질이슈내용업데이트</code>, 운영 이슈는 <code>운영이슈내용 업데이트</code>, 수량 이슈는 실제입하일. 복합 카테고리("수량이슈, 품질이슈")는 첫 토큰을 주카테고리로 봐 이중 집계를 막습니다.</li>
+<li><b>협력사 귀속</b> <code>issueSupplierOf()</code>: 이슈 RAW의 <code>(파트너)발주협력사명 텍스트</code>(99.7% 기재)를 1순위로 씁니다. 원천에서 15자로 잘려 오므로 수주처 명단과 <b>접두 일치 후보가 정확히 하나일 때만</b> 복원합니다. 값이 없을 때만 movement 조인 추정으로 폴백합니다(종전 추정은 다협력사 프로젝트에서 53% 불일치). 제품×협력사 이슈율·협력사 상세·재발 이슈에 적용됩니다.</li>
+</ul>
+
+<h3>3-5. 협력사 제외 이슈율 시뮬레이션</h3>
+<p>이슈 현황 상단의 «협력사 제외» 칩으로 고른 협력사를 <b>이슈(분자)와 발주 TASK(분모) 양쪽에서</b> 빼고 KPI 3종·추이 차트 3종을 다시 계산해 전후(예: <code>5.54% → 4.84% (-0.70%p)</code>)를 병기합니다. 칩은 선택 기간 이슈 상위 8곳 + 이미 제외한 곳이며 선택은 localStorage에 보존됩니다. 아래 목록 탭은 원본 조회용으로 그대로 둡니다.</p>
+
+<h3>3-6. 검수 유출률 (고객인지이슈)</h3>
+<p>고객인지이슈마다 같은 프로젝트에 고객 등록일 이전 내부 이슈 기록이 있었는지(당해+전년 아카이브)로 선행검출/유출을 판정합니다. 내부 데이터가 없는 연도는 판정불가로 제외합니다. 같은 프로젝트가 <code>ci.csv</code>에 두 번 올라와도 자동 재제작비는 <code>idx_issue</code>가 가장 작은 행에만 귀속합니다.</p>
+
+<h3>3-7. 원가 산출 — 실제 투입 파츠 × 발주수량 구간 단가</h3>
+<ul>
+<li><b>행 단위</b> <code>calcOrderRowStdCost</code>: 발주행 <code>sync_itemdb</code>에 기록된 <b>그 발주에 실제 투입된 PT</b>만 골라, 그 행의 발주지시수량 구간 표준단가를 적용해 합산합니다. 이름이 같은 파츠를 모두 더하던 방식은 배타 옵션(택1)까지 합산해 최대 8.7배 과대계상이 났습니다. 커버리지는 약 97%입니다.</li>
+<li><b>재고생산품</b> <code>getStockPartQtyIndex()</code>: 소량 구간 단가가 MOQ 총액÷수량이라 실단가가 아니므로, 재고생산 이력이 있는 파츠는 재고생산 수량 구간 단가를 씁니다.</li>
+<li><b>프로젝트 단위</b> <code>calcProjectStdCost</code>: PNA로 묶어 표준원가·취득원가·공급가액을 함께 산출합니다.</li>
+<li><b>폴백</b>: 발주행 없이 산출물명만 있을 때는 전량 합산 대신 옵션 단가 중앙값(<code>approx</code> 표시).</li>
+</ul>
+<div class="warn"><b>표준원가와 취득원가는 대조 대상이 아닙니다.</b> 표준원가는 제품 1개의 총원가(본품+인쇄+부자재) 기준가이고, 취득원가는 그 발주의 실제 지급액입니다(예: 인쇄만 한 발주는 취득원가에 인쇄비만 있음). 나란히 보되 일치를 기대하지 않습니다. BOM 수량(세트당 투입 수)은 원천에 없어 반영하지 못합니다.</div>
+
+<h3>3-8. 매출 실측 — VAT 별도 · 출고리스트 마감 · 당해 발주 프로젝트</h3>
+<ul>
+<li><b>금액</b>: <code>proj_rev</code>의 <code>총 매출액</code>은 VAT 포함이라 <code>getProjRevMap()</code>에서 ÷1.1(<code>REV_VAT_DIV</code>) 후 원 단위 반올림합니다. 매출을 쓰는 모든 화면에 일괄 적용됩니다.</li>
+<li><b>귀속월</b> <code>revMonthOfShipDate(최종 출고일)</code>: 연간분석 표는 달력월이 아니라 출고리스트 마감 시점까지의 출고분이라 마감일 기준으로 귀속합니다.
+  <table style="margin-top:4px">
+  <tr><th>1월분</th><th>2월분</th><th>3월분</th><th>4월분</th><th>5월분</th><th>6월분</th><th>7월분</th><th>8월분~</th></tr>
+  <tr><td>~02-23</td><td>~03-17</td><td>~04-22</td><td>~05-21</td><td>~06-17</td><td>~07-08</td><td>~08-04</td><td>그 달 말일 (8월분 = 08-05~08-31)</td></tr>
+  </table>
+  1~7월분은 <code>REV_CUTOFF</code>의 개별 날짜, 8월분부터는 <code>REV_MONTHEND_FROM=202608</code> 규칙으로 월 말일입니다(날짜 추가 불필요). 마지막 명시 마감일 이후 출고분은 이미 마감된 달로 되돌리지 않습니다. <code>revCutoffLabel()</code>이 화면 표기용 마감일을 돌려줍니다(로컬 날짜로 조립 — <code>toISOString()</code>은 KST에서 하루 밀림).</li>
+<li><b>집계 모수</b>: <b>2026 발주 RAW(비재고)에 있는 프로젝트만</b> 집계합니다. 2025년 12월 수주·2026년 1월 출고분(112건)은 2025 매출로 이미 마감돼 이중계상이 되기 때문입니다. 결산 CSV에 새 프로젝트가 있어도 <code>order.csv</code>에 오르기 전까지는 매출 카드에 잡히지 않습니다.</li>
+<li><b>연간분석 표</b>: 목표·수주액·표 매출액·전년 수주액은 CSV가 아닌 <code>SALES_PLAN</code> 상수(구매조달팀 01-A/01-B 표)입니다. 표의 월 칸은 만원 반올림이라 합계가 1만원 어긋날 수 있습니다.</li>
+</ul>
+<div class="warn">2026-09-14 표 갱신으로 6월 매출액(7.30억→11.30억)·7월(5.89억→7.77억)이 크게 바뀌어 «실측 − 표» 6월 -34.3% · 7월 -25.8%가 됐습니다(1~5월은 ±3.2% 이내). 6·7월분 마감일은 이전 표에 맞춘 값이라, 표의 집계 기준 변경 여부를 확인하기 전까지 조정하지 않았습니다.</div>
+
+<h3>3-9. 원가율 (프로젝트 귀속) · 마진 분포</h3>
+<ul>
+<li><code>projectCostByMonth(year)</code>: 발주 프로젝트의 원가를 그 프로젝트의 <b>매출 귀속월</b>에 얹어, 매출과 원가가 같은 프로젝트·같은 달에 묶이게 합니다(세금계산서월 기준 매입 비중과는 목적이 다른 별도 지표).</li>
+<li><code>stockInputCost()</code>: 재고에서 출고된 분은 재고생산 발주가 프로젝트에 귀속되지 않아 원가가 0으로 빠지므로, <code>출고자재 (from movement_투입이동)</code>의 파츠 × <code>출고자재_수량</code>(콤마 다중값 전용 파서) × 파츠 표준원가로 배분합니다.</li>
+<li><b>목표 45% 미만</b>(<code>COST_RATE_TARGET</code>): 매출 100 = 외주생산제조비 45 + 물류비·판관비 15 + 마진 40. 45%↑ 빨강·40~45% 주황. 물류비·공통고정비는 제외라 실제 총원가는 더 큽니다.</li>
+<li><b>마진 분포</b>(원가 분석 → 프로젝트별 상세): ① 실측 매출 프로젝트 전량의 원가율 히스토그램 ② 단일 굿즈코드 프로젝트만으로 굿즈코드별 마진 Top 20(여러 제품이 섞인 프로젝트는 매출을 나눌 근거가 없어 제외). 제품명은 <code>goodsNameOf()</code>가 굿즈 마스터 정본을 우선합니다.</li>
+</ul>
+
+<h3>3-10. 실패비용</h3>
+<p>실패비용 = 재제작 발주의 <b>취득원가</b>(자동) + 고객인지이슈 수기입력분(<code>ci_overrides.json</code>). 재제작 발주는 공급가액이 비어 있는 경우가 많아 취득원가를 씁니다. <code>reworkCostByMonth()</code>가 세금계산서작성월(없으면 과업지시월)로 귀속하고 여러 달이면 균등 분할합니다. 이슈 현황의 «N년 누계 실패비용» 카드를 누르면 <code>openFailCostDetail(year)</code>가 제품별 Top 10·재제작 발생 건·수기 입력 건을 보여주며, 분할 청구 건에는 «분할» 태그와 전액 툴팁을 답니다. 지출결의는 있는데 금액이 빈 재제작 건은 0원으로 집계되는 원천 한계가 있습니다.</p>
+
+<h3>3-11. 공급망 포트폴리오 — QCD × 관계 Tier</h3>
+<p>QCD(품질·원가·납기, 9점)와 관계(예외사항·대체가능성, 6점) 두 점수로 4분면 Tier(Core/Performer/Developing/General)와 A/B/C/D 등급을 매깁니다. 관계 점수는 <code>quarter_eval.csv</code> 최신 분기 값(결측 시 1점)이고, 반기 발주 0건은 D 고정입니다. <code>getEvaluatedPortfolioVendors()</code> 단일 함수를 포트폴리오·KPI·주간리포트 6-1이 함께 써서 숫자가 일치합니다. 마스터에 없는 협력사는 Tier 집계에서 빼고 별도 목록으로 노출합니다.</p>
+
+<h3>3-12. 이번 달 방문 추천 협력사</h3>
+<p><code>computeVisitRecommendations()</code>가 이슈 급증·매입 급증/급감(직전 3개월 평균 대비)·협력사 소유 재고 품절·단가상승 공지·신제품 출시 신호 중 해당 사항이 있는 협력사를 사유와 함께 추천합니다. 진행 중인 이번 달의 매입 급감은 세금계산서 반영 지연 착시라 제외합니다.</p>
+
+<h3>3-13. EOQ · 안전재고 (매입검토(EOQ) 화면)</h3>
+<p>안전재고 = Z(목표 서비스수준) × 일별수요표준편차 × √리드타임. 목표 품절율은 1~3분기 3%(97%, Z=1.88), 4분기 5%(95%, Z=1.645)입니다. 수요표준편차는 <code>dashboard_sku_monthly</code>, 일평균수요는 최근 3개월 판매량, 리드타임은 파츠별 실측치 우선입니다. 미입하 발주가 걸린 SKU는 «발주 완료(제작중)»로 KPI 카운트에서 제외합니다. 발주비용 5만원·보관비율 20%는 업계 통상 가정값입니다.</p>
+
+<h3>3-14. 재고 KPI (KPI 목표·트래킹, 16지표)</h3>
+<table>
+<tr><th style="width:26%">지표</th><th style="width:15%">목표</th><th>산식 · 비고</th></tr>
+<tr><td>재고회전율(3M)</td><td>1.0</td><td><code>turnover_3m</code> — TFT 지표정의서 3개월 기준</td></tr>
+<tr><td>재고회전율(연환산)</td><td>6.0</td><td><code>turnover_ytd × 365 ÷ 연초경과일수</code> — 연간 목표는 이 지표에만 비교</td></tr>
+<tr><td>비의도적 품절률(SKU)</td><td>2.5%</td><td><code>stockout_count / managed_count × 100</code> — 굿즈 기준 3%와 별개 축</td></tr>
+<tr><td>장기미회전 재고 비율</td><td>15% (잠정)</td><td>졸업 검토와 같은 판정(<code>psrStagnantList_()</code>: 3M 회전율 0.1 미만·출시 3개월+·관리대상 Product Parts). 분모도 같은 모집단에서 재합산</td></tr>
+<tr><td>품절 해소 소요일</td><td>30일</td><td><code>sales_status_history</code> 닫힌 구간(원본 <code>end time</code> 기재)의 최근 12개월 <b>중앙값</b>. 의도적 품절 제외</td></tr>
+</table>
+<p>목표값은 입력칸(<code>step="any"</code>)에서 바꾸며 <code>localStorage['kpi_targets']</code>에 저장되어 <b>브라우저마다 다를 수 있습니다</b>. 원천이 없어 산출 못 하는 폐기율·예측정확도·재고 Aging은 «미구현 지표» 카드에 확보 조건과 함께 남겨 둡니다.</p>
+
+<h3>3-15. 여분(버퍼) 발주 추천 · 예방/실패비용</h3>
+<p>과거 발주별 부족 이력을 발주수량 구간(&lt;500/500~999/≥1,000)별로 나눠 구간 평균 부족량을 권장 여분으로 제시하고, 현재 여분율과 대조해 상향/적정/과다를 진단합니다. 이력은 아카이브 전 연도(<code>D.orderHist</code>)를 씁니다. 예방비용(여분×실단가)과 실패비용(재제작 취득원가)을 비교하고, 부족수량이 그 발주 여분 이하이면 «모면»으로 판정합니다.</p>
+
+<h3>3-16. 발주 현황 — 굿즈 묶기 · 옵션 · 주문 단위 수량 · 빅딜</h3>
+<ul>
+<li><b>묶음 단위</b>: 표 상단 칩으로 <b>굿즈</b>(굿즈코드, 기본) ↔ <b>산출물</b> 전환(localStorage 유지). 굿즈코드는 <code>goodsCode(r)</code> 하나만 씁니다. 굿즈 모드의 발주수량은 완제품(추상적산출물) 행만 합산하고(<code>qtyOf</code>), 완제품 행이 없는 코드만 전체합으로 폴백합니다. 공급가액은 부자재 포함 총액입니다.</li>
+<li><b>고객 주문 단위 수량</b> <code>orderUnitRows()</code>(굿즈 상세): <code>task_id</code>에서 파츠 접미(<code>_A1</code>…)를 뗀 «프로젝트×굿즈» 단위마다 최상위 역할(완제품 &gt; 제품 파츠 &gt; 나머지)의 최대 수량 1건만 대표로 씁니다(합산하지 않음). 재제작은 별도 단위입니다.</li>
+<li><b>옵션 판별</b>: <code>구성옵션(인쇄제외)</code> → <code>산출물_옵션</code> 순으로, <code>parts.csv</code>에서 그 굿즈에 연결된 <b>Product Parts 이름 집합</b>에 속한 토큰만 채택합니다. <code>실크(바이브 캠핑쿨러)</code> 같은 «인쇄방식(제품명)»은 <code>unwrapPrintName()</code>으로 제품명을 꺼냅니다. 2025 아카이브는 옵션 필드가 없어 «2025 아카이브(옵션 필드 없음)»로 따로 표기하고, «당해만» 토글로 뺄 수 있습니다.</li>
+<li><b>옵션 축·결합</b>(제품 상세): 파츠명 <code>제품명_부위_값</code>에서 부위를 축으로 잡아 축별 선택지·단가 범위와 결합 단가(최저끼리/최고끼리)·조합 수를 보여주고, 선택지 1종인 축은 «필수»로 표시합니다.</li>
+<li><b>메인 표의 행 분리 키</b>(<code>rowGroupKey</code>/<code>variantTag</code>)는 전년 아카이브와 키가 맞아야 YoY가 이어지므로 옵션 분해를 넣지 않고 상세 모달 전용 <code>detailVariantTag()</code>로만 분해합니다.</li>
+<li><b>빅딜</b> <code>bigDealStat()</code>: 제품별 발주수량 분포의 중앙 80% 상단 <b>μ+1.2816σ 초과</b>. 표본 5건 미만·σ=0이면 판정 보류. 발주 현황 상세와 제품별 판매량 추이가 같은 함수를 씁니다.</li>
+<li><b>연도별 발주 이력</b>: 제품·굿즈 상세 최상단 표가 아카이브 전 연도의 TASK·수량·공급가액·재제작·이슈를 보여줍니다. 라벨은 <code>histRangeLabel()</code>이 실제 로드된 연도로 만듭니다(2023년 이전은 월 집계만 있어 제외).</li>
+</ul>
+
+<h3>3-17. 연도별 실적 비교 (종합 현황, 2024~)</h3>
+<ul>
+<li>발주 TASK·매입금액·이슈건수·이슈율을 연도별로 놓고 YoY를 표시합니다. «동기간(1~N월)» / «연간 전체» 선택.</li>
+<li>2022~2023은 행 단위 원본이 없고 매입도 지출결의 집계뿐이라 표에서 제외합니다(<code>YOY_MIN_YEAR=2024</code>). 그래서 2024 행 YoY는 «—»입니다.</li>
+<li>YoY는 <b>두 해가 모두 기록을 가진 달</b>로 좁혀 계산하고, 좁혀졌으면 «▵»와 사용 구간 툴팁을 답니다.</li>
+<li>이슈는 그 해 최대 월건수의 20% 미만인 달을 결측으로 보아 YoY 구간에서 빼고 «부분기록» 배지를 답니다(2025 상반기). 이슈 건수 기준이 바뀌는 경계(task 단위 ↔ movement 단위)는 비교하지 않습니다.</li>
+</ul>
+
+<h3>3-18. 기간 선택 통합 (주/월/분기/기간지정)</h3>
+<p>비교 라벨은 단위별로 WoW/MoM/QoQ/YoY 중 하나만 자동 표시합니다. 발주 진행현황·원가 분석·품질 현황·하도급법 위험·견적계산기·AI 어시스턴트·리포트 생성·KPI 목표·트래킹은 월 단위만 지원합니다(<code>FROZEN_SECTIONS</code>). 공급망 포트폴리오는 매입금액이 세금계산서 월 단위라 주별만 잠기고, 제품별 판매량 추이는 전 단위를 지원합니다. 재고운영 4개 화면은 자체 기간 선택기를 씁니다.</p>
+
+<h3>3-19. 월간 공지사항 · 변경 이력</h3>
+<ul>
+<li>감지 대상: 졸업/출시 제품(<code>goods_master</code> 날짜), 파츠 신규·졸업·단가 변동(주차 <code>parts.csv</code> 체인), 협력사 신규·거래종료(월간 <code>sup</code> 체인). 결과는 <code>data/change_log.json</code>에 누적됩니다.</li>
+<li><b>신규 제품(파츠 등록)</b>: 굿즈 마스터가 아직 모르는 제품도 파츠가 먼저 붙으면 출시 박스에 함께 표시합니다. 날짜는 파츠 등록 시점, 실제 출시일은 비고에 병기합니다. 굿즈코드·굿즈명 lookup 개수가 일치하는 행만 신뢰하고 STCK는 제외합니다.</li>
+<li><b>신규 협력사</b>: <code>parts.csv</code> 제작협력사 명단에 있으면 발주담당자 표기와 무관하게 통과시키고, 마스터에 없더라도 파츠에 제작협력사로 처음 등장하면 신규로 잡습니다.</li>
+<li>표시 범위: 졸업/출시/신규/거래종료는 오늘 기준 최근 30일 롤링, 품절 제품만 선택 기간 기준입니다. 스냅샷으로 못 잡는 예외는 수동 리스트로 보강합니다.</li>
+</ul>
+
+<h3>3-20. 외주생산파트 주간리포트 · 회의록</h3>
+<ul>
+<li><code>genWeeklyOutsource()</code>가 7개 섹션 .md를 생성합니다. 집계 구간은 전주 목 13:00 ~ 이번 주 목 12:59. 참조 CSV 헤더는 함수 상단 <code>WR_FIELDS</code> 한 곳에 모아 두었습니다(원천 헤더 변경 시 여기만 수정).</li>
+<li><b>전주 열 = 지난주 확정 리포트 게재값</b>: 원천이 사후 입력으로 계속 늘어나 전주 구간을 다시 세면 값이 커지므로, «확정 리포트 등록»으로 최종본 .md를 올리면 <code>wrParseFinalReport</code>가 1-1 표와 섹션 2 이슈 키를 파싱해 <code>localStorage['wrWeeklySnapshots']</code>에 저장하고, 1-1 전주 열·1-3 지난 회차가 그 값을 씁니다. 등록이 없으면 현 데이터로 재계산하고 ⚠ 경고를 붙입니다.</li>
+<li><b>미보고 이월</b>: 직전 확정 회차에 실리지 않은 고객인지이슈는 자동 편입(<code>이월</code> 표시), 품질·수량·운영은 «2-5. 미보고 후보»로 목록만 띄웁니다.</li>
+<li><b>4-1 단가 변동 «300개 기준»</b>: <code>priceTierChange(pt, 요청일자, 300)</code>이 단가 이력 에폭에서 요청일 -1일~+14일 창의 첫 변동을 찾아 <code>28,030원 → 18,500원 (-34.0%)</code>로 채우고, 원문은 항상 함께 남깁니다. 실패 시 «파츠DB 미반영»·«PT코드 미기재»·«단가이력 미로드» 등 사유를 셀에 남깁니다.</li>
+<li><b>실패비용</b>은 대시보드와 같은 취득원가·세금계산서월 기준, 1-1 매입금액은 공급가액 입력분만 합산한 «확정분 하한»임을 표 밑에 명시합니다.</li>
+<li><b>회의록</b>: «주간 회의록 프롬프트 복사»(<code>genMeetingDraftFromAirtable()</code>)가 회의 안건 데이터(<code>meeting_agenda.json</code>, 매주 목 16:00 수집)로 초안 프롬프트를 만들어 클립보드에 넣습니다. 리포트 결과(<code>WR_KPI_SUMMARY</code>)를 회의록 §1에 넘기는 <code>genMeetingTemplate()</code>은 코드에 남아 있지만 현재 화면 버튼에는 연결돼 있지 않습니다.</li>
+</ul>
+
+<h3>3-21. 견적 계산기 <code>qcCalc()</code> — 외주버전 2026-09-14판 기준</h3>
+<table>
+<tr><th style="width:22%">단계</th><th>규칙</th></tr>
+<tr><td>전개 사이즈 (mm)</td><td>단박스 (W+D)×2+50 × D×2+H+70 · 테일러드 스트랩 박스 커스텀 상박스 W+4H+72 × D+4H+72 / 하박스 W+4H+70 × D+4H+70 · SolidG형 커스텀 W+4H+60 × 2D+3H+60 · open페이퍼박스/motion박스 슬리브 W+30 × 2(D+H)+50 / 인박스 W+4H+70 × D+4H+70</td></tr>
+<tr><td>지류 단가</td><td>40지종 × 15규격 장당단가. 선택 규격 단가가 0이면 다음 큰 규격으로 자동 상향. <b>PET 5종</b>은 표 없이 <code>ceil(전개가로×전개세로×두께(mm)×4,000원/kg÷10⁶)</code>, 자동 상향 없음. 뉴에코블랙400g은 1,350원/장(외주 원본 13,500원은 자릿수 오타 — 확정)</td></tr>
+<tr><td>통수 · 여분 · 연수</td><td>통수 = 수량÷판걸이 · 여분 장수 ≤500개 200 / ≤5,000 300 / ≤10,000 500 / ≤20,000 700 / 초과 1,000 · 실통수 = 통수+여분 · 연수 = max(1, round(통수÷(대판 500 / 그 외 1,000)×2)÷2)</td></tr>
+<tr><td>원단 · 인쇄 · 코팅</td><td>원단비 = 장당단가×실통수 · 인쇄 작업비 max(36,000, 도당단가×도수×연수)(도당단가 연수 &lt;2 12,000 … &gt;30 5,000) + 판비 도수×7,000 · 코팅 max(45,000, ceil(가로×세로×145÷10⁶)×통수, 양면 ×2)</td></tr>
+<tr><td>후가공 · 특수공정</td><td>톰슨 max(50,000, 통당 50/70/80원×통수) · 접착(단박스만) max(60,000, 통당 50/40/30/20원) · <b>UV 인쇄</b> max(200,000, 도수×통수×40)(4도=4 · 4도+별색1도=6 · 4도+별색2도=8, 원단1에 1회) · 에폭시 max(100,000, 통수×100) + 필름비 · 금은박/형압 max(80,000, 통수×80/100/120) + 필름비 + 동판비 10,000</td></tr>
+<tr><td>골판지 합지</td><td>(단박스·테일러드·SolidG) 골판지 원단 ceil(재질 m²단가×면적)×max(500, 통수+여분 100/200/300/500) + 합지 max(80,000, 통수×2합 80/100·3합 180/220) + 배면 인쇄지(원단·인쇄·CTP·코팅)</td></tr>
+<tr><td>관리비 · 마진</td><td>관리비 = max(<b>120,000</b>, 제조원가×10%) · 추가비용(수작업·포장·배송비·기타)은 관리비 산출 밖 · 총원가 = 제조원가+관리비+추가비용 · 마진 = max(총원가×마진율, <b>200,000</b>) · 판매금액 = 총원가+마진</td></tr>
+</table>
+<p>이력은 localStorage(<code>quote_history</code>)에 저장하며, v1.0 이전 이력의 소문자 지종 키도 <code>qcPaperKey()</code>로 복원합니다. <b>수식 엑셀 견적서</b>(<code>scripts/build_quote_xlsx.py</code>)는 단가표를 <code>node scripts/gen_quote_constants.mjs</code>로 index.html에서 뽑아 같은 계산을 수식으로 옮기며, <code>python test_quote_xlsx.py</code>가 실제 Excel로 대시보드 계산과 대조합니다. 엑셀 파일은 단가표가 통째로 들어 있어 저장소에 넣지 않습니다.</p>
+
+<h3>3-22. AI 어시스턴트 — 제품 문의 검색</h3>
+<p>쿼리에 제품명이 있으면 <code>matchProductQuery()</code>가 최우선으로 <code>check_answer</code>/<code>check_question</code>에서 제품 정의서 링크와 리드타임·단가 관련 최신 답변 3건을 돌려줍니다(확정 답변이 없으면 과거 질문만). 협력사·담당자·긴급현황·미입하 등은 규칙 기반 질의입니다. 서버가 없어 실시간 슬랙 검색은 지원하지 않습니다(토큰을 둘 곳이 없음).</p>
+
+<h3>3-23. GitHub 연동 자동 커밋 · 동시편집 병합</h3>
+<p>진행현황 비고·고객인지이슈 수기입력·캘린더 특이사항은 개인 토큰(PAT, Contents 쓰기 권한)이 등록돼 있으면 저장 즉시 <code>commitFileToGitHub()</code>로 커밋됩니다. 저장 직전 배포본을 다시 받아 <b>이 브라우저가 직접 건드린 항목만</b> 얹어 병합하므로 다른 사람의 저장을 덮어쓰지 않습니다. 토큰은 <code>gh_pat</code> 키 하나를 공유하지만 브라우저·주소(origin)마다 따로 저장됩니다. 실패 시 GitHub 응답 메시지와 함께 401(토큰 만료)·403(권한 없음)·404(경로) 조치를 안내하고, 입력 내용은 로컬에 남습니다.</p>
+
+<h3>3-24. 협력사 PDF 내보내기 · 변경 검토 진행 현황</h3>
+<p>협력사 드릴다운에서 ① 상세 스냅샷(현재 화면 A4, 차트는 PNG 치환) ② 분석 리포트(전년 대비 YoY·추세선·Top5·재발이슈 A4 2p)를 만듭니다. 변경 검토 진행 현황은 별도 저장소 <code>scm_vendor_change</code>의 <code>bank/</code>를 GitHub API로 받아 상태 랭크(완료&gt;확정&gt;전환검토중)+최신 날짜로 병합합니다.</p>
+
+<h3>3-25. 연간 이벤트 캘린더</h3>
+<p>구매조달팀 연간 주요 이벤트 마스터를 코드 상수로 관리합니다 — 연간 반복업무 9종 × 12개월 타임라인(<code>CAL_MASTER</code>), 주간 정기회의(<code>CAL_WEEKLY</code>). 공급망 특이사항·수시 이슈는 화면에서 추가·삭제하면 <code>data/cal_notes.json</code>에 병합 커밋됩니다(기본 항목 <code>seed-*</code>는 코드가 정본이라 파일에 넣지 않음).</p>
+
+<h3>3-26. 자료실 (문서 · 참조 데이터 내려받기)</h3>
+<p>스크립트 첫머리의 <code>fetch</code> 래퍼가 성공한 동일 출처 GET 중 <code>CSV/</code>·<code>CSV_BANK/</code>·<code>data/</code> 경로를 <code>DC_LOADED</code>에 기록합니다(폴백 경로·아카이브·스냅샷까지 런타임 실측, 손으로 관리하는 목록 없음). 자료실은 이 파일들을 서버 원본 직링크로 내려주고(대용량을 메모리에서 다시 만들지 않음), 수동 업로드분만 <code>D[key]</code>를 CSV로 직렬화합니다(셀 내 줄바꿈 보존). 견적 엑셀·제품별 표준원가 파일은 원가 노출 방지로 목록에 없습니다.</p>
+
+<h3>3-27. 가이드 투어 · 연도별 아카이빙</h3>
+<p>«가이드 투어»는 driver.js를 첫 클릭 시 lazy-load해 17단계 스팟라이트 투어를 실행합니다(첫 방문 자동 1회, <code>localStorage.tourSeenV1</code>). 상세 모달 단계는 지금 화면에 실제로 보이는 첫 항목을 예시로 써서 데이터가 바뀌어도 유효합니다. 연도 아카이브는 매년 1월 2일 자동 보존되고 <code>loadPriorYearArchive()</code>가 연도를 계산해 읽으므로 YoY가 코드 수정 없이 다음 해로 넘어갑니다.</p>
+
+<h2>4. 페이지별 데이터 흐름 요약</h2>
+<table>
+<tr><th style="width:21%">화면</th><th>핵심 데이터 · 로직</th></tr>
+<tr><td>종합 현황</td><td>KPI(발주 TASK·매입금액·이슈·긴급발주·고객인지이슈·매출 현황) + WoW/MoM/QoQ/YoY · 월간 공지사항(§3-19) · 매입 추이 2022.6~(§3-1) · 연도별 실적 비교(§3-17) · 매출 현황 → 목표 대비 모달(연간분석 표 vs 실측, 마감 출고일, 실측−표, 매입 비중, 원가율 §3-8·3-9)</td></tr>
+<tr><td>재고운영 현황 · 품절 상세 · 졸업 검토</td><td>Agg 경로(§2-6), 입고예정금액(raw_발주 × 표준원가), 신제품 재고비중, 시즌별 회전율 · 품절 구간(<code>sales_status_history</code>, 진행 중 기간 표기) · 장기미회전 판정</td></tr>
+<tr><td>매입검토(EOQ)</td><td>Z-score 안전재고·ROP(§3-13), 조달유형 필터, 발주 완료 배지</td></tr>
+<tr><td>발주 현황</td><td>굿즈/산출물 묶기·굿즈 상세·제품 상세(§3-16), 발주 TASK 모달 3탭(발주현황 Top·미발주·매입금액 Top20·DB원가비교 §3-7), 여분 추천(§3-15)</td></tr>
+<tr><td>발주 진행현황</td><td>주차 파일 최신본 + 전주 비교, 비고 GitHub 커밋(§3-23)</td></tr>
+<tr><td>이슈 현황</td><td>집계 기준일·협력사 귀속(§3-4), 협력사 제외 시뮬레이션(§3-5), 제품×협력사 이슈율, 미입하율 추이(§3-2), 실패비용 드릴다운(§3-10), 고객인지이슈·검수 유출률(§3-6), 재발 이슈</td></tr>
+<tr><td>공급망 포트폴리오</td><td>Tier(§3-11), 방문 추천(§3-12), 협력사·매입 현황, 협력사유형별 제품군, 담당자별 협력사, 협력사 상세 YTD·PDF(§3-24)</td></tr>
+<tr><td>제품별 판매량 추이</td><td><code>order.csv</code> 발주수량 기준 SKU 추이, 빅딜 제외 배지(§3-16), 굿즈 상세 연결, 카테고리 검색</td></tr>
+<tr><td>원가 분석</td><td>월별 원가 요약(프로젝트 귀속), 프로젝트별 상세 검색·원가율 순위·마진 분포(§3-9)</td></tr>
+<tr><td>KPI 목표·트래킹</td><td>16지표(§3-14), 포트폴리오 등급 연동, 미구현 지표 카드</td></tr>
+<tr><td>연간 이벤트 캘린더</td><td>§3-25</td></tr>
+<tr><td>품질 현황 · 하도급법 위험</td><td>QI/QC/QA KPI·COPQ 추이 · 하도급 대상 × 미입하 90일+(§3-3)</td></tr>
+<tr><td>견적계산기</td><td>§3-21</td></tr>
+<tr><td>AI 어시스턴트</td><td>§3-22</td></tr>
+<tr><td>리포트 생성</td><td>외주생산파트 주간리포트·회의록(§3-20), 구매전략파트 주간 재고 리포트(규칙 기반 판정), 변경 이력 리포트(§3-19)</td></tr>
+</table>
+
+<h2>5. 검색 필터 연동</h2>
+<p><code>matchesSearch()</code>가 협력사명·제품명·굿즈코드 등에서 검색어 포함 여부를 확인해 KPI·차트·표에 실시간 적용합니다. 모달·드릴다운·탭 전환 후에도 검색 상태가 유지되며, 제품별 판매량 추이는 굿즈 카테고리(오타 허용 매칭)까지 검색합니다.</p>
+
+<h2>6. 회귀 검증 스크립트</h2>
+<table>
+<tr><th style="width:28%">명령</th><th>막는 것</th></tr>
+<tr><td><code>node test_quote_v10.mjs</code></td><td>견적 엔진: 지종 40종·PET·UV·관리비 12만·최소마진 20만 고정·뉴에코블랙400g 1,350원·기존 로직 회귀</td></tr>
+<tr><td><code>python test_quote_xlsx.py</code></td><td>수식 엑셀 견적서 = 대시보드 계산 (실제 Excel)</td></tr>
+<tr><td><code>node test_rev_cutoff.mjs</code></td><td>매출 마감: 7월분까지 개별 마감일, 8월분부터 월 말일 — 날짜 경계 불변식</td></tr>
+<tr><td><code>node test_order_unit.mjs</code></td><td>굿즈 상세 수량 이중집계 재발(고객 주문 단위)</td></tr>
+<tr><td><code>node test_kpi_inventory.mjs</code></td><td>재고 KPI 목표축·분모 모집단·미해소 건 혼입</td></tr>
+<tr><td><code>node test_miipha.mjs</code></td><td>미입하 신·구 포맷 판정, 실제 데이터 0건 가드</td></tr>
+<tr><td><code>node test_price300.mjs</code></td><td>300개 기준 단가 변동 산출 창 경계·미로드 구분</td></tr>
+<tr><td><code>node test_wr_snapshot.mjs</code></td><td>주간리포트 확정 스냅샷 병합·이슈 키 추출</td></tr>
+</table>
+
+<h2>7. 이 문서의 갱신 방법</h2>
+<p>원고는 <code>docs/src/SCM_DASHBOARD_로직설명.html</code>입니다. 원고를 고친 뒤 <code>node scripts/build_docs_pdf.mjs</code>를 실행하면 <code>docs/SCM_DASHBOARD_로직설명_v1.0.pdf</code>가 다시 만들어집니다(설치된 Chrome 사용). 대시보드 상단 «자료실»이 이 PDF를 내려줍니다.</p>
+
+<h2>8. 관련 링크</h2>
+<ul>
+<li>배포: https://nanyounglee.github.io/SCMDASHBOARD/ · 저장소: https://github.com/nanyounglee/SCMDASHBOARD</li>
+<li>협력사 변경 검토: https://nanyounglee.github.io/scm_vendor_change/ · 월간 리포트: https://nanyounglee.github.io/scm-monthly-report/</li>
+<li>버전별 변경 이력: <code>docs/CHANGELOG_v23.md</code> · 기술 아키텍처: <code>docs/SCM_DASHBOARD_ARCHITECTURE.md</code> · 사용자 가이드: <code>docs/SCM_DASHBOARD_사용자가이드_v1.0.pdf</code></li>
+</ul>
+
+</body>
+</html>
