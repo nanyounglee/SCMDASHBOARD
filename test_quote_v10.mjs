@@ -1,5 +1,5 @@
 // 견적 계산 엔진 v1.0 자체검증 — node test_quote_v10.mjs
-// 외주버전 2026-09-11판 반영분(지종 40종·PET 동적단가·UV·관리비 12만·최소마진 구간제)이
+// 외주버전 2026-09-11·09-14판 반영분(지종 40종·PET 동적단가·UV·관리비 12만·최소마진 20만 고정)이
 // 깨지면 영업 견적이 조용히 틀린 금액으로 나간다 — 여기서 막는다.
 import fs from 'fs';
 import vm from 'vm';
@@ -67,10 +67,11 @@ assert.strictEqual(small.관리비, 120000, `관리비 최소가 12만이 아님
 const big = run({ qty: 20000 });
 assert.strictEqual(big.관리비, Math.round(big.제조원가 * 0.1), '관리비 10% 정률 계산 오류');
 
-// ── 4. 최소마진 구간제 (500↑ 20만 / 100~499 10만 / 100미만 5만) ─────────────
-for (const [qty, want] of [[1000, 200000], [500, 200000], [499, 100000], [100, 100000], [99, 50000], [50, 50000]]) {
+// ── 4. 최소마진 20만 고정 (외주 2026-09-14판 — 09-11판의 수량 구간제는 폐지) ──────────
+// 구간 경계였던 수량(500·499·100·99)을 일부러 넣는다 — 구간제가 되살아나면 여기서 걸린다
+for (const qty of [1000, 500, 499, 100, 99, 50]) {
   const r = run({ qty, margin: 0 });   // 마진율 0 → 항상 최소마진이 걸린다
-  assert.strictEqual(r.marginAmt, want, `수량 ${qty}의 최소마진이 ${want}가 아닌 ${r.marginAmt}`);
+  assert.strictEqual(r.marginAmt, 200000, `수량 ${qty}의 최소마진이 20만이 아닌 ${r.marginAmt}`);
 }
 // 정률이 최소를 넘으면 정률이 이긴다
 const hi = run({ qty: 20000, margin: 30 });
@@ -106,4 +107,4 @@ assert(up.valid && up.upgraded && up.size === '전지', `자동상향 실패: ${
 assert.strictEqual(reg.totalCost, reg.제조원가 + reg.관리비 + reg.추가비용합계, '총원가 합산식 불일치');
 assert.strictEqual(reg.totalPrice, reg.totalCost + reg.marginAmt, '판매금액 합산식 불일치');
 
-console.log('✅ 견적 엔진 v1.0 검증 통과 — 지종 40종 · PET 동적단가 · UV · 관리비 12만 · 최소마진 구간제');
+console.log('✅ 견적 엔진 v1.0 검증 통과 — 지종 40종 · PET 동적단가 · UV · 관리비 12만 · 최소마진 20만 고정');

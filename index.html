@@ -8893,7 +8893,7 @@ function nav(el,id) {
     subcontract:'<b>확인 가능 지표:</b> 총 위험건수 · 최대지연일 · 위험협력사수 | <b>자동산출:</b> 발주_RAW 입하경과일(입하확정일/예정일 기준) + 공급망_RAW 하도급대상여부=대상 + 미입하 + 90일초과 | <b>필터:</b> 전체/90일+/120일+/180일+ | <b>CSV:</b> 발주_RAW + 공급망_RAW (별도 CSV 불필요)',
     stock:'<b>확인 가능 지표:</b> 전체 품절수 · 비의도적 품절(납기지연/공급부족) · 의도적 품절(졸업/시즌/효율화) · 굿즈품절 | <b>필터:</b> 판매상태별(일시품절/품절예정/의도적 품절) | <b>테이블:</b> 파츠명/굿즈 · 판매상태 · 재고소유 · 품절성격/사유 · 변경일 · 경과일 · 굿즈품절여부 | <b>CSV:</b> 품절리스트',
     ai:'<b>사용법:</b> 제품명 입력 → 제품 정의서 링크 + 리드타임/제작기간·단가 문의 기존 답변(최신 3건, 답변 없으면 과거 슬랙 문의 텍스트로 폴백) — Check_standard_Answer(응답 완료) + Check_standard_Question(질문1~3·답변1~3 원본) 두 소스를 함께 검색해 커버리지 확대 | 협력사명 입력 → 발주현황/매입금액/3개월추이/품질이슈 분석 | 긴급 → 긴급발주 목록 | 미입하/task → 미입하현황 | 전월/매입 → 전월대비 비교 | 담당자명 → 개인 실적 | <b>CSV:</b> 제품문의답변이력(check_answer) + 제품문의원본(check_question) + 발주_RAW + 이슈_RAW + 공급망_RAW',
-    quote:'<b>기능:</b> 패키지(박스) 자동 견적 산출 — 단박스/테일러드 스트랩 박스 커스텀/SolidG형 커스텀/open페이퍼박스·motion박스 | <b>로직:</b> 전개사이즈 → 지류단가(40지종×15규격, 0원 규격 자동상향 · PET 5종은 전개면적×두께×4,000원/kg) → 여분·연수 → 원단/인쇄/코팅/톰슨/접착/UV/특수공정/골판지 → 관리비(10%·최소12만) → 마진(최소 500개↑20만·100~499개10만·100개미만5만) | <b>이력:</b> localStorage 저장 · CSV 내보내기 | <b>기준:</b> 외주버전 2026-09-11판 단가표',
+    quote:'<b>기능:</b> 패키지(박스) 자동 견적 산출 — 단박스/테일러드 스트랩 박스 커스텀/SolidG형 커스텀/open페이퍼박스·motion박스 | <b>로직:</b> 전개사이즈 → 지류단가(40지종×15규격, 0원 규격 자동상향 · PET 5종은 전개면적×두께×4,000원/kg) → 여분·연수 → 원단/인쇄/코팅/톰슨/접착/UV/특수공정/골판지 → 관리비(10%·최소12만) → 마진(최소20만) | <b>이력:</b> localStorage 저장 · CSV 내보내기 | <b>기준:</b> 외주버전 2026-09-14판',
     report:'<b>기능:</b> 팀 주간 회의록/보고서 바로가기(SCM-Archive) · 외주생산파트 주간 리포트·회의록 프롬프트 생성 · 구매전략파트 주간 재고 리포트 .md 생성(재고수준·재고구조·품절·장기미회전·이슈 자동 요약, 주차 선택 가능) · <b>변경 이력 리포트 .md 생성</b>(파츠 신규/졸업·단가 변동·협력사·제품 변경 — 주간 리포트/회의 원천 데이터) · <b>변경 스냅샷 아카이브(CSV_BANK) 바로가기</b>',
     calendar:'<b>구성:</b> 주간 정기회의 안내 · <b>월간 달력</b>(v23.9 — 날짜 칸에 반복업무 9종·정기회의·특이사항을 막대로 표시, ‹ › 로 월 이동, 날짜 클릭 시 그 날 일정) · 월 타일 12개(클릭 시 해당월 달력으로 이동) · <b>공급망 특이사항</b>(협력사 휴가·발주 마감 등 수시 이슈 — 시작·종료일 지정 시 달력에 표시, 직접 추가/삭제·브라우저에 저장) | <b>출처:</b> 구매조달팀 연간주요이벤트 마스터(§2 업무 마스터 기준)',
   };
@@ -13294,14 +13294,14 @@ function qcCalc(inp){
   const totalCost=mfgCost+mgmtFee+extraSum;
   const perUnit=totalCost/qty;
   const marginPct=Math.max(0,Math.min(99,+inp.margin||0));
-  // v1.0(외주 2026-09-11판): 최소마진 20만 고정 → 수량 구간제. 소량 샘플 견적의 바닥 금액이 내려간다.
-  const minMargin=qty>=500?200000:qty>=100?100000:50000;
-  const marginAmt=Math.max(totalCost*marginPct/100,minMargin);
+  // 최소 마진 20만 고정 — 외주 2026-09-11판의 수량 구간제(500↑20만·100~499 10만·100미만 5만)는
+  // 2026-09-14판에서 다시 20만 고정으로 돌아갔다. 대시보드는 최신 외주판을 따른다(사용자 지시 2026-09-14).
+  const marginAmt=Math.max(totalCost*marginPct/100,200000);
   const totalPrice=totalCost+marginAmt;
   const consumer=totalPrice/qty;
   const realMarginPct=totalCost>0?marginAmt/totalPrice*100:0;
 
-  return {paperResults,tong,realSheets,lossSheets:loss.sheets,lossLabel:loss.label,tooLarge,minMargin,
+  return {paperResults,tong,realSheets,lossSheets:loss.sheets,lossLabel:loss.label,tooLarge,
     제조원가:mfgCost,관리비:mgmtFee,추가비용행:extraRows,추가비용합계:extraSum,
     totalCost,perUnit,marginPct,marginAmt,totalPrice,consumer,realMarginPct};
 }
@@ -13370,14 +13370,14 @@ function renderQuoteCalc(){
       <div class="qc-step">⑤ 추가비용 · 마진</div>
       ${['수작업','포장','배송비','기타'].map((l,i)=>inputRow(l,tgl('qc-ex-on'+i,'적용')+' '+num('qc-ex-q'+i,'수량',66)+' × '+num('qc-ex-p'+i,'단가',76))).join('')}
       ${inputRow('마진율',chips('qc-marginp',['10','15','20','25','30','40'],'30',{'10':'10%','15':'15%','20':'20%','25':'25%','30':'30%','40':'40%'})
-        +'<div style="margin-top:6px">'+num('qc-margin','직접입력',76)+' <span style="font-size:10px;color:var(--text3)">% · 최소 마진 자동 보장 (500개↑ 20만 · 100~499개 10만 · 100개 미만 5만)</span></div>')}
+        +'<div style="margin-top:6px">'+num('qc-margin','직접입력',76)+' <span style="font-size:10px;color:var(--text3)">% · 최소 마진 20만원 자동 보장</span></div>')}
       <div style="display:flex;gap:8px;margin-top:14px">
         <button class="topbar-btn" style="flex:1;justify-content:center" onclick="qcReset()">조건 초기화</button>
         <button class="topbar-btn primary" style="flex:1;justify-content:center" onclick="qcSave()" id="qc-save-btn" disabled>이력 저장</button>
       </div>
     </div>
     <div>
-      <div class="card" id="qc-result"><div class="empty" style="padding:40px;text-align:center;color:var(--text3)">내경과 제작수량을 입력하면 금액이 바로 나옵니다.<br><span style="font-size:10px">지류 단가표: 외주버전 2026-09-11판 기준 (40지종 × 15규격 · PET 5종은 치수·두께 기반)</span></div></div>
+      <div class="card" id="qc-result"><div class="empty" style="padding:40px;text-align:center;color:var(--text3)">내경과 제작수량을 입력하면 금액이 바로 나옵니다.<br><span style="font-size:10px">견적 로직·지류 단가표: 외주버전 2026-09-14판 기준 (40지종 × 15규격 · PET 5종은 치수·두께 기반)</span></div></div>
       <div class="card" style="margin-top:14px">
         <div class="card-header"><div class="card-title">🗂 견적 이력</div><button class="topbar-btn" onclick="qcExportCSV()">CSV 내보내기</button></div>
         <div id="qc-history"></div>
