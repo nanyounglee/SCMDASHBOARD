@@ -555,6 +555,12 @@ a{color:var(--blue);text-decoration:none}
         <div id="notice-body" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:8px"></div>
         <div id="notice-footnote" style="font-size:10px;color:var(--text3);margin-top:8px">※ 8개 박스는 <b>실제 변경일 기준 이번 달(1일~오늘)</b> 변경분만 노출합니다(v23.10 — 상단 기간 선택과 무관, 품절 포함 전체 동일 기준) — 졸업/출시는 굿즈마스터(goods_master.csv) 출시일·졸업일, 협력사는 매주 자동 갱신되는 sup.csv 스냅샷(CSV_BANK) 비교로 감지. 졸업 제품은 굿즈마스터 졸업일 + 파츠 연결 해제(parts.csv 스냅샷) 두 경로, 단가 변동은 공식 가격요청(price_chg.csv) + 파츠 표준원가 실측 변동 두 경로를 합쳐 보여줍니다(v23.11 — "· 파츠 실측" 꼬리표로 구분). 감지된 변경은 data/change_log.json에 누적 기록되며 "전체 변경 이력 보기"에서 지난 달 이전 것도 확인 가능 · "(수동입력)" 표시는 자동 집계로 잡히지 않아 담당자가 직접 등록한 건(등록된 달에만 노출) · <b>📦 품절중인 굿즈</b>는 위 8개와 달리 이번 달 제한 없이 stockout_list.csv 굿즈품절여부 기준 <b>현재 품절 중인 굿즈 전체</b>를 상시 표시합니다(v23.34)</div>
       </div>
+      <div class="card" style="margin-bottom:16px">
+        <div class="card-header">
+          <div><div class="card-title">🗓️ 캘린더 삼각대 재고</div><div class="card-sub">2026-09-14 기준 재고 − 이후 발주(과업지시일자)의 발주지시수량 · 재고생산 발주 제외 · 박스에 마우스를 올리면 차감 내역</div></div>
+        </div>
+        <div id="tripod-stock-body" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:8px"></div>
+      </div>
       <div class="kpi-row kpi-row-6">
         <div class="kpi-card c-blue" onclick="openModal('orderTask')">
           <div class="kpi-label">발주 TASK</div><div class="kpi-val" id="k-order">—</div>
@@ -1181,6 +1187,37 @@ function archiveOrderRows(){ return (D.orderHist&&D.orderHist.length)?D.orderHis
 function archiveIssueRows(){ return (D.issueHist&&D.issueHist.length)?D.issueHist:(D.issuePrevYear||[]); }
 function allOrderRows(){ return (D.order||[]).concat(archiveOrderRows()); }
 function allIssueRows(){ return (D.issue||[]).concat(archiveIssueRows()); }
+// v1.0(사용자 지시 2026-09-14): 캘린더 삼각대 재고 — 09-14 기준 수량에서 이후 발주분을 차감해 종합 현황에 표시.
+// 캘린더 발주행의 sync_itemdb에 삼각대 PT가 들어가므로 그 행의 발주지시수량(여분 포함 = 실제 투입)을 뺀다.
+// 재고생산 행은 제외 — 2024년 삼각대 자체 재고생산(1,000~7,000개)이 같은 PT로 잡혀 있어 차감하면 안 된다.
+// 공용 삼각대는 PT 여러 개가 한 재고를 같이 쓴다. 한 발주행에 두 재고가 섞인 경우는 2024~2026 실측 0건.
+// allOrderRows()는 아카이브를 포함하므로 연말 이관(order_2026.csv) 후에도 누계가 유지된다.
+const TRIPOD_BASE_DATE='2026-09-14';
+const TRIPOD_POOLS=[
+  {name:'에디트캘린더 삼각대 그레이',base:3960,pts:['PT1399']},
+  {name:'에디트캘린더 삼각대 블랙',base:2435,pts:['PT1400']},
+  {name:'삼각대 그레이 공용 (페어링·페이퍼링)',base:13000,pts:['PT5571','PT2804']},
+  {name:'삼각대 블랙 공용 (페어링·썸네일·페이퍼링)',base:6000,pts:['PT5572','PT1324','PT2803']},
+];
+function tripodStock(rows){
+  const pools=TRIPOD_POOLS.map(p=>({...p,used:0,orders:[]}));
+  rows.forEach(r=>{
+    const m=String(r['과업지시일자']||'').match(/(\d{4})\.(\d{1,2})\.(\d{1,2})/);
+    if(!m||`${m[1]}-${m[2].padStart(2,'0')}-${m[3].padStart(2,'0')}`<TRIPOD_BASE_DATE||isStock(r)) return;
+    const pts=orderRowParts(r), qty=pa(r['발주지시수량']);
+    pools.forEach(p=>{ if(p.pts.some(pt=>pts.includes(pt))){ p.used+=qty; p.orders.push(`${r['과업지시일자']} ${r['project']||r['task_id']||''} ${fmtN(qty)}개`); } });
+  });
+  return pools.map(p=>({...p,left:p.base-p.used}));
+}
+function renderTripodStock(){
+  const el=document.getElementById('tripod-stock-body'); if(!el) return;
+  if(!D.order){ el.innerHTML='<div class="empty">order.csv 데이터가 필요합니다.</div>'; return; }
+  el.innerHTML=tripodStock(allOrderRows()).map(p=>`<div style="border:1px solid var(--border2);border-radius:var(--r-sm);padding:8px 10px" title="${esc(p.orders.join('\n')||'차감 내역 없음')}">
+    <div style="font-size:12.5px;font-weight:600">${p.name}</div>
+    <div style="font-size:20px;font-weight:700;color:${p.left<0?'var(--red)':'var(--text)'}">${fmtN(p.left)}개</div>
+    <div style="font-size:11px;color:var(--text3)">기준 ${fmtN(p.base)} − 차감 ${fmtN(p.used)} (${p.orders.length}건)</div>
+  </div>`).join('');
+}
 // 아카이브에 실제로 들어온 발주 연도(과업지시연도) — 라벨을 "당해+전년"으로 굳히지 않기 위해
 function orderHistYears(){ return [...new Set(archiveOrderRows().map(r=>String(r['과업지시일자']||'').slice(0,4)).filter(y=>/^\d{4}$/.test(y)))].sort(); }
 function histRangeLabel(){ const ys=orderHistYears(); return ys.length?ys[0]+'~'+new Date().getFullYear()+'년 전체 이력':'당해+전년 전체 이력'; }
@@ -2397,6 +2434,7 @@ function getTrendOrders(includeStock) {
 function refreshAll() {
   updateKPIs();
   renderMonthlyNotice();
+  renderTripodStock();
   updateOrderTabs();
   updatePurchaseTabs();
   updateIssueTabs();
