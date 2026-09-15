@@ -13720,16 +13720,14 @@ function renderRevenueModal(){
   // 40~45%는 목표 근접(주황), 45%↑는 초과(빨강).
   const COST_RATE_TARGET=45;
   const cCol=v=>v===null?'var(--text3)':v>=COST_RATE_TARGET?'var(--red)':v>=40?'var(--amber)':'var(--green)';
-  // v1.0(사용자 요청 2026-09-15): 매입원가 대비 이익률 + 누적 현황.
-  // 이익률 = (매출 − 매입원가(프로젝트 귀속)) ÷ 매출 = 100 − 원가율 → 목표도 원가율 목표를 뒤집은 55% 이상.
-  // 누적 카드는 1월 ~ 선택 기간 마지막 달. 표의 누적 행은 1월 ~ 각 달이며, 수주·매출 실측은 이번 달까지만
+  // v1.0(사용자 요청 2026-09-15): 매입원가 대비 마진률 + 누적 현황.
+  // 마진률 = (매출 − 매입원가(프로젝트 귀속)) ÷ 매출 = 100 − 원가율. 목표 평균 마진률 35%(사용자 확정 2026-09-15) —
+  // 35~40%는 목표 근접(주황), 35% 미만은 미달(빨강). 원가율 목표(45% 미만)와는 별도로 받은 기준이다.
+  // 누적 현황은 표에서만 보여준다(사용자 지시 — 카드 없음). 누적 행은 1월 ~ 각 달이며, 수주·매출 실측은 이번 달까지만
   // 표시한다 — 이후 달은 목표만 쌓이고 실적은 비어 있어 누적 달성률이 떨어져 보이기 때문.
-  const pCol=v=>cCol(v===null?null:100-v);
-  const profitRate=projRate===null?null:100-projRate;
-  const cumN=noSel?0:Math.max(...idxs)+1, cumI=Array.from({length:cumN},(_,i)=>i);
-  const cumTarget=sum(P.target,cumI), cumAct=sum(actRev,cumI), cumCost=sum(projCost,cumI);
-  const cumAch=pct(cumAct,cumTarget), cumCostRate=pct(cumCost,cumAct), cumProfitRate=cumCostRate===null?null:100-cumCostRate;
-  const faS=v=>(v<0?'-':'')+fa(Math.abs(v));
+  const MARGIN_RATE_TARGET=35;
+  const mCol=v=>v===null?'var(--text3)':v<MARGIN_RATE_TARGET?'var(--red)':v<MARGIN_RATE_TARGET+5?'var(--amber)':'var(--green)';
+  const marginRate=projRate===null?null:100-projRate;
   const nowY=new Date().getFullYear(), nowIdx=nowY>P.targetYear?11:nowY<P.targetYear?-1:new Date().getMonth();
   const cumOf=(arr,upto)=>{let s=0;return arr.map((v,i)=>i<=upto?(s+=v||0):null);};
   const cumPct=(a,b)=>a.map((v,i)=>v===null||!(b[i]>0)?null:v/b[i]*100);
@@ -13747,14 +13745,7 @@ function renderRevenueModal(){
         `재고포함 <b style="color:${ratioAllColor}">${ratioAll===null?'—':ratioAll.toFixed(1)+'%'}</b><br><span style="font-size:10px;color:var(--text3)">세금계산서작성월 기준 · <b>월별 지출 파악용</b><br>매입 재고제외 ${noSel?'—':fa(selPurProj)} · 재고포함 ${noSel?'—':fa(selPurAll)}</span>`,'c-green')}
       ${kpi('원가율 <span style="font-weight:400;color:var(--text3)">(프로젝트 귀속)</span>',
         noSel?'—':`<span style="color:${cCol(projRate)}">${projRate===null?'—':projRate.toFixed(1)+'%'}</span>`,
-        `목표 <b>${COST_RATE_TARGET}% 미만</b>${projRate===null?'':` · <b style="color:${cCol(projRate)}">${projRate<COST_RATE_TARGET?'달성 (여유 '+(COST_RATE_TARGET-projRate).toFixed(1)+'%p)':'초과 (+'+(projRate-COST_RATE_TARGET).toFixed(1)+'%p)'}</b>`}<br>이익률 <b style="color:${pCol(profitRate)}">${noSel||profitRate===null?'—':profitRate.toFixed(1)+'%'}</b> (매출 − 매입원가)<br><span style="font-size:10px;color:var(--text3)">마감 매입원가 ${noSel?'—':fa(selProjCost)} · <b>원가율 검토용</b></span>`,'c-amber')}
-    </div>
-    <div style="font-size:12px;font-weight:600;margin:12px 0 6px">누적 현황 <span style="font-weight:400;font-size:11px;color:var(--text3)">— ${noSel?'선택 기간이 '+P.targetYear+'년 밖':P.targetYear+'년 1월 ~ '+cumN+'월 (선택 기간 마지막 달까지)'}</span></div>
-    <div class="kpi-row-4" style="margin-bottom:6px">
-      ${kpi('누적 목표 수주액',noSel?'—':fa(cumTarget),`연간 목표의 ${noSel?'—':(cumTarget/P.target.reduce((a,b)=>a+b,0)*100).toFixed(1)+'%'}`,'c-slate')}
-      ${kpi('누적 매출 <span style="font-weight:400;color:var(--text3)">(업로드 실측)</span>',noSel?'—':fa(cumAct),`목표 대비 <b style="color:${col(cumAch===null?null:cumAch-100)}">${cumAch===null?'—':cumAch.toFixed(0)+'%'}</b> (${cumAch===null?'—':sgn(cumAch-100)})`,'c-blue')}
-      ${kpi('누적 매입원가 <span style="font-weight:400;color:var(--text3)">(프로젝트 귀속)</span>',noSel?'—':fa(cumCost),`원가율 <b style="color:${cCol(cumCostRate)}">${cumCostRate===null?'—':cumCostRate.toFixed(1)+'%'}</b> · 목표 ${COST_RATE_TARGET}% 미만`,'c-amber')}
-      ${kpi('누적 이익률 <span style="font-weight:400;color:var(--text3)">(매출 − 매입원가)</span>',noSel?'—':`<span style="color:${pCol(cumProfitRate)}">${cumProfitRate===null?'—':cumProfitRate.toFixed(1)+'%'}</span>`,`이익 ${noSel?'—':faS(cumAct-cumCost)} · 목표 <b>${100-COST_RATE_TARGET}% 이상</b><br><span style="font-size:10px;color:var(--text3)">외주생산제조비만 뺀 값 — 물류비·판관비 차감 전</span>`,'c-green')}
+        `목표 <b>${COST_RATE_TARGET}% 미만</b>${projRate===null?'':` · <b style="color:${cCol(projRate)}">${projRate<COST_RATE_TARGET?'달성 (여유 '+(COST_RATE_TARGET-projRate).toFixed(1)+'%p)':'초과 (+'+(projRate-COST_RATE_TARGET).toFixed(1)+'%p)'}</b>`}<br>마진률 <b style="color:${mCol(marginRate)}">${noSel||marginRate===null?'—':marginRate.toFixed(1)+'%'}</b> (매출 − 매입원가 · 목표 평균 ${MARGIN_RATE_TARGET}%)<br><span style="font-size:10px;color:var(--text3)">마감 매입원가 ${noSel?'—':fa(selProjCost)} · <b>원가율 검토용</b></span>`,'c-amber')}
     </div>
     <div style="font-size:11px;color:var(--text3);margin-bottom:14px">
       · <b>매출 현황</b>은 업로드 실측치(proj_rev 프로젝트 총매출액)이고, <b>목표·수주액·전년·매출액(표)</b>은 구매조달팀 연간분석 표(01-A/01-B) 수치입니다. <b>v23.14(2026-08-04)에서 두 값의 기준을 맞췄습니다</b> — ① 금액을 <b>VAT 별도 공급가액</b>으로 통일(proj_rev '총 매출액'은 VAT 포함이라 ÷1.1) ② 귀속월을 달력 월이 아니라 <b>출고리스트 마감 컷오프</b>(아래 '마감 출고일' 행)로 변경 ③ 2025년 매출로 이미 마감된 건(2025년 12월 수주·2026년 1월 출고)은 제외. 그 결과 1~7월 누계 오차가 <b>+0.67%</b>, 월별 오차가 <b>±3.2% 이내</b>로 좁혀졌습니다(이전 +10.7% · 월별 ±38%).
@@ -13768,7 +13759,7 @@ function renderRevenueModal(){
       &nbsp;&nbsp;<b>원가율 목표는 ${COST_RATE_TARGET}% 미만</b>입니다 — 매출 100 = <b>외주생산제조비 ${COST_RATE_TARGET}</b> + 물류비·판관비 15 + 마진 40. 평균 판매가에 마진 40%를 붙이므로 총원가는 60% 미만이어야 하고, 그중 15%p가 물류비·판관비입니다. 표와 카드에서 <b style="color:var(--red)">${COST_RATE_TARGET}%↑ 빨강</b> · <b style="color:var(--amber)">40~${COST_RATE_TARGET}% 주황</b>으로 표시합니다.<br>
       &nbsp;&nbsp;<b>선매입 재고 투입분 포함</b> — 재고에서 출고된 분은 재고생산 발주가 프로젝트에 귀속되지 않아 공급가액이 0으로 잡힙니다. 재고생산 원가를 통째로 얹으면 과대계상이므로 <b>실제 투입 수량(<code>출고자재_수량</code>) × 파츠 표준원가</b>로만 배분합니다(출고 수량에 여분이 이미 반영돼 있습니다 — 고객주문 100 → 출고 103). 2026년 기준 <b>1,369행 · 10.4억원</b>이 이 경로로 잡히며, 반영 전에는 원가율이 36.4%로 과소평가됐습니다.<br>
       &nbsp;&nbsp;⚠ <b>그래도 물류비·공통고정비(판관비)는 빠져 있습니다</b> — 이 지표는 <b>순수 외주생산제조비</b>이므로 실제 총원가는 이보다 큽니다. 표준원가가 없는 파츠는 배분에서 제외되므로 재고 투입 원가는 <b>다소 과소</b>일 수 있습니다.
-      · <b>이익률</b> = (매출 − 매입원가(프로젝트 귀속)) ÷ 매출 = 100 − 원가율입니다. 원가율 목표 ${COST_RATE_TARGET}% 미만을 뒤집어 <b>${100-COST_RATE_TARGET}% 이상</b>이 목표이며, 물류비·판관비를 빼기 전 값입니다. <b>누적</b> 카드는 1월부터 선택 기간 마지막 달까지, 표의 누적 행은 1월부터 각 달까지의 합계입니다(수주·매출·이익률은 이번 달까지만).
+      · <b>마진률</b> = (매출 − 매입원가(프로젝트 귀속)) ÷ 매출 = 100 − 원가율입니다. <b>목표 평균 마진률은 ${MARGIN_RATE_TARGET}%</b>이며(${MARGIN_RATE_TARGET}~${MARGIN_RATE_TARGET+5}% 주황 · ${MARGIN_RATE_TARGET}% 미만 빨강), 물류비·판관비를 빼기 전 값입니다. <b>누적 현황</b>은 아래 표의 누적 행에서 봅니다 — 1월부터 각 달까지의 합계이며, 수주·매출·마진률은 이번 달까지만 표시합니다.
     </div>
     <div class="card" style="margin-bottom:14px">
       <div class="card-header"><div class="card-title">${P.prevYear} vs ${P.targetYear} 매출·수주 추이</div><div class="card-sub"><a href="javascript:void(0)" onclick="closeModal();nav(document.querySelector('.sb-item[onclick*=cost-analysis]'),'cost-analysis')">원가 분석 화면 →</a></div></div>
@@ -13793,14 +13784,14 @@ function renderRevenueModal(){
         <tr><td colspan="14" style="padding:6px 8px;background:var(--surface2);font-size:11px;color:var(--text2)"><b>원가율 검토용 — 프로젝트 귀속 기준</b> (위 매입 2행은 <b>월별 지출 파악용</b>, 세금계산서작성월 기준). 아래는 각 발주 프로젝트의 매입원가를 <b>그 프로젝트의 매출이 찍힌 달</b>에 얹은 것입니다 — 매입 마감이 3월이어도 매출이 4월이면 4월 원가로 봅니다. 같은 프로젝트의 매출과 원가가 같은 달에서 대조되므로 이 값이 <b>실제 원가율</b>입니다(원가 분석 '월별 원가 요약'과 동일 규칙).</td></tr>
         ${planRow('매입원가 (프로젝트 귀속)',projCost,idxs)}
         ${ratioRow(`원가율 (프로젝트 귀속) — 목표 ${COST_RATE_TARGET}% 미만`,projCost,actRev,idxs,cCol)}
-        ${ratioRow(`이익률 (매출 − 매입원가) — 목표 ${100-COST_RATE_TARGET}% 이상`,actRev.map((v,i)=>v-projCost[i]),actRev,idxs,pCol)}
-        <tr><td colspan="14" style="padding:6px 8px;background:var(--surface2);font-size:11px;color:var(--text2)"><b>누적 현황</b> — 1월부터 그 달까지의 합계입니다. 수주·매출·이익률은 <b>${nowIdx>=0?(nowIdx+1)+'월':'—'}</b>까지만 표시합니다(이후 달은 목표만 쌓이고 실적이 비어 있어 누적 달성률이 떨어져 보이기 때문).</td></tr>
+        ${ratioRow(`마진률 (매출 − 매입원가) — 목표 평균 ${MARGIN_RATE_TARGET}%`,actRev.map((v,i)=>v-projCost[i]),actRev,idxs,mCol)}
+        <tr><td colspan="14" style="padding:6px 8px;background:var(--surface2);font-size:11px;color:var(--text2)"><b>누적 현황</b> — 1월부터 그 달까지의 합계입니다. 수주·매출·마진률은 <b>${nowIdx>=0?(nowIdx+1)+'월':'—'}</b>까지만 표시합니다(이후 달은 목표만 쌓이고 실적이 비어 있어 누적 달성률이 떨어져 보이기 때문).</td></tr>
         ${cumRow('누적 목표 수주액',cT,fa)}
         ${cumRow(P.targetYear+' 누적 수주액',cO,fa)}
         ${cumRow('<b>누적 목표 대비 (수주)</b>',cumPct(cO,cT).map(v=>v===null?null:v-100),sgn,col)}
         ${cumRow('누적 매출 (업로드 실측)',cA,fa)}
         ${cumRow('<b>누적 목표 대비 (매출)</b>',cumPct(cA,cT).map(v=>v===null?null:v-100),sgn,col)}
-        ${cumRow(`<b>누적 이익률</b> — 목표 ${100-COST_RATE_TARGET}% 이상`,cumPct(cC,cA).map(v=>v===null?null:100-v),v=>v.toFixed(0)+'%',pCol)}
+        ${cumRow(`<b>누적 마진률</b> — 목표 평균 ${MARGIN_RATE_TARGET}%`,cumPct(cC,cA).map(v=>v===null?null:100-v),v=>v.toFixed(0)+'%',mCol)}
       </tbody>
     </table></div>`;
   dc('ch-rev-plan');
