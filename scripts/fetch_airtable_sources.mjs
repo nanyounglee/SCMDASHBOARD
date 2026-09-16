@@ -100,8 +100,12 @@ async function fetchView(base, table, view, fields) {
   return records;
 }
 
+// 에어테이블 첨부 필드의 서명 URL은 버리고 파일명만 남긴다 — URL 안 랜덤 경로 조각이
+// GitHub 시크릿 스캐너(VolcEngine AK…) 패턴에 간헐적으로 걸려 주간 push가 거부된다(2026-09-16 W38 실패).
+// 대시보드는 첨부 URL을 읽지 않고, 서명 URL은 만료되므로 남겨도 쓸모가 없다.
+const stripAttachUrl = s => s.replace(/\s*\(https?:\/\/[^)\s]*airtableusercontent\.com[^)]*\)/g, '');
 const q = v => {
-  const s = String(v ?? '');
+  const s = stripAttachUrl(String(v ?? ''));
   return /[",\r\n]/.test(s) ? '"' + s.replace(/"/g, '""') + '"' : s;
 };
 function toCsv(headers, records) {

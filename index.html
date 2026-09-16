@@ -14718,10 +14718,11 @@ function progressPct(r){
   const start=parseAnyDate(r['과업지시일자']);
   const due=progDue(r);
   if(!start||!due) return {pct:null,label:'예정일 미정',cls:'na'};
-  const today=new Date();
+  // v1.0: 입하예정일 당일은 지연 아님 — 시각이 포함된 now와 자정 기준 예정일을 비교해 당일이 '지연 1일'로 뜨던 문제 수정
+  const n=new Date(); const today=new Date(n.getFullYear(),n.getMonth(),n.getDate());
   const total=due-start;
-  if(today>due) return {pct:100,label:'지연 '+Math.ceil((today-due)/86400000)+'일',cls:'late'};
-  if(total<=0) return {pct:100,label:'당일 입하 예정',cls:'ok'};
+  if(today>due) return {pct:100,label:'지연 '+Math.round((today-due)/86400000)+'일',cls:'late'};
+  if(total<=0||+today===+due) return {pct:100,label:'당일 입하 예정',cls:'ok'};
   const pct=Math.max(0,Math.min(100,Math.round((today-start)/total*100)));
   return {pct,label:pct+'%',cls:'ok'};
 }

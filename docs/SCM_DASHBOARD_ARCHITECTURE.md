@@ -1401,7 +1401,7 @@ SCMDASHBOARD/
 1. **`scripts/fetch_airtable_weekly.mjs`** — 진행현황·매출결산처럼 **파일명에 주차가 붙는** 소스(`CSV/progress_YYYY_WNN.csv`, `CSV/project_YYYY_WNN.csv`). 지난 주차 파일은 `CSV_BANK/연도_W주차/`로 자동 아카이브(대시보드가 전주 파일과 비교하므로 보존 필요).
 2. **`scripts/fetch_airtable_sources.mjs`** — `order`/`issue`/`sup`/`ci`/`stockout_list`/`parts`/`goods_master`처럼 **대시보드가 고정 파일명으로 자동 로드**하는 소스(`CSV/_manifest.json` 대상, §3-0). `AIRTABLE_SOURCES` 변수(JSON 배열)에 등록된 항목만 처리하며, 덮어쓰기 전 `archive_csv.ps1`과 동일한 두 보존 규칙을 재현한다 — ① 이전 버전을 `CSV_BANK/연도_W주차/파일명`으로 아카이브(주차는 그 파일의 최근 git 커밋일 기준), ② `sup.csv`는 추가로 `CSV_BANK/sup_YYYY_MM.csv` 월간 스냅샷(신규/거래종료 협력사 diff의 원본, §4-24)을 매달 1회 보존. 이전 내용과 완전히 동일하면 아무 것도 건드리지 않는다(불필요한 아카이브 방지).
 
-공통: Airtable API를 `cellFormat=string`+`timeZone=Asia/Seoul`로 호출해 UI 표시 형식 그대로(예: 날짜 `2026.7.14`) 수신하고, 기존 CSV의 헤더 순서를 재사용해 대시보드 컬럼 호환을 유지한다.
+공통: Airtable API를 `cellFormat=string`+`timeZone=Asia/Seoul`로 호출해 UI 표시 형식 그대로(예: 날짜 `2026.7.14`) 수신하고, 기존 CSV의 헤더 순서를 재사용해 대시보드 컬럼 호환을 유지한다. 첨부 필드는 **파일명만 남기고 서명 URL을 버린다**(2026-09-16) — URL 속 랜덤 경로 조각이 GitHub 시크릿 스캐너(VolcEngine AK…)에 오탐돼 W38 주간 push가 거부됐고, 대시보드는 첨부 URL을 읽지 않으며 서명 URL은 만료된다. 덤으로 `order.csv`가 76→56MB로 줄고, 데이터가 그대로인 주에 URL만 바뀌어 나던 diff도 사라진다.
 
 **아카이브 보존 원칙 — 주차 폴더당 소스별 파일 1개 (v23.20에서 복구)**: `CSV_BANK/연도_W주차/`에는 소스별로 **그 주 최종 스냅샷 1개만** 둔다. 같은 주에 여러 번 갱신되면 고정 이름에 그대로 덮어써서, 그 주 마지막으로 아카이브된 = 가장 최신 버전이 남는다.
 
