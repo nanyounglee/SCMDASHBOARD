@@ -1800,6 +1800,20 @@
       "detail": "파츠 연결 해제 · 2026_W34 스냅샷 비교"
     },
     {
+      "id": "part_price|PT4751|2026_W34",
+      "type": "part_price",
+      "name": "하이라이트슬라이드지퍼백(M)",
+      "date": "2026-08-17",
+      "detail": "평균 7.5% 상승 · 착한포장"
+    },
+    {
+      "id": "part_price|PT4807|2026_W34",
+      "type": "part_price",
+      "name": "하이라이트슬라이드지퍼백(M)",
+      "date": "2026-08-17",
+      "detail": "평균 3.2% 상승 · 착한포장"
+    },
+    {
       "id": "part_new|PT5601|2026_W33",
       "type": "part_new",
       "name": "PT5601-레이저각인_(주)퓨전에프앤씨",
@@ -2381,6 +2395,34 @@
       "detail": "평균 15.6% 상승 · (주)승화파트너스"
     },
     {
+      "id": "part_price|PT1674|2026_W33",
+      "type": "part_price",
+      "name": "OPP_000-3",
+      "date": "2026-08-10",
+      "detail": "평균 1608.7% 상승 · 비닐24"
+    },
+    {
+      "id": "part_price|PT1401|2026_W33",
+      "type": "part_price",
+      "name": "에디트캘린더_커버_화이트+옵셋풀컬러",
+      "date": "2026-08-10",
+      "detail": "평균 133.4% 상승 · (주)청산인쇄"
+    },
+    {
+      "id": "part_price|PT1402|2026_W33",
+      "type": "part_price",
+      "name": "에디트캘린더_내지(기본달력)_화이트",
+      "date": "2026-08-10",
+      "detail": "평균 48.9% 상승 · (주)청산인쇄"
+    },
+    {
+      "id": "part_price|PT1403|2026_W33",
+      "type": "part_price",
+      "name": "에디트캘린더_내지(커스텀인쇄)_화이트+옵셋풀컬러",
+      "date": "2026-08-10",
+      "detail": "평균 1.7% 상승 · (주)청산인쇄"
+    },
+    {
       "id": "part_price|PT4716|2026_W33",
       "type": "part_price",
       "name": "밸류메모큐브(ver2)(점착.S)",
@@ -2486,34 +2528,6 @@
       "detail": "평균 94.9% 상승 · 착한포장"
     },
     {
-      "id": "part_price|PT1674|2026_W33",
-      "type": "part_price",
-      "name": "OPP_000-3",
-      "date": "2026-08-10",
-      "detail": "평균 1608.7% 상승 · 비닐24"
-    },
-    {
-      "id": "part_price|PT1401|2026_W33",
-      "type": "part_price",
-      "name": "에디트캘린더_커버_화이트+옵셋풀컬러",
-      "date": "2026-08-10",
-      "detail": "평균 133.4% 상승 · (주)청산인쇄"
-    },
-    {
-      "id": "part_price|PT1402|2026_W33",
-      "type": "part_price",
-      "name": "에디트캘린더_내지(기본달력)_화이트",
-      "date": "2026-08-10",
-      "detail": "평균 48.9% 상승 · (주)청산인쇄"
-    },
-    {
-      "id": "part_price|PT1403|2026_W33",
-      "type": "part_price",
-      "name": "에디트캘린더_내지(커스텀인쇄)_화이트+옵셋풀컬러",
-      "date": "2026-08-10",
-      "detail": "평균 1.7% 상승 · (주)청산인쇄"
-    },
-    {
       "id": "part_price|PT4751|2026_W32",
       "type": "part_price",
       "name": "하이라이트슬라이드지퍼백(M)",
@@ -2540,20 +2554,6 @@
       "name": "레터링 유리머그",
       "date": "2026-08-03",
       "detail": "파츠 연결 해제 · 2026_W32 스냅샷 비교"
-    },
-    {
-      "id": "product_launched|BTST|2026-07-30",
-      "type": "product_launched",
-      "name": "베러댄 텀블러 (BTST)",
-      "date": "2026-07-30",
-      "detail": ""
-    },
-    {
-      "id": "product_launched|PMHT|2026-07-30",
-      "type": "product_launched",
-      "name": "픽미 핸들 텀블러 (PMHT)",
-      "date": "2026-07-30",
-      "detail": ""
     },
     {
       "id": "part_grad|PT1907|2026_W31",
@@ -2799,6 +2799,20 @@
       "name": "브랜디드노트북백_블랙",
       "date": "2026-07-30",
       "detail": "평균 23.9% 인하 · (주)에스씨인터내셔널"
+    },
+    {
+      "id": "product_launched|BTST|2026-07-30",
+      "type": "product_launched",
+      "name": "베러댄 텀블러 (BTST)",
+      "date": "2026-07-30",
+      "detail": ""
+    },
+    {
+      "id": "product_launched|PMHT|2026-07-30",
+      "type": "product_launched",
+      "name": "픽미 핸들 텀블러 (PMHT)",
+      "date": "2026-07-30",
+      "detail": ""
     },
     {
       "id": "part_price|PT5541|2026_W31",
@@ -5062,5 +5076,5 @@
       "detail": ""
     }
   ],
-  "updatedAt": "2026-09-15T02:16:32.928Z"
+  "updatedAt": "2026-09-16T05:18:24.541Z"
 }
