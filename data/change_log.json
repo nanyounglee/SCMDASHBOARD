@@ -1,6 +1,13 @@
 {
   "entries": [
     {
+      "id": "product_launched|DYCH|2026-10-02",
+      "type": "product_launched",
+      "name": "투페이스 쿠션담요 (DYCH)",
+      "date": "2026-10-02",
+      "detail": ""
+    },
+    {
       "id": "product_launched|BCBD|2026-09-30",
       "type": "product_launched",
       "name": "에브리웨어 북커버백 (BCBD)",
@@ -20,6 +27,97 @@
       "name": "비비드스트링파우치 (FJRG)",
       "date": "2026-09-18",
       "detail": ""
+    },
+    {
+      "id": "part_new|PT5815|2026_W38",
+      "type": "part_new",
+      "name": "PT5815-UV_전면중앙_신시어리웨일즈주식회사",
+      "date": "2026-09-17",
+      "detail": "신시어리웨일즈 주식회사"
+    },
+    {
+      "id": "part_new|PT5816|2026_W38",
+      "type": "part_new",
+      "name": "PT5816-샘플(UV풀컬러)_신시어리웨일즈주식회사",
+      "date": "2026-09-17",
+      "detail": "신시어리웨일즈 주식회사"
+    },
+    {
+      "id": "part_new|PT5818|2026_W38",
+      "type": "part_new",
+      "name": "PT5818-사각스티커(커스텀인쇄)_화이트+디지털풀컬러",
+      "date": "2026-09-17",
+      "detail": "서울디지털인쇄협동조합"
+    },
+    {
+      "id": "part_new|PT5819|2026_W38",
+      "type": "part_new",
+      "name": "PT5819-메세지카드(커스텀인쇄)_컬러",
+      "date": "2026-09-17",
+      "detail": "서울디지털인쇄협동조합"
+    },
+    {
+      "id": "part_new|PT5820|2026_W38",
+      "type": "part_new",
+      "name": "PT5820-메세지카드_내지_화이트+블랙인쇄",
+      "date": "2026-09-17",
+      "detail": "서울디지털인쇄협동조합"
+    },
+    {
+      "id": "part_new|PT5821|2026_W38",
+      "type": "part_new",
+      "name": "PT5821-메세지카드_내지_화이트+디지털풀컬러",
+      "date": "2026-09-17",
+      "detail": "서울디지털인쇄협동조합"
+    },
+    {
+      "id": "part_new|PT5811|2026_W38",
+      "type": "part_new",
+      "name": "PT5811-레더스킨다이어리_커버_컬러_LF-1",
+      "date": "2026-09-17",
+      "detail": "주식회사 디자인오엔"
+    },
+    {
+      "id": "part_new|PT5812|2026_W38",
+      "type": "part_new",
+      "name": "PT5812-샘플(본제작과동일옵션)",
+      "date": "2026-09-17",
+      "detail": "주식회사 디자인오엔"
+    },
+    {
+      "id": "part_new|PT5813|2026_W38",
+      "type": "part_new",
+      "name": "PT5813-밋업마그넷배터리_화이트",
+      "date": "2026-09-17",
+      "detail": "주식회사 알리오코리아"
+    },
+    {
+      "id": "part_new|PT5814|2026_W38",
+      "type": "part_new",
+      "name": "PT5814-밋업마그넷배터리_화이트",
+      "date": "2026-09-17",
+      "detail": "주식회사 알리오코리아"
+    },
+    {
+      "id": "part_new|PT5817|2026_W38",
+      "type": "part_new",
+      "name": "PT5817-투페이스쿠션담요_추상적산출물",
+      "date": "2026-09-17",
+      "detail": "주식회사 세라노"
+    },
+    {
+      "id": "product_new|SCAD|2026_W38",
+      "type": "product_new",
+      "name": "컬러풀메세지카드 (SCAD)",
+      "date": "2026-09-17",
+      "detail": "출시일 미정 · 파츠 등록"
+    },
+    {
+      "id": "product_new|BATT|2026_W38",
+      "type": "product_new",
+      "name": "밋업 마그넷 배터리 (BATT)",
+      "date": "2026-09-17",
+      "detail": "출시일 미정 · 파츠 등록"
     },
     {
       "id": "part_new|PT5809|2026_W38",
@@ -5223,5 +5321,5 @@
       "detail": ""
     }
   ],
-  "updatedAt": "2026-09-16T07:30:59.120Z"
+  "updatedAt": "2026-09-17T05:17:10.088Z"
 }
