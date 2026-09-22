@@ -813,6 +813,62 @@
       "detail": ""
     },
     {
+      "id": "part_price|PT4716|2026_W36",
+      "type": "part_price",
+      "name": "밸류메모큐브(ver2)(점착.S)",
+      "date": "2026-08-31",
+      "detail": "평균 28.1% 상승 · 주식회사 에이엠씨"
+    },
+    {
+      "id": "part_price|PT4717|2026_W36",
+      "type": "part_price",
+      "name": "밸류메모큐브(ver2)(점착.M)",
+      "date": "2026-08-31",
+      "detail": "평균 5.5% 상승 · 주식회사 에이엠씨"
+    },
+    {
+      "id": "part_price|PT4718|2026_W36",
+      "type": "part_price",
+      "name": "밸류메모큐브(ver2)(비점착.S)",
+      "date": "2026-08-31",
+      "detail": "평균 18.4% 상승 · 주식회사 에이엠씨"
+    },
+    {
+      "id": "part_price|PT4719|2026_W36",
+      "type": "part_price",
+      "name": "밸류메모큐브(ver2)(비점착.M)",
+      "date": "2026-08-31",
+      "detail": "평균 7.0% 상승 · 주식회사 에이엠씨"
+    },
+    {
+      "id": "part_price|PT5072|2026_W36",
+      "type": "part_price",
+      "name": "밸류메모큐브(ver2)(점착.S.낱장인쇄)_화이트+블랙인쇄",
+      "date": "2026-08-31",
+      "detail": "평균 29.4% 상승 · 주식회사 에이엠씨"
+    },
+    {
+      "id": "part_price|PT5073|2026_W36",
+      "type": "part_price",
+      "name": "밸류메모큐브(ver2)(점착.M.낱장인쇄)_화이트+블랙인쇄",
+      "date": "2026-08-31",
+      "detail": "평균 4.2% 상승 · 주식회사 에이엠씨"
+    },
+    {
+      "id": "part_price|PT5074|2026_W36",
+      "type": "part_price",
+      "name": "밸류메모큐브(ver2)(비점착.S.낱장인쇄)_화이트+블랙인쇄",
+      "date": "2026-08-31",
+      "detail": "평균 29.4% 상승 · 주식회사 에이엠씨"
+    },
+    {
+      "id": "part_price|PT5075|2026_W36",
+      "type": "part_price",
+      "name": "밸류메모큐브(ver2)(비점착.M.낱장인쇄)_화이트+블랙인쇄",
+      "date": "2026-08-31",
+      "detail": "평균 16.2% 상승 · 주식회사 에이엠씨"
+    },
+    {
       "id": "part_price|PT5652|2026_W35",
       "type": "part_price",
       "name": "캡슐 반투명 60*70",
@@ -902,13 +958,6 @@
       "name": "비피코리아, 신시어리웨일즈 주식회사",
       "date": "2026-08-28",
       "detail": "파츠 제작협력사 최초 등록"
-    },
-    {
-      "id": "product_launched|FFTT|2026-08-27",
-      "type": "product_launched",
-      "name": "스탠바이 360 허브스탠드 (FFTT)",
-      "date": "2026-08-27",
-      "detail": ""
     },
     {
       "id": "part_new|PT5733|2026_W35",
@@ -1231,6 +1280,13 @@
       "name": "비비드스트링파우치 (FJRG)",
       "date": "2026-08-27",
       "detail": "출시일 미정 · 파츠 등록"
+    },
+    {
+      "id": "product_launched|FFTT|2026-08-27",
+      "type": "product_launched",
+      "name": "스탠바이 360 허브스탠드 (FFTT)",
+      "date": "2026-08-27",
+      "detail": ""
     },
     {
       "id": "product_launched|BOOK|2026-08-25",
@@ -3053,13 +3109,6 @@
       "detail": ""
     },
     {
-      "id": "part_price|PT2228|2026_W31",
-      "type": "part_price",
-      "name": "브랜디드노트북백_블랙",
-      "date": "2026-07-30",
-      "detail": "평균 23.9% 인하 · (주)에스씨인터내셔널"
-    },
-    {
       "id": "part_price|PT5541|2026_W31",
       "type": "part_price",
       "name": "색박(음각)_베러댄텀블러_유엘상사",
@@ -3074,11 +3123,11 @@
       "detail": "평균 56250.0% 상승 · 유엘상사"
     },
     {
-      "id": "sup_added|Dongguan Songming Electronic Technology Co., Ltd|2026_W31",
-      "type": "sup_added",
-      "name": "Dongguan Songming Electronic Technology Co., Ltd",
-      "date": "2026-07-27",
-      "detail": "파츠 제작협력사 최초 등록 · 2026_W31 스냅샷 비교"
+      "id": "part_price|PT2228|2026_W31",
+      "type": "part_price",
+      "name": "브랜디드노트북백_블랙",
+      "date": "2026-07-30",
+      "detail": "평균 23.9% 인하 · (주)에스씨인터내셔널"
     },
     {
       "id": "part_new|PT5582|2026_W31",
@@ -3156,6 +3205,13 @@
       "name": "PT5586-노트북슬리브_추상적산출물",
       "date": "2026-07-27",
       "detail": "개미기획"
+    },
+    {
+      "id": "sup_added|Dongguan Songming Electronic Technology Co., Ltd|2026_W31",
+      "type": "sup_added",
+      "name": "Dongguan Songming Electronic Technology Co., Ltd",
+      "date": "2026-07-27",
+      "detail": "파츠 제작협력사 최초 등록 · 2026_W31 스냅샷 비교"
     },
     {
       "id": "part_price|PT1330|2026_W30",
@@ -5321,5 +5377,5 @@
       "detail": ""
     }
   ],
-  "updatedAt": "2026-09-17T05:17:10.088Z"
+  "updatedAt": "2026-09-22T04:39:45.358Z"
 }
