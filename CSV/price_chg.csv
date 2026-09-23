@@ -1,4 +1,51 @@
 ﻿에어테이블 DB 업데이트,슬랙 URL,대상 굿즈명,대상 파츠명 (Shift+Space),No.,구글 DB 업데이트 완료 버튼 (슬랙용) ,변동사항 적용 시점,Confirmation,업무요청 유형,관련 굿즈 리스트 (슬랙용),아이템,에어테이블 DB 입력완료 (슬랙용),슬랙 Ts,Name (from 신청자),관련 아이템 리스트,판매가 업데이트 완료 버튼 (슬랙용),관계자 태그,요청일자,Name (from 에어테이블 DB 입력자),변동원인,관련 굿즈 리스트,협력사,slack id tag (from 신청자),Last Modified (에어테이블 DB),변동사항 (Shift+Space로 전체 내용을 확인하세요),신청자,협력사 이름,프린팅 파츠 Rollup,구글 DB 업데이트 보류 버튼 (슬랙용),에어테이블 DB 입력자,에어테이블 DB 입력_특이사항,구글 DB 업데이트 현황,Last Modified (구글DB),구글DB 바로가기,판매가 업데이트 현황,Last Modified (견적서)
+에어테이블 DB 업데이트 완료,https://sincerelygroup.slack.com/archives/CKH9TB0HX/p1790042719441479,클로저 휴대폰 스트랩,"- PT5151-배경지(커스텀인쇄)(휴대폰스트랩블리스터전용)
+- PT5152-배경지(커스텀인쇄)(휴대폰스트랩실버팩전용)",466,https://app.miniextensions.com/form/FZYJ1iMzlELxh3tDklPB/rec9jzov2j7oisgkd?prefill_%EA%B5%AC%EA%B8%80%20DB%20%EC%97%85%EB%8D%B0%EC%9D%B4%ED%8A%B8%20%ED%98%84%ED%99%A9=%EA%B5%AC%EA%B8%80%20DB%20%EC%97%85%EB%8D%B0%EC%9D%B4%ED%8A%B8%20%EC%99%84%EB%A3%8C,2026.9.9,checked,특정 품목 단가 변동사항,,"CHST_PT5151-배경지(커스텀인쇄)(휴대폰스트랩블리스터전용), CHST_PT5152-배경지(커스텀인쇄)(휴대폰스트랩실버팩전용)",https://web.miniextensions.com/Rb3qHYSZVDo6pwVifGJc/rec9jzov2j7oisgkd,1790042719.441479,육승미,"CHST_PT5151-배경지(커스텀인쇄)(휴대폰스트랩블리스터전용)
+CHST_PT5152-배경지(커스텀인쇄)(휴대폰스트랩실버팩전용)",https://app.miniextensions.com/form/i4tFO83LH0iqxLbIQLBL/rec9jzov2j7oisgkd?prefill_%ED%8C%90%EB%A7%A4%EA%B0%80%20%EC%97%85%EB%8D%B0%EC%9D%B4%ED%8A%B8%20%ED%98%84%ED%99%A9=%ED%8C%90%EB%A7%A4%EA%B0%80%20%EC%97%85%EB%8D%B0%EC%9D%B4%ED%8A%B8%20%EC%99%84%EB%A3%8C,<!subteam^S01AV8VE1AQ>,2026.9.22 11:04오전,육승미,단가 오등록,클로저 휴대폰 스트랩,,<@U094VP02G6L>,2026.9.22 11:07오전,"\*변경 단가표는 스레드에 첨부드리겠습니다
+
+[현황]
+
+배경지 표준원가가 도무송 단가로 롤백되어, 현 판매가 800원 기준 300개 미만 구간은 역마진이 발생하는 구조입니다.
+
+블리스터용 배경지만 접지→ 양면인쇄로 변경된 부분만 300개 미만 구간 단가에서 1300원→ 950원으로 감소하고, 이 외에는 이전 단가와 동일합니다. 
+
+- 배경지 판매가: 800원
+
+- 300개 미만 단가 : 850~950원
+
+- 판매가 인하(260713) 이후 발주 4건 중 실제 역마진 2건
+
+[단가 변동 히스토리]
+
+- (251209) 출시 시점 실버팩 배경지 단가 세팅 오류로 1차 단가 상승 적용
+
+- (260713) 단가 절감을 위해 기존 타공(도무송)+접지 → 칼선+양면인쇄로 사양 변경 논의
+
+- 샘플 제작 중 찢어짐 개선을 위해 칼선 형태가 일자(ㅡ)에서 누운(ㄷ)자로 변경되며 실제로는 칼선이 아닌 도무송 단가 적용됨
+
+- 소통 오류로 내부에는 칼선 단가로 등록 
+
+- (260909) 최근 정산 과정에서 소통 오류 확인 후 실제 도무송 단가 기준으로 롤백
+
+[단가 개선 방안 제안]
+
+(ㄷ)자 도무송이 아닌 일자(ㅡ) 칼선 길이를 50mm(태그홀더 길이)로 변경하면 
+
+임가공 시 찢어짐 이슈 개선 및 기존 낮은 수준의 칼선 단가 적용 가능하여 원가를 기존 수준(260713)으로 낮출 수 있을 것으로 확인했습니다.
+
+판매가 조정 전 칼선 50mm 변경을 통한 원가 개선도 검토하면 좋을 것 같습니다.
+",육승미,,,https://app.miniextensions.com/form/FZYJ1iMzlELxh3tDklPB/rec9jzov2j7oisgkd?prefill_%EA%B5%AC%EA%B8%80%20DB%20%EC%97%85%EB%8D%B0%EC%9D%B4%ED%8A%B8%20%ED%98%84%ED%99%A9=%EA%B5%AC%EA%B8%80%20DB%20%EC%97%85%EB%8D%B0%EC%9D%B4%ED%8A%B8%20%EB%B3%B4%EB%A5%98,육승미,"공유드린 단가는 배경지만 해당되는 단가이며, costobject에는 임가공비(내부) 90원 일괄 추가되어있습니다. ",,,,,
+에어테이블 DB 업데이트 완료,https://sincerelygroup.slack.com/archives/CKH9TB0HX/p1789716130900879,Passion 더스트백,"- PT0534-무광스트링파우치(커스텀인쇄)(M)_블랙_200-1
+- PT0536-무광스트링파우치(커스텀인쇄)(M)_반투명_200-1",465,https://app.miniextensions.com/form/FZYJ1iMzlELxh3tDklPB/recJxzYZizTnJJSej?prefill_%EA%B5%AC%EA%B8%80%20DB%20%EC%97%85%EB%8D%B0%EC%9D%B4%ED%8A%B8%20%ED%98%84%ED%99%A9=%EA%B5%AC%EA%B8%80%20DB%20%EC%97%85%EB%8D%B0%EC%9D%B4%ED%8A%B8%20%EC%99%84%EB%A3%8C,2026.9.21,checked,특정 품목 단가 변동사항,"*관련 굿즈 (동일 파츠 사용)* : Passion 더스트백, 재고생산, Passion 더스트백, 클리어 리유저블컵, 재고생산","DBAG_PT0534-무광스트링파우치(커스텀인쇄)(M)_블랙_200-1, DBAG_PT0536-무광스트링파우치(커스텀인쇄)(M)_반투명_200-1",https://web.miniextensions.com/Rb3qHYSZVDo6pwVifGJc/recJxzYZizTnJJSej,1789716130.900879,김하은,"DBAG_PT0534-무광스트링파우치(커스텀인쇄)(M)_블랙_200-1
+DBAG_PT0536-무광스트링파우치(커스텀인쇄)(M)_반투명_200-1",https://app.miniextensions.com/form/i4tFO83LH0iqxLbIQLBL/recJxzYZizTnJJSej?prefill_%ED%8C%90%EB%A7%A4%EA%B0%80%20%EC%97%85%EB%8D%B0%EC%9D%B4%ED%8A%B8%20%ED%98%84%ED%99%A9=%ED%8C%90%EB%A7%A4%EA%B0%80%20%EC%97%85%EB%8D%B0%EC%9D%B4%ED%8A%B8%20%EC%99%84%EB%A3%8C,<!subteam^S01AV8VE1AQ>,2026.9.18 4:21오후,김하은,원단비 상승으로 인한 단가 인상,"Passion 더스트백, 재고생산, Passion 더스트백, 클리어 리유저블컵, 재고생산",,<@U08MYV5JXPX>,2026.9.18 4:23오후,"무광스트링파우치 단가가 약 25% 인상되어 공유드립니다. 
+
+- 반투명 M: 331원 → 414원 (+83원 / +25.1%)
+- 블랙 M: 439원 → 550원 (+111원 / +25.3%)
+
+이번 재고생산 발주분부터 적용 됩니다. 
+
+참고) 반투명 L: 단가 변동 없음 / 429원 유지 (표준원가 449원 대비 실제 공급가가 20원 저렴하여 업데이트하지 않음) 
+",김하은,,,https://app.miniextensions.com/form/FZYJ1iMzlELxh3tDklPB/recJxzYZizTnJJSej?prefill_%EA%B5%AC%EA%B8%80%20DB%20%EC%97%85%EB%8D%B0%EC%9D%B4%ED%8A%B8%20%ED%98%84%ED%99%A9=%EA%B5%AC%EA%B8%80%20DB%20%EC%97%85%EB%8D%B0%EC%9D%B4%ED%8A%B8%20%EB%B3%B4%EB%A5%98,김하은,,,,,,
 에어테이블 DB 업데이트 완료,https://sincerelygroup.slack.com/archives/CKH9TB0HX/p1789535350085339,히트업 손난로 보조배터리,"- PT4330-히트업손난로보조배터리_화이트
 - PT4331-히트업손난로보조배터리_그레이
 - PT4332-히트업손난로보조배터리_핑크",464,https://app.miniextensions.com/form/FZYJ1iMzlELxh3tDklPB/recoOq6pDj2v7PZ88?prefill_%EA%B5%AC%EA%B8%80%20DB%20%EC%97%85%EB%8D%B0%EC%9D%B4%ED%8A%B8%20%ED%98%84%ED%99%A9=%EA%B5%AC%EA%B8%80%20DB%20%EC%97%85%EB%8D%B0%EC%9D%B4%ED%8A%B8%20%EC%99%84%EB%A3%8C,2026.9.21,checked,특정 품목 단가 변동사항,"*관련 굿즈 (동일 파츠 사용)* : 히트업 손난로 보조배터리, 재고생산, 히트업 손난로 보조배터리","HTUS_PT4330-히트업손난로보조배터리_화이트, HTUS_PT4331-히트업손난로보조배터리_그레이, HTUS_PT4332-히트업손난로보조배터리_핑크",https://web.miniextensions.com/Rb3qHYSZVDo6pwVifGJc/recoOq6pDj2v7PZ88,1789535350.085339,김하은,"HTUS_PT4330-히트업손난로보조배터리_화이트
