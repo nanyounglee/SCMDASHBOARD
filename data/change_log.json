@@ -15,6 +15,321 @@
       "detail": ""
     },
     {
+      "id": "part_new|PT5856|2026_W39",
+      "type": "part_new",
+      "name": "PT5856-디지털은색_서울디지털인쇄협동조합",
+      "date": "2026-09-23",
+      "detail": "서울디지털인쇄협동조합"
+    },
+    {
+      "id": "part_new|PT5830|2026_W39",
+      "type": "part_new",
+      "name": "PT5830-승화전사_주식회사세라노",
+      "date": "2026-09-23",
+      "detail": "주식회사 세라노"
+    },
+    {
+      "id": "part_new|PT5832|2026_W39",
+      "type": "part_new",
+      "name": "PT5832-UV_주식회사세라노",
+      "date": "2026-09-23",
+      "detail": "주식회사 세라노"
+    },
+    {
+      "id": "part_grad|PT4740|2026_W39",
+      "type": "part_grad",
+      "name": "PT4740-단품박스(기성)",
+      "date": "2026-09-23",
+      "detail": "(주)명성"
+    },
+    {
+      "id": "part_new|PT5836|2026_W39",
+      "type": "part_new",
+      "name": "PT5836-주의사항표기서(전용)",
+      "date": "2026-09-23",
+      "detail": "서울디지털인쇄협동조합"
+    },
+    {
+      "id": "part_new|PT5839|2026_W39",
+      "type": "part_new",
+      "name": "PT5839-주의사항표기서(전용)",
+      "date": "2026-09-23",
+      "detail": "서울디지털인쇄협동조합"
+    },
+    {
+      "id": "part_new|PT5855|2026_W39",
+      "type": "part_new",
+      "name": "PT5855-자유형택(커스텀인쇄)_화이트+디지털풀컬러",
+      "date": "2026-09-23",
+      "detail": "서울디지털인쇄협동조합"
+    },
+    {
+      "id": "part_price|PT1319|2026_W39",
+      "type": "part_price",
+      "name": "실버팩_100-3",
+      "date": "2026-09-23",
+      "detail": "평균 200.0% 상승 · 올댓프린팅"
+    },
+    {
+      "id": "part_new|PT5834|2026_W39",
+      "type": "part_new",
+      "name": "PT5834-OPP(기성)",
+      "date": "2026-09-23",
+      "detail": "주식회사 세라노"
+    },
+    {
+      "id": "part_price|PT0534|2026_W39",
+      "type": "part_price",
+      "name": "무광스트링파우치(커스텀인쇄)(M)_블랙_200-1",
+      "date": "2026-09-23",
+      "detail": "평균 25.3% 상승 · 착한포장"
+    },
+    {
+      "id": "part_price|PT0536|2026_W39",
+      "type": "part_price",
+      "name": "무광스트링파우치(커스텀인쇄)(M)_반투명_200-1",
+      "date": "2026-09-23",
+      "detail": "평균 25.1% 상승 · 착한포장"
+    },
+    {
+      "id": "part_new|PT5842|2026_W39",
+      "type": "part_new",
+      "name": "PT5842-투명박스(스탠다드)(S)",
+      "date": "2026-09-23",
+      "detail": "착한포장"
+    },
+    {
+      "id": "part_new|PT5843|2026_W39",
+      "type": "part_new",
+      "name": "PT5843-투명박스_밴드(S)_기본검정",
+      "date": "2026-09-23",
+      "detail": "유성(구.유성테프)"
+    },
+    {
+      "id": "part_new|PT5844|2026_W39",
+      "type": "part_new",
+      "name": "PT5844-투명박스_밴드(S)_6.핑크",
+      "date": "2026-09-23",
+      "detail": "유성(구.유성테프)"
+    },
+    {
+      "id": "part_new|PT5845|2026_W39",
+      "type": "part_new",
+      "name": "PT5845-투명박스_밴드(S)_9.주황",
+      "date": "2026-09-23",
+      "detail": "유성(구.유성테프)"
+    },
+    {
+      "id": "part_new|PT5846|2026_W39",
+      "type": "part_new",
+      "name": "PT5846-투명박스_밴드(S)_20.빨강",
+      "date": "2026-09-23",
+      "detail": "유성(구.유성테프)"
+    },
+    {
+      "id": "part_new|PT5847|2026_W39",
+      "type": "part_new",
+      "name": "PT5847-투명박스_밴드(S)_22.보라",
+      "date": "2026-09-23",
+      "detail": "유성(구.유성테프)"
+    },
+    {
+      "id": "part_new|PT5848|2026_W39",
+      "type": "part_new",
+      "name": "PT5848-투명박스_밴드(S)_25.파랑",
+      "date": "2026-09-23",
+      "detail": "유성(구.유성테프)"
+    },
+    {
+      "id": "part_new|PT5849|2026_W39",
+      "type": "part_new",
+      "name": "PT5849-투명박스_밴드(S)_26.네이비",
+      "date": "2026-09-23",
+      "detail": "유성(구.유성테프)"
+    },
+    {
+      "id": "part_new|PT5850|2026_W39",
+      "type": "part_new",
+      "name": "PT5850-투명박스_밴드(S)_32.하늘색",
+      "date": "2026-09-23",
+      "detail": "유성(구.유성테프)"
+    },
+    {
+      "id": "part_new|PT5851|2026_W39",
+      "type": "part_new",
+      "name": "PT5851-투명박스_밴드(S)_34.연두",
+      "date": "2026-09-23",
+      "detail": "유성(구.유성테프)"
+    },
+    {
+      "id": "part_new|PT5852|2026_W39",
+      "type": "part_new",
+      "name": "PT5852-투명박스_밴드(S)_37.초록",
+      "date": "2026-09-23",
+      "detail": "유성(구.유성테프)"
+    },
+    {
+      "id": "part_new|PT5853|2026_W39",
+      "type": "part_new",
+      "name": "PT5853-투명박스_밴드(S)_52.그레이",
+      "date": "2026-09-23",
+      "detail": "유성(구.유성테프)"
+    },
+    {
+      "id": "part_new|PT5854|2026_W39",
+      "type": "part_new",
+      "name": "PT5854-투명박스_밴드(S)_14.노랑",
+      "date": "2026-09-23",
+      "detail": "유성(구.유성테프)"
+    },
+    {
+      "id": "part_new|PT5823|2026_W39",
+      "type": "part_new",
+      "name": "PT5823-미니미봉제키링(사각형)",
+      "date": "2026-09-23",
+      "detail": "주식회사 세라노"
+    },
+    {
+      "id": "part_new|PT5824|2026_W39",
+      "type": "part_new",
+      "name": "PT5824-미니미봉제키링(원형)",
+      "date": "2026-09-23",
+      "detail": "주식회사 세라노"
+    },
+    {
+      "id": "part_new|PT5825|2026_W39",
+      "type": "part_new",
+      "name": "PT5825-미니미봉제키링(리스형)",
+      "date": "2026-09-23",
+      "detail": "주식회사 세라노"
+    },
+    {
+      "id": "part_new|PT5826|2026_W39",
+      "type": "part_new",
+      "name": "PT5826-미니미봉제키링(하트형)",
+      "date": "2026-09-23",
+      "detail": "주식회사 세라노"
+    },
+    {
+      "id": "part_new|PT5827|2026_W39",
+      "type": "part_new",
+      "name": "PT5827-미니미봉제키링(자유형)",
+      "date": "2026-09-23",
+      "detail": "주식회사 세라노"
+    },
+    {
+      "id": "part_new|PT5829|2026_W39",
+      "type": "part_new",
+      "name": "PT5829-PVC투명파우치(카드형)",
+      "date": "2026-09-23",
+      "detail": "주식회사 세라노"
+    },
+    {
+      "id": "part_new|PT5831|2026_W39",
+      "type": "part_new",
+      "name": "PT5831-카라비너_니켈",
+      "date": "2026-09-23",
+      "detail": "주식회사 세라노"
+    },
+    {
+      "id": "part_new|PT5833|2026_W39",
+      "type": "part_new",
+      "name": "PT5833-군번줄_니켈",
+      "date": "2026-09-23",
+      "detail": "주식회사 세라노"
+    },
+    {
+      "id": "part_new|PT5837|2026_W39",
+      "type": "part_new",
+      "name": "PT5837-리본끈_컬러",
+      "date": "2026-09-23",
+      "detail": "주식회사 세라노"
+    },
+    {
+      "id": "part_new|PT5838|2026_W39",
+      "type": "part_new",
+      "name": "PT5838-리본끈_컬러",
+      "date": "2026-09-23",
+      "detail": "주식회사 세라노"
+    },
+    {
+      "id": "part_new|PT5840|2026_W39",
+      "type": "part_new",
+      "name": "PT5840-샘플(본제작동일사양)",
+      "date": "2026-09-23",
+      "detail": "주식회사 세라노"
+    },
+    {
+      "id": "part_new|PT5841|2026_W39",
+      "type": "part_new",
+      "name": "PT5841-샘플(본제작동일사양)",
+      "date": "2026-09-23",
+      "detail": "주식회사 세라노"
+    },
+    {
+      "id": "part_new|PT5822|2026_W39",
+      "type": "part_new",
+      "name": "PT5822-외주생산총공정산출물_밋업마그넷배터리",
+      "date": "2026-09-23",
+      "detail": ""
+    },
+    {
+      "id": "part_new|PT5828|2026_W39",
+      "type": "part_new",
+      "name": "PT5828-조립산출물_밋업마그넷배터리",
+      "date": "2026-09-23",
+      "detail": ""
+    },
+    {
+      "id": "part_new|PT5835|2026_W39",
+      "type": "part_new",
+      "name": "PT5835-조립산출물_투페이스쿠션담요",
+      "date": "2026-09-23",
+      "detail": ""
+    },
+    {
+      "id": "part_new|PT5857|2026_W39",
+      "type": "part_new",
+      "name": "PT5857-센티드_노트_3p_세트+지퍼벡",
+      "date": "2026-09-23",
+      "detail": ""
+    },
+    {
+      "id": "part_new|PT5858|2026_W39",
+      "type": "part_new",
+      "name": "PT5858-조립산출물_애니웨어센티드카드",
+      "date": "2026-09-23",
+      "detail": ""
+    },
+    {
+      "id": "part_new|PT5859|2026_W39",
+      "type": "part_new",
+      "name": "PT5859-외주생산총공정산출물_센티드스프레이+라벨",
+      "date": "2026-09-23",
+      "detail": ""
+    },
+    {
+      "id": "product_new|BONG|2026_W39",
+      "type": "product_new",
+      "name": "미니미 봉제인형 키링 (BONG)",
+      "date": "2026-09-23",
+      "detail": "출시일 미정 · 파츠 등록"
+    },
+    {
+      "id": "product_new|BOCM|2026_W39",
+      "type": "product_new",
+      "name": "굿타임 봉제 오너먼트 (BOCM)",
+      "date": "2026-09-23",
+      "detail": "출시일 미정 · 파츠 등록"
+    },
+    {
+      "id": "product_new|PER|2026_W39",
+      "type": "product_new",
+      "name": "PET사각패키지 (PER)",
+      "date": "2026-09-23",
+      "detail": "출시일 미정 · 파츠 등록"
+    },
+    {
       "id": "product_launched|MNTP|2026-09-22",
       "type": "product_launched",
       "name": "포켓크루 메모세트 (MNTP)",
@@ -5384,5 +5699,5 @@
       "detail": ""
     }
   ],
-  "updatedAt": "2026-09-23T06:57:51.929Z"
+  "updatedAt": "2026-09-23T07:21:54.129Z"
 }
