@@ -36,8 +36,8 @@ const s = tripodStock([
 const left = Object.fromEntries(s.map(p => [p.pts[0], [p.left, p.orders.length]]));
 assert.deepStrictEqual(left.PT1399, [3960 - 110, 1]);
 assert.deepStrictEqual(left.PT1400, [2435, 0]);
-assert.deepStrictEqual(left.PT5571, [13000 - 500, 2]);
-assert.deepStrictEqual(left.PT5572, [6000 - 50, 1]);
+assert.deepStrictEqual(left.PT5571, [6000 - 500, 2]);
+assert.deepStrictEqual(left.PT5572, [13000 - 50, 1]);
 // 재고보다 많이 나가면 음수 그대로(부족 수량 표시)
 assert.strictEqual(tripodStock([row('2026.9.30', 2500, 'EDCD_PT1400-x')])[1].left, -65);
 console.log('OK — 삼각대 재고: 기준일 경계·공용 재고·재고생산 제외·PT 정확 일치 검증');
