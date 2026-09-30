@@ -1,6 +1,13 @@
 {
   "entries": [
     {
+      "id": "product_launched|CDLB|2026-10-21",
+      "type": "product_launched",
+      "name": "플레인 도킹형 배터리 (CDLB)",
+      "date": "2026-10-21",
+      "detail": ""
+    },
+    {
       "id": "product_launched|DYCH|2026-10-02",
       "type": "product_launched",
       "name": "투페이스 쿠션담요 (DYCH)",
@@ -29,9 +36,128 @@
       "detail": ""
     },
     {
+      "id": "sup_added|Tonglu Yaqi Stationery Co., Ltd.|2026_09",
+      "type": "sup_added",
+      "name": "Tonglu Yaqi Stationery Co., Ltd.",
+      "date": "2026-09-30",
+      "detail": ""
+    },
+    {
+      "id": "sup_terminated|Anhui Highkey Import& Export Co., Ltd|2026_09",
+      "type": "sup_terminated",
+      "name": "Anhui Highkey Import& Export Co., Ltd",
+      "date": "2026-09-30",
+      "detail": ""
+    },
+    {
+      "id": "sup_terminated|Dongguan City Newway Stationery Co., Limited|2026_09",
+      "type": "sup_terminated",
+      "name": "Dongguan City Newway Stationery Co., Limited",
+      "date": "2026-09-30",
+      "detail": ""
+    },
+    {
+      "id": "sup_terminated|Dongguan Wik Electronic Technology Co., Ltd.|2026_09",
+      "type": "sup_terminated",
+      "name": "Dongguan Wik Electronic Technology Co., Ltd.",
+      "date": "2026-09-30",
+      "detail": ""
+    },
+    {
+      "id": "part_new|PT5862|2026_W40",
+      "type": "part_new",
+      "name": "PT5862-UV_전면_신시어리웨일즈주식회사",
+      "date": "2026-09-30",
+      "detail": "신시어리웨일즈 주식회사"
+    },
+    {
+      "id": "part_new|PT5863|2026_W40",
+      "type": "part_new",
+      "name": "PT5863-샘플(UV)_신시어리웨일즈주식회사",
+      "date": "2026-09-30",
+      "detail": "신시어리웨일즈 주식회사"
+    },
+    {
+      "id": "part_price|PT0588|2026_W40",
+      "type": "part_price",
+      "name": "단품박스(스탠다드)_웜그레이_000-5",
+      "date": "2026-09-30",
+      "detail": "평균 25.5% 상승 · (주)청산인쇄"
+    },
+    {
+      "id": "part_price|PT0388|2026_W40",
+      "type": "part_price",
+      "name": "단품박스(스탠다드)_화이트_000-15",
+      "date": "2026-09-30",
+      "detail": "평균 39.0% 인하 · (주)청산인쇄"
+    },
+    {
+      "id": "part_price|PT5636|2026_W40",
+      "type": "part_price",
+      "name": "센티드카드(프레임형)_3장_화이트+디지털풀컬러",
+      "date": "2026-09-30",
+      "detail": "평균 57.1% 상승 · 서울디지털인쇄협동조합"
+    },
+    {
+      "id": "part_price|PT5637|2026_W40",
+      "type": "part_price",
+      "name": "센티드카드(하우스형)_3장_화이트+디지털풀컬러",
+      "date": "2026-09-30",
+      "detail": "평균 57.1% 상승 · 서울디지털인쇄협동조합"
+    },
+    {
+      "id": "part_new|PT5860|2026_W40",
+      "type": "part_new",
+      "name": "PT5860-플레인도킹형배터리(5000)",
+      "date": "2026-09-30",
+      "detail": "주식회사 드리온"
+    },
+    {
+      "id": "part_new|PT5861|2026_W40",
+      "type": "part_new",
+      "name": "PT5861-플레인도킹형배터리(5000)_고속",
+      "date": "2026-09-30",
+      "detail": "주식회사 드리온"
+    },
+    {
+      "id": "part_new|PT5864|2026_W40",
+      "type": "part_new",
+      "name": "PT5864-플레인도킹형배터리_샘플",
+      "date": "2026-09-30",
+      "detail": "주식회사 드리온"
+    },
+    {
+      "id": "part_new|PT5865|2026_W40",
+      "type": "part_new",
+      "name": "PT5865-플레인도킹형배터리(고속)_샘플",
+      "date": "2026-09-30",
+      "detail": "주식회사 드리온"
+    },
+    {
+      "id": "part_price|PT4884|2026_W40",
+      "type": "part_price",
+      "name": "시그니처다이어리_커버(2합)_컬러",
+      "date": "2026-09-30",
+      "detail": "평균 16.2% 상승 · 주식회사 디자인오엔"
+    },
+    {
+      "id": "goods_unlinked|베이직 도킹형 보조배터리|2026_W40",
+      "type": "goods_unlinked",
+      "name": "베이직 도킹형 보조배터리",
+      "date": "2026-09-30",
+      "detail": "파츠 연결 해제"
+    },
+    {
       "id": "sup_added|GUANGZHOU KINGSONS BAGS TECHNOLOGY CO., LTD|2026_09",
       "type": "sup_added",
       "name": "GUANGZHOU KINGSONS BAGS TECHNOLOGY CO., LTD",
+      "date": "2026-09-28",
+      "detail": ""
+    },
+    {
+      "id": "product_launched|SCRD|2026-09-28",
+      "type": "product_launched",
+      "name": "애니웨어 센티드카드 (SCRD)",
       "date": "2026-09-28",
       "detail": ""
     },
@@ -2451,20 +2577,6 @@
       "detail": ""
     },
     {
-      "id": "part_price|PT2874|2026_W34",
-      "type": "part_price",
-      "name": "사각스티커(커스텀인쇄)_화이트+디지털풀컬러",
-      "date": "2026-08-17",
-      "detail": "평균 57.0% 상승 · 서울디지털인쇄협동조합"
-    },
-    {
-      "id": "goods_unlinked|소프트그립블랙펜|2026_W34",
-      "type": "goods_unlinked",
-      "name": "소프트그립블랙펜",
-      "date": "2026-08-17",
-      "detail": "파츠 연결 해제 · 2026_W34 스냅샷 비교"
-    },
-    {
       "id": "part_price|PT4751|2026_W34",
       "type": "part_price",
       "name": "하이라이트슬라이드지퍼백(M)",
@@ -2477,6 +2589,20 @@
       "name": "하이라이트슬라이드지퍼백(M)",
       "date": "2026-08-17",
       "detail": "평균 3.2% 상승 · 착한포장"
+    },
+    {
+      "id": "part_price|PT2874|2026_W34",
+      "type": "part_price",
+      "name": "사각스티커(커스텀인쇄)_화이트+디지털풀컬러",
+      "date": "2026-08-17",
+      "detail": "평균 57.0% 상승 · 서울디지털인쇄협동조합"
+    },
+    {
+      "id": "goods_unlinked|소프트그립블랙펜|2026_W34",
+      "type": "goods_unlinked",
+      "name": "소프트그립블랙펜",
+      "date": "2026-08-17",
+      "detail": "파츠 연결 해제 · 2026_W34 스냅샷 비교"
     },
     {
       "id": "part_new|PT5601|2026_W33",
@@ -3060,6 +3186,34 @@
       "detail": "평균 15.6% 상승 · (주)승화파트너스"
     },
     {
+      "id": "part_price|PT1674|2026_W33",
+      "type": "part_price",
+      "name": "OPP_000-3",
+      "date": "2026-08-10",
+      "detail": "평균 1608.7% 상승 · 비닐24"
+    },
+    {
+      "id": "part_price|PT1401|2026_W33",
+      "type": "part_price",
+      "name": "에디트캘린더_커버_화이트+옵셋풀컬러",
+      "date": "2026-08-10",
+      "detail": "평균 133.4% 상승 · (주)청산인쇄"
+    },
+    {
+      "id": "part_price|PT1402|2026_W33",
+      "type": "part_price",
+      "name": "에디트캘린더_내지(기본달력)_화이트",
+      "date": "2026-08-10",
+      "detail": "평균 48.9% 상승 · (주)청산인쇄"
+    },
+    {
+      "id": "part_price|PT1403|2026_W33",
+      "type": "part_price",
+      "name": "에디트캘린더_내지(커스텀인쇄)_화이트+옵셋풀컬러",
+      "date": "2026-08-10",
+      "detail": "평균 1.7% 상승 · (주)청산인쇄"
+    },
+    {
       "id": "part_price|PT4716|2026_W33",
       "type": "part_price",
       "name": "밸류메모큐브(ver2)(점착.S)",
@@ -3165,34 +3319,6 @@
       "detail": "평균 94.9% 상승 · 착한포장"
     },
     {
-      "id": "part_price|PT1674|2026_W33",
-      "type": "part_price",
-      "name": "OPP_000-3",
-      "date": "2026-08-10",
-      "detail": "평균 1608.7% 상승 · 비닐24"
-    },
-    {
-      "id": "part_price|PT1401|2026_W33",
-      "type": "part_price",
-      "name": "에디트캘린더_커버_화이트+옵셋풀컬러",
-      "date": "2026-08-10",
-      "detail": "평균 133.4% 상승 · (주)청산인쇄"
-    },
-    {
-      "id": "part_price|PT1402|2026_W33",
-      "type": "part_price",
-      "name": "에디트캘린더_내지(기본달력)_화이트",
-      "date": "2026-08-10",
-      "detail": "평균 48.9% 상승 · (주)청산인쇄"
-    },
-    {
-      "id": "part_price|PT1403|2026_W33",
-      "type": "part_price",
-      "name": "에디트캘린더_내지(커스텀인쇄)_화이트+옵셋풀컬러",
-      "date": "2026-08-10",
-      "detail": "평균 1.7% 상승 · (주)청산인쇄"
-    },
-    {
       "id": "part_price|PT4751|2026_W32",
       "type": "part_price",
       "name": "하이라이트슬라이드지퍼백(M)",
@@ -3219,20 +3345,6 @@
       "name": "레터링 유리머그",
       "date": "2026-08-03",
       "detail": "파츠 연결 해제 · 2026_W32 스냅샷 비교"
-    },
-    {
-      "id": "product_launched|BTST|2026-07-30",
-      "type": "product_launched",
-      "name": "베러댄 텀블러 (BTST)",
-      "date": "2026-07-30",
-      "detail": ""
-    },
-    {
-      "id": "product_launched|PMHT|2026-07-30",
-      "type": "product_launched",
-      "name": "픽미 핸들 텀블러 (PMHT)",
-      "date": "2026-07-30",
-      "detail": ""
     },
     {
       "id": "part_grad|PT1907|2026_W31",
@@ -3478,6 +3590,20 @@
       "name": "브랜디드노트북백_블랙",
       "date": "2026-07-30",
       "detail": "평균 23.9% 인하 · (주)에스씨인터내셔널"
+    },
+    {
+      "id": "product_launched|BTST|2026-07-30",
+      "type": "product_launched",
+      "name": "베러댄 텀블러 (BTST)",
+      "date": "2026-07-30",
+      "detail": ""
+    },
+    {
+      "id": "product_launched|PMHT|2026-07-30",
+      "type": "product_launched",
+      "name": "픽미 핸들 텀블러 (PMHT)",
+      "date": "2026-07-30",
+      "detail": ""
     },
     {
       "id": "part_price|PT5541|2026_W31",
@@ -5741,5 +5867,5 @@
       "detail": ""
     }
   ],
-  "updatedAt": "2026-09-30T05:01:12.936Z"
+  "updatedAt": "2026-09-30T05:42:51.368Z"
 }
