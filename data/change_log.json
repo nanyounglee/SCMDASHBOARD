@@ -15,6 +15,20 @@
       "detail": ""
     },
     {
+      "id": "sup_added|비피코리아|2026_09",
+      "type": "sup_added",
+      "name": "비피코리아",
+      "date": "2026-09-30",
+      "detail": ""
+    },
+    {
+      "id": "sup_added|Hangzhou Prostar Enterprises Ltd|2026_09",
+      "type": "sup_added",
+      "name": "Hangzhou Prostar Enterprises Ltd",
+      "date": "2026-09-30",
+      "detail": ""
+    },
+    {
       "id": "sup_added|GUANGZHOU KINGSONS BAGS TECHNOLOGY CO., LTD|2026_09",
       "type": "sup_added",
       "name": "GUANGZHOU KINGSONS BAGS TECHNOLOGY CO., LTD",
@@ -5727,5 +5741,5 @@
       "detail": ""
     }
   ],
-  "updatedAt": "2026-09-28T02:19:26.034Z"
+  "updatedAt": "2026-09-30T05:01:12.936Z"
 }
