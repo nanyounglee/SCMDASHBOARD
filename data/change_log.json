@@ -15,6 +15,13 @@
       "detail": ""
     },
     {
+      "id": "sup_added|주식회사 씨앤아이 해운항공|2026_10",
+      "type": "sup_added",
+      "name": "주식회사 씨앤아이 해운항공",
+      "date": "2026-10-01",
+      "detail": ""
+    },
+    {
       "id": "product_launched|BCBD|2026-09-30",
       "type": "product_launched",
       "name": "에브리웨어 북커버백 (BCBD)",
@@ -1450,13 +1457,6 @@
       "detail": "파츠 제작협력사 최초 등록"
     },
     {
-      "id": "product_launched|FFTT|2026-08-27",
-      "type": "product_launched",
-      "name": "스탠바이 360 허브스탠드 (FFTT)",
-      "date": "2026-08-27",
-      "detail": ""
-    },
-    {
       "id": "part_new|PT5733|2026_W35",
       "type": "part_new",
       "name": "PT5733-샘플(실크1도)_개미기획",
@@ -1777,6 +1777,13 @@
       "name": "비비드스트링파우치 (FJRG)",
       "date": "2026-08-27",
       "detail": "출시일 미정 · 파츠 등록"
+    },
+    {
+      "id": "product_launched|FFTT|2026-08-27",
+      "type": "product_launched",
+      "name": "스탠바이 360 허브스탠드 (FFTT)",
+      "date": "2026-08-27",
+      "detail": ""
     },
     {
       "id": "product_launched|BOOK|2026-08-25",
@@ -3347,6 +3354,20 @@
       "detail": "파츠 연결 해제 · 2026_W32 스냅샷 비교"
     },
     {
+      "id": "product_launched|BTST|2026-07-30",
+      "type": "product_launched",
+      "name": "베러댄 텀블러 (BTST)",
+      "date": "2026-07-30",
+      "detail": ""
+    },
+    {
+      "id": "product_launched|PMHT|2026-07-30",
+      "type": "product_launched",
+      "name": "픽미 핸들 텀블러 (PMHT)",
+      "date": "2026-07-30",
+      "detail": ""
+    },
+    {
       "id": "part_grad|PT1907|2026_W31",
       "type": "part_grad",
       "name": "PT1907-색박(음각)_50x50_청산인쇄",
@@ -3585,27 +3606,6 @@
       "detail": ""
     },
     {
-      "id": "part_price|PT2228|2026_W31",
-      "type": "part_price",
-      "name": "브랜디드노트북백_블랙",
-      "date": "2026-07-30",
-      "detail": "평균 23.9% 인하 · (주)에스씨인터내셔널"
-    },
-    {
-      "id": "product_launched|BTST|2026-07-30",
-      "type": "product_launched",
-      "name": "베러댄 텀블러 (BTST)",
-      "date": "2026-07-30",
-      "detail": ""
-    },
-    {
-      "id": "product_launched|PMHT|2026-07-30",
-      "type": "product_launched",
-      "name": "픽미 핸들 텀블러 (PMHT)",
-      "date": "2026-07-30",
-      "detail": ""
-    },
-    {
       "id": "part_price|PT5541|2026_W31",
       "type": "part_price",
       "name": "색박(음각)_베러댄텀블러_유엘상사",
@@ -3620,11 +3620,11 @@
       "detail": "평균 56250.0% 상승 · 유엘상사"
     },
     {
-      "id": "sup_added|Dongguan Songming Electronic Technology Co., Ltd|2026_W31",
-      "type": "sup_added",
-      "name": "Dongguan Songming Electronic Technology Co., Ltd",
-      "date": "2026-07-27",
-      "detail": "파츠 제작협력사 최초 등록 · 2026_W31 스냅샷 비교"
+      "id": "part_price|PT2228|2026_W31",
+      "type": "part_price",
+      "name": "브랜디드노트북백_블랙",
+      "date": "2026-07-30",
+      "detail": "평균 23.9% 인하 · (주)에스씨인터내셔널"
     },
     {
       "id": "part_new|PT5582|2026_W31",
@@ -3702,6 +3702,13 @@
       "name": "PT5586-노트북슬리브_추상적산출물",
       "date": "2026-07-27",
       "detail": "개미기획"
+    },
+    {
+      "id": "sup_added|Dongguan Songming Electronic Technology Co., Ltd|2026_W31",
+      "type": "sup_added",
+      "name": "Dongguan Songming Electronic Technology Co., Ltd",
+      "date": "2026-07-27",
+      "detail": "파츠 제작협력사 최초 등록 · 2026_W31 스냅샷 비교"
     },
     {
       "id": "part_price|PT1330|2026_W30",
@@ -5867,5 +5874,5 @@
       "detail": ""
     }
   ],
-  "updatedAt": "2026-09-30T05:42:51.368Z"
+  "updatedAt": "2026-10-01T05:12:44.798Z"
 }
