@@ -13830,7 +13830,7 @@ function renderRevenueModal(){
   const cT=cumOf(P.target,11), cO=cumOf(P.curOrder,nowIdx), cA=cumOf(actRev,nowIdx), cC=cumOf(projCost,nowIdx);
   const cumRow=(label,vals,fmt,colFn)=>`<tr><td style="white-space:nowrap">${label}</td>${vals.map((v,i)=>`<td class="num" style="white-space:nowrap${v!==null&&colFn?';color:'+colFn(v):''}${idxs.includes(i)?';background:var(--blue-light)':''}">${v===null?'-':fmt(v)}</td>`).join('')}<td class="num" style="color:var(--text3)">—</td></tr>`;
   const ratioColor=rCol(ratio), ratioAllColor=rCol(ratioAll);
-  const kpi=(lbl,val,sub,cls)=>`<div class="kpi-card ${cls||''}" style="cursor:default"><div class="kpi-label">${lbl}</div><div class="kpi-val" style="font-size:20px">${val}</div><div class="kpi-sub">${sub}</div></div>`;
+  const kpi=(lbl,val,sub,cls)=>`<div class="kpi-card ${cls||''}" style="cursor:default"><div class="kpi-label">${lbl}</div><div class="kpi-val" style="font-size:20px">${val}</div><div class="kpi-sub" style="display:block;line-height:1.6">${sub}</div></div>`;
   body.innerHTML=`
     ${noSel?`<div style="padding:8px 12px;background:var(--amber-light);border-radius:var(--r-sm);font-size:11.5px;color:var(--text2);margin-bottom:12px">선택 기간이 ${P.targetYear}년 밖이라 목표 대비는 표시할 수 없습니다. 아래 추이·표는 ${P.targetYear}년 연간 기준입니다.</div>`:''}
     <div class="kpi-row-4" style="margin-bottom:6px">
