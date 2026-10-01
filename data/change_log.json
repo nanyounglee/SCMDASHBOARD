@@ -8,6 +8,13 @@
       "detail": ""
     },
     {
+      "id": "product_launched|CRSM|2026-10-15",
+      "type": "product_launched",
+      "name": "크리스마스 피규어 세트 (CRSM)",
+      "date": "2026-10-15",
+      "detail": ""
+    },
+    {
       "id": "product_launched|DYCH|2026-10-02",
       "type": "product_launched",
       "name": "투페이스 쿠션담요 (DYCH)",
@@ -20,6 +27,27 @@
       "name": "주식회사 씨앤아이 해운항공",
       "date": "2026-10-01",
       "detail": ""
+    },
+    {
+      "id": "part_new|PT5868|2026_W40",
+      "type": "part_new",
+      "name": "PT5868-크리스마스피규어세트",
+      "date": "2026-10-01",
+      "detail": "엠알오즈(MROZ)"
+    },
+    {
+      "id": "part_new|PT5867|2026_W40",
+      "type": "part_new",
+      "name": "PT5867-크리스마스피규어세트_추상적산출물",
+      "date": "2026-10-01",
+      "detail": "엠알오즈(MROZ)"
+    },
+    {
+      "id": "part_new|PT5866|2026_W40",
+      "type": "part_new",
+      "name": "PT5866-플레인도킹형배터리_추상적산출물",
+      "date": "2026-10-01",
+      "detail": "주식회사 드리온"
     },
     {
       "id": "product_launched|BCBD|2026-09-30",
@@ -5874,5 +5902,5 @@
       "detail": ""
     }
   ],
-  "updatedAt": "2026-10-01T05:12:44.798Z"
+  "updatedAt": "2026-10-01T05:28:43.877Z"
 }
