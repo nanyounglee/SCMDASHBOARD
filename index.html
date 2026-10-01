@@ -13843,7 +13843,7 @@ function renderRevenueModal(){
         noSel?'—':`<span style="color:${cCol(projRate)}">${projRate===null?'—':projRate.toFixed(1)+'%'}</span>`,
         `목표 <b>${COST_RATE_TARGET}% 미만</b>${projRate===null?'':` · <b style="color:${cCol(projRate)}">${projRate<COST_RATE_TARGET?'달성 (여유 '+(COST_RATE_TARGET-projRate).toFixed(1)+'%p)':'초과 (+'+(projRate-COST_RATE_TARGET).toFixed(1)+'%p)'}</b>`}<br>마진률 <b style="color:${mCol(marginRate)}">${noSel||marginRate===null?'—':marginRate.toFixed(1)+'%'}</b> (매출 − 매입원가 · 목표 평균 ${MARGIN_RATE_TARGET}%)<br><span style="font-size:10px;color:var(--text3)">마감 매입원가 ${noSel?'—':fa(selProjCost)} · <b>원가율 검토용</b></span>`,'c-amber')}
     </div>
-    <div style="font-size:11px;color:var(--text3);margin-bottom:14px">
+    <details style="font-size:11px;color:var(--text3);margin-bottom:14px"><summary style="cursor:pointer;font-weight:600;color:var(--text2)">매출 현황 집계 기준 더보기</summary>
       · <b>매출 현황</b>은 업로드 실측치(proj_rev 프로젝트 총매출액)이고, <b>목표·수주액·전년·매출액(표)</b>은 구매조달팀 연간분석 표(01-A/01-B) 수치입니다. <b>v23.14(2026-08-04)에서 두 값의 기준을 맞췄습니다</b> — ① 금액을 <b>VAT 별도 공급가액</b>으로 통일(proj_rev '총 매출액'은 VAT 포함이라 ÷1.1) ② 귀속월을 달력 월이 아니라 <b>출고리스트 마감 컷오프</b>(아래 '마감 출고일' 행)로 변경 ③ 2025년 매출로 이미 마감된 건(2025년 12월 수주·2026년 1월 출고)은 제외. 그 결과 1~7월 누계 오차가 <b>+0.67%</b>, 월별 오차가 <b>±3.2% 이내</b>로 좁혀졌습니다(이전 +10.7% · 월별 ±38%).
       · <b>1~7월분 마감 출고일</b>은 달력 월말이 아닙니다 — 출고리스트가 그 달 출고분을 <b>다음 달 중순~하순까지 받아서 마감</b>했기 때문에 컷오프가 다음 달로 넘어갑니다(예: 1월분은 2/23 출고분까지). <b>8월분부터는 그 달 말일에 마감</b>합니다(2026-09-14 확정 — 8월분은 7월분 마감 다음날인 8/5부터 8/31까지). 이 기준으로 1~7월 <b>전 구간 오차 ±3.2% 이내 · 누계 +0.67%</b>입니다. 정확히 0.0%는 날짜 단위로 불가능합니다 — 하루치 출고 중앙값이 3,455만원이라 경계를 한 칸 옮길 때마다 월 금액이 3~5%씩 점프하며, 전 구간 최적화해도 월별 최악의 하한은 2.17%입니다.
       · <b>2025년 매출로 마감된 건은 제외</b>합니다 — 2025년 12월 수주·2026년 1월 출고 프로젝트 112건(5.47억)은 이미 2025년 매출로 잡혀 있어 2026에 다시 세면 이중계상이 됩니다. 2026 발주 RAW에 해당 프로젝트가 없다는 점이 그대로 판별자가 됩니다.
@@ -13856,7 +13856,7 @@ function renderRevenueModal(){
       &nbsp;&nbsp;<b>선매입 재고 투입분 포함</b> — 재고에서 출고된 분은 재고생산 발주가 프로젝트에 귀속되지 않아 공급가액이 0으로 잡힙니다. 재고생산 원가를 통째로 얹으면 과대계상이므로 <b>실제 투입 수량(<code>출고자재_수량</code>) × 파츠 표준원가</b>로만 배분합니다(출고 수량에 여분이 이미 반영돼 있습니다 — 고객주문 100 → 출고 103). 2026년 기준 <b>1,369행 · 10.4억원</b>이 이 경로로 잡히며, 반영 전에는 원가율이 36.4%로 과소평가됐습니다.<br>
       &nbsp;&nbsp;⚠ <b>그래도 물류비·공통고정비(판관비)는 빠져 있습니다</b> — 이 지표는 <b>순수 외주생산제조비</b>이므로 실제 총원가는 이보다 큽니다. 표준원가가 없는 파츠는 배분에서 제외되므로 재고 투입 원가는 <b>다소 과소</b>일 수 있습니다.
       · <b>마진률</b> = (매출 − 매입원가(프로젝트 귀속)) ÷ 매출 = 100 − 원가율입니다. <b>목표 평균 마진률은 ${MARGIN_RATE_TARGET}%</b>이며(${MARGIN_RATE_TARGET}~${MARGIN_RATE_TARGET+5}% 주황 · ${MARGIN_RATE_TARGET}% 미만 빨강), 물류비·판관비를 빼기 전 값입니다. <b>누적 현황</b>은 아래 표의 누적 행에서 봅니다 — 1월부터 각 달까지의 합계이며, 수주·매출·마진률은 이번 달까지만 표시합니다.
-    </div>
+    </details>
     <div class="card" style="margin-bottom:14px">
       <div class="card-header"><div class="card-title">${P.prevYear} vs ${P.targetYear} 매출·수주 추이</div><div class="card-sub"><a href="javascript:void(0)" onclick="closeModal();nav(document.querySelector('.sb-item[onclick*=cost-analysis]'),'cost-analysis')">원가 분석 화면 →</a></div></div>
       <div class="ch" style="height:260px"><canvas id="ch-rev-plan"></canvas></div>
