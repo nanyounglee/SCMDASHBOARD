@@ -1637,8 +1637,10 @@ function orderUnitRows(rows){
   (rows||[]).forEach(r=>{ const k=orderUnitKey(r); (g[k]=g[k]||[]).push(r); });
   const maxQ=a=>a.reduce((x,y)=>pa(String(y['발주지시수량']||''))>pa(String(x['발주지시수량']||''))?y:x);
   return Object.values(g).map(a=>{
-    const asm=a.filter(r=>orderRole(r)==='assembled'), prod=a.filter(r=>orderRole(r)==='product');
-    const rep=maxQ(asm.length?asm:(prod.length?prod:a));
+    // 본품이 재고에서 나가는 주문(리마커블 칫솔살균기: 에폭시 인쇄 300 + 사각스티커 310)은
+    // 인쇄 행이 본품 수량을 대신한다 — 부자재는 여유분이 붙어 더 크므로 인쇄를 먼저 본다(2026-10-02)
+    const asm=a.filter(r=>orderRole(r)==='assembled'), prod=a.filter(r=>orderRole(r)==='product'), prt=a.filter(r=>orderRole(r)==='printing');
+    const rep=maxQ(asm.length?asm:(prod.length?prod:(prt.length?prt:a)));
     // 완제품 행의 수량이 0으로 비어 있는 원본이 있어(아쿠아 스노클링 마스크 등) 그때만 전체에서 재선정
     return pa(String(rep['발주지시수량']||''))>0?rep:maxQ(a);
   });
@@ -3696,7 +3698,7 @@ function openGoodsDetail(gc){
   const structHtml=`<div class="card" style="margin:12px 0;padding:12px 16px">
     <div style="font-size:12px;font-weight:700;margin-bottom:6px">굿즈 구성 <span style="font-weight:400;font-size:10px;color:var(--text3)">— 파츠유형별 산출물 (product+print → 추상적산출물 → +package → goods)</span></div>
     <table class="tbl"><tbody>${['assembled','product','printing','package','etc'].map(roleCard).join('')}</tbody></table>
-    <div style="font-size:10px;color:var(--text3);margin-top:6px">위 <b>발주수량</b> 대표값은 <b>고객이 주문한 프로젝트 1건당 대표 1행</b>(완제품 &gt; 제품 파츠 &gt; 나머지 순, 그중 최대 수량)만 세어 합산합니다 — 같은 주문의 부자재·인쇄까지 더하면 "제품 몇 개"가 아니게 되고, 한 세트에 Product 파츠가 2종인 상품(골프공+볼마커)은 이중계산됩니다. 공급가액은 부자재를 포함한 총액입니다.</div>
+    <div style="font-size:10px;color:var(--text3);margin-top:6px">위 <b>발주수량</b> 대표값은 <b>고객이 주문한 프로젝트 1건당 대표 1행</b>(완제품 &gt; 제품 파츠 &gt; 인쇄 &gt; 나머지 순, 그중 최대 수량)만 세어 합산합니다 — 같은 주문의 부자재·인쇄까지 더하면 "제품 몇 개"가 아니게 되고, 한 세트에 Product 파츠가 2종인 상품(골프공+볼마커)은 이중계산됩니다. 공급가액은 부자재를 포함한 총액입니다.</div>
   </div>`;
   // ---- 이슈 이력 ----
   const issHtml=`<div style="font-size:12px;font-weight:700;margin:14px 0 6px">이슈 이력 <span style="font-weight:400;font-size:10px;color:var(--text3)">(${histRangeLabel()} · 이 굿즈의 산출물 ${prodSet.size}종 기준)</span></div>
@@ -11912,13 +11914,36 @@ function renderProductTrend() {
   const rowsByProduct={};
   // v23.35: 아카이브 연도(2024~) 발주 행을 함께 집계 — 이 화면은 원래 "전체 이력 추이"라
   // 당해만 보면 추세선이 12개월에서 끊긴다. 기간지정(isCustom)일 때는 구간 필터가 그대로 걸린다.
-  (D.orderHist&&D.orderHist.length?D.order.concat(D.orderHist):D.order)
-    .filter(r=>!isStock(r)&&(!q||matchesSearch(r,q)||catTokenMatch(getOrderRowCategoryStr(r),nq))
-    &&(!isCustom||inSelDateRange(r['과업지시일자']))
-    &&(partsType(r).includes('Product Parts')||(r['수주처']||'').trim()==='신시어리웨일즈 주식회사')).forEach(r=>{
-    const name=(r['산출물']||'').trim(); if(!name) return; // 비스포크(산출물 없음)는 반복성 없어 제외
+  // v23.x(사용자 확정 2026-10-02): 같은 고객 주문(orderUnitKey = 프로젝트×굿즈)에 Product Parts 행이
+  // 없으면 본품이 재고에서 나간 것 — 그 주문의 Printing Parts 행을 판매로 인정한다(리마커블 칫솔살균기는
+  // 에폭시스티커 인쇄 발주만 있어 화면에서 통째로 빠졌다). 표시명은 굿즈명으로 묶고, 수량은 본품 기준
+  // (고객주문수량, 없으면 인쇄 발주수량)으로 주문당 1건만 센다. 인쇄 산출물별 수량은 굿즈 상세 모달에서 본다.
+  const isProdRow=r=>partsType(r).includes('Product Parts')||(r['수주처']||'').trim()==='신시어리웨일즈 주식회사';
+  const base=(D.orderHist&&D.orderHist.length?D.order.concat(D.orderHist):D.order).filter(r=>!isStock(r));
+  const prodUnits=new Set(base.filter(isProdRow).map(orderUnitKey)); // 검색 필터 전 — 검색어가 인쇄 협력사여도 본품 주문은 본품 행으로 센다
+  // 검색은 주문 단위로 매칭 — 인쇄 협력사(이지굿스)로 찾아도 그 인쇄가 들어간 본품(에센셜와인오프너)이 잡히게
+  const hit=r=>matchesSearch(r,q)||catTokenMatch(getOrderRowCategoryStr(r),nq);
+  const hitUnits=q?new Set(base.filter(hit).map(orderUnitKey)):null;
+  const rows=base.filter(r=>(!q||hitUnits.has(orderUnitKey(r)))
+    &&(!isCustom||inSelDateRange(r['과업지시일자'])));
+  const gcProdName={}; // 같은 굿즈에 본품 행 산출물명이 있으면 그 이름으로 합친다(굿즈명과 표기가 달라 두 줄로 갈리지 않게)
+  rows.filter(isProdRow).forEach(r=>{ const gc=goodsCode(r), n=(r['산출물']||'').trim(); if(gc&&n&&!gcProdName[gc]) gcProdName[gc]=n; });
+  const printUnits={};
+  rows.forEach(r=>{
+    let name=(r['산출물']||'').trim(), qty=pa(r['발주지시수량']);
+    if(!isProdRow(r)){
+      if(orderRole(r)!=='printing'||prodUnits.has(orderUnitKey(r))) return;
+      const gc=goodsCode(r); if(!gc) return;
+      const k=orderUnitKey(r), cq=pCustQty(r['고객주문수량'])||qty;
+      if(!printUnits[k]||cq>printUnits[k].qty) printUnits[k]={r,qty:cq,name:gcProdName[gc]||goodsNameOf(gc)||name};
+      return;
+    }
+    if(!name) return; // 비스포크(산출물 없음)는 반복성 없어 제외
+    push(r,name,qty);
+  });
+  Object.values(printUnits).forEach(u=>push(u.r,u.name,u.qty));
+  function push(r,name,qty){
     const mk=bucketOf(r['과업지시일자']); if(!mk) return;
-    const qty=pa(r['발주지시수량']);
     const s=(r['수주처']||'').trim();
     (rowsByProduct[name]=rowsByProduct[name]||[]).push({mk,qty,s,gc:goodsCode(r)});
   });
@@ -11935,7 +11960,7 @@ function renderProductTrend() {
       if(x.s) v.supCnt[x.s]=(v.supCnt[x.s]||0)+1;
     });
     byProduct[name]=v;
-  });
+  }
   const mainSup=v=>Object.entries(v.supCnt).sort((a,b)=>b[1]-a[1])[0]?.[0]||'';
   const sorted=Object.entries(byProduct).sort((a,b)=>b[1].total-a[1].total);
   const top10=sorted.slice(0,10);
@@ -11955,7 +11980,7 @@ function renderProductTrend() {
   const periodNote=isCustom?`<b>기간지정 ${selPeriodLabel()} 구간만 집계</b> (${bucketMode==='week'?'주':'월'} 버킷)`
     :`기간 단위 선택에 따라 주별/월별/분기별 버킷으로 전체 이력 추이 표시${histYears.length?` · <b>${histYears[0]}년부터</b> 아카이브 발주 원본 포함`:''}`;
   el.innerHTML=`
-    <div class="card"><div class="card-header"><div class="card-title">제품별 ${unitLabel} 발주수량 추이 (Top 10)</div><div class="card-sub">총 ${sorted.length}개 제품 · 발주지시수량 기준 · 재고생산 제외 · ${periodNote} · <b>파츠유형 Product Parts 포함 발주만</b>(인쇄·포장 전용 발주 행 제외로 중복 집계 방지, 신시어리웨일즈 제작 건은 예외) · 검색창에 <b>Goods Category</b>(예: Drinkware, Stationery)를 입력하면 해당 카테고리 제품 전체 표시${q?' · <b>검색 필터 적용</b>':''}</div></div>
+    <div class="card"><div class="card-header"><div class="card-title">제품별 ${unitLabel} 발주수량 추이 (Top 10)</div><div class="card-sub">총 ${sorted.length}개 제품 · 발주지시수량 기준 · 재고생산 제외 · ${periodNote} · <b>파츠유형 Product Parts 포함 발주만</b>(인쇄·포장 전용 발주 행 제외로 중복 집계 방지, 신시어리웨일즈 제작 건은 예외 · <b>본품이 재고 출고인 주문은 인쇄 발주를 굿즈명으로 묶어 본품 수량으로 1건 집계</b>, 인쇄 수량은 제품명 클릭 → 굿즈 구성에서 확인) · 검색창에 <b>Goods Category</b>(예: Drinkware, Stationery)를 입력하면 해당 카테고리 제품 전체 표시${q?' · <b>검색 필터 적용</b>':''}</div></div>
     <div class="ch" style="height:320px"><canvas id="ch-prod-trend"></canvas></div></div>
     <div class="card" style="margin-top:12px"><div class="card-header"><div class="card-title">제품별 발주 요약 Top 30 <span style="font-weight:400;font-size:11px;color:var(--text3)">(${rankMonth?`<b>${rankMonth}월 발주수량 순</b> · 그 달 발주 제품만 · `:'누적 발주수량 순 · '}${URGENT_EXCLUDE_SUP} 제작 제품 제외${q?' · 검색 필터 적용':''} · 제품별 발주수량 분포의 <b>표준분포 80% 범위 상단(μ+1.28σ)</b>을 넘는 빅딜 건은 추이·합계에서 제외하고 별도 표기 · 표본 5건 미만 제품은 판정 보류)</span></div></div>
     <div class="tbl-wrap"><table class="tbl"><thead><tr><th class="rank">#</th><th>제품명</th><th>제작 협력사</th><th class="num">누적 발주수량</th><th class="num">${avgLabel}</th>${shownMonths.map(m=>`<th class="num" style="font-size:10px${m===rankMonth?';color:var(--blue)':''}">${shownLbl(m)}</th>`).join('')}</tr></thead><tbody>
