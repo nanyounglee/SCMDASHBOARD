@@ -11941,11 +11941,15 @@ function renderProductTrend() {
   const top10=sorted.slice(0,10);
   const allMonths=[...new Set(sorted.flatMap(([,v])=>Object.keys(v.months)))].sort(bucketCmp);
   // v19: 제품별 발주 요약 — 주 제작처(최다 발주 기준)가 서울디지털인쇄협동조합인 제품 제외
-  const summarySorted=sorted.filter(([,v])=>mainSup(v)!==URGENT_EXCLUDE_SUP);
+  // v23.x: 월별 단위면 누적이 아닌 선택 월 발주수량 순으로 정렬 — 신제품은 그 달 발주가 많아도
+  // 누적이 적어 Top에서 밀리던 문제(사용자 요청 2026-10-02). 그 달 발주 없는 제품은 표에서 뺀다.
+  const rankMonth=bucketMode==='month'&&!isCustom?(allMonths.includes(SEL_MONTH)?SEL_MONTH:allMonths[allMonths.length-1]):null;
+  const summarySorted=sorted.filter(([,v])=>mainSup(v)!==URGENT_EXCLUDE_SUP&&(!rankMonth||v.months[rankMonth]>0));
+  if(rankMonth) summarySorted.sort((a,b)=>b[1].months[rankMonth]-a[1].months[rankMonth]);
 
   // v21.4: 표에서 최근 6개월만 잘라 보여주던 것을 데이터 전체 월(최대 13개월)로 확대 — 26.1월 누락 문제 해결
-  // v22.3: 주 버킷은 최근 16개(그 이상은 열이 너무 많음), 월 13개, 분기·기간지정은 전체
-  const shownMonths=bucketMode==='week'&&!isCustom?allMonths.slice(-16):bucketMode==='month'?allMonths.slice(-13):allMonths;
+  // v22.3: 주 버킷은 최근 16개(그 이상은 열이 너무 많음), 월 13개(선택 월까지), 분기·기간지정은 전체
+  const shownMonths=bucketMode==='week'&&!isCustom?allMonths.slice(-16):rankMonth?allMonths.filter(m=>monthCmp(m,rankMonth)<=0).slice(-13):bucketMode==='month'?allMonths.slice(-13):allMonths;
   const shownLbl=m=>bucketMode==='week'?m.slice(5):m; // 주 버킷은 'MM-DD'(주 시작 월요일)로 표기
   const histYears=orderHistYears();
   const periodNote=isCustom?`<b>기간지정 ${selPeriodLabel()} 구간만 집계</b> (${bucketMode==='week'?'주':'월'} 버킷)`
@@ -11953,9 +11957,9 @@ function renderProductTrend() {
   el.innerHTML=`
     <div class="card"><div class="card-header"><div class="card-title">제품별 ${unitLabel} 발주수량 추이 (Top 10)</div><div class="card-sub">총 ${sorted.length}개 제품 · 발주지시수량 기준 · 재고생산 제외 · ${periodNote} · <b>파츠유형 Product Parts 포함 발주만</b>(인쇄·포장 전용 발주 행 제외로 중복 집계 방지, 신시어리웨일즈 제작 건은 예외) · 검색창에 <b>Goods Category</b>(예: Drinkware, Stationery)를 입력하면 해당 카테고리 제품 전체 표시${q?' · <b>검색 필터 적용</b>':''}</div></div>
     <div class="ch" style="height:320px"><canvas id="ch-prod-trend"></canvas></div></div>
-    <div class="card" style="margin-top:12px"><div class="card-header"><div class="card-title">제품별 발주 요약 <span style="font-weight:400;font-size:11px;color:var(--text3)">(${URGENT_EXCLUDE_SUP} 제작 제품 제외${q?' · 검색 필터 적용':''} · 제품별 발주수량 분포의 <b>표준분포 80% 범위 상단(μ+1.28σ)</b>을 넘는 빅딜 건은 추이·합계에서 제외하고 별도 표기 · 표본 5건 미만 제품은 판정 보류)</span></div></div>
-    <div class="tbl-wrap"><table class="tbl"><thead><tr><th class="rank">#</th><th>제품명</th><th>제작 협력사</th><th class="num">누적 발주수량</th><th class="num">${avgLabel}</th>${shownMonths.map(m=>`<th class="num" style="font-size:10px">${shownLbl(m)}</th>`).join('')}</tr></thead><tbody>
-    ${summarySorted.slice(0,20).map(([k,v],i)=>{
+    <div class="card" style="margin-top:12px"><div class="card-header"><div class="card-title">제품별 발주 요약 Top 30 <span style="font-weight:400;font-size:11px;color:var(--text3)">(${rankMonth?`<b>${rankMonth}월 발주수량 순</b> · 그 달 발주 제품만 · `:'누적 발주수량 순 · '}${URGENT_EXCLUDE_SUP} 제작 제품 제외${q?' · 검색 필터 적용':''} · 제품별 발주수량 분포의 <b>표준분포 80% 범위 상단(μ+1.28σ)</b>을 넘는 빅딜 건은 추이·합계에서 제외하고 별도 표기 · 표본 5건 미만 제품은 판정 보류)</span></div></div>
+    <div class="tbl-wrap"><table class="tbl"><thead><tr><th class="rank">#</th><th>제품명</th><th>제작 협력사</th><th class="num">누적 발주수량</th><th class="num">${avgLabel}</th>${shownMonths.map(m=>`<th class="num" style="font-size:10px${m===rankMonth?';color:var(--blue)':''}">${shownLbl(m)}</th>`).join('')}</tr></thead><tbody>
+    ${summarySorted.slice(0,30).map(([k,v],i)=>{
       const avg=allMonths.length>0?Math.round(v.total/allMonths.length):0;
       const bigDealBadge=v.bigDealQty>0?` <span class="tag tag-gray" style="font-size:9px" title="추이·합계에서 제외됨 — 이 제품 빅딜 기준 ${fmtN(v.bigDealMin)}개 이상(표준분포 80% 범위 상단 μ+1.28σ 초과)">빅딜 제외 ${fmtN(v.bigDealQty)}개(${v.bigDealCnt}건)</span>`:'';
       // v23.22: 제품명 클릭 → 굿즈 상세(옵션별 발주 비중·재고회전율·수량별 단가). 굿즈코드가 없으면 산출물 상세로.
