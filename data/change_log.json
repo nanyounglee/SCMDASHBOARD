@@ -22,6 +22,104 @@
       "detail": ""
     },
     {
+      "id": "part_price|PT5815|2026_W40",
+      "type": "part_price",
+      "name": "UV_전면중앙_신시어리웨일즈주식회사",
+      "date": "2026-10-02",
+      "detail": "평균 1474.8% 상승 · 신시어리웨일즈 주식회사"
+    },
+    {
+      "id": "part_price|PT1493|2026_W40",
+      "type": "part_price",
+      "name": "오픈박스(스탠다드)(Small)_화이트_100-4",
+      "date": "2026-10-02",
+      "detail": "평균 9.4% 상승 · (주)청산인쇄"
+    },
+    {
+      "id": "part_price|PT2169|2026_W40",
+      "type": "part_price",
+      "name": "단품박스(스탠다드)_화이트_100-17",
+      "date": "2026-10-02",
+      "detail": "평균 69.2% 상승 · (주)청산인쇄"
+    },
+    {
+      "id": "part_price|PT2995|2026_W40",
+      "type": "part_price",
+      "name": "지지대(전용)_화이트",
+      "date": "2026-10-02",
+      "detail": "평균 33.5% 상승 · (주)청산인쇄"
+    },
+    {
+      "id": "part_price|PT4636|2026_W40",
+      "type": "part_price",
+      "name": "오픈박스(커스텀인쇄)(small)_블랙",
+      "date": "2026-10-02",
+      "detail": "평균 10.7% 인하 · (주)청산인쇄"
+    },
+    {
+      "id": "part_price|PT2994|2026_W40",
+      "type": "part_price",
+      "name": "웰컴페이퍼(커스텀인쇄)_화이트+디지털풀컬러",
+      "date": "2026-10-02",
+      "detail": "평균 35.7% 상승 · 서울디지털인쇄협동조합"
+    },
+    {
+      "id": "part_price|PT1046|2026_W40",
+      "type": "part_price",
+      "name": "펠트스트링파우치_화이트_100-2",
+      "date": "2026-10-02",
+      "detail": "평균 85.4% 상승 · 착한포장"
+    },
+    {
+      "id": "part_grad|PT2802|2026_W40",
+      "type": "part_grad",
+      "name": "PT2802-아이콘펜(바디)_화이트",
+      "date": "2026-10-02",
+      "detail": "성우무역"
+    },
+    {
+      "id": "part_grad|PT2962|2026_W40",
+      "type": "part_grad",
+      "name": "PT2962-아이콘펜(클립)_화이트",
+      "date": "2026-10-02",
+      "detail": "성우무역"
+    },
+    {
+      "id": "part_price|PT5803|2026_W40",
+      "type": "part_price",
+      "name": "샘플(본제작과동일옵션)",
+      "date": "2026-10-02",
+      "detail": "평균 60.0% 상승 · 주식회사 세라노"
+    },
+    {
+      "id": "part_new|PT5869|2026_W40",
+      "type": "part_new",
+      "name": "PT5869-조립산출물_플레인도킹형배터리",
+      "date": "2026-10-02",
+      "detail": ""
+    },
+    {
+      "id": "part_new|PT5870|2026_W40",
+      "type": "part_new",
+      "name": "PT5870-외주생산총공정산출물_플레인도킹형배터리",
+      "date": "2026-10-02",
+      "detail": ""
+    },
+    {
+      "id": "goods_unlinked|컬러풀메세지카드|2026_W40",
+      "type": "goods_unlinked",
+      "name": "컬러풀메세지카드",
+      "date": "2026-10-02",
+      "detail": "파츠 연결 해제"
+    },
+    {
+      "id": "goods_unlinked|PET사각패키지|2026_W40",
+      "type": "goods_unlinked",
+      "name": "PET사각패키지",
+      "date": "2026-10-02",
+      "detail": "파츠 연결 해제"
+    },
+    {
       "id": "sup_added|주식회사 씨앤아이 해운항공|2026_10",
       "type": "sup_added",
       "name": "주식회사 씨앤아이 해운항공",
@@ -1485,6 +1583,13 @@
       "detail": "파츠 제작협력사 최초 등록"
     },
     {
+      "id": "product_launched|FFTT|2026-08-27",
+      "type": "product_launched",
+      "name": "스탠바이 360 허브스탠드 (FFTT)",
+      "date": "2026-08-27",
+      "detail": ""
+    },
+    {
       "id": "part_new|PT5733|2026_W35",
       "type": "part_new",
       "name": "PT5733-샘플(실크1도)_개미기획",
@@ -1805,13 +1910,6 @@
       "name": "비비드스트링파우치 (FJRG)",
       "date": "2026-08-27",
       "detail": "출시일 미정 · 파츠 등록"
-    },
-    {
-      "id": "product_launched|FFTT|2026-08-27",
-      "type": "product_launched",
-      "name": "스탠바이 360 허브스탠드 (FFTT)",
-      "date": "2026-08-27",
-      "detail": ""
     },
     {
       "id": "product_launched|BOOK|2026-08-25",
@@ -2612,20 +2710,6 @@
       "detail": ""
     },
     {
-      "id": "part_price|PT4751|2026_W34",
-      "type": "part_price",
-      "name": "하이라이트슬라이드지퍼백(M)",
-      "date": "2026-08-17",
-      "detail": "평균 7.5% 상승 · 착한포장"
-    },
-    {
-      "id": "part_price|PT4807|2026_W34",
-      "type": "part_price",
-      "name": "하이라이트슬라이드지퍼백(M)",
-      "date": "2026-08-17",
-      "detail": "평균 3.2% 상승 · 착한포장"
-    },
-    {
       "id": "part_price|PT2874|2026_W34",
       "type": "part_price",
       "name": "사각스티커(커스텀인쇄)_화이트+디지털풀컬러",
@@ -2638,6 +2722,20 @@
       "name": "소프트그립블랙펜",
       "date": "2026-08-17",
       "detail": "파츠 연결 해제 · 2026_W34 스냅샷 비교"
+    },
+    {
+      "id": "part_price|PT4751|2026_W34",
+      "type": "part_price",
+      "name": "하이라이트슬라이드지퍼백(M)",
+      "date": "2026-08-17",
+      "detail": "평균 7.5% 상승 · 착한포장"
+    },
+    {
+      "id": "part_price|PT4807|2026_W34",
+      "type": "part_price",
+      "name": "하이라이트슬라이드지퍼백(M)",
+      "date": "2026-08-17",
+      "detail": "평균 3.2% 상승 · 착한포장"
     },
     {
       "id": "part_new|PT5601|2026_W33",
@@ -3221,34 +3319,6 @@
       "detail": "평균 15.6% 상승 · (주)승화파트너스"
     },
     {
-      "id": "part_price|PT1674|2026_W33",
-      "type": "part_price",
-      "name": "OPP_000-3",
-      "date": "2026-08-10",
-      "detail": "평균 1608.7% 상승 · 비닐24"
-    },
-    {
-      "id": "part_price|PT1401|2026_W33",
-      "type": "part_price",
-      "name": "에디트캘린더_커버_화이트+옵셋풀컬러",
-      "date": "2026-08-10",
-      "detail": "평균 133.4% 상승 · (주)청산인쇄"
-    },
-    {
-      "id": "part_price|PT1402|2026_W33",
-      "type": "part_price",
-      "name": "에디트캘린더_내지(기본달력)_화이트",
-      "date": "2026-08-10",
-      "detail": "평균 48.9% 상승 · (주)청산인쇄"
-    },
-    {
-      "id": "part_price|PT1403|2026_W33",
-      "type": "part_price",
-      "name": "에디트캘린더_내지(커스텀인쇄)_화이트+옵셋풀컬러",
-      "date": "2026-08-10",
-      "detail": "평균 1.7% 상승 · (주)청산인쇄"
-    },
-    {
       "id": "part_price|PT4716|2026_W33",
       "type": "part_price",
       "name": "밸류메모큐브(ver2)(점착.S)",
@@ -3352,6 +3422,34 @@
       "name": "유광덮개파우치_투명_000-3",
       "date": "2026-08-10",
       "detail": "평균 94.9% 상승 · 착한포장"
+    },
+    {
+      "id": "part_price|PT1674|2026_W33",
+      "type": "part_price",
+      "name": "OPP_000-3",
+      "date": "2026-08-10",
+      "detail": "평균 1608.7% 상승 · 비닐24"
+    },
+    {
+      "id": "part_price|PT1401|2026_W33",
+      "type": "part_price",
+      "name": "에디트캘린더_커버_화이트+옵셋풀컬러",
+      "date": "2026-08-10",
+      "detail": "평균 133.4% 상승 · (주)청산인쇄"
+    },
+    {
+      "id": "part_price|PT1402|2026_W33",
+      "type": "part_price",
+      "name": "에디트캘린더_내지(기본달력)_화이트",
+      "date": "2026-08-10",
+      "detail": "평균 48.9% 상승 · (주)청산인쇄"
+    },
+    {
+      "id": "part_price|PT1403|2026_W33",
+      "type": "part_price",
+      "name": "에디트캘린더_내지(커스텀인쇄)_화이트+옵셋풀컬러",
+      "date": "2026-08-10",
+      "detail": "평균 1.7% 상승 · (주)청산인쇄"
     },
     {
       "id": "part_price|PT4751|2026_W32",
@@ -3634,6 +3732,13 @@
       "detail": ""
     },
     {
+      "id": "part_price|PT2228|2026_W31",
+      "type": "part_price",
+      "name": "브랜디드노트북백_블랙",
+      "date": "2026-07-30",
+      "detail": "평균 23.9% 인하 · (주)에스씨인터내셔널"
+    },
+    {
       "id": "part_price|PT5541|2026_W31",
       "type": "part_price",
       "name": "색박(음각)_베러댄텀블러_유엘상사",
@@ -3648,11 +3753,11 @@
       "detail": "평균 56250.0% 상승 · 유엘상사"
     },
     {
-      "id": "part_price|PT2228|2026_W31",
-      "type": "part_price",
-      "name": "브랜디드노트북백_블랙",
-      "date": "2026-07-30",
-      "detail": "평균 23.9% 인하 · (주)에스씨인터내셔널"
+      "id": "sup_added|Dongguan Songming Electronic Technology Co., Ltd|2026_W31",
+      "type": "sup_added",
+      "name": "Dongguan Songming Electronic Technology Co., Ltd",
+      "date": "2026-07-27",
+      "detail": "파츠 제작협력사 최초 등록 · 2026_W31 스냅샷 비교"
     },
     {
       "id": "part_new|PT5582|2026_W31",
@@ -3730,13 +3835,6 @@
       "name": "PT5586-노트북슬리브_추상적산출물",
       "date": "2026-07-27",
       "detail": "개미기획"
-    },
-    {
-      "id": "sup_added|Dongguan Songming Electronic Technology Co., Ltd|2026_W31",
-      "type": "sup_added",
-      "name": "Dongguan Songming Electronic Technology Co., Ltd",
-      "date": "2026-07-27",
-      "detail": "파츠 제작협력사 최초 등록 · 2026_W31 스냅샷 비교"
     },
     {
       "id": "part_price|PT1330|2026_W30",
@@ -5902,5 +6000,5 @@
       "detail": ""
     }
   ],
-  "updatedAt": "2026-10-01T05:28:43.877Z"
+  "updatedAt": "2026-10-02T00:59:40.484Z"
 }
