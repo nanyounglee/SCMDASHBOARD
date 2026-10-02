@@ -11946,7 +11946,7 @@ function renderProductTrend() {
     const mk=bucketOf(r['과업지시일자']); if(!mk) return;
     const s=(r['수주처']||'').trim();
     (rowsByProduct[name]=rowsByProduct[name]||[]).push({mk,qty,s,gc:goodsCode(r)});
-  });
+  }
   const byProduct={};
   Object.entries(rowsByProduct).forEach(([name,rows])=>{
     const cut=bigDealStat(rows.map(x=>x.qty)).cut;
@@ -11960,7 +11960,7 @@ function renderProductTrend() {
       if(x.s) v.supCnt[x.s]=(v.supCnt[x.s]||0)+1;
     });
     byProduct[name]=v;
-  }
+  });
   const mainSup=v=>Object.entries(v.supCnt).sort((a,b)=>b[1]-a[1])[0]?.[0]||'';
   const sorted=Object.entries(byProduct).sort((a,b)=>b[1].total-a[1].total);
   const top10=sorted.slice(0,10);
