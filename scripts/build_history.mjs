@@ -119,7 +119,7 @@ const order = {};
 for (const r of journal) {
   const months = taxMonths(r.month);
   if (!months.length) continue;
-  if (+months[0].split('.')[0] >= 2024) continue; // 2024~ 는 행 단위 아카이브가 담당
+  if (+months[0].split('.')[0] >= 2024) continue; // 2024~ 는 merge_ledger_months.mjs가 담당(아래에서 기존 값 유지)
   const share = r.amt / VAT / months.length;
   for (const m of months) {
     const b = (order[m] ??= { purchase: 0, purCnt: 0, bySup: {} });
@@ -135,6 +135,11 @@ for (const b of Object.values(order)) {
 // 세금계산서월이 잘못 찍힌 단발 행(2022.3 1건 / 2022.4 2건 실측)은 추이선에 0에 가까운
 // 가짜 저점으로 그려진다. 5건 미만 월은 실제 영업월이 아니므로 뺀다.
 for (const [m, b] of Object.entries(order)) if (b.purCnt < 5) delete order[m];
+// v1.0: 2024~ 달은 scripts/merge_ledger_months.mjs가 지출결의 원장 기준으로 넣는다(Task 일부 소실 — 사용자 확정
+// 2026-09-14). 이 스크립트를 다시 돌려도 그 달들을 지우지 않게 기존 파일에서 그대로 옮겨 온다.
+if (fs.existsSync('data/data_hist.json'))
+  for (const [m, b] of Object.entries(JSON.parse(fs.readFileSync('data/data_hist.json', 'utf8')).order || {}))
+    if (+m.split('.')[0] >= 2024) order[m] = b;
 
 // 이슈 export(2023/2024)는 movement 단위 issue.csv와 스키마가 달라(이슈카테고리 없음)
 // 카테고리 분해가 불가능하다. 월별 총건수만 담는다.
@@ -152,7 +157,7 @@ fs.mkdirSync('data', { recursive: true });
 fs.writeFileSync('data/data_hist.json', JSON.stringify({
   meta: {
     basis: '지출결의 총금액 ÷ 1.1 (VAT 제외 환산), 세금계산서작성월 기준',
-    note: '2024년 이후는 CSV_BANK/archive/{연도}/order_{연도}.csv 행 단위 데이터가 담당한다. 2022~2023은 행 단위 소스가 없어 이 집계만 존재하므로 협력사·합산 매입금액만 조회 가능하다.',
+    note: '2022~2023은 행 단위 소스가 없어 이 집계만 존재하므로 협력사·합산 매입금액만 조회 가능하다. 2024~ 달은 scripts/merge_ledger_months.mjs가 넣은 원장 기준 집계다(Task 일부 소실 — 매입 합계·협력사별은 이 값이 정답, 제품·굿즈 분해는 발주 행 기준).',
     issueNote: '이슈는 과업지시월 기준 총건수만 — export 스키마에 이슈카테고리가 없어 품질/수량/운영 분해 불가.',
     generated: new Date().toISOString().slice(0, 10)
   },

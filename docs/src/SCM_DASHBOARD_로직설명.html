@@ -115,7 +115,7 @@
 <tr><td><code>CSV_BANK/{연도}_W{주차}/price_chg.csv</code></td><td>주차별 단가 변경 원문 보관</td></tr>
 <tr><td><code>CSV_BANK/sup_YYYY_MM.csv</code></td><td>협력사 신규·거래종료 감지(<code>detectSupplierChanges</code>) — 월간 스냅샷 체인</td></tr>
 <tr><td><code>CSV_BANK/archive/{연도}/order_{연도}.csv</code>, <code>issue_{연도}.csv</code></td><td>YoY·연도별 추이의 행 단위 원본. <code>loadPriorYearArchive()</code>가 작년부터 파일이 없는 해까지 거슬러 <code>D.orderPrevYear</code>(전년)·<code>D.orderHist</code>(전 연도 누적)에 적재. 현재 발주 2024·2025, 이슈 2025 보유</td></tr>
-<tr><td><code>data/data_hist.json</code></td><td>2022.6~2023.12 월별 매입 집계(지출결의 기준, 총금액÷1.1). 행 단위 원본이 없는 두 해의 유일한 소스 — 매입 추이선·협력사 상세 이력 구간에만 사용</td></tr>
+<tr><td><code>data/data_hist.json</code></td><td>2022.6~2024.12 월별 매입 집계(지출결의 원장, 총금액÷1.1, 세금계산서작성월). 2022~2023은 행 단위 원본이 없어 유일한 소스, 2024는 Task 일부 소실로 매입 합계·협력사별 매입의 정답(사용자 확정 2026-09-14). <code>node scripts/merge_ledger_months.mjs &lt;연도&gt; &lt;원장.csv…&gt;</code>로 연도별 병합 — 매입 추이선·연도별 실적 비교·월 드릴다운·협력사 상세 이력에 사용</td></tr>
 </table>
 
 <h3>2-4. 영구 임베딩 JSON (<code>data/</code>)</h3>
@@ -125,7 +125,7 @@
 <tr><td><code>parts_master.json</code></td><td>파츠 마스터 2,749개(코드→카테고리 조회, <code>PARTS_MAP</code>) — «파츠 마스터 갱신» 버튼</td></tr>
 <tr><td><code>parts_price_history.json</code></td><td>파츠별 구간단가 에폭 이력(주간 워크플로가 직전 스냅샷과 비교해 추가) — 시점 단가·300개 기준 변동(§3-20)</td></tr>
 <tr><td><code>parts_bom_multiplier.json</code></td><td>파츠번호별 BOM 배수(여분 추천 보정, 수기 등록)</td></tr>
-<tr><td><code>data_hist.json</code> · <code>data_2025.json</code></td><td>2022~2023 매입 집계 · 2025 월별 사전집계(아카이브가 우선이라 사실상 미사용)</td></tr>
+<tr><td><code>data_hist.json</code> · <code>data_2025.json</code></td><td>2022~2024 매입 집계(지출결의 원장) · 2025 월별 사전집계(아카이브가 우선이라 사실상 미사용)</td></tr>
 <tr><td><code>change_log.json</code></td><td>변경 감지 누적 이력(월간 공지사항·변경 이력 리포트)</td></tr>
 <tr><td><code>ci_overrides.json</code> · <code>progress_notes.json</code> · <code>cal_notes.json</code></td><td>고객인지이슈 수기입력 · 진행현황 비고 · 캘린더 특이사항 — 화면 입력 → GitHub 커밋</td></tr>
 </table>
@@ -138,7 +138,7 @@
 
 <h2>3. 핵심 계산 로직</h2>
 <h3>3-1. 발주 TASK · 월 매입금액</h3>
-<p>발주 TASK는 <code>과업지시일자</code> 월 기준 행 수이며, 프로젝트/재고생산은 <code>isStock()</code>(굿즈코드 STCK 포함)으로 구분합니다. 월 매입금액은 <code>purchaseByMonth(r)</code>가 <code>세금계산서작성월 (from 지출결의)</code>를 기준으로 귀속하고, 여러 달에 걸친 계산서는 분할 금액(없으면 균등 분할)으로 나눕니다. 원본이 월 단위라 매입금액은 항상 월 단위로만 집계됩니다. 매입 추이선은 <b>재고생산 포함</b> 기준이며 2022.6~현재를 그립니다(2022~2023은 <code>data_hist.json</code> 집계 구간).</p>
+<p>발주 TASK는 <code>과업지시일자</code> 월 기준 행 수이며, 프로젝트/재고생산은 <code>isStock()</code>(굿즈코드 STCK 포함)으로 구분합니다. 월 매입금액은 <code>purchaseByMonth(r)</code>가 <code>세금계산서작성월 (from 지출결의)</code>를 기준으로 귀속하고, 여러 달에 걸친 계산서는 분할 금액(없으면 균등 분할)으로 나눕니다. 원본이 월 단위라 매입금액은 항상 월 단위로만 집계됩니다. 매입 추이선은 <b>재고생산 포함</b> 기준이며 2022.6~현재를 그립니다. <code>data_hist.json</code>에 있는 달(2022~2024)은 합계·협력사별·업태별을 원장 집계로 덮고, 제품·굿즈 분해는 발주 행이 있는 달(2024)만 행 기준으로 남깁니다(<code>histAggOnlyMonths()</code>).</p>
 
 <h3>3-2. 미입하 판정 — <code>hasNoReceipt()</code> · <code>noReceiptCheckDate()</code></h3>
 <ul>
@@ -234,6 +234,7 @@
 <ul>
 <li>발주 TASK·매입금액·이슈건수·이슈율을 연도별로 놓고 YoY를 표시합니다. «동기간(1~N월)» / «연간 전체» 선택.</li>
 <li>2022~2023은 행 단위 원본이 없고 매입도 지출결의 집계뿐이라 표에서 제외합니다(<code>YOY_MIN_YEAR=2024</code>). 그래서 2024 행 YoY는 «—»입니다.</li>
+<li>매입금액은 <code>data_hist.json</code>에 있는 달(2024)을 지출결의 원장 값으로 덮고 «집계» 태그를 붙입니다. 원장 기준 연도와 발주 행 기준 연도 사이(2024↔2025)의 매입 YoY는 기준이 달라 «—»로 둡니다.</li>
 <li>YoY는 <b>두 해가 모두 기록을 가진 달</b>로 좁혀 계산하고, 좁혀졌으면 «▵»와 사용 구간 툴팁을 답니다.</li>
 <li>이슈는 그 해 최대 월건수의 20% 미만인 달을 결측으로 보아 YoY 구간에서 빼고 «부분기록» 배지를 답니다(2025 상반기). 이슈 건수 기준이 바뀌는 경계(task 단위 ↔ movement 단위)는 비교하지 않습니다.</li>
 </ul>
