@@ -11553,7 +11553,8 @@ function renderCostMonthly(el, tabHtml) {
     D.order.filter(r=>!isStock(r)).forEach(r=>{
       const p=(r['project']||'').trim(); if(!p) return;
       if(!costByProj[p]) costByProj[p]={cost:0,cnt:0};
-      costByProj[p].cost+=pa(r['공급가액']); costByProj[p].cnt++;
+      // v1.0(2026-10-06): 선매입 재고 투입원가 포함 — 프로젝트별 상세·매출 모달 원가율과 같은 정의
+      costByProj[p].cost+=pa(r['공급가액'])+stockInputCost(r); costByProj[p].cnt++;
     });
     let matched=0, matchedCost=0, totalCostAll=0, unmatchedRevOnly=0;
     Object.values(costByProj).forEach(v=>{ totalCostAll+=v.cost; });
@@ -11782,7 +11783,10 @@ function renderCostProjectDetail() {
     });
   }
   const movTotal=movRows.reduce((s,r)=>s+pa(r['원가합계']||r['원가 합계']||r['공급가액']||'0'),0);
-  const totalCost=taskCostTotal+movTotal;
+  // v1.0(2026-10-06): cost_reduction 이동 원가가 없으면 선매입 재고 투입원가(stockInputCost)로 — 목록·월별 요약과 같은 정의.
+  // 둘 다 같은 재고 투입을 가리키므로 더하지 않고 하나만 쓴다
+  const stockCost=movTotal||taskRows.reduce((s,r)=>s+stockInputCost(r),0);
+  const totalCost=taskCostTotal+stockCost;
   const costRate=revenue>0?(totalCost/revenue*100):0;
 
   // Standard cost from 공정DB
@@ -11803,7 +11807,7 @@ function renderCostProjectDetail() {
       <div style="background:var(--surface2);border:1px solid var(--border);border-radius:var(--r-sm);padding:12px 14px">
         <div style="font-size:11px;color:var(--text3)">확인된 투입 원가</div>
         <div style="font-size:20px;font-weight:700">${faFull(totalCost)}</div>
-        <div style="font-size:10px;color:var(--text3)">발주 ${faFull(taskCostTotal)} + 재고 ${faFull(movTotal)}</div>
+        <div style="font-size:10px;color:var(--text3)">발주 ${faFull(taskCostTotal)} + 재고 ${faFull(stockCost)}</div>
       </div>
       <div style="background:var(--surface2);border:1px solid var(--border);border-radius:var(--r-sm);padding:12px 14px">
         <div style="font-size:11px;color:var(--text3)">확인된 원가율</div>
@@ -13778,11 +13782,14 @@ function stockInputCost(r){
   const qs=String(r['출고자재_수량']||'').split(',').map(s=>parseFloat(s.replace(/[^\d.]/g,''))||0);
   if(!qs.length) return 0;
   const pm=(typeof PARTS_STD_COST!=='undefined'&&PARTS_STD_COST)||buildPartsStdCost();
+  const pIdx=D.parts?getPartsPTIndex():{};
   let c=0;
   mats.forEach((m,i)=>{
     const pt=(m.match(/PT\d{3,}/)||[])[0]; if(!pt) return;
     const q=qs.length===mats.length?qs[i]:(qs.length===1?qs[0]:0);
-    const u=pm[pt]; if(!u||!q) return;
+    // v1.0(사용자 요청 2026-10-06): parts_master에 표준원가가 없으면 parts.csv 구간단가(투입 수량 구간)로 대체.
+    // 우산·스포츠보틀·파우치 등 12종이 0원으로 빠지고 있었다. 전 구간 0원인 파츠(PT4711 등)는 실제 원가 0 — 사용자 확인.
+    const u=pm[pt]||(pIdx[pt]&&partTierCost(pIdx[pt],q)||{}).value; if(!u||!q) return;
     c+=q*u;
   });
   return c;
