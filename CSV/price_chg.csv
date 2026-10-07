@@ -1,4 +1,36 @@
 ﻿에어테이블 DB 업데이트,슬랙 URL,대상 굿즈명,대상 파츠명 (Shift+Space),No.,구글 DB 업데이트 완료 버튼 (슬랙용) ,변동사항 적용 시점,Confirmation,업무요청 유형,관련 굿즈 리스트 (슬랙용),아이템,에어테이블 DB 입력완료 (슬랙용),슬랙 Ts,Name (from 신청자),관련 아이템 리스트,판매가 업데이트 완료 버튼 (슬랙용),관계자 태그,요청일자,Name (from 에어테이블 DB 입력자),변동원인,관련 굿즈 리스트,협력사,slack id tag (from 신청자),Last Modified (에어테이블 DB),변동사항 (Shift+Space로 전체 내용을 확인하세요),신청자,협력사 이름,프린팅 파츠 Rollup,구글 DB 업데이트 보류 버튼 (슬랙용),에어테이블 DB 입력자,에어테이블 DB 입력_특이사항,구글 DB 업데이트 현황,Last Modified (구글DB),구글DB 바로가기,판매가 업데이트 현황,Last Modified (견적서)
+에어테이블 DB 업데이트 완료,https://sincerelygroup.slack.com/archives/CKH9TB0HX/p1791339292561349,아이덴티티 스티커팩,"- PT5218-아이덴티티스티커팩(유포지6개입)_화이트+디지털풀컬러
+- PT5219-아이덴티티스티커팩(유포지9개입)_화이트+디지털풀컬러
+- PT5220-아이덴티티스티커팩(리무버블유포지6개입)_화이트+디지털풀컬러
+- PT5221-아이덴티티스티커팩(리무버블유포지9개입)_화이트+디지털풀컬러",467,https://app.miniextensions.com/form/FZYJ1iMzlELxh3tDklPB/recFQvCVaNXot8kHY?prefill_%EA%B5%AC%EA%B8%80%20DB%20%EC%97%85%EB%8D%B0%EC%9D%B4%ED%8A%B8%20%ED%98%84%ED%99%A9=%EA%B5%AC%EA%B8%80%20DB%20%EC%97%85%EB%8D%B0%EC%9D%B4%ED%8A%B8%20%EC%99%84%EB%A3%8C,2026.10.7,checked,특정 품목 단가 변동사항,,"IDTT_PT5218-아이덴티티스티커팩(유포지6개입)_화이트+디지털풀컬러, IDTT_PT5219-아이덴티티스티커팩(유포지9개입)_화이트+디지털풀컬러, IDTT_PT5220-아이덴티티스티커팩(리무버블유포지6개입)_화이트+디지털풀컬러, IDTT_PT5221-아이덴티티스티커팩(리무버블유포지9개입)_화이트+디지털풀컬러",https://web.miniextensions.com/Rb3qHYSZVDo6pwVifGJc/recFQvCVaNXot8kHY,1791339292.561349,육승미,"IDTT_PT5218-아이덴티티스티커팩(유포지6개입)_화이트+디지털풀컬러
+IDTT_PT5219-아이덴티티스티커팩(유포지9개입)_화이트+디지털풀컬러
+IDTT_PT5220-아이덴티티스티커팩(리무버블유포지6개입)_화이트+디지털풀컬러
+IDTT_PT5221-아이덴티티스티커팩(리무버블유포지9개입)_화이트+디지털풀컬러",https://app.miniextensions.com/form/i4tFO83LH0iqxLbIQLBL/recFQvCVaNXot8kHY?prefill_%ED%8C%90%EB%A7%A4%EA%B0%80%20%EC%97%85%EB%8D%B0%EC%9D%B4%ED%8A%B8%20%ED%98%84%ED%99%A9=%ED%8C%90%EB%A7%A4%EA%B0%80%20%EC%97%85%EB%8D%B0%EC%9D%B4%ED%8A%B8%20%EC%99%84%EB%A3%8C,<!subteam^S01AV8VE1AQ>,2026.10.7 11:14오전,육승미,"스티커 표준원가가 실제 매입단가보다 높게 등록되어 있었음. 표준원가는 조각스티커 개당 단가(200원)에 개수를 곱해 등록했으나, 실제로는 스티커팩 통단가로 매입해 개당 단가가 더 낮음 (팩 환산 개당 100원 < 조각 개당 180원, 300개 기준)",아이덴티티 스티커팩,,<@U094VP02G6L>,2026.10.7 11:15오전," **(300개 기준, VAT 별도)**
+
+- 9개입 스티커: 1,620 → 900, 720원 인하 (44%)
+- 6개입 스티커: 1,080 → 600, 480원 인하 (44%)
+- 패키지 합계 (스티커+배경지+임가공): 9개입 2,220 → 1,500 / 6개입 1,680 → 1,200 
+
+**[단가 변경 파츠]**
+
+PT5220-아이덴티티스티커팩(리무버블유포지6개입)\_화이트+디지털풀컬러
+
+PT5221-아이덴티티스티커팩(리무버블유포지9개입)\_화이트+디지털풀컬러
+
+PT5218-아이덴티티스티커팩(유포지6개입)\_화이트+디지털풀컬러
+
+PT5219-아이덴티티스티커팩(유포지9개입)\_화이트+디지털풀컬러 
+
+**[기존 단가 동일]**
+
+PT5222-배경지(커스텀인쇄)\_화이트+디지털풀컬러
+
+임가공 300원, opp 300원 총 600원 기존 동일
+
+**[참고 시트]**
+
+https://docs.google.com/spreadsheets/d/17pfJF81tatBL0lT1d8fgfTSiIte98684RMH1BCgGiys/edit?gid=668228061#gid=668228061
+",육승미,,,https://app.miniextensions.com/form/FZYJ1iMzlELxh3tDklPB/recFQvCVaNXot8kHY?prefill_%EA%B5%AC%EA%B8%80%20DB%20%EC%97%85%EB%8D%B0%EC%9D%B4%ED%8A%B8%20%ED%98%84%ED%99%A9=%EA%B5%AC%EA%B8%80%20DB%20%EC%97%85%EB%8D%B0%EC%9D%B4%ED%8A%B8%20%EB%B3%B4%EB%A5%98,육승미,,,,,,
 에어테이블 DB 업데이트 완료,https://sincerelygroup.slack.com/archives/CKH9TB0HX/p1790042719441479,클로저 휴대폰 스트랩,"- PT5151-배경지(커스텀인쇄)(휴대폰스트랩블리스터전용)
 - PT5152-배경지(커스텀인쇄)(휴대폰스트랩실버팩전용)",466,https://app.miniextensions.com/form/FZYJ1iMzlELxh3tDklPB/rec9jzov2j7oisgkd?prefill_%EA%B5%AC%EA%B8%80%20DB%20%EC%97%85%EB%8D%B0%EC%9D%B4%ED%8A%B8%20%ED%98%84%ED%99%A9=%EA%B5%AC%EA%B8%80%20DB%20%EC%97%85%EB%8D%B0%EC%9D%B4%ED%8A%B8%20%EC%99%84%EB%A3%8C,2026.9.9,checked,특정 품목 단가 변동사항,,"CHST_PT5151-배경지(커스텀인쇄)(휴대폰스트랩블리스터전용), CHST_PT5152-배경지(커스텀인쇄)(휴대폰스트랩실버팩전용)",https://web.miniextensions.com/Rb3qHYSZVDo6pwVifGJc/rec9jzov2j7oisgkd,1790042719.441479,육승미,"CHST_PT5151-배경지(커스텀인쇄)(휴대폰스트랩블리스터전용)
 CHST_PT5152-배경지(커스텀인쇄)(휴대폰스트랩실버팩전용)",https://app.miniextensions.com/form/i4tFO83LH0iqxLbIQLBL/rec9jzov2j7oisgkd?prefill_%ED%8C%90%EB%A7%A4%EA%B0%80%20%EC%97%85%EB%8D%B0%EC%9D%B4%ED%8A%B8%20%ED%98%84%ED%99%A9=%ED%8C%90%EB%A7%A4%EA%B0%80%20%EC%97%85%EB%8D%B0%EC%9D%B4%ED%8A%B8%20%EC%99%84%EB%A3%8C,<!subteam^S01AV8VE1AQ>,2026.9.22 11:04오전,육승미,단가 오등록,클로저 휴대폰 스트랩,,<@U094VP02G6L>,2026.9.22 11:07오전,"\*변경 단가표는 스레드에 첨부드리겠습니다
