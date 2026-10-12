@@ -15,6 +15,69 @@
       "detail": ""
     },
     {
+      "id": "part_new|PT5873|2026_W42",
+      "type": "part_new",
+      "name": "PT5873-배경지(커스텀인쇄)_화이트+디지털풀컬러",
+      "date": "2026-10-12",
+      "detail": "서울디지털인쇄협동조합"
+    },
+    {
+      "id": "part_new|PT5874|2026_W42",
+      "type": "part_new",
+      "name": "PT5874-리본끈_컬러",
+      "date": "2026-10-12",
+      "detail": "주식회사 세라노"
+    },
+    {
+      "id": "part_new|PT5875|2026_W42",
+      "type": "part_new",
+      "name": "PT5875-봉제오너먼트(사각형)",
+      "date": "2026-10-12",
+      "detail": "주식회사 세라노"
+    },
+    {
+      "id": "part_new|PT5876|2026_W42",
+      "type": "part_new",
+      "name": "PT5876-봉제오너먼트(원형)",
+      "date": "2026-10-12",
+      "detail": "주식회사 세라노"
+    },
+    {
+      "id": "part_new|PT5877|2026_W42",
+      "type": "part_new",
+      "name": "PT5877-봉제오너먼트(리스형)",
+      "date": "2026-10-12",
+      "detail": "주식회사 세라노"
+    },
+    {
+      "id": "part_new|PT5878|2026_W42",
+      "type": "part_new",
+      "name": "PT5878-봉제오너먼트(하트형)",
+      "date": "2026-10-12",
+      "detail": "주식회사 세라노"
+    },
+    {
+      "id": "part_new|PT5879|2026_W42",
+      "type": "part_new",
+      "name": "PT5879-봉제오너먼트(자유형)",
+      "date": "2026-10-12",
+      "detail": "주식회사 세라노"
+    },
+    {
+      "id": "product_new|PETC|2026_W42",
+      "type": "product_new",
+      "name": "쇼케이스 클리어 박스 (PETC)",
+      "date": "2026-10-12",
+      "detail": "출시일 미정 · 파츠 등록"
+    },
+    {
+      "id": "goods_unlinked|플레인 도킹형 배터리|2026_W42",
+      "type": "goods_unlinked",
+      "name": "플레인 도킹형 배터리",
+      "date": "2026-10-12",
+      "detail": "파츠 연결 해제"
+    },
+    {
       "id": "part_price|PT0874|2026_W41",
       "type": "part_price",
       "name": "단품박스(전용)_블랙_000-7",
@@ -267,27 +330,6 @@
       "detail": "주식회사 드리온"
     },
     {
-      "id": "product_launched|BCBD|2026-09-30",
-      "type": "product_launched",
-      "name": "에브리웨어 북커버백 (BCBD)",
-      "date": "2026-09-30",
-      "detail": ""
-    },
-    {
-      "id": "sup_added|비피코리아|2026_09",
-      "type": "sup_added",
-      "name": "비피코리아",
-      "date": "2026-09-30",
-      "detail": ""
-    },
-    {
-      "id": "sup_added|Hangzhou Prostar Enterprises Ltd|2026_09",
-      "type": "sup_added",
-      "name": "Hangzhou Prostar Enterprises Ltd",
-      "date": "2026-09-30",
-      "detail": ""
-    },
-    {
       "id": "sup_added|Tonglu Yaqi Stationery Co., Ltd.|2026_09",
       "type": "sup_added",
       "name": "Tonglu Yaqi Stationery Co., Ltd.",
@@ -400,6 +442,34 @@
       "detail": "파츠 연결 해제"
     },
     {
+      "id": "product_launched|BCBD|2026-09-30",
+      "type": "product_launched",
+      "name": "에브리웨어 북커버백 (BCBD)",
+      "date": "2026-09-30",
+      "detail": ""
+    },
+    {
+      "id": "sup_added|비피코리아|2026_09",
+      "type": "sup_added",
+      "name": "비피코리아",
+      "date": "2026-09-30",
+      "detail": ""
+    },
+    {
+      "id": "sup_added|Hangzhou Prostar Enterprises Ltd|2026_09",
+      "type": "sup_added",
+      "name": "Hangzhou Prostar Enterprises Ltd",
+      "date": "2026-09-30",
+      "detail": ""
+    },
+    {
+      "id": "product_launched|SCRD|2026-09-28",
+      "type": "product_launched",
+      "name": "애니웨어 센티드카드 (SCRD)",
+      "date": "2026-09-28",
+      "detail": ""
+    },
+    {
       "id": "sup_added|GUANGZHOU KINGSONS BAGS TECHNOLOGY CO., LTD|2026_09",
       "type": "sup_added",
       "name": "GUANGZHOU KINGSONS BAGS TECHNOLOGY CO., LTD",
@@ -419,13 +489,6 @@
       "name": "사각스티커(커스텀인쇄)_화이트+디지털풀컬러",
       "date": "2026-09-28",
       "detail": "평균 98.0% 인하 · 서울디지털인쇄협동조합"
-    },
-    {
-      "id": "product_launched|SCRD|2026-09-28",
-      "type": "product_launched",
-      "name": "애니웨어 센티드카드 (SCRD)",
-      "date": "2026-09-28",
-      "detail": ""
     },
     {
       "id": "part_new|PT5856|2026_W39",
@@ -2857,20 +2920,6 @@
       "detail": ""
     },
     {
-      "id": "part_price|PT2874|2026_W34",
-      "type": "part_price",
-      "name": "사각스티커(커스텀인쇄)_화이트+디지털풀컬러",
-      "date": "2026-08-17",
-      "detail": "평균 57.0% 상승 · 서울디지털인쇄협동조합"
-    },
-    {
-      "id": "goods_unlinked|소프트그립블랙펜|2026_W34",
-      "type": "goods_unlinked",
-      "name": "소프트그립블랙펜",
-      "date": "2026-08-17",
-      "detail": "파츠 연결 해제 · 2026_W34 스냅샷 비교"
-    },
-    {
       "id": "part_price|PT4751|2026_W34",
       "type": "part_price",
       "name": "하이라이트슬라이드지퍼백(M)",
@@ -2883,6 +2932,20 @@
       "name": "하이라이트슬라이드지퍼백(M)",
       "date": "2026-08-17",
       "detail": "평균 3.2% 상승 · 착한포장"
+    },
+    {
+      "id": "part_price|PT2874|2026_W34",
+      "type": "part_price",
+      "name": "사각스티커(커스텀인쇄)_화이트+디지털풀컬러",
+      "date": "2026-08-17",
+      "detail": "평균 57.0% 상승 · 서울디지털인쇄협동조합"
+    },
+    {
+      "id": "goods_unlinked|소프트그립블랙펜|2026_W34",
+      "type": "goods_unlinked",
+      "name": "소프트그립블랙펜",
+      "date": "2026-08-17",
+      "detail": "파츠 연결 해제 · 2026_W34 스냅샷 비교"
     },
     {
       "id": "part_new|PT5601|2026_W33",
@@ -3466,6 +3529,34 @@
       "detail": "평균 15.6% 상승 · (주)승화파트너스"
     },
     {
+      "id": "part_price|PT1674|2026_W33",
+      "type": "part_price",
+      "name": "OPP_000-3",
+      "date": "2026-08-10",
+      "detail": "평균 1608.7% 상승 · 비닐24"
+    },
+    {
+      "id": "part_price|PT1401|2026_W33",
+      "type": "part_price",
+      "name": "에디트캘린더_커버_화이트+옵셋풀컬러",
+      "date": "2026-08-10",
+      "detail": "평균 133.4% 상승 · (주)청산인쇄"
+    },
+    {
+      "id": "part_price|PT1402|2026_W33",
+      "type": "part_price",
+      "name": "에디트캘린더_내지(기본달력)_화이트",
+      "date": "2026-08-10",
+      "detail": "평균 48.9% 상승 · (주)청산인쇄"
+    },
+    {
+      "id": "part_price|PT1403|2026_W33",
+      "type": "part_price",
+      "name": "에디트캘린더_내지(커스텀인쇄)_화이트+옵셋풀컬러",
+      "date": "2026-08-10",
+      "detail": "평균 1.7% 상승 · (주)청산인쇄"
+    },
+    {
       "id": "part_price|PT4716|2026_W33",
       "type": "part_price",
       "name": "밸류메모큐브(ver2)(점착.S)",
@@ -3571,34 +3662,6 @@
       "detail": "평균 94.9% 상승 · 착한포장"
     },
     {
-      "id": "part_price|PT1674|2026_W33",
-      "type": "part_price",
-      "name": "OPP_000-3",
-      "date": "2026-08-10",
-      "detail": "평균 1608.7% 상승 · 비닐24"
-    },
-    {
-      "id": "part_price|PT1401|2026_W33",
-      "type": "part_price",
-      "name": "에디트캘린더_커버_화이트+옵셋풀컬러",
-      "date": "2026-08-10",
-      "detail": "평균 133.4% 상승 · (주)청산인쇄"
-    },
-    {
-      "id": "part_price|PT1402|2026_W33",
-      "type": "part_price",
-      "name": "에디트캘린더_내지(기본달력)_화이트",
-      "date": "2026-08-10",
-      "detail": "평균 48.9% 상승 · (주)청산인쇄"
-    },
-    {
-      "id": "part_price|PT1403|2026_W33",
-      "type": "part_price",
-      "name": "에디트캘린더_내지(커스텀인쇄)_화이트+옵셋풀컬러",
-      "date": "2026-08-10",
-      "detail": "평균 1.7% 상승 · (주)청산인쇄"
-    },
-    {
       "id": "part_price|PT4751|2026_W32",
       "type": "part_price",
       "name": "하이라이트슬라이드지퍼백(M)",
@@ -3625,20 +3688,6 @@
       "name": "레터링 유리머그",
       "date": "2026-08-03",
       "detail": "파츠 연결 해제 · 2026_W32 스냅샷 비교"
-    },
-    {
-      "id": "product_launched|BTST|2026-07-30",
-      "type": "product_launched",
-      "name": "베러댄 텀블러 (BTST)",
-      "date": "2026-07-30",
-      "detail": ""
-    },
-    {
-      "id": "product_launched|PMHT|2026-07-30",
-      "type": "product_launched",
-      "name": "픽미 핸들 텀블러 (PMHT)",
-      "date": "2026-07-30",
-      "detail": ""
     },
     {
       "id": "part_grad|PT1907|2026_W31",
@@ -3879,6 +3928,27 @@
       "detail": ""
     },
     {
+      "id": "part_price|PT2228|2026_W31",
+      "type": "part_price",
+      "name": "브랜디드노트북백_블랙",
+      "date": "2026-07-30",
+      "detail": "평균 23.9% 인하 · (주)에스씨인터내셔널"
+    },
+    {
+      "id": "product_launched|BTST|2026-07-30",
+      "type": "product_launched",
+      "name": "베러댄 텀블러 (BTST)",
+      "date": "2026-07-30",
+      "detail": ""
+    },
+    {
+      "id": "product_launched|PMHT|2026-07-30",
+      "type": "product_launched",
+      "name": "픽미 핸들 텀블러 (PMHT)",
+      "date": "2026-07-30",
+      "detail": ""
+    },
+    {
       "id": "part_price|PT5541|2026_W31",
       "type": "part_price",
       "name": "색박(음각)_베러댄텀블러_유엘상사",
@@ -3891,13 +3961,6 @@
       "name": "공박(음각)_베러댄텀블러_유엘상사",
       "date": "2026-07-30",
       "detail": "평균 56250.0% 상승 · 유엘상사"
-    },
-    {
-      "id": "part_price|PT2228|2026_W31",
-      "type": "part_price",
-      "name": "브랜디드노트북백_블랙",
-      "date": "2026-07-30",
-      "detail": "평균 23.9% 인하 · (주)에스씨인터내셔널"
     },
     {
       "id": "part_new|PT5582|2026_W31",
@@ -6147,5 +6210,5 @@
       "detail": ""
     }
   ],
-  "updatedAt": "2026-10-08T05:08:06.109Z"
+  "updatedAt": "2026-10-12T02:30:12.187Z"
 }
