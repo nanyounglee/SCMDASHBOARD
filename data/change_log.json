@@ -1,6 +1,13 @@
 {
   "entries": [
     {
+      "id": "sup_terminated|제이엔에스|2026_10",
+      "type": "sup_terminated",
+      "name": "제이엔에스",
+      "date": "2026-10-12",
+      "detail": "마스터 미등재 — 수동 반영"
+    },
+    {
       "id": "product_launched|CDLB|2026-10-21",
       "type": "product_launched",
       "name": "플레인 도킹형 배터리 (CDLB)",
