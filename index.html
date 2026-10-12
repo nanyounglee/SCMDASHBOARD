@@ -1203,31 +1203,32 @@ function allIssueRows(){ return (D.issue||[]).concat(archiveIssueRows()); }
 // 캘린더 발주행의 sync_itemdb에 삼각대 PT가 들어가므로 그 행의 발주지시수량(여분 포함 = 실제 투입)을 뺀다.
 // 재고생산 행은 제외 — 2024년 삼각대 자체 재고생산(1,000~7,000개)이 같은 PT로 잡혀 있어 차감하면 안 된다.
 // 공용 삼각대는 PT 여러 개가 한 재고를 같이 쓴다. 한 발주행에 두 재고가 섞인 경우는 2024~2026 실측 0건.
+// add = 재고생산 추가발주(입고 예정) 수동 가산 — 재고생산 행은 isStock으로 차감에서 빠지므로 이중 계산되지 않는다.
 // allOrderRows()는 아카이브를 포함하므로 연말 이관(order_2026.csv) 후에도 누계가 유지된다.
 const TRIPOD_BASE_DATE='2026-09-14';
 const TRIPOD_POOLS=[
   {name:'에디트캘린더 삼각대 그레이',base:3960,pts:['PT1399']},
-  {name:'에디트캘린더 삼각대 블랙',base:2435,pts:['PT1400']},
-  {name:'삼각대 그레이 공용 (페어링·썸네일·페이퍼링)',base:6600,pts:['PT5571','PT1325','PT2804']},
-  {name:'삼각대 블랙 공용 (페어링·썸네일·페이퍼링)',base:13000,pts:['PT5572','PT1324','PT2803']},
+  {name:'에디트캘린더 삼각대 블랙',base:2435,pts:['PT1400'],add:[{note:'2026-10 추가발주(납기 10/27)',qty:2000}]},
+  {name:'삼각대 그레이 공용 (페어링·썸네일·페이퍼링)',base:6600,pts:['PT5571','PT1325','PT2804'],add:[{note:'2026-10-12 재고생산 발주(납기 10/27)',qty:3000}]},
+  {name:'삼각대 블랙 공용 (페어링·썸네일·페이퍼링)',base:13000,pts:['PT5572','PT1324','PT2803'],add:[{note:'2026-10-12 재고생산 발주(납기 10/27)',qty:2000}]},
 ];
 function tripodStock(rows){
-  const pools=TRIPOD_POOLS.map(p=>({...p,used:0,orders:[]}));
+  const pools=TRIPOD_POOLS.map(p=>({...p,used:0,orders:[],added:(p.add||[]).reduce((a,x)=>a+x.qty,0)}));
   rows.forEach(r=>{
     const m=String(r['과업지시일자']||'').match(/(\d{4})\.(\d{1,2})\.(\d{1,2})/);
     if(!m||`${m[1]}-${m[2].padStart(2,'0')}-${m[3].padStart(2,'0')}`<TRIPOD_BASE_DATE||isStock(r)) return;
     const pts=orderRowParts(r), qty=pa(r['발주지시수량']);
     pools.forEach(p=>{ if(p.pts.some(pt=>pts.includes(pt))){ p.used+=qty; p.orders.push(`${r['과업지시일자']} ${r['project']||r['task_id']||''} ${fmtN(qty)}개`); } });
   });
-  return pools.map(p=>({...p,left:p.base-p.used}));
+  return pools.map(p=>({...p,left:p.base+p.added-p.used}));
 }
 function renderTripodStock(){
   const el=document.getElementById('tripod-stock-body'); if(!el) return;
   if(!D.order){ el.innerHTML='<div class="empty">order.csv 데이터가 필요합니다.</div>'; return; }
-  el.innerHTML=tripodStock(allOrderRows()).map(p=>`<div style="border:1px solid var(--border2);border-radius:var(--r-sm);padding:8px 10px" title="${esc(p.orders.join('\n')||'차감 내역 없음')}">
+  el.innerHTML=tripodStock(allOrderRows()).map(p=>`<div style="border:1px solid var(--border2);border-radius:var(--r-sm);padding:8px 10px" title="${esc((p.add||[]).map(x=>`+ ${x.note} ${fmtN(x.qty)}개`).concat(p.orders).join('\n')||'차감 내역 없음')}">
     <div style="font-size:12.5px;font-weight:600">${p.name}</div>
     <div style="font-size:20px;font-weight:700;color:${p.left<0?'var(--red)':'var(--text)'}">${fmtN(p.left)}개</div>
-    <div style="font-size:11px;color:var(--text3)">기준 ${fmtN(p.base)} − 차감 ${fmtN(p.used)} (${p.orders.length}건)</div>
+    <div style="font-size:11px;color:var(--text3)">기준 ${fmtN(p.base)}${p.added?` + 추가발주 ${fmtN(p.added)}`:''} − 차감 ${fmtN(p.used)} (${p.orders.length}건)</div>
   </div>`).join('');
 }
 // 아카이브에 실제로 들어온 발주 연도(과업지시연도) — 라벨을 "당해+전년"으로 굳히지 않기 위해
