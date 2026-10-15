@@ -8,6 +8,48 @@
       "detail": ""
     },
     {
+      "id": "part_new|PT5880|2026_W42",
+      "type": "part_new",
+      "name": "PT5880-사각스티커(커스텀인쇄)_화이트+디지털풀컬러",
+      "date": "2026-10-15",
+      "detail": "서울디지털인쇄협동조합"
+    },
+    {
+      "id": "part_price|PT1236|2026_W42",
+      "type": "part_price",
+      "name": "슬로건다이어리_그레이",
+      "date": "2026-10-15",
+      "detail": "평균 6.9% 상승 · (주)청산인쇄"
+    },
+    {
+      "id": "part_price|PT1239|2026_W42",
+      "type": "part_price",
+      "name": "슬로건다이어리_블랙",
+      "date": "2026-10-15",
+      "detail": "평균 12.0% 상승 · (주)청산인쇄"
+    },
+    {
+      "id": "part_price|PT5860|2026_W42",
+      "type": "part_price",
+      "name": "플레인도킹형배터리(5000)",
+      "date": "2026-10-15",
+      "detail": "평균 2.2% 상승 · 주식회사 드리온"
+    },
+    {
+      "id": "part_price|PT4882|2026_W42",
+      "type": "part_price",
+      "name": "시그니처다이어리(2합)_블랙",
+      "date": "2026-10-15",
+      "detail": "평균 9.3% 상승 · 주식회사 디자인오엔"
+    },
+    {
+      "id": "part_price|PT4883|2026_W42",
+      "type": "part_price",
+      "name": "시그니처다이어리(2합)_라이트그레이",
+      "date": "2026-10-15",
+      "detail": "평균 9.6% 상승 · 주식회사 디자인오엔"
+    },
+    {
       "id": "product_launched|CDLB|2026-10-21",
       "type": "product_launched",
       "name": "플레인 도킹형 배터리 (CDLB)",
@@ -351,18 +393,18 @@
       "detail": "엠알오즈(MROZ)"
     },
     {
-      "id": "part_new|PT5866|2026_W40",
-      "type": "part_new",
-      "name": "PT5866-플레인도킹형배터리_추상적산출물",
-      "date": "2026-10-01",
-      "detail": "주식회사 드리온"
-    },
-    {
       "id": "part_new|PT5867|2026_W40",
       "type": "part_new",
       "name": "PT5867-크리스마스피규어세트_추상적산출물",
       "date": "2026-10-01",
       "detail": "엠알오즈(MROZ)"
+    },
+    {
+      "id": "part_new|PT5866|2026_W40",
+      "type": "part_new",
+      "name": "PT5866-플레인도킹형배터리_추상적산출물",
+      "date": "2026-10-01",
+      "detail": "주식회사 드리온"
     },
     {
       "id": "product_launched|BCBD|2026-09-30",
@@ -526,11 +568,18 @@
       "detail": ""
     },
     {
-      "id": "product_launched|MNTP|2026-09-23",
-      "type": "product_launched",
-      "name": "포켓크루 메모세트 (MNTP)",
-      "date": "2026-09-23",
-      "detail": ""
+      "id": "product_new|CDLB|2026_W40",
+      "type": "product_new",
+      "name": "플레인 도킹형 배터리 (CDLB)",
+      "date": "2026-09-28",
+      "detail": "출시일 미정 · 파츠 등록 · 2026_W40 스냅샷 비교"
+    },
+    {
+      "id": "product_new|CRSM|2026_W40",
+      "type": "product_new",
+      "name": "크리스마스 피규어 세트 (CRSM)",
+      "date": "2026-09-28",
+      "detail": "출시일 미정 · 파츠 등록 · 2026_W40 스냅샷 비교"
     },
     {
       "id": "part_new|PT5856|2026_W39",
@@ -846,6 +895,13 @@
       "name": "PET사각패키지 (PER)",
       "date": "2026-09-23",
       "detail": "출시일 미정 · 파츠 등록"
+    },
+    {
+      "id": "product_launched|MNTP|2026-09-23",
+      "type": "product_launched",
+      "name": "포켓크루 메모세트 (MNTP)",
+      "date": "2026-09-23",
+      "detail": ""
     },
     {
       "id": "product_launched|MNTP|2026-09-22",
@@ -1849,13 +1905,6 @@
       "detail": "파츠 제작협력사 최초 등록"
     },
     {
-      "id": "product_launched|FFTT|2026-08-27",
-      "type": "product_launched",
-      "name": "스탠바이 360 허브스탠드 (FFTT)",
-      "date": "2026-08-27",
-      "detail": ""
-    },
-    {
       "id": "part_new|PT5733|2026_W35",
       "type": "part_new",
       "name": "PT5733-샘플(실크1도)_개미기획",
@@ -2176,6 +2225,13 @@
       "name": "비비드스트링파우치 (FJRG)",
       "date": "2026-08-27",
       "detail": "출시일 미정 · 파츠 등록"
+    },
+    {
+      "id": "product_launched|FFTT|2026-08-27",
+      "type": "product_launched",
+      "name": "스탠바이 360 허브스탠드 (FFTT)",
+      "date": "2026-08-27",
+      "detail": ""
     },
     {
       "id": "product_launched|BOOK|2026-08-25",
@@ -3998,13 +4054,6 @@
       "detail": ""
     },
     {
-      "id": "part_price|PT2228|2026_W31",
-      "type": "part_price",
-      "name": "브랜디드노트북백_블랙",
-      "date": "2026-07-30",
-      "detail": "평균 23.9% 인하 · (주)에스씨인터내셔널"
-    },
-    {
       "id": "part_price|PT5541|2026_W31",
       "type": "part_price",
       "name": "색박(음각)_베러댄텀블러_유엘상사",
@@ -4019,11 +4068,11 @@
       "detail": "평균 56250.0% 상승 · 유엘상사"
     },
     {
-      "id": "sup_added|Dongguan Songming Electronic Technology Co., Ltd|2026_W31",
-      "type": "sup_added",
-      "name": "Dongguan Songming Electronic Technology Co., Ltd",
-      "date": "2026-07-27",
-      "detail": "파츠 제작협력사 최초 등록 · 2026_W31 스냅샷 비교"
+      "id": "part_price|PT2228|2026_W31",
+      "type": "part_price",
+      "name": "브랜디드노트북백_블랙",
+      "date": "2026-07-30",
+      "detail": "평균 23.9% 인하 · (주)에스씨인터내셔널"
     },
     {
       "id": "part_new|PT5582|2026_W31",
@@ -4101,6 +4150,13 @@
       "name": "PT5586-노트북슬리브_추상적산출물",
       "date": "2026-07-27",
       "detail": "개미기획"
+    },
+    {
+      "id": "sup_added|Dongguan Songming Electronic Technology Co., Ltd|2026_W31",
+      "type": "sup_added",
+      "name": "Dongguan Songming Electronic Technology Co., Ltd",
+      "date": "2026-07-27",
+      "detail": "파츠 제작협력사 최초 등록 · 2026_W31 스냅샷 비교"
     },
     {
       "id": "part_price|PT1330|2026_W30",
@@ -6266,5 +6322,5 @@
       "detail": ""
     }
   ],
-  "updatedAt": "2026-10-13T08:14:56.085Z"
+  "updatedAt": "2026-10-15T04:35:17.576Z"
 }
