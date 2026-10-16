@@ -1,6 +1,13 @@
 {
   "entries": [
     {
+      "id": "part_price|PT5861|2026_W42",
+      "type": "part_price",
+      "name": "플레인도킹형배터리(5000)_고속",
+      "date": "2026-10-16",
+      "detail": "평균 9.0% 상승 · 주식회사 드리온"
+    },
+    {
       "id": "product_launched|CRSM|2026-10-15",
       "type": "product_launched",
       "name": "크리스마스 피규어 세트 (CRSM)",
@@ -540,6 +547,20 @@
       "detail": ""
     },
     {
+      "id": "product_new|CDLB|2026_W40",
+      "type": "product_new",
+      "name": "플레인 도킹형 배터리 (CDLB)",
+      "date": "2026-09-28",
+      "detail": "출시일 미정 · 파츠 등록 · 2026_W40 스냅샷 비교"
+    },
+    {
+      "id": "product_new|CRSM|2026_W40",
+      "type": "product_new",
+      "name": "크리스마스 피규어 세트 (CRSM)",
+      "date": "2026-09-28",
+      "detail": "출시일 미정 · 파츠 등록 · 2026_W40 스냅샷 비교"
+    },
+    {
       "id": "sup_added|GUANGZHOU KINGSONS BAGS TECHNOLOGY CO., LTD|2026_09",
       "type": "sup_added",
       "name": "GUANGZHOU KINGSONS BAGS TECHNOLOGY CO., LTD",
@@ -566,20 +587,6 @@
       "name": "애니웨어 센티드카드 (SCRD)",
       "date": "2026-09-28",
       "detail": ""
-    },
-    {
-      "id": "product_new|CDLB|2026_W40",
-      "type": "product_new",
-      "name": "플레인 도킹형 배터리 (CDLB)",
-      "date": "2026-09-28",
-      "detail": "출시일 미정 · 파츠 등록 · 2026_W40 스냅샷 비교"
-    },
-    {
-      "id": "product_new|CRSM|2026_W40",
-      "type": "product_new",
-      "name": "크리스마스 피규어 세트 (CRSM)",
-      "date": "2026-09-28",
-      "detail": "출시일 미정 · 파츠 등록 · 2026_W40 스냅샷 비교"
     },
     {
       "id": "part_new|PT5856|2026_W39",
@@ -6322,5 +6329,5 @@
       "detail": ""
     }
   ],
-  "updatedAt": "2026-10-15T04:35:17.576Z"
+  "updatedAt": "2026-10-16T05:46:24.793Z"
 }
